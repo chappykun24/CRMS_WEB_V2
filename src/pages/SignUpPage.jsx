@@ -180,29 +180,16 @@ const SignUpPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="h-4 w-4 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">Faculty Registration</h1>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="card">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-4xl">
+        <h2 className="text-center text-3xl font-bold text-gray-900 mb-2">
+          Faculty Registration
+        </h2>
+        <p className="text-center text-sm text-gray-600 mb-8">
+          Create your faculty account
+        </p>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           {/* Fill Random Data Button */}
           <button
             onClick={fillRandomData}
@@ -233,7 +220,7 @@ const SignUpPage = () => {
                       <button
                         type="button"
                         onClick={removePhoto}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -355,7 +342,7 @@ const SignUpPage = () => {
                     <button
                       type="button"
                       onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-                      className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                     >
                       <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
                         {formData.department 
@@ -375,7 +362,7 @@ const SignUpPage = () => {
                               setFormData({ ...formData, department: dept.department_id })
                               setShowDeptDropdown(false)
                             }}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100"
+                            className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 transition-colors"
                           >
                             <div className="font-medium text-gray-900">{dept.name}</div>
                             <div className="text-sm text-gray-500">{dept.department_abbreviation}</div>
@@ -530,7 +517,7 @@ const SignUpPage = () => {
                 Already have an account?{' '}
                 <Link
                   to="/login"
-                  className="font-medium text-primary-600 hover:text-primary-500"
+                  className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
                 >
                   Sign in here
                 </Link>
