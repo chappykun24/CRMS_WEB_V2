@@ -44,7 +44,7 @@ body {
 
   /* Card Components */
   .card {
-    @apply bg-white rounded-lg border border-gray-200 p-6 transition-all duration-200 hover:shadow-md;
+    @apply bg-white rounded-lg border border-gray-200 p-6 transition-all duration-200;
   }
 
   .card-header {
