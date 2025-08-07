@@ -40,7 +40,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
           {/* Hamburger Menu */}
           <button
             onClick={handleSidebarToggle}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0"
             title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             <Menu className="h-5 w-5 text-gray-600" />

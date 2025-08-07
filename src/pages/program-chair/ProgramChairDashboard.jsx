@@ -12,7 +12,7 @@ import {
   GraduationCap
 } from 'lucide-react'
 
-const ProgramChairDashboard = () => {
+const ProgramChairHome = () => {
   const stats = [
     {
       title: 'Program Students',
@@ -132,7 +132,7 @@ const ProgramChairDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Program Chair Dashboard</h1>
+        <h1 className="page-title">Program Chair Home</h1>
         <p className="page-subtitle">Welcome back! Here's an overview of your Computer Science program.</p>
       </div>
 
@@ -254,4 +254,4 @@ const ProgramChairDashboard = () => {
   )
 }
 
-export default ProgramChairDashboard 
+export default ProgramChairHome 

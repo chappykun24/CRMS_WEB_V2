@@ -12,7 +12,7 @@ import {
   FileText
 } from 'lucide-react'
 
-const DeanDashboard = () => {
+const DeanHome = () => {
   const stats = [
     {
       title: 'Total Students',
@@ -132,7 +132,7 @@ const DeanDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Dean Dashboard</h1>
+        <h1 className="page-title">Dean Home</h1>
         <p className="page-subtitle">Welcome back! Here's an overview of your academic institution.</p>
       </div>
 
@@ -252,4 +252,4 @@ const DeanDashboard = () => {
   )
 }
 
-export default DeanDashboard 
+export default DeanHome 

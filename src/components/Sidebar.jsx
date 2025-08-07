@@ -25,7 +25,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
     switch (user?.role) {
       case 'ADMIN':
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' },
+          { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'User Management', icon: Users, href: '/dashboard/users' },
           { name: 'Faculty Approval', icon: UserCheck, href: '/dashboard/faculty-approval' },
           { name: 'System Settings', icon: Settings, href: '/dashboard/settings' }
@@ -33,7 +33,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       case 'FACULTY':
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' },
+          { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
           { name: 'Attendance', icon: Calendar, href: '/dashboard/attendance' },
           { name: 'Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
@@ -43,7 +43,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       case 'DEAN':
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' },
+          { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
           { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
           { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
@@ -52,7 +52,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       case 'STAFF':
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' },
+          { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'Student Management', icon: Users, href: '/dashboard/students' },
           { name: 'Academic Records', icon: Database, href: '/dashboard/records' },
           { name: 'Assign Faculty', icon: UserCheck, href: '/dashboard/assign-faculty' }
@@ -60,7 +60,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       case 'PROGRAM_CHAIR':
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' },
+          { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'Course Management', icon: BookOpen, href: '/dashboard/courses' },
           { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
           { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
@@ -69,7 +69,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       default:
         return [
-          { name: 'Dashboard', icon: Home, href: '/dashboard' }
+          { name: 'Home', icon: Home, href: '/dashboard' }
         ]
     }
   }
@@ -120,29 +120,32 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       onMouseLeave={handleMouseLeave}
     >
       {/* Navigation Items */}
-      <nav className="flex-1 py-4 space-y-1">
+      <nav className="flex-1 py-6 px-3 space-y-2">
         {navigationItems.map((item, index) => {
-          const isActive = location.pathname === item.href
+          const isActive = location.pathname === item.href || 
+                         (item.href === '/dashboard' && location.pathname === '/dashboard/')
           return (
             <Link
               key={item.name}
               to={item.href}
-              className={`nav-item transition-all duration-300 ease-in-out ${
-                isActive ? 'nav-item-active' : 'nav-item-inactive'
+              className={`flex items-center justify-start px-4 py-3 pr-10 text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
+                isActive 
+                  ? 'bg-primary-50 text-primary-700' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
               title={!isExpanded ? item.name : ''}
               style={{
                 animationDelay: `${index * 50}ms`
               }}
             >
-              <div className="flex items-center px-4">
-                <div className="flex-shrink-0">
-                  <item.icon className={`h-5 w-5 transition-colors duration-300 ease-in-out ${
+              <div className="flex items-center justify-start">
+                <div className="flex-shrink-0 mr-8">
+                  <item.icon className={`h-6 w-6 transition-colors duration-300 ease-in-out ${
                     isActive ? 'text-primary-600' : 'text-gray-600'
                   }`} />
                 </div>
                 <span 
-                  className={`ml-3 transition-all duration-300 ease-in-out whitespace-nowrap ${
+                  className={`transition-all duration-300 ease-in-out whitespace-nowrap ${
                     isExpanded 
                       ? 'opacity-100 translate-x-0' 
                       : 'opacity-0 -translate-x-4 pointer-events-none w-0'

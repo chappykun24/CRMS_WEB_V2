@@ -4,24 +4,24 @@ import { useUser } from '../contexts/UserContext'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 
-// Import role-specific dashboard components
-import AdminDashboard from './admin/AdminDashboard'
+// Import role-specific home components
+import AdminHome from './admin/AdminDashboard'
 import Home from './admin/Home'
 import UserManagement from './admin/UserManagement'
 import FacultyApproval from './admin/FacultyApproval'
 import SystemSettings from './admin/SystemSettings'
-import FacultyDashboard from './faculty/FacultyDashboard'
+import FacultyHome from './faculty/FacultyDashboard'
 import MyClasses from './faculty/MyClasses'
 import Attendance from './faculty/Attendance'
 import Assessments from './faculty/Assessments'
 import Grades from './faculty/Grades'
 import Syllabi from './faculty/Syllabi'
-import DeanDashboard from './dean/DeanDashboard'
+import DeanHome from './dean/DeanDashboard'
 import Analytics from './dean/Analytics'
 import DeanMyClasses from './dean/MyClasses'
-import StaffDashboard from './staff/StaffDashboard'
+import StaffHome from './staff/StaffDashboard'
 import StudentManagement from './staff/StudentManagement'
-import ProgramChairDashboard from './program-chair/ProgramChairDashboard'
+import ProgramChairHome from './program-chair/ProgramChairDashboard'
 
 const Dashboard = () => {
   const { user } = useUser()
@@ -34,15 +34,15 @@ const Dashboard = () => {
   const getDashboardComponent = () => {
     switch (user?.role) {
       case 'ADMIN':
-        return <Home />
+        return <AdminHome />
       case 'FACULTY':
-        return <FacultyDashboard />
+        return <FacultyHome />
       case 'DEAN':
-        return <DeanDashboard />
+        return <DeanHome />
       case 'STAFF':
-        return <StaffDashboard />
+        return <StaffHome />
       case 'PROGRAM_CHAIR':
-        return <ProgramChairDashboard />
+        return <ProgramChairHome />
       default:
         return <Navigate to="/login" replace />
     }
@@ -54,7 +54,7 @@ const Dashboard = () => {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
         <main className="flex-1 m-4 overflow-hidden">
-          <div className="bg-white rounded-3xl h-full p-6 shadow-sm overflow-auto">
+          <div className="bg-white rounded-3xl h-full p-6 overflow-auto">
             <Routes>
               <Route path="/" element={getDashboardComponent()} />
               {/* Admin Routes */}

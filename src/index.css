@@ -44,7 +44,7 @@ body {
 
   /* Card Components */
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-200 hover:shadow-md;
+    @apply bg-white rounded-lg border border-gray-200 p-6 transition-all duration-200 hover:shadow-md;
   }
 
   .card-header {
@@ -192,5 +192,47 @@ body {
 
   .loading-overlay {
     @apply absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg;
+  }
+
+  /* Remove focus outline from burger menu */
+  button[title*="sidebar"] {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  button[title*="sidebar"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Remove focus outline from sidebar navigation */
+  .nav-item {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  .nav-item:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Remove all focus indicators from sidebar links */
+  nav a {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  nav a:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  nav a:active {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 } 

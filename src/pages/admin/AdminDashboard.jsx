@@ -10,7 +10,7 @@ import {
   Clock
 } from 'lucide-react'
 
-const AdminDashboard = () => {
+const AdminHome = () => {
   const stats = [
     {
       title: 'Total Users',
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Admin Dashboard</h1>
+        <h1 className="page-title">Admin Home</h1>
         <p className="page-subtitle">Welcome back! Here's what's happening with your system.</p>
       </div>
 
@@ -207,4 +207,4 @@ const AdminDashboard = () => {
   )
 }
 
-export default AdminDashboard 
+export default AdminHome 

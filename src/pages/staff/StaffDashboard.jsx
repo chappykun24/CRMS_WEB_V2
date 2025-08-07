@@ -12,7 +12,7 @@ import {
   BookOpen
 } from 'lucide-react'
 
-const StaffDashboard = () => {
+const StaffHome = () => {
   const stats = [
     {
       title: 'Total Students',
@@ -133,7 +133,7 @@ const StaffDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Staff Dashboard</h1>
+        <h1 className="page-title">Staff Home</h1>
         <p className="page-subtitle">Welcome back! Here's an overview of your administrative tasks.</p>
       </div>
 
@@ -253,4 +253,4 @@ const StaffDashboard = () => {
   )
 }
 
-export default StaffDashboard 
+export default StaffHome 

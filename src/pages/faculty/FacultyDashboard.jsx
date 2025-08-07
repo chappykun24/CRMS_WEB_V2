@@ -10,7 +10,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 
-const FacultyDashboard = () => {
+const FacultyHome = () => {
   const stats = [
     {
       title: 'Active Classes',
@@ -120,7 +120,7 @@ const FacultyDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Faculty Dashboard</h1>
+        <h1 className="page-title">Faculty Home</h1>
         <p className="page-subtitle">Welcome back! Here's an overview of your teaching activities.</p>
       </div>
 
@@ -207,4 +207,4 @@ const FacultyDashboard = () => {
   )
 }
 
-export default FacultyDashboard 
+export default FacultyHome 

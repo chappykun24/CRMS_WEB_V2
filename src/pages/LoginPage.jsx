@@ -89,7 +89,7 @@ const LoginPage = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-6xl flex justify-center">
         <div className="w-full sm:max-w-md">
-          <div className="bg-white py-8 px-6 shadow-sm border border-gray-200 sm:rounded-3xl sm:px-10">
+          <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
@@ -215,7 +215,7 @@ const LoginPage = () => {
 
         {/* Demo Credentials - Right Side */}
         <div className="hidden lg:block ml-8 w-64">
-          <div className="bg-white border border-gray-200 rounded-3xl p-4 shadow-sm sticky top-8">
+          <div className="bg-white border border-gray-200 rounded-3xl p-4 sticky top-8">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Login</h3>
             
             <div className="space-y-2">

@@ -67,7 +67,7 @@ const WelcomeScreen = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <h1 className="text-xl font-bold text-primary-600">CRMS</h1>
