@@ -118,8 +118,16 @@ export const UserProvider = ({ children }) => {
   const login = async (email, password) => {
     dispatch({ type: 'LOGIN_START' })
     
-    // Check if it's a demo user
-    if (demoUsers[email] && password === 'admin123') {
+    // Check if it's a demo user with correct passwords
+    const demoPasswords = {
+      'admin@university.edu': 'admin123',
+      'faculty@university.edu': 'faculty123',
+      'dean@university.edu': 'dean123',
+      'staff@university.edu': 'staff123',
+      'chair@university.edu': 'chair123'
+    }
+    
+    if (demoUsers[email] && demoPasswords[email] === password) {
       const user = demoUsers[email]
       localStorage.setItem('token', 'demo-token')
       localStorage.setItem('demoUser', JSON.stringify(user))

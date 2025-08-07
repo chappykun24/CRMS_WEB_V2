@@ -28,7 +28,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'User Management', icon: Users, href: '/dashboard/users' },
           { name: 'Faculty Approval', icon: UserCheck, href: '/dashboard/faculty-approval' },
-          { name: 'Syllabus Approval', icon: FileText, href: '/dashboard/syllabus-approval' },
           { name: 'System Settings', icon: Settings, href: '/dashboard/settings' }
         ]
       

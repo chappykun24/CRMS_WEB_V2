@@ -6,10 +6,13 @@ import {
   Lock, 
   Eye, 
   EyeOff,
-  GraduationCap
+  ArrowRight,
+  CheckCircle
 } from 'lucide-react'
 
 const LoginPage = () => {
+  console.log('LoginPage component is rendering')
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -58,24 +61,40 @@ const LoginPage = () => {
     }
   }
 
+  const demoCredentials = [
+    { role: 'Admin', email: 'admin@university.edu', password: 'admin123' },
+    { role: 'Faculty', email: 'faculty@university.edu', password: 'faculty123' },
+    { role: 'Dean', email: 'dean@university.edu', password: 'dean123' },
+    { role: 'Staff', email: 'staff@university.edu', password: 'staff123' },
+    { role: 'Program Chair', email: 'chair@university.edu', password: 'chair123' }
+  ]
+
+  const handleDemoClick = (cred) => {
+    setFormData({
+      email: cred.email,
+      password: cred.password
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="text-center text-3xl font-bold text-gray-900">
-          Sign in to your account
+          Welcome back to CRMS
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Welcome back to CRMS
+          Sign in to your account to continue
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-6xl flex justify-center">
         <div className="w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow-sm border border-gray-200 sm:rounded-lg sm:px-10">
+          <div className="bg-white py-8 px-6 shadow-sm border border-gray-200 sm:rounded-3xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                  {error}
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span>{error}</span>
                 </div>
               )}
 
@@ -158,12 +177,15 @@ const LoginPage = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="btn-primary w-full"
+                  className="btn-primary w-full flex items-center justify-center space-x-2"
                 >
                   {isLoading ? (
                     <div className="loading-spinner"></div>
                   ) : (
-                    'Sign in'
+                    <>
+                      <span>Sign in</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </>
                   )}
                 </button>
               </div>
@@ -182,9 +204,9 @@ const LoginPage = () => {
               <div className="mt-6">
                 <Link
                   to="/signup"
-                  className="btn-secondary w-full text-center block"
+                  className="btn-outline w-full text-center block"
                 >
-                  Sign up here
+                  Create new account
                 </Link>
               </div>
             </div>
@@ -192,63 +214,21 @@ const LoginPage = () => {
         </div>
 
         {/* Demo Credentials - Right Side */}
-        <div className="hidden lg:block ml-8 w-80">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sticky top-8">
-            <h3 className="text-sm font-medium text-blue-900 mb-3">Quick Login (Demo)</h3>
+        <div className="hidden lg:block ml-8 w-64">
+          <div className="bg-white border border-gray-200 rounded-3xl p-4 shadow-sm sticky top-8">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Login</h3>
+            
             <div className="space-y-2">
-              <button
-                onClick={() => {
-                  setFormData({ email: 'admin@university.edu', password: 'admin123' })
-                }}
-                className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-              >
-                <div className="font-medium text-blue-900">Administrator</div>
-                <div className="text-xs text-blue-600">admin@university.edu</div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFormData({ email: 'faculty@university.edu', password: 'faculty123' })
-                }}
-                className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-              >
-                <div className="font-medium text-blue-900">Faculty</div>
-                <div className="text-xs text-blue-600">faculty@university.edu</div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFormData({ email: 'dean@university.edu', password: 'dean123' })
-                }}
-                className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-              >
-                <div className="font-medium text-blue-900">Dean</div>
-                <div className="text-xs text-blue-600">dean@university.edu</div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFormData({ email: 'staff@university.edu', password: 'staff123' })
-                }}
-                className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-              >
-                <div className="font-medium text-blue-900">Staff</div>
-                <div className="text-xs text-blue-600">staff@university.edu</div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFormData({ email: 'chair@university.edu', password: 'chair123' })
-                }}
-                className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-sm"
-              >
-                <div className="font-medium text-blue-900">Program Chair</div>
-                <div className="text-xs text-blue-600">chair@university.edu</div>
-              </button>
+              {demoCredentials.map((cred, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleDemoClick(cred)}
+                  className="w-full p-2 text-xs bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left"
+                >
+                  {cred.role}
+                </button>
+              ))}
             </div>
-            <p className="text-xs text-blue-600 mt-3">
-              Click any role to auto-fill credentials
-            </p>
           </div>
         </div>
       </div>

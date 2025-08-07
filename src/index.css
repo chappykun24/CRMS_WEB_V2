@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Test style to see if CSS is loading */
+body {
+  background-color: #f0f0f0;
+  color: #333;
+  font-family: Arial, sans-serif;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
