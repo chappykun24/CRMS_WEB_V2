@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CheckCircle
 } from 'lucide-react'
+import logo from '../images/logo.png'
 
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
@@ -77,7 +78,34 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <>
+      {/* Full Screen Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+          <div className="text-center">
+            <img 
+              src={logo} 
+              alt="CRMS Logo" 
+              className="w-40 h-40 mx-auto mb-8 animate-pulse object-contain"
+            />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Signing in...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* BSU Logo at Top Left */}
+      <div className="fixed top-4 left-4 z-40">
+        <Link to="/" className="hover:opacity-80 transition-opacity">
+          <img 
+            src={logo} 
+            alt="BSU Logo" 
+            className="w-10 h-10 object-contain"
+          />
+        </Link>
+      </div>
+      
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="text-center text-3xl font-bold text-gray-900">
           Welcome back to CRMS
@@ -179,14 +207,8 @@ const LoginPage = () => {
                   disabled={isLoading}
                   className="btn-primary w-full flex items-center justify-center space-x-2"
                 >
-                  {isLoading ? (
-                    <div className="loading-spinner"></div>
-                  ) : (
-                    <>
-                      <span>Sign in</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
+                  <span>Sign in</span>
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </form>
@@ -233,6 +255,7 @@ const LoginPage = () => {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

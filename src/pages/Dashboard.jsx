@@ -53,7 +53,7 @@ const Dashboard = () => {
       <Header onSidebarToggle={handleSidebarToggle} sidebarExpanded={sidebarExpanded} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
-        <main className="flex-1 m-4 overflow-hidden">
+        <main className="flex-1 m-2 overflow-hidden">
           <div className="bg-white rounded-3xl h-full p-6 overflow-auto">
             <Routes>
               <Route path="/" element={getDashboardComponent()} />

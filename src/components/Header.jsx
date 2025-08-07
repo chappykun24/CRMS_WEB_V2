@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Menu
 } from 'lucide-react'
+import logo from '../images/logo.png'
 
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useUser()
@@ -46,7 +47,12 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
 
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center space-x-2">
+            <img 
+              src={logo} 
+              alt="CRMS Logo" 
+              className="w-8 h-8 object-contain"
+            />
             <h1 className="text-xl font-bold text-primary-600">CRMS</h1>
           </div>
         </div>

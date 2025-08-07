@@ -15,6 +15,7 @@ import {
   Info,
   ArrowLeft
 } from 'lucide-react'
+import logo from '../images/logo.png'
 
 const SignUpPage = () => {
   const navigate = useNavigate()
@@ -180,7 +181,19 @@ const SignUpPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <>
+      {/* BSU Logo at Top Left */}
+      <div className="fixed top-4 left-4 z-40">
+        <Link to="/" className="hover:opacity-80 transition-opacity">
+          <img 
+            src={logo} 
+            alt="BSU Logo" 
+            className="w-10 h-10 object-contain"
+          />
+        </Link>
+      </div>
+      
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-4xl">
         <h2 className="text-center text-3xl font-bold text-gray-900 mb-2">
           Faculty Registration
@@ -527,6 +540,7 @@ const SignUpPage = () => {
         </div>
       </div>
     </div>
+    </>
   )
 }
 
