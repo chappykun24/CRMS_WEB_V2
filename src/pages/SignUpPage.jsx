@@ -202,11 +202,11 @@ const SignUpPage = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="card">
           {/* Fill Random Data Button */}
           <button
             onClick={fillRandomData}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 mb-8"
+            className="btn-primary w-full mb-8"
           >
             Fill Random Data for Testing
           </button>
@@ -220,7 +220,7 @@ const SignUpPage = () => {
 
             {/* Faculty Photo Section */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Faculty Photo (Optional)</h3>
+              <h3 className="section-title mb-4">Faculty Photo (Optional)</h3>
               <div className="space-y-4">
                 <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
                   {facultyPhoto ? (
@@ -264,10 +264,10 @@ const SignUpPage = () => {
 
             {/* Personal Information */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+              <h3 className="section-title mb-4">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Last Name *
                   </label>
                   <input
@@ -281,7 +281,7 @@ const SignUpPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     First Name *
                   </label>
                   <input
@@ -295,7 +295,7 @@ const SignUpPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Middle Initial
                   </label>
                   <input
@@ -309,7 +309,7 @@ const SignUpPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Suffix
                   </label>
                   <input
@@ -322,19 +322,19 @@ const SignUpPage = () => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Email Address *
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-400" />
+                  <div className="input-group">
+                    <div className="input-icon">
+                      <Mail className="h-5 w-5" />
                     </div>
                     <input
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="input-field pl-10"
+                      className="input-field input-with-icon"
                       placeholder="Enter email address"
                       required
                     />
@@ -345,10 +345,10 @@ const SignUpPage = () => {
 
             {/* Academic Information */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
+              <h3 className="section-title mb-4">Academic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Department *
                   </label>
                   <div className="relative">
@@ -386,36 +386,36 @@ const SignUpPage = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Term Start
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Calendar className="h-5 w-5 text-gray-400" />
+                  <div className="input-group">
+                    <div className="input-icon">
+                      <Calendar className="h-5 w-5" />
                     </div>
                     <input
                       type="date"
                       name="termStart"
                       value={formData.termStart}
                       onChange={handleInputChange}
-                      className="input-field pl-10"
+                      className="input-field input-with-icon"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Term End
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Calendar className="h-5 w-5 text-gray-400" />
+                  <div className="input-group">
+                    <div className="input-icon">
+                      <Calendar className="h-5 w-5" />
                     </div>
                     <input
                       type="date"
                       name="termEnd"
                       value={formData.termEnd}
                       onChange={handleInputChange}
-                      className="input-field pl-10"
+                      className="input-field input-with-icon"
                     />
                   </div>
                 </div>
@@ -424,22 +424,22 @@ const SignUpPage = () => {
 
             {/* Account Security */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Security</h3>
+              <h3 className="section-title mb-4">Account Security</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Password *
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                  <div className="input-group">
+                    <div className="input-icon">
+                      <Lock className="h-5 w-5" />
                     </div>
                     <input
                       type={showPassword ? 'text' : 'password'}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className="input-field pl-10 pr-10"
+                      className="input-field input-with-icon pr-10"
                       placeholder="Create a password"
                       required
                     />
@@ -457,19 +457,19 @@ const SignUpPage = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="label">
                     Confirm Password *
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                  <div className="input-group">
+                    <div className="input-icon">
+                      <Lock className="h-5 w-5" />
                     </div>
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      className="input-field pl-10 pr-10"
+                      className="input-field input-with-icon pr-10"
                       placeholder="Confirm your password"
                       required
                     />
@@ -504,18 +504,18 @@ const SignUpPage = () => {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 bg-primary-600 hover:bg-primary-700 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary flex-1"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="loading-spinner mr-2"></div>
                     Submitting...
                   </div>
                 ) : (

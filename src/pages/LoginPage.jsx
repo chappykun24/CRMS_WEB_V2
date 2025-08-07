@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, User, GraduationCap } from 'lucide-react'
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -65,9 +65,14 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+          </div>
           <h2 className="text-3xl font-bold text-gray-900">
             Welcome Back
           </h2>
@@ -78,16 +83,16 @@ const LoginPage = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="card py-8 px-4 sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="label">
                 Email Address
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+              <div className="input-group">
+                <div className="input-icon">
+                  <Mail className="h-5 w-5" />
                 </div>
                 <input
                   id="email"
@@ -97,7 +102,7 @@ const LoginPage = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="input-field pl-10"
+                  className="input-field input-with-icon"
                   placeholder="Enter your email"
                 />
               </div>
@@ -105,12 +110,12 @@ const LoginPage = () => {
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="label">
                 Password
               </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+              <div className="input-group">
+                <div className="input-icon">
+                  <Lock className="h-5 w-5" />
                 </div>
                 <input
                   id="password"
@@ -120,7 +125,7 @@ const LoginPage = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="input-field pl-10 pr-10"
+                  className="input-field input-with-icon pr-10"
                   placeholder="Enter your password"
                 />
                 <button
@@ -139,7 +144,7 @@ const LoginPage = () => {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
                 {error}
               </div>
             )}
@@ -149,11 +154,11 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                className="btn-primary w-full"
               >
                 {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="flex items-center justify-center">
+                    <div className="loading-spinner mr-2"></div>
                     Signing in...
                   </div>
                 ) : (
@@ -161,46 +166,38 @@ const LoginPage = () => {
                 )}
               </button>
             </div>
-          </form>
 
-          {/* Sign Up Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link
-                to="/signup"
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
-                Sign up here
-              </Link>
-            </p>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-800 mb-3 flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                Quick Demo Login
-              </h4>
+            {/* Demo Credentials */}
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Demo Accounts</h3>
               <div className="grid grid-cols-1 gap-2">
                 {demoCredentials.map((credential, index) => (
                   <button
                     key={index}
                     type="button"
                     onClick={() => handleDemoLogin(credential.email, credential.password)}
-                    className="w-full text-left px-3 py-2 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-md transition-colors duration-200 flex items-center justify-between"
+                    className="btn-secondary text-sm"
                   >
-                    <span className="font-medium">{credential.name}</span>
-                    <span className="text-blue-600">Click to fill</span>
+                    <User className="h-4 w-4 mr-2" />
+                    {credential.name}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-blue-600 mt-2">
-                Click any button above to automatically fill in the login form
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link
+                  to="/signup"
+                  className="font-medium text-primary-600 hover:text-primary-500"
+                >
+                  Sign up here
+                </Link>
               </p>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

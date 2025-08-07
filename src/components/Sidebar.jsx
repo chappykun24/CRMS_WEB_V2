@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { 
@@ -9,28 +9,23 @@ import {
   BarChart3,
   FileText,
   Settings,
-  GraduationCap,
   ClipboardList,
   Award,
   UserCheck,
-  Database,
-  ChevronRight
+  Database
 } from 'lucide-react'
 
-const Sidebar = () => {
+const Sidebar = ({ isExpanded, onToggle }) => {
   const { user } = useUser()
   const location = useLocation()
-  const [collapsed, setCollapsed] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const hoverTimeoutRef = useRef(null)
 
   const getNavigationItems = () => {
-    const baseItems = [
-      { name: 'Dashboard', icon: Home, href: '/dashboard' }
-    ]
-
     switch (user?.role) {
       case 'ADMIN':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard/home' },
+          { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'User Management', icon: Users, href: '/dashboard/users' },
           { name: 'Faculty Approval', icon: UserCheck, href: '/dashboard/faculty-approval' },
           { name: 'Syllabus Approval', icon: FileText, href: '/dashboard/syllabus-approval' },
@@ -39,7 +34,7 @@ const Sidebar = () => {
       
       case 'FACULTY':
         return [
-          ...baseItems,
+          { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
           { name: 'Attendance', icon: Calendar, href: '/dashboard/attendance' },
           { name: 'Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
@@ -49,7 +44,7 @@ const Sidebar = () => {
       
       case 'DEAN':
         return [
-          ...baseItems,
+          { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
           { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
           { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
@@ -58,7 +53,7 @@ const Sidebar = () => {
       
       case 'STAFF':
         return [
-          ...baseItems,
+          { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'Student Management', icon: Users, href: '/dashboard/students' },
           { name: 'Academic Records', icon: Database, href: '/dashboard/records' },
           { name: 'Assign Faculty', icon: UserCheck, href: '/dashboard/assign-faculty' }
@@ -66,7 +61,7 @@ const Sidebar = () => {
       
       case 'PROGRAM_CHAIR':
         return [
-          ...baseItems,
+          { name: 'Dashboard', icon: Home, href: '/dashboard' },
           { name: 'Course Management', icon: BookOpen, href: '/dashboard/courses' },
           { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
           { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
@@ -74,66 +69,93 @@ const Sidebar = () => {
         ]
       
       default:
-        return baseItems
+        return [
+          { name: 'Dashboard', icon: Home, href: '/dashboard' }
+        ]
     }
   }
 
   const navigationItems = getNavigationItems()
 
-  return (
-    <div className={`bg-white shadow-sm border-r border-gray-200 transition-all duration-300 ${
-      collapsed ? 'w-16' : 'w-64'
-    }`}>
-      <div className="flex flex-col h-full">
-        {/* Toggle Button */}
-        <div className="p-4 border-b border-gray-200">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <ChevronRight className={`h-5 w-5 text-gray-600 transition-transform ${
-              collapsed ? 'rotate-180' : ''
-            }`} />
-          </button>
-        </div>
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    setIsHovered(true)
+    // Small delay before expanding to prevent accidental expansion
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isExpanded) {
+        onToggle()
+      }
+    }, 150)
+  }
 
-        {/* Navigation Items */}
-        <nav className="flex-1 p-4 space-y-2">
-          {navigationItems.map((item) => (
+  const handleMouseLeave = () => {
+    setIsHovered(false)
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    // Delay before collapsing to allow moving mouse to content
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (isExpanded) {
+        onToggle()
+      }
+    }, 200)
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <div 
+      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-screen ${
+        isExpanded ? 'w-64' : 'w-16'
+      }`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Navigation Items */}
+      <nav className="flex-1 py-4 space-y-1">
+        {navigationItems.map((item, index) => {
+          const isActive = location.pathname === item.href
+          return (
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === item.href
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+              className={`nav-item transition-all duration-300 ease-in-out ${
+                isActive ? 'nav-item-active' : 'nav-item-inactive'
               }`}
+              title={!isExpanded ? item.name : ''}
+              style={{
+                animationDelay: `${index * 50}ms`
+              }}
             >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.name}</span>}
+              <div className="flex items-center px-4">
+                <div className="flex-shrink-0">
+                  <item.icon className={`h-5 w-5 transition-colors duration-300 ease-in-out ${
+                    isActive ? 'text-primary-600' : 'text-gray-600'
+                  }`} />
+                </div>
+                <span 
+                  className={`ml-3 transition-all duration-300 ease-in-out whitespace-nowrap ${
+                    isExpanded 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-4 pointer-events-none w-0'
+                  }`}
+                >
+                  {item.name}
+                </span>
+              </div>
             </Link>
-          ))}
-        </nav>
-
-        {/* User Info */}
-        {!collapsed && (
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <GraduationCap className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.name || 'User'}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user?.role || 'Role'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+          )
+        })}
+      </nav>
     </div>
   )
 }

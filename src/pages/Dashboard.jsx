@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import Sidebar from '../components/Sidebar'
@@ -15,6 +15,11 @@ import ProgramChairDashboard from './program-chair/ProgramChairDashboard'
 
 const Dashboard = () => {
   const { user } = useUser()
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+
+  const handleSidebarToggle = () => {
+    setSidebarExpanded(!sidebarExpanded)
+  }
 
   const getDashboardComponent = () => {
     switch (user?.role) {
@@ -34,22 +39,24 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <Routes>
-            <Route path="/" element={getDashboardComponent()} />
-            {/* Admin Routes */}
-            {user?.role === 'ADMIN' && (
-              <>
-                <Route path="/home" element={<Home />} />
-                <Route path="/users" element={<UserManagement />} />
-              </>
-            )}
-            <Route path="*" element={getDashboardComponent()} />
-          </Routes>
+    <div className="h-screen flex flex-col bg-gray-50">
+      <Header onSidebarToggle={handleSidebarToggle} sidebarExpanded={sidebarExpanded} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar isExpanded={sidebarExpanded} onToggle={handleSidebarToggle} />
+        <main className="flex-1 m-4 overflow-auto">
+          <div className="bg-white rounded-3xl h-full p-6 shadow-sm">
+            <Routes>
+              <Route path="/" element={getDashboardComponent()} />
+              {/* Admin Routes */}
+              {user?.role === 'ADMIN' && (
+                <>
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/users" element={<UserManagement />} />
+                </>
+              )}
+              <Route path="*" element={getDashboardComponent()} />
+            </Routes>
+          </div>
         </main>
       </div>
     </div>
