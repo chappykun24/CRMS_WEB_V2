@@ -39,42 +39,40 @@ const LoginPage = () => {
     setError('')
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Validate form data
+      if (!formData.email || !formData.password) {
+        setError('Please fill in all fields')
+        return
+      }
+
+      // Attempt login with real authentication
+      const result = await login(formData.email, formData.password)
       
-      // For demo purposes, accept any email/password
-      if (formData.email && formData.password) {
-        // Use the login function with email and password
-        const result = await login(formData.email, formData.password)
-        
-        if (result.success) {
-          navigate('/dashboard/')
+      if (result.success) {
+        // Redirect based on user role
+        const role = result.user.role?.toLowerCase()
+        if (role === 'admin') {
+          navigate('/admin/dashboard')
+        } else if (role === 'faculty') {
+          navigate('/faculty/dashboard')
+        } else if (role === 'dean') {
+          navigate('/dean/dashboard')
+        } else if (role === 'staff') {
+          navigate('/staff/dashboard')
+        } else if (role === 'program_chair') {
+          navigate('/program-chair/dashboard')
         } else {
-          setError(result.error || 'Login failed. Please try again.')
+          navigate('/dashboard')
         }
       } else {
-        setError('Please fill in all fields')
+        setError(result.error || 'Login failed. Please check your credentials.')
       }
     } catch (err) {
-      setError('Login failed. Please try again.')
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const demoCredentials = [
-    { role: 'Admin', email: 'admin@university.edu', password: 'admin123' },
-    { role: 'Faculty', email: 'faculty@university.edu', password: 'faculty123' },
-    { role: 'Dean', email: 'dean@university.edu', password: 'dean123' },
-    { role: 'Staff', email: 'staff@university.edu', password: 'staff123' },
-    { role: 'Program Chair', email: 'chair@university.edu', password: 'chair123' }
-  ]
-
-  const handleDemoClick = (cred) => {
-    setFormData({
-      email: cred.email,
-      password: cred.password
-    })
   }
 
   return (
@@ -106,17 +104,16 @@ const LoginPage = () => {
       </div>
       
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-bold text-gray-900">
-          Welcome back to CRMS
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Sign in to your account to continue
-        </p>
-      </div>
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <h2 className="text-center text-3xl font-bold text-gray-900">
+            Welcome back to CRMS
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Sign in to your account to continue
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-6xl flex justify-center">
-        <div className="w-full sm:max-w-md">
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
@@ -144,6 +141,7 @@ const LoginPage = () => {
                     onChange={handleChange}
                     className="input-field input-with-icon"
                     placeholder="Enter your email"
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -166,11 +164,13 @@ const LoginPage = () => {
                     onChange={handleChange}
                     className="input-field input-with-icon pr-10"
                     placeholder="Enter your password"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5 text-gray-400" />
@@ -188,6 +188,7 @@ const LoginPage = () => {
                     name="remember-me"
                     type="checkbox"
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    disabled={isLoading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                     Remember me
@@ -205,10 +206,19 @@ const LoginPage = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="btn-primary w-full flex items-center justify-center space-x-2"
+                  className="btn-primary w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>Sign in</span>
-                  <ArrowRight className="h-4 w-4" />
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign in</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -234,27 +244,7 @@ const LoginPage = () => {
             </div>
           </div>
         </div>
-
-        {/* Demo Credentials - Right Side */}
-        <div className="hidden lg:block ml-8 w-64">
-          <div className="bg-white border border-gray-200 rounded-3xl p-4 sticky top-8">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Login</h3>
-            
-            <div className="space-y-2">
-              {demoCredentials.map((cred, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleDemoClick(cred)}
-                  className="w-full p-2 text-xs bg-gray-50 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left"
-                >
-                  {cred.role}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
     </>
   )
 }

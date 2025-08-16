@@ -1,9 +1,16 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
 
 const Home = () => {
-  // Redirect to admin dashboard for consistency
-  return <Navigate to="/dashboard/" replace />
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Home</h1>
+        <div className="bg-white rounded-lg shadow p-6">
+          <p className="text-gray-600">Admin home interface - content to be implemented</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default Home 

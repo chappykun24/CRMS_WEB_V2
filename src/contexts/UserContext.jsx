@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
-import { api } from '../utils/api'
+import authService from '../services/authService'
 
 const UserContext = createContext()
 
@@ -39,42 +39,10 @@ const userReducer = (state, action) => {
       }
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload }
+    case 'CLEAR_ERROR':
+      return { ...state, error: null }
     default:
       return state
-  }
-}
-
-// Demo users for testing
-const demoUsers = {
-  'admin@university.edu': {
-    id: 1,
-    name: 'Admin User',
-    email: 'admin@university.edu',
-    role: 'ADMIN'
-  },
-  'faculty@university.edu': {
-    id: 2,
-    name: 'Faculty User',
-    email: 'faculty@university.edu',
-    role: 'FACULTY'
-  },
-  'dean@university.edu': {
-    id: 3,
-    name: 'Dean User',
-    email: 'dean@university.edu',
-    role: 'DEAN'
-  },
-  'staff@university.edu': {
-    id: 4,
-    name: 'Staff User',
-    email: 'staff@university.edu',
-    role: 'STAFF'
-  },
-  'chair@university.edu': {
-    id: 5,
-    name: 'Program Chair User',
-    email: 'chair@university.edu',
-    role: 'PROGRAM_CHAIR'
   }
 }
 
@@ -84,28 +52,20 @@ export const UserProvider = ({ children }) => {
   // Check if user is already logged in on app start
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const token = localStorage.getItem('token')
-      if (token) {
+      const userData = localStorage.getItem('userData')
+      if (userData) {
         try {
-          // Try to verify with API first
-          const response = await api.get('/auth/me')
+          // Verify user data from localStorage
+          const user = JSON.parse(userData)
           dispatch({ 
             type: 'LOGIN_SUCCESS', 
-            payload: { user: response.data.user } 
+            payload: { user } 
           })
         } catch (error) {
-          // If API fails, check for demo user
-          const demoUser = localStorage.getItem('demoUser')
-          if (demoUser) {
-            const user = JSON.parse(demoUser)
-            dispatch({ 
-              type: 'LOGIN_SUCCESS', 
-              payload: { user } 
-            })
-          } else {
-            localStorage.removeItem('token')
-            dispatch({ type: 'LOGOUT' })
-          }
+          console.error('User data verification failed:', error)
+          // User data is invalid, remove it and logout
+          localStorage.removeItem('userData')
+          dispatch({ type: 'LOGOUT' })
         }
       } else {
         dispatch({ type: 'SET_LOADING', payload: false })
@@ -118,62 +78,82 @@ export const UserProvider = ({ children }) => {
   const login = async (email, password) => {
     dispatch({ type: 'LOGIN_START' })
     
-    // Check if it's a demo user with correct passwords
-    const demoPasswords = {
-      'admin@university.edu': 'admin123',
-      'faculty@university.edu': 'faculty123',
-      'dean@university.edu': 'dean123',
-      'staff@university.edu': 'staff123',
-      'chair@university.edu': 'chair123'
-    }
-    
-    if (demoUsers[email] && demoPasswords[email] === password) {
-      const user = demoUsers[email]
-      localStorage.setItem('token', 'demo-token')
-      localStorage.setItem('demoUser', JSON.stringify(user))
-      
-      dispatch({ 
-        type: 'LOGIN_SUCCESS', 
-        payload: { user } 
-      })
-      
-      return { success: true }
-    }
-    
     try {
-      const response = await api.post('/auth/login', { email, password })
-      const { token, user } = response.data
+      // Attempt authentication with our auth service
+      const result = await authService.login(email, password)
       
-      localStorage.setItem('token', token)
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      
-      dispatch({ 
-        type: 'LOGIN_SUCCESS', 
-        payload: { user } 
-      })
-      
-      return { success: true }
+      if (result.success) {
+        // Store user data in localStorage
+        localStorage.setItem('userData', JSON.stringify(result.user))
+        
+        // Update user state
+        dispatch({ 
+          type: 'LOGIN_SUCCESS', 
+          payload: { user: result.user } 
+        })
+        
+        return { success: true, user: result.user }
+      } else {
+        // Authentication failed
+        dispatch({ 
+          type: 'LOGIN_FAILURE', 
+          payload: result.error 
+        })
+        
+        return { success: false, error: result.error }
+      }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed'
+      console.error('Login error:', error)
+      
+      const errorMessage = 'An unexpected error occurred. Please try again.'
+      
       dispatch({ 
         type: 'LOGIN_FAILURE', 
         payload: errorMessage 
       })
+      
       return { success: false, error: errorMessage }
     }
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('demoUser')
-    delete api.defaults.headers.common['Authorization']
+    // Clear local storage
+    localStorage.removeItem('userData')
+    
+    // Update state
     dispatch({ type: 'LOGOUT' })
+  }
+
+  const clearError = () => {
+    dispatch({ type: 'CLEAR_ERROR' })
+  }
+
+  const refreshUser = async () => {
+    try {
+      const userData = localStorage.getItem('userData')
+      if (userData) {
+        const user = JSON.parse(userData)
+        dispatch({ 
+          type: 'LOGIN_SUCCESS', 
+          payload: { user } 
+        })
+        return { success: true, user }
+      } else {
+        throw new Error('No user data found')
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error)
+      logout()
+      return { success: false, error: 'Failed to refresh user session' }
+    }
   }
 
   const value = {
     ...state,
     login,
-    logout
+    logout,
+    clearError,
+    refreshUser
   }
 
   return (
