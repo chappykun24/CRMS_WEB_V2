@@ -11,14 +11,14 @@ const DashboardLayout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header - Full width at top */}
+      {/* Header - Fixed at top */}
       <Header 
         onSidebarToggle={handleSidebarToggle}
         sidebarExpanded={sidebarExpanded}
       />
       
-      {/* Main Content Area with Sidebar and Content */}
-      <div className="flex flex-1 min-w-0">
+      {/* Main Content Area with Sidebar and Content - Add top padding for fixed header */}
+      <div className="flex flex-1 min-w-0 pt-16">
         {/* Sidebar - Below header, left side */}
         <Sidebar 
           isExpanded={sidebarExpanded} 
