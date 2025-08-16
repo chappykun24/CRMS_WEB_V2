@@ -12,8 +12,8 @@ try {
     if (trimmed && !trimmed.startsWith('#')) {
       const [key, ...valueParts] = trimmed.split('=');
       if (key && valueParts.length > 0) {
-        const cleanKey = key.replace(/\x00/g, '').trim();
-        const cleanValue = valueParts.join('=').replace(/\x00/g, '').trim();
+        const cleanKey = key.replace(/\0/g, '').trim();
+        const cleanValue = valueParts.join('=').replace(/\0/g, '').trim();
         if (cleanKey && cleanValue) {
           process.env[cleanKey] = cleanValue;
         }

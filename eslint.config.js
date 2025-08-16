@@ -17,6 +17,12 @@ export default [
         document: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
+        // Browser globals
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        FileReader: 'readonly',
       },
       parserOptions: {
         ecmaFeatures: {
@@ -31,7 +37,7 @@ export default [
     },
     settings: {
       react: {
-        version: '18.2',
+        version: '18.3',
       },
     },
     rules: {
@@ -43,9 +49,35 @@ export default [
       ],
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
+      'react/no-unescaped-entities': 'off',
+      'no-unused-vars': 'warn',
+      'no-undef': 'warn',
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '.eslintrc.cjs'],
+    files: ['scripts/**/*.js', '*.js', 'test-*.js', 'check-*.js'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+      },
+    },
+  },
+  {
+    ignores: [
+      'dist/**', 
+      'node_modules/**', 
+      '.eslintrc.cjs',
+      'scripts/**/*.js',
+      '*.js',
+      'test-*.js',
+      'check-*.js'
+    ],
   },
 ] 
