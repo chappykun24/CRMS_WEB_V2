@@ -1,61 +1,28 @@
-// Browser-compatible authentication service
-// Note: This is a temporary solution. In production, you should have a separate backend API.
+// Frontend authentication service - calls backend API
+// The backend handles all database operations
 
 class AuthService {
-  // Mock user data for demonstration
-  mockUsers = [
-    {
-      user_id: 1,
-      name: 'Admin User',
-      email: 'admin@example.com',
-      role: 'admin',
-      profile_type: 'Administrator',
-      designation: 'System Administrator',
-      is_approved: true
-    },
-    {
-      user_id: 2,
-      name: 'Faculty User',
-      email: 'faculty@example.com',
-      role: 'faculty',
-      profile_type: 'Faculty',
-      designation: 'Assistant Professor',
-      is_approved: true
-    }
-  ];
-
-  // User login (mock implementation)
+  // User login via backend API
   async login(email, password) {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
       
-      // Find user in mock data
-      const user = this.mockUsers.find(u => u.email === email);
-      
-      if (!user) {
-        throw new Error('User not found');
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
       
-      // Check if user is approved
-      if (!user.is_approved) {
-        throw new Error('Account not approved');
-      }
-      
-      // Mock password validation (in real app, this would be done on backend)
-      if (password === 'password123') {
-        // Return user data (without password)
-        const { password_hash, ...userData } = user;
-        return {
-          success: true,
-          user: userData,
-          message: 'Login successful'
-        };
-      } else {
-        throw new Error('Invalid password');
-      }
+      return data;
       
     } catch (error) {
+      console.error('Login error:', error);
       return {
         success: false,
         error: error.message
@@ -63,39 +30,27 @@ class AuthService {
     }
   }
   
-  // Create new user (mock implementation)
+  // Create new user via backend API
   async createUser(userData) {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      const data = await response.json();
       
-      const { name, email, password, role } = userData;
-      
-      // Check if user already exists
-      if (this.mockUsers.find(u => u.email === email)) {
-        throw new Error('User already exists');
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
       }
       
-      // Create new user
-      const newUser = {
-        user_id: this.mockUsers.length + 1,
-        name,
-        email,
-        role,
-        profile_type: role === 'faculty' ? 'Faculty' : 'Student',
-        designation: role === 'faculty' ? 'Faculty Member' : 'Student',
-        is_approved: false
-      };
-      
-      this.mockUsers.push(newUser);
-      
-      return {
-        success: true,
-        user_id: newUser.user_id,
-        message: 'User created successfully. Awaiting approval.'
-      };
+      return data;
       
     } catch (error) {
+      console.error('Create user error:', error);
       return {
         success: false,
         error: error.message
@@ -103,24 +58,24 @@ class AuthService {
     }
   }
   
-  // Get user by ID (mock implementation)
+  // Get user by ID via backend API
   async getUserById(userId) {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await fetch(`/api/users/${userId}`);
       
-      const user = this.mockUsers.find(u => u.user_id === userId);
-      
-      if (!user) {
-        throw new Error('User not found');
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
       }
+      
+      const data = await response.json();
       
       return {
         success: true,
-        user
+        user: data
       };
       
     } catch (error) {
+      console.error('Get user error:', error);
       return {
         success: false,
         error: error.message
@@ -128,36 +83,48 @@ class AuthService {
     }
   }
   
-  // Update user profile (mock implementation)
+  // Update user profile via backend API
   async updateProfile(userId, profileData) {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 400));
+      const response = await fetch(`/api/users/${userId}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      const data = await response.json();
       
-      const userIndex = this.mockUsers.findIndex(u => u.user_id === userId);
-      
-      if (userIndex === -1) {
-        throw new Error('User not found');
+      if (!response.ok) {
+        throw new Error(data.error || 'Profile update failed');
       }
       
-      // Update user profile
-      this.mockUsers[userIndex] = {
-        ...this.mockUsers[userIndex],
-        ...profileData,
-        updated_at: new Date().toISOString()
-      };
-      
-      return {
-        success: true,
-        profile: this.mockUsers[userIndex],
-        message: 'Profile updated successfully'
-      };
+      return data;
       
     } catch (error) {
+      console.error('Update profile error:', error);
       return {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  // Test backend connection
+  async testConnection() {
+    try {
+      const response = await fetch('/api/health');
+      const data = await response.json();
+      
+      if (response.ok) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      console.error('Connection test error:', error);
+      return { success: false, error: error.message };
     }
   }
 }

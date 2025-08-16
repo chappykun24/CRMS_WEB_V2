@@ -1,26 +1,21 @@
-// Database configuration is not needed in the frontend
-// This file should only be used in a backend Node.js server
-// For the frontend, use the API endpoints instead
-
-/*
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
 
-// Load .env.local file from current working directory
-dotenv.config({ path: '.env.local' });
+// Load environment variables
+dotenv.config();
 
 // Debug: Log environment variables
 console.log('Environment variables loaded:');
-console.log('NEON_HOST:', process.env.NEON_HOST);
-console.log('NEON_DATABASE:', process.env.NEON_DATABASE);
-console.log('NEON_USER:', process.env.NEON_USER);
-console.log('NEON_PASSWORD:', process.env.NEON_PASSWORD ? '***SET***' : 'NOT SET');
+console.log('NEON_HOST:', process.env.VITE_NEON_HOST);
+console.log('NEON_DATABASE:', process.env.VITE_NEON_DATABASE);
+console.log('NEON_USER:', process.env.VITE_NEON_USER);
+console.log('NEON_PASSWORD:', process.env.VITE_NEON_PASSWORD ? '***SET***' : 'NOT SET');
 
 // Neon Database Configuration - Using connection string format
-const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
+const connectionString = `postgresql://${process.env.VITE_NEON_USER}:${process.env.VITE_NEON_PASSWORD}@${process.env.VITE_NEON_HOST}:${process.env.VITE_NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE}?sslmode=require`;
 
-console.log('Connection string:', connectionString.replace(process.env.NEON_PASSWORD, '***PASSWORD***'));
+console.log('Connection string:', connectionString.replace(process.env.VITE_NEON_PASSWORD, '***PASSWORD***'));
 
 const neonConfig = {
   connectionString,
@@ -99,10 +94,3 @@ export const healthCheck = async () => {
 };
 
 export default pool;
-*/
-
-// Frontend placeholder - use API endpoints instead
-export const databasePlaceholder = {
-  message: 'Database operations are not available in the frontend. Use API endpoints instead.',
-  note: 'This file is for backend use only. Frontend should communicate with your backend API.'
-};
