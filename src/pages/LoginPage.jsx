@@ -86,21 +86,8 @@ const LoginPage = () => {
       const result = await login(formData.email, formData.password)
       
       if (result.success) {
-        // Redirect based on user role
-        const role = result.user.role?.toLowerCase()
-        if (role === 'admin') {
-          navigate('/admin/dashboard')
-        } else if (role === 'faculty') {
-          navigate('/faculty/dashboard')
-        } else if (role === 'dean') {
-          navigate('/dean/dashboard')
-        } else if (role === 'staff') {
-          navigate('/staff/dashboard')
-        } else if (role === 'program_chair') {
-          navigate('/program-chair/dashboard')
-        } else {
-          navigate('/dashboard')
-        }
+        // Redirect to the main dashboard - role-based routing is handled there
+        navigate('/dashboard')
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }
