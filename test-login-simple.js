@@ -1,7 +1,7 @@
 // Simple test script to debug login issues
 // Run this with: node test-login-simple.js
 
-const BASE_URL = 'https://your-app.vercel.app'; // Replace with your actual URL
+const BASE_URL = 'https://crms-web-v2.vercel.app/'; // Replace with your actual Vercel URL
 
 async function testEndpoint(endpoint, method = 'GET', body = null) {
   try {
