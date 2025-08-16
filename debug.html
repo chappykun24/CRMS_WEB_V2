@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRMS Debug - Fix JSON Error</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
         .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
         .test-section h3 { margin-top: 0; color: #333; }
@@ -20,6 +20,13 @@
         .env-item { padding: 8px; border-radius: 4px; font-family: monospace; }
         .env-set { background: #d4edda; color: #155724; }
         .env-missing { background: #f8d7da; color: #721c24; }
+        .console-section { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        .console-title { color: #fff; font-weight: bold; margin-bottom: 10px; }
+        .console-log { margin: 5px 0; padding: 5px; border-left: 3px solid #00ff00; background: #2d2d2d; }
+        .log-info { border-left-color: #00bfff; }
+        .log-error { border-left-color: #ff4444; }
+        .log-success { border-left-color: #00ff00; }
+        .log-warning { border-left-color: #ffaa00; }
     </style>
 </head>
 <body>
@@ -55,7 +62,14 @@
         </div>
 
         <div class="test-section">
-            <h3>5. Quick Fix Instructions</h3>
+            <h3>5. Setup Passwords</h3>
+            <p>Sets all users to use password: <strong>password123</strong></p>
+            <button onclick="setupPasswords()">Setup Passwords</button>
+            <div id="setupResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>6. Quick Fix Instructions</h3>
             <div id="fixInstructions">
                 <p><strong>If you see "Missing environment variables":</strong></p>
                 <ol>
@@ -75,6 +89,13 @@
                 </ol>
             </div>
         </div>
+
+        <div class="console-section">
+            <div class="console-title">📋 Console Logs (Check Vercel Function Logs)</div>
+            <div id="consoleLogs">
+                <div class="console-log log-info">Console logs will appear here. Check Vercel dashboard for function logs.</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -84,6 +105,15 @@
             const element = document.getElementById(elementId);
             element.textContent = message;
             element.className = `result ${type}`;
+        }
+
+        function addConsoleLog(message, type = 'info') {
+            const consoleLogs = document.getElementById('consoleLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `console-log log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleLogs.appendChild(logEntry);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
         }
 
         function showEnvironmentVariables(envData) {
@@ -108,19 +138,27 @@
                 warning.className = 'result warning';
                 warning.textContent = `⚠️ ${missingCount} environment variable(s) missing! This will cause JSON parsing errors.`;
                 envCheck.appendChild(warning);
+                addConsoleLog(`${missingCount} environment variables missing - this causes JSON errors!`, 'error');
+            } else {
+                addConsoleLog('All environment variables are set correctly', 'success');
             }
         }
 
         async function testDebug() {
             try {
                 showResult('debugResult', 'Testing debug endpoint...', 'info');
+                addConsoleLog('Testing debug endpoint...', 'info');
+                
                 const response = await fetch(`${API_BASE}/api/debug`);
                 const text = await response.text();
+                
+                addConsoleLog(`Debug endpoint response: ${response.status} ${response.statusText}`, 'info');
                 
                 if (response.ok) {
                     try {
                         const data = JSON.parse(text);
                         showResult('debugResult', `✅ Debug endpoint working!\n\nResponse:\n${JSON.stringify(data, null, 2)}`, 'success');
+                        addConsoleLog('Debug endpoint working - JSON parsed successfully', 'success');
                         
                         // Show environment variables
                         if (data.environment) {
@@ -128,39 +166,54 @@
                         }
                     } catch (parseError) {
                         showResult('debugResult', `⚠️ Response received but not valid JSON:\n\nRaw response:\n${text}`, 'error');
+                        addConsoleLog(`JSON parsing failed: ${parseError.message}`, 'error');
+                        addConsoleLog(`Raw response: ${text}`, 'warning');
                     }
                 } else {
                     showResult('debugResult', `❌ HTTP ${response.status}: ${text}`, 'error');
+                    addConsoleLog(`HTTP error ${response.status}: ${text}`, 'error');
                 }
             } catch (error) {
                 showResult('debugResult', `❌ Network error: ${error.message}`, 'error');
+                addConsoleLog(`Network error: ${error.message}`, 'error');
             }
         }
 
         async function testHealth() {
             try {
                 showResult('healthResult', 'Testing health endpoint...', 'info');
+                addConsoleLog('Testing health endpoint...', 'info');
+                
                 const response = await fetch(`${API_BASE}/api/health`);
                 const text = await response.text();
+                
+                addConsoleLog(`Health endpoint response: ${response.status} ${response.statusText}`, 'info');
                 
                 if (response.ok) {
                     try {
                         const data = JSON.parse(text);
                         showResult('healthResult', `✅ Health check working!\n\nResponse:\n${JSON.stringify(data, null, 2)}`, 'success');
+                        addConsoleLog('Health check working - JSON parsed successfully', 'success');
                     } catch (parseError) {
                         showResult('healthResult', `⚠️ Response received but not valid JSON:\n\nRaw response:\n${text}`, 'error');
+                        addConsoleLog(`JSON parsing failed: ${parseError.message}`, 'error');
+                        addConsoleLog(`Raw response: ${text}`, 'warning');
                     }
                 } else {
                     showResult('healthResult', `❌ HTTP ${response.status}: ${text}`, 'error');
+                    addConsoleLog(`HTTP error ${response.status}: ${text}`, 'error');
                 }
             } catch (error) {
                 showResult('healthResult', `❌ Network error: ${error.message}`, 'error');
+                addConsoleLog(`Network error: ${error.message}`, 'error');
             }
         }
 
         async function testLoginRaw() {
             try {
                 showResult('loginRawResult', 'Testing login endpoint (raw response)...', 'info');
+                addConsoleLog('Testing login endpoint...', 'info');
+                
                 const response = await fetch(`${API_BASE}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -168,24 +221,64 @@
                 });
                 
                 const text = await response.text();
+                addConsoleLog(`Login endpoint response: ${response.status} ${response.statusText}`, 'info');
                 
                 if (response.ok) {
                     try {
                         const data = JSON.parse(text);
                         showResult('loginRawResult', `✅ Login endpoint working!\n\nResponse:\n${JSON.stringify(data, null, 2)}`, 'success');
+                        addConsoleLog('Login endpoint working - JSON parsed successfully', 'success');
                     } catch (parseError) {
                         showResult('loginRawResult', `⚠️ Response received but not valid JSON:\n\nRaw response:\n${text}`, 'error');
+                        addConsoleLog(`JSON parsing failed: ${parseError.message}`, 'error');
+                        addConsoleLog(`Raw response: ${text}`, 'warning');
                     }
                 } else {
                     showResult('loginRawResult', `❌ HTTP ${response.status}: ${text}`, 'error');
+                    addConsoleLog(`HTTP error ${response.status}: ${text}`, 'error');
                 }
             } catch (error) {
                 showResult('loginRawResult', `❌ Network error: ${error.message}`, 'error');
+                addConsoleLog(`Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function setupPasswords() {
+            try {
+                showResult('setupResult', 'Setting up passwords...', 'info');
+                addConsoleLog('Setting up passwords...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/setup-passwords`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const text = await response.text();
+                addConsoleLog(`Setup passwords response: ${response.status} ${response.statusText}`, 'info');
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(text);
+                        showResult('setupResult', `✅ Passwords setup successful!\n\nResponse:\n${JSON.stringify(data, null, 2)}`, 'success');
+                        addConsoleLog('Passwords setup successful - JSON parsed successfully', 'success');
+                    } catch (parseError) {
+                        showResult('setupResult', `⚠️ Response received but not valid JSON:\n\nRaw response:\n${text}`, 'error');
+                        addConsoleLog(`JSON parsing failed: ${parseError.message}`, 'error');
+                        addConsoleLog(`Raw response: ${text}`, 'warning');
+                    }
+                } else {
+                    showResult('setupResult', `❌ HTTP ${response.status}: ${text}`, 'error');
+                    addConsoleLog(`HTTP error ${response.status}: ${text}`, 'error');
+                }
+            } catch (error) {
+                showResult('setupResult', `❌ Network error: ${error.message}`, 'error');
+                addConsoleLog(`Network error: ${error.message}`, 'error');
             }
         }
 
         // Auto-test debug endpoint on page load
         window.addEventListener('load', () => {
+            addConsoleLog('Debug page loaded - starting tests...', 'info');
             testDebug();
         });
     </script>
