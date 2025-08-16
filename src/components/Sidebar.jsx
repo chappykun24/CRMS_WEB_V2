@@ -116,7 +116,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
 
   return (
     <div 
-      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-screen pr-2 ${
+      className={`bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col h-screen ${
         isExpanded ? 'w-64' : 'w-16'
       }`}
       onMouseEnter={handleMouseEnter}
@@ -131,10 +131,10 @@ const Sidebar = ({ isExpanded, onToggle }) => {
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center justify-start px-4 py-3 pr-10 text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
+              className={`flex items-center justify-start px-4 py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
                 isActive 
-                  ? 'bg-primary-50 text-primary-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-gray-300 hover:text-white hover:bg-gray-800'
               }`}
               title={!isExpanded ? item.name : ''}
               style={{
@@ -142,13 +142,13 @@ const Sidebar = ({ isExpanded, onToggle }) => {
               }}
             >
               <div className="flex items-center justify-start">
-                <div className="flex-shrink-0 mr-8">
-                  <item.icon className={`h-6 w-6 transition-colors duration-300 ease-in-out ${
-                    isActive ? 'text-primary-600' : 'text-gray-600'
+                <div className="flex-shrink-0 mr-4">
+                  <item.icon className={`h-5 w-5 transition-colors duration-300 ease-in-out ${
+                    isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'
                   }`} />
                 </div>
                 <span 
-                  className={`transition-all duration-300 ease-in-out whitespace-nowrap ${
+                  className={`transition-all duration-300 ease-in-out whitespace-nowrap font-medium ${
                     isExpanded 
                       ? 'opacity-100 translate-x-0' 
                       : 'opacity-0 -translate-x-4 pointer-events-none w-0'

@@ -11,7 +11,7 @@ const Dashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
@@ -22,7 +22,7 @@ const Dashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600">Please log in to access your dashboard.</p>
@@ -45,10 +45,10 @@ const Dashboard = () => {
       return <ProgramChairDashboard user={user} />
     default:
       return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="p-6 bg-white">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Welcome, {user.name}!</h2>
                 <p className="text-gray-600 mb-4">Role: {user.role || 'Unknown'}</p>

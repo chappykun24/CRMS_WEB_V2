@@ -42,20 +42,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   }
 
   return (
-    <header className="bg-gray-50">
-      <div className="flex justify-between items-center h-16 px-4">
+    <header className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="flex justify-between items-center h-16 px-6">
         {/* Left side - Hamburger and Logo */}
         <div className="flex items-center space-x-4">
           {/* Hamburger Menu */}
           <button
             onClick={handleSidebarToggle}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
 
-          <div className="flex-shrink-0 flex items-center space-x-2">
+          {/* Logo and Title */}
+          <div className="flex items-center space-x-3">
             <img 
               src={logo} 
               alt="CRMS Logo" 
@@ -66,7 +67,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         </div>
 
         {/* Right side - Profile */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
           {/* Role Display */}
           <div className="text-right hidden md:block">
             <p className="text-xs text-gray-500">Role</p>
