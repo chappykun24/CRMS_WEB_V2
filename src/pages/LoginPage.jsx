@@ -278,26 +278,43 @@ const LoginPage = () => {
               </div>
 
               <div className="text-xs text-center text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <p className="font-semibold text-gray-700 mb-2">🔑 Quick Setup Instructions:</p>
-                <p className="mb-2"><strong>1.</strong> Click "Setup User Passwords" to configure all users</p>
-                <p className="mb-2"><strong>2.</strong> All users will then use password: <code className="bg-gray-200 px-1 rounded font-mono">password123</code></p>
-                <p className="mb-2"><strong>3.</strong> Use any of these emails to login:</p>
-                <div className="grid grid-cols-1 gap-1 text-xs mt-2">
-                  <div className="bg-white p-2 rounded border">
+                <p className="font-semibold text-gray-700 mb-3">👥 Quick Login with User Types:</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'admin@university.edu', password: 'password123' })}
+                    className="bg-white p-2 rounded border hover:bg-gray-50 transition-colors text-left"
+                  >
                     <span className="font-mono">admin@university.edu</span> <span className="text-blue-600">(Admin)</span>
-                  </div>
-                  <div className="bg-white p-2 rounded border">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'dean@university.edu', password: 'password123' })}
+                    className="bg-white p-2 rounded border hover:bg-gray-50 transition-colors text-left"
+                  >
                     <span className="font-mono">dean@university.edu</span> <span className="text-green-600">(Dean)</span>
-                  </div>
-                  <div className="bg-white p-2 rounded border">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'faculty@university.edu', password: 'password123' })}
+                    className="bg-white p-2 rounded border hover:bg-gray-50 transition-colors text-left"
+                  >
                     <span className="font-mono">faculty@university.edu</span> <span className="text-purple-600">(Faculty)</span>
-                  </div>
-                  <div className="bg-white p-2 rounded border">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
+                    className="bg-white p-2 rounded border hover:bg-gray-50 transition-colors text-left"
+                  >
                     <span className="font-mono">staff@university.edu</span> <span className="text-orange-600">(Staff)</span>
-                  </div>
-                  <div className="bg-white p-2 rounded border">
-                    <span className="font-mono">student@university.edu</span> <span className="text-red-600">(Student)</span>
-                  </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'programchair@university.edu', password: 'password123' })}
+                    className="bg-white p-2 rounded border hover:bg-gray-50 transition-colors text-left"
+                  >
+                    <span className="font-mono">programchair@university.edu</span> <span className="text-red-600">(Program Chair)</span>
+                  </button>
                 </div>
               </div>
             </form>
