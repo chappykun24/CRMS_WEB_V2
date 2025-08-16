@@ -42,7 +42,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   }
 
   return (
-    <header className="bg-gray-50">
+    <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="flex justify-between items-center h-16 px-4">
         {/* Left side - Hamburger and Logo */}
         <div className="flex items-center space-x-4">

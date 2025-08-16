@@ -10,25 +10,28 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <Sidebar 
-        isExpanded={sidebarExpanded} 
-        onToggle={handleSidebarToggle} 
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header - Full width at top */}
+      <Header 
+        onSidebarToggle={handleSidebarToggle}
+        sidebarExpanded={sidebarExpanded}
       />
       
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <Header 
-          onSidebarToggle={handleSidebarToggle}
-          sidebarExpanded={sidebarExpanded}
+      {/* Main Content Area with Sidebar and Content */}
+      <div className="flex flex-1 min-w-0">
+        {/* Sidebar - Below header, left side */}
+        <Sidebar 
+          isExpanded={sidebarExpanded} 
+          onToggle={handleSidebarToggle} 
         />
         
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   )

@@ -116,7 +116,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
 
   return (
     <div 
-      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-screen pr-2 ${
+      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-full pr-2 ${
         isExpanded ? 'w-64' : 'w-16'
       }`}
       onMouseEnter={handleMouseEnter}
