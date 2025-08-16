@@ -84,10 +84,12 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       clearTimeout(hoverTimeoutRef.current)
     }
     setIsHovered(true)
-    // Immediate expansion on hover for better responsiveness
-    if (!isExpanded) {
-      onToggle()
-    }
+    // Small delay before expanding to prevent accidental expansion
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isExpanded) {
+        onToggle()
+      }
+    }, 150)
   }
 
   const handleMouseLeave = () => {
@@ -100,7 +102,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       if (isExpanded) {
         onToggle()
       }
-    }, 300) // Increased delay for better user experience
+    }, 200)
   }
 
   // Cleanup timeout on unmount
@@ -114,8 +116,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
 
   return (
     <div 
-      className={`bg-gray-50 hover:bg-gray-100 transition-all duration-500 ease-in-out flex flex-col h-full pr-2 border-r border-gray-200 shadow-sm transform origin-left ${
-        isExpanded ? 'w-64 scale-100' : 'w-16 scale-95'
+      className={`sidebar-fixed bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-full pr-2 shadow-lg border-r border-gray-200 ${
+        isExpanded ? 'w-64' : 'w-16'
       }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -129,7 +131,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
             <Link
               key={item.name}
               to={item.href}
-              className={`group flex items-center justify-start px-2 md:px-4 py-2 md:py-3 pr-6 md:pr-10 text-xs md:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
+              className={`flex items-center justify-start px-2 md:px-4 py-2 md:py-3 pr-6 md:pr-10 text-xs md:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
                 isActive 
                   ? 'bg-primary-50 text-primary-700' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -142,7 +144,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
               <div className="flex items-center justify-start">
                 <div className="flex-shrink-0 mr-4 md:mr-8">
                   <item.icon className={`h-5 w-5 md:h-6 md:w-6 transition-colors duration-300 ease-in-out ${
-                    isActive ? 'text-primary-600' : 'text-gray-600 group-hover:text-gray-900'
+                    isActive ? 'text-primary-600' : 'text-gray-600'
                   }`} />
                 </div>
                 <span 
