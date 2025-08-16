@@ -23,12 +23,20 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   }
 
   const getRoleDisplayName = (role) => {
+    if (!role) return 'User'
+    
     const roleNames = {
       'ADMIN': 'Administrator',
       'FACULTY': 'Faculty',
       'DEAN': 'Dean',
       'STAFF': 'Staff',
-      'PROGRAM_CHAIR': 'Program Chair'
+      'PROGRAM_CHAIR': 'Program Chair',
+      'PROGRAM CHAIR': 'Program Chair',
+      'admin': 'Administrator',
+      'faculty': 'Faculty',
+      'dean': 'Dean',
+      'staff': 'Staff',
+      'program chair': 'Program Chair'
     }
     return roleNames[role] || role
   }
@@ -59,6 +67,12 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
         {/* Right side - Profile */}
         <div className="flex items-center space-x-4">
+          {/* Role Display */}
+          <div className="text-right hidden md:block">
+            <p className="text-xs text-gray-500">Role</p>
+            <p className="text-sm font-medium text-gray-900">{getRoleDisplayName(user?.role)}</p>
+          </div>
+          
           {/* Profile Menu */}
           <div className="relative">
             <button

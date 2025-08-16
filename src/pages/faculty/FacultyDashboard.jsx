@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../contexts/UserContext'
 
 const FacultyDashboard = ({ user }) => {
-  const { logout } = useUser()
-  const navigate = useNavigate()
   const [stats, setStats] = useState({
     totalClasses: 0,
     totalStudents: 0,
@@ -20,32 +17,13 @@ const FacultyDashboard = ({ user }) => {
     })
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Faculty Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome back, {user?.name}</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Logged in as</p>
-              <p className="font-medium text-gray-900">{user?.email}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Faculty Dashboard</h1>
+          <p className="text-gray-600 mt-2">Welcome back, {user?.name}</p>
         </div>
 
         {/* Stats Cards */}

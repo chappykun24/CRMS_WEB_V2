@@ -5,6 +5,7 @@ import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import Dashboard from './pages/Dashboard'
+import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -53,7 +54,9 @@ function App() {
                 path="/dashboard/*" 
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 } 
               />
