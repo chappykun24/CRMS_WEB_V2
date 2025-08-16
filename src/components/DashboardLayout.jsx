@@ -10,17 +10,15 @@ const DashboardLayout = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex">
-      {/* Sidebar - Fixed width and height */}
-      <div className="flex-shrink-0">
-        <Sidebar 
-          isExpanded={sidebarExpanded} 
-          onToggle={handleSidebarToggle} 
-        />
-      </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar 
+        isExpanded={sidebarExpanded} 
+        onToggle={handleSidebarToggle} 
+      />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <Header 
           onSidebarToggle={handleSidebarToggle}
@@ -28,7 +26,7 @@ const DashboardLayout = ({ children }) => {
         />
         
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-white">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>

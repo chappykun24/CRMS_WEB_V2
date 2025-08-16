@@ -7,7 +7,8 @@ import {
   Eye, 
   EyeOff,
   ArrowRight,
-  User
+  CheckCircle,
+  Key
 } from 'lucide-react'
 import logo from '../images/logo.png'
 
@@ -20,7 +21,9 @@ const LoginPage = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSettingUpPasswords, setIsSettingUpPasswords] = useState(false)
   const [error, setError] = useState('')
+  const [setupMessage, setSetupMessage] = useState('')
   
   const { login } = useUser()
   const navigate = useNavigate()
@@ -31,20 +34,46 @@ const LoginPage = () => {
       [e.target.name]: e.target.value
     })
     setError('')
+    setSetupMessage('')
   }
 
-  const handleCredentialClick = (email, role) => {
-    setFormData({
-      email: email,
-      password: 'password123'
-    })
+  const handleSetupPasswords = async () => {
+    setIsSettingUpPasswords(true)
+    setSetupMessage('')
     setError('')
+
+    try {
+      const response = await fetch('/api/setup-passwords', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        setSetupMessage(`✅ ${result.message}`)
+        // Clear any previous errors
+        setError('')
+      } else {
+        setError(result.error || 'Failed to setup passwords')
+        setSetupMessage('')
+      }
+    } catch (err) {
+      console.error('Setup passwords error:', err)
+      setError('Failed to setup passwords. Please try again.')
+      setSetupMessage('')
+    } finally {
+      setIsSettingUpPasswords(false)
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSetupMessage('')
 
     try {
       // Validate form data
@@ -115,6 +144,18 @@ const LoginPage = () => {
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   <span>{error}</span>
+                </div>
+              )}
+
+              {setupMessage && (
+                <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg flex items-start space-x-2">
+                  <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">{setupMessage}</p>
+                    <p className="text-sm text-green-500 mt-1">
+                      You can now login with any user email using password: <code className="bg-green-100 px-1 rounded font-mono">password123</code>
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -218,60 +259,46 @@ const LoginPage = () => {
 
                 <button
                   type="button"
-                  onClick={() => handleCredentialClick('admin@university.edu', 'Admin')}
-                  disabled={isLoading}
-                  className="btn-outline-blue w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Admin Credentials</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleCredentialClick('dean@university.edu', 'Dean')}
-                  disabled={isLoading}
-                  className="btn-outline-green w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Dean Credentials</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleCredentialClick('faculty@university.edu', 'Faculty')}
-                  disabled={isLoading}
-                  className="btn-outline-purple w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Faculty Credentials</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleCredentialClick('staff@university.edu', 'Staff')}
-                  disabled={isLoading}
+                  onClick={handleSetupPasswords}
+                  disabled={isSettingUpPasswords || isLoading}
                   className="btn-outline-orange w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <User className="h-4 w-4" />
-                  <span>Staff Credentials</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleCredentialClick('student@university.edu', 'Student')}
-                  disabled={isLoading}
-                  className="btn-outline-red w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Student Credentials</span>
+                  {isSettingUpPasswords ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                      <span>Setting up passwords...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4" />
+                      <span>Setup User Passwords</span>
+                    </>
+                  )}
                 </button>
               </div>
 
               <div className="text-xs text-center text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <p className="font-semibold text-gray-700 mb-2">🔑 Quick Login:</p>
-                <p className="mb-2">Click any credential button above to auto-fill the form</p>
-                <p className="mb-2">All users use password: <code className="bg-gray-200 px-1 rounded font-mono">password123</code></p>
-                <p className="text-xs text-gray-400 mt-2">Available roles: Admin, Dean, Faculty, Staff, Student</p>
+                <p className="font-semibold text-gray-700 mb-2">🔑 Quick Setup Instructions:</p>
+                <p className="mb-2"><strong>1.</strong> Click "Setup User Passwords" to configure all users</p>
+                <p className="mb-2"><strong>2.</strong> All users will then use password: <code className="bg-gray-200 px-1 rounded font-mono">password123</code></p>
+                <p className="mb-2"><strong>3.</strong> Use any of these emails to login:</p>
+                <div className="grid grid-cols-1 gap-1 text-xs mt-2">
+                  <div className="bg-white p-2 rounded border">
+                    <span className="font-mono">admin@university.edu</span> <span className="text-blue-600">(Admin)</span>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="font-mono">dean@university.edu</span> <span className="text-green-600">(Dean)</span>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="font-mono">faculty@university.edu</span> <span className="text-purple-600">(Faculty)</span>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="font-mono">staff@university.edu</span> <span className="text-orange-600">(Staff)</span>
+                  </div>
+                  <div className="bg-white p-2 rounded border">
+                    <span className="font-mono">student@university.edu</span> <span className="text-red-600">(Student)</span>
+                  </div>
+                </div>
               </div>
             </form>
 
