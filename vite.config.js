@@ -19,11 +19,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
-    rollupOptions: {
-      input: {
-        main: './index.html'
-      }
-    }
-  }
+    sourcemap: true
+  },
+  // Fix HTML parsing issues
+  assetsInclude: ['**/*.html']
 }) 

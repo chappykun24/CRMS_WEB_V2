@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 import logo from '../images/logo.png'
 
+// Import mock service for local development
+import mockAuthService from '../services/mockAuthService'
+
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
   
@@ -45,8 +48,8 @@ const LoginPage = () => {
         return
       }
 
-      // Attempt login with real authentication
-      const result = await login(formData.email, formData.password)
+      // Use mock service for local development
+      const result = await mockAuthService.login(formData.email, formData.password)
       
       if (result.success) {
         // Redirect to the main dashboard - role-based routing is handled there

@@ -139,3 +139,4 @@ deploy.sh
 !SETUP_*.md
 !VERCEL_*.md
 !CONSOLE_LOGGING_GUIDE.md 
+.vercel
