@@ -1,3 +1,8 @@
+// Database configuration is not needed in the frontend
+// This file should only be used in a backend Node.js server
+// For the frontend, use the API endpoints instead
+
+/*
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
@@ -94,3 +99,10 @@ export const healthCheck = async () => {
 };
 
 export default pool;
+*/
+
+// Frontend placeholder - use API endpoints instead
+export const databasePlaceholder = {
+  message: 'Database operations are not available in the frontend. Use API endpoints instead.',
+  note: 'This file is for backend use only. Frontend should communicate with your backend API.'
+};
