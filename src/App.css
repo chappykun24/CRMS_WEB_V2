@@ -27,9 +27,47 @@
 
 /* Ensure sidebar is properly positioned below fixed header */
 .sidebar-container {
-  position: relative;
-  top: 0;
+  position: fixed;
+  left: 0;
+  top: 4rem; /* 64px - below fixed header */
   height: calc(100vh - 4rem);
+  z-index: 40;
+  background-color: #f9fafb; /* bg-gray-50 */
+}
+
+/* Main content area adjustment for fixed sidebar */
+.main-content-area {
+  margin-left: 4rem; /* 64px - width of collapsed sidebar */
+  transition: margin-left 0.5s ease-in-out;
+}
+
+.main-content-area.expanded {
+  margin-left: 16rem; /* 256px - width of expanded sidebar */
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar-container {
+    position: fixed;
+    left: 0;
+    top: 4rem;
+    height: calc(100vh - 4rem);
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-container.mobile-visible {
+    transform: translateX(0);
+  }
+  
+  .main-content-area {
+    margin-left: 0;
+  }
+  
+  .main-content-area.expanded {
+    margin-left: 0;
+  }
 }
 
 /* Primary color utility classes */
