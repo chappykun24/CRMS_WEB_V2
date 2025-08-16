@@ -17,18 +17,23 @@ const DashboardLayout = ({ children }) => {
         sidebarExpanded={sidebarExpanded}
       />
       
-      {/* Main Content Area with Sidebar and Content - Add top padding for fixed header */}
-      <div className="flex flex-1 min-w-0 pt-16">
+      {/* Header spacer to account for fixed header */}
+      <div className="header-spacer"></div>
+      
+      {/* Main Content Area with Sidebar and Content */}
+      <div className="flex flex-1 min-w-0">
         {/* Sidebar - Below header, left side */}
-        <Sidebar 
-          isExpanded={sidebarExpanded} 
-          onToggle={handleSidebarToggle} 
-        />
+        <div className="sidebar-container">
+          <Sidebar 
+            isExpanded={sidebarExpanded} 
+            onToggle={handleSidebarToggle} 
+          />
+        </div>
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Main Content */}
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto p-4 md:p-6">
             {children}
           </main>
         </div>

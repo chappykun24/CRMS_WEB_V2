@@ -12,6 +12,26 @@
   --primary-900: #1e3a8a;
 }
 
+/* Fixed header layout styles */
+.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+.header-spacer {
+  height: 4rem; /* 64px - matches header height */
+}
+
+/* Ensure sidebar is properly positioned below fixed header */
+.sidebar-container {
+  position: relative;
+  top: 0;
+  height: calc(100vh - 4rem);
+}
+
 /* Primary color utility classes */
 .text-primary-600 {
   color: var(--primary-600);

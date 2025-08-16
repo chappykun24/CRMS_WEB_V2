@@ -116,14 +116,14 @@ const Sidebar = ({ isExpanded, onToggle }) => {
 
   return (
     <div 
-      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-full pr-2 min-h-screen ${
+      className={`bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-full pr-2 ${
         isExpanded ? 'w-64' : 'w-16'
-      }`}
+      } md:block`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Navigation Items */}
-      <nav className="flex-1 py-6 px-3 space-y-2">
+      <nav className="flex-1 py-4 md:py-6 px-2 md:px-3 space-y-1 md:space-y-2">
         {navigationItems.map((item, index) => {
           const isActive = location.pathname === item.href || 
                          (item.href === '/dashboard' && location.pathname === '/dashboard/')
@@ -131,7 +131,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center justify-start px-4 py-3 pr-10 text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
+              className={`flex items-center justify-start px-2 md:px-4 py-2 md:py-3 pr-6 md:pr-10 text-xs md:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none ${
                 isActive 
                   ? 'bg-primary-50 text-primary-700' 
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -142,8 +142,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
               }}
             >
               <div className="flex items-center justify-start">
-                <div className="flex-shrink-0 mr-8">
-                  <item.icon className={`h-6 w-6 transition-colors duration-300 ease-in-out ${
+                <div className="flex-shrink-0 mr-4 md:mr-8">
+                  <item.icon className={`h-5 w-5 md:h-6 md:w-6 transition-colors duration-300 ease-in-out ${
                     isActive ? 'text-primary-600' : 'text-gray-600'
                   }`} />
                 </div>
