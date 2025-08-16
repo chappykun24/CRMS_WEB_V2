@@ -1,0 +1,19 @@
+# Environment Variables Template
+# Copy this file to .env and fill in your actual values
+
+# Neon Database Configuration
+VITE_NEON_USER=your_neon_username
+VITE_NEON_PASSWORD=your_neon_password
+VITE_NEON_HOST=your_neon_host
+VITE_NEON_PORT=5432
+VITE_NEON_DATABASE=your_neon_database
+
+# Backend Configuration
+PORT=3001
+NODE_ENV=development
+
+# Example format (replace with your actual values):
+# VITE_NEON_USER=myuser123
+# VITE_NEON_PASSWORD=mypassword123
+# VITE_NEON_HOST=ep-cool-name-123456.us-east-1.aws.neon.tech
+# VITE_NEON_DATABASE=crms_database

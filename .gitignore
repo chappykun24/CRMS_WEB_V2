@@ -9,12 +9,46 @@ pnpm-debug.log*
 dist/
 build/
 
-# Environment variables
+# Environment variables and sensitive files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+!env-example.txt
+!env-template.txt
+
+# Development and testing files
+dev-start.bat
+dev-start.sh
+dev-setup.md
+env-template.txt
+test-*.js
+test-*.html
+debug.html
+*.test.js
+*.spec.js
+
+# Database and setup files (keep structure, exclude sensitive)
+setup-neon.js
+setup-passwords.js
+check-db-structure.js
+test-database-structure.js
+test-neon-connection.js
+test-user-login.js
+test-login-simple.js
+
+# Temporary and cache files
+*.tmp
+*.temp
+*.cache
+.cache/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
 
 # IDE and editor files
 .vscode/
@@ -22,6 +56,11 @@ build/
 *.swp
 *.swo
 *~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # OS generated files
 .DS_Store
@@ -58,12 +97,6 @@ jspm_packages/
 # Optional eslint cache
 .eslintcache
 
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
 # Optional REPL history
 .node_repl_history
 
@@ -95,12 +128,14 @@ public
 tmp/
 temp/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw? 
+# Deployment scripts (keep deployment guides, exclude scripts)
+deploy.bat
+deploy.ps1
+deploy.sh
+
+# Keep important documentation
+!README.md
+!DEPLOYMENT_*.md
+!SETUP_*.md
+!VERCEL_*.md
+!CONSOLE_LOGGING_GUIDE.md 

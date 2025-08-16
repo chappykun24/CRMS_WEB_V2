@@ -3,14 +3,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Load environment variables from .env.local
-const envPath = path.join(process.cwd(), '.env.local');
-console.log('🔍 Looking for .env.local at:', envPath);
+// Load environment variables from .env
+const envPath = path.join(process.cwd(), '.env');
+console.log('🔍 Looking for .env at:', envPath);
 
-// Try to read and parse .env.local manually
+// Try to read and parse .env manually
 try {
   const envContent = fs.readFileSync(envPath, 'utf8');
-  console.log('📖 .env.local file found and read successfully');
+  console.log('📖 .env file found and read successfully');
   
   // Parse environment variables manually
   envContent.split('\n').forEach(line => {
@@ -53,7 +53,7 @@ const missingVars = requiredVars.filter(varName => !process.env[varName]);
 if (missingVars.length > 0) {
   console.log('❌ Missing required environment variables:');
   missingVars.forEach(varName => console.log(`   - ${varName}`));
-  console.log('\nPlease add these variables to your .env.local file');
+  console.log('\nPlease add these variables to your .env file');
   process.exit(1);
 }
 
@@ -94,7 +94,7 @@ async function testConnection() {
     console.log('   Error:', error.message);
     
     if (error.message.includes('password authentication failed')) {
-      console.log('\n💡 Tip: Check your Neon password in .env.local');
+      console.log('\n💡 Tip: Check your Neon password in .env');
     } else if (error.message.includes('ENOTFOUND')) {
       console.log('\n💡 Tip: Check your Neon host URL');
     } else if (error.message.includes('SSL')) {

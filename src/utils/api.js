@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// API Configuration - supports both proxy and direct connection
+const isDevelopment = import.meta.env.DEV;
+const API_BASE_URL = isDevelopment 
+  ? '/api'  // Use proxy in development
+  : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api');
 
 // Create axios instance
 const api = axios.create({
@@ -10,6 +13,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: isDevelopment, // Enable credentials in development
 });
 
 // Request interceptor

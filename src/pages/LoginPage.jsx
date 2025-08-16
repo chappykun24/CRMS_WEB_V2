@@ -7,8 +7,7 @@ import {
   Eye, 
   EyeOff,
   ArrowRight,
-  CheckCircle,
-  Key
+  CheckCircle
 } from 'lucide-react'
 import logo from '../images/logo.png'
 
@@ -21,9 +20,7 @@ const LoginPage = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isSettingUpPasswords, setIsSettingUpPasswords] = useState(false)
   const [error, setError] = useState('')
-  const [setupMessage, setSetupMessage] = useState('')
   
   const { login } = useUser()
   const navigate = useNavigate()
@@ -34,46 +31,12 @@ const LoginPage = () => {
       [e.target.name]: e.target.value
     })
     setError('')
-    setSetupMessage('')
-  }
-
-  const handleSetupPasswords = async () => {
-    setIsSettingUpPasswords(true)
-    setSetupMessage('')
-    setError('')
-
-    try {
-      const response = await fetch('/api/setup-passwords', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.success) {
-        setSetupMessage(`✅ ${result.message}`)
-        // Clear any previous errors
-        setError('')
-      } else {
-        setError(result.error || 'Failed to setup passwords')
-        setSetupMessage('')
-      }
-    } catch (err) {
-      console.error('Setup passwords error:', err)
-      setError('Failed to setup passwords. Please try again.')
-      setSetupMessage('')
-    } finally {
-      setIsSettingUpPasswords(false)
-    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-    setSetupMessage('')
 
     try {
       // Validate form data
@@ -144,18 +107,6 @@ const LoginPage = () => {
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   <span>{error}</span>
-                </div>
-              )}
-
-              {setupMessage && (
-                <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg flex items-start space-x-2">
-                  <CheckCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">{setupMessage}</p>
-                    <p className="text-sm text-green-500 mt-1">
-                      You can now login with any user email using password: <code className="bg-green-100 px-1 rounded font-mono">password123</code>
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -238,44 +189,23 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="btn-primary w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign in</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSetupPasswords}
-                  disabled={isSettingUpPasswords || isLoading}
-                  className="btn-outline-orange w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSettingUpPasswords ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
-                      <span>Setting up passwords...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Key className="h-4 w-4" />
-                      <span>Setup User Passwords</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-primary w-full flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign in</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
 
               <div className="text-xs text-center text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <p className="font-semibold text-gray-700 mb-3">👥 Quick Login with User Types:</p>
