@@ -17,6 +17,166 @@ import {
 } from 'lucide-react'
 import logo from '../images/logo.png'
 
+// Custom Calendar Component
+const CustomCalendar = ({ value, onChange, onClose, isOpen }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
+  const calendarRef = React.useRef(null);
+
+  useEffect(() => {
+    if (value) {
+      setSelectedDate(new Date(value));
+    }
+  }, [value]);
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+    
+    const days = [];
+    
+    // Add previous month's days
+    for (let i = startingDay - 1; i >= 0; i--) {
+      const prevDate = new Date(year, month, -i);
+      days.push({ date: prevDate, isCurrentMonth: false });
+    }
+    
+    // Add current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const currentDate = new Date(year, month, i);
+      days.push({ date: currentDate, isCurrentMonth: true });
+    }
+    
+    // Add next month's days to fill the grid
+    const remainingDays = 42 - days.length;
+    for (let i = 1; i <= remainingDays; i++) {
+      const nextDate = new Date(year, month + 1, i);
+      days.push({ date: nextDate, isCurrentMonth: false });
+    }
+    
+    return days;
+  };
+
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    onChange(date.toISOString().split('T')[0]);
+    onClose();
+  };
+
+  const goToPreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
+    onChange(today.toISOString().split('T')[0]);
+    onClose();
+  };
+
+  const clearDate = () => {
+    setSelectedDate(null);
+    onChange('');
+    onClose();
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const days = getDaysInMonth(currentDate);
+
+  if (!isOpen) return null;
+
+  return (
+    <div ref={calendarRef} className="calendar-container absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-4 min-w-[280px]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={goToPreviousMonth}
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        
+        <div className="text-lg font-semibold text-gray-900">
+          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+        </div>
+        
+        <button
+          onClick={goToNextMonth}
+          className="p-1 hover:bg-gray-100 rounded transition-colors"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Days of Week */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+          <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day, index) => (
+          <button
+            key={index}
+            onClick={() => handleDateSelect(day.date)}
+            className={`
+              p-2 text-sm rounded-md transition-all duration-200 hover:bg-gray-100
+              ${!day.isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
+              ${selectedDate && day.date.toDateString() === selectedDate.toDateString() 
+                ? 'bg-red-500 text-white hover:bg-red-600' 
+                : 'hover:bg-gray-100'
+              }
+              ${day.date.toDateString() === new Date().toDateString() && !selectedDate 
+                ? 'bg-gray-100 text-gray-900' 
+                : ''
+              }
+            `}
+          >
+            {day.date.getDate()}
+          </button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-between mt-4 pt-3 border-t border-gray-200">
+        <button
+          onClick={clearDate}
+          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Clear
+        </button>
+        <button
+          onClick={goToToday}
+          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Today
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const SignUpPage = () => {
   const navigate = useNavigate()
   const { login } = useUser()
@@ -39,6 +199,8 @@ const SignUpPage = () => {
   const [error, setError] = useState('')
   const [facultyPhoto, setFacultyPhoto] = useState(null)
   const [showDeptDropdown, setShowDeptDropdown] = useState(false)
+  const [showTermStartCalendar, setShowTermStartCalendar] = useState(false)
+  const [showTermEndCalendar, setShowTermEndCalendar] = useState(false)
   const [departments, setDepartments] = useState([
     { department_id: 1, name: 'Computer Science', department_abbreviation: 'CS' },
     { department_id: 2, name: 'Information Technology', department_abbreviation: 'IT' },
@@ -77,6 +239,59 @@ const SignUpPage = () => {
     setFacultyPhoto(null)
     setFormData(prev => ({ ...prev, profilePic: null }))
   }
+
+  // Close calendars when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showTermStartCalendar || showTermEndCalendar) {
+        const calendar = event.target.closest('.calendar-container');
+        const input = event.target.closest('input[name="termStart"], input[name="termEnd"]');
+        const calendarIcon = event.target.closest('.calendar-icon');
+        
+        // Close both calendars if clicking outside
+        if (!calendar && !input && !calendarIcon) {
+          setShowTermStartCalendar(false);
+          setShowTermEndCalendar(false);
+        }
+      }
+    };
+
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape') {
+        setShowTermStartCalendar(false);
+        setShowTermEndCalendar(false);
+      }
+    };
+
+    // Use mousedown for immediate response
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [showTermStartCalendar, showTermEndCalendar]);
+
+  // Additional click outside handler for better reliability
+  useEffect(() => {
+    if (showTermStartCalendar || showTermEndCalendar) {
+      const handleBodyClick = () => {
+        // Small delay to ensure proper event handling
+        setTimeout(() => {
+          setShowTermStartCalendar(false);
+          setShowTermEndCalendar(false);
+        }, 100);
+      };
+
+      // Add click listener to body
+      document.body.addEventListener('click', handleBodyClick);
+      
+      return () => {
+        document.body.removeEventListener('click', handleBodyClick);
+      };
+    }
+  }, [showTermStartCalendar, showTermEndCalendar]);
 
   const fillRandomData = () => {
     const firstNames = ['Juan', 'Maria', 'Jose', 'Ana', 'Pedro', 'Liza', 'Carlos', 'Grace', 'Ramon', 'Cecilia']
@@ -221,14 +436,14 @@ const SignUpPage = () => {
                     Fill Random Data
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <div className="relative">
                       <label 
                         htmlFor="lastName" 
                         className="block text-sm font-medium text-gray-700 mb-2"
                       >
-                        Last Name
+                        Last Name *
                       </label>
                       <input
                         type="text"
@@ -237,7 +452,7 @@ const SignUpPage = () => {
                         value={formData.lastName}
                         onChange={handleInputChange}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
-                        placeholder="Last name"
+                        placeholder="Enter last name"
                         required
                       />
                     </div>
@@ -248,7 +463,7 @@ const SignUpPage = () => {
                         htmlFor="firstName" 
                         className="block text-sm font-medium text-gray-700 mb-2"
                       >
-                        First Name
+                        First Name *
                       </label>
                       <input
                         type="text"
@@ -257,7 +472,7 @@ const SignUpPage = () => {
                         value={formData.firstName}
                         onChange={handleInputChange}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
-                        placeholder="First name"
+                        placeholder="Enter first name"
                         required
                       />
                     </div>
@@ -277,7 +492,7 @@ const SignUpPage = () => {
                         value={formData.middleInitial}
                         onChange={handleInputChange}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
-                        placeholder="Middle initial"
+                        placeholder="Enter middle initial"
                         maxLength={1}
                       />
                     </div>
@@ -297,19 +512,19 @@ const SignUpPage = () => {
                         value={formData.suffix}
                         onChange={handleInputChange}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
-                        placeholder="e.g., Jr., Sr."
+                        placeholder="Enter suffix (e.g., Jr., Sr.)"
                       />
                     </div>
                   </div>
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-2 mt-2">
+                    <label 
+                      htmlFor="email" 
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Email Address *
+                    </label>
                     <div className="relative">
-                      <label 
-                        htmlFor="email" 
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Email Address
-                      </label>
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                         <Mail className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
@@ -318,8 +533,8 @@ const SignUpPage = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
-                        placeholder="Email address"
+                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                        placeholder="Enter email address"
                         required
                       />
                     </div>
@@ -330,8 +545,8 @@ const SignUpPage = () => {
               {/* Academic Information */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Department *
                     </label>
@@ -339,7 +554,7 @@ const SignUpPage = () => {
                       <button
                         type="button"
                         onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-                        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                        className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
                       >
                         <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
                           {formData.department 
@@ -350,7 +565,7 @@ const SignUpPage = () => {
                         <Building className="h-5 w-5 text-gray-400" />
                       </button>
                       {showDeptDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                           {departments.map((dept) => (
                             <button
                               key={dept.department_id}
@@ -371,41 +586,69 @@ const SignUpPage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term Start
+                      Term Start *
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Calendar className="h-5 w-5 text-gray-400" />
+                      <div className="calendar-icon absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <Calendar className="h-5 w-5 text-gray-500" />
                       </div>
                       <input
-                        type="date"
+                        type="text"
                         name="termStart"
                         value={formData.termStart}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        onClick={() => {
+                          setShowTermEndCalendar(false);
+                          setShowTermStartCalendar(true);
+                        }}
+                        readOnly
+                        className="block w-full pr-10 pl-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 cursor-pointer"
+                        placeholder="dd/mm/yyyy"
                       />
-                      {!formData.termStart && (
-                        <p className="text-xs text-red-500 mt-1">Term start date is required</p>
+                      {showTermStartCalendar && (
+                        <CustomCalendar
+                          value={formData.termStart}
+                          onChange={(date) => {
+                            setFormData(prev => ({ ...prev, termStart: date }));
+                            setShowTermStartCalendar(false);
+                          }}
+                          onClose={() => setShowTermStartCalendar(false)}
+                          isOpen={showTermStartCalendar}
+                        />
                       )}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term End
+                      Term End *
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Calendar className="h-5 w-5 text-gray-400" />
+                      <div className="calendar-icon absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <Calendar className="h-5 w-5 text-gray-500" />
                       </div>
                       <input
-                        type="date"
+                        type="text"
                         name="termEnd"
                         value={formData.termEnd}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        onClick={() => {
+                          setShowTermStartCalendar(false);
+                          setShowTermEndCalendar(true);
+                        }}
+                        readOnly
+                        className="block w-full pr-10 pl-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 cursor-pointer"
+                        placeholder="dd/mm/yyyy"
                       />
-                      {!formData.termEnd && (
-                        <p className="text-xs text-red-500 mt-1">Term end date is required</p>
+                      {showTermEndCalendar && (
+                        <CustomCalendar
+                          value={formData.termEnd}
+                          onChange={(date) => {
+                            setFormData(prev => ({ ...prev, termEnd: date }));
+                            setShowTermEndCalendar(false);
+                          }}
+                          onClose={() => setShowTermEndCalendar(false)}
+                          isOpen={showTermEndCalendar}
+                        />
                       )}
                     </div>
                   </div>
@@ -415,16 +658,16 @@ const SignUpPage = () => {
               {/* Account Security */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Security</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
+                    <label 
+                      htmlFor="password" 
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Password
+                    </label>
                     <div className="relative">
-                      <label 
-                        htmlFor="password" 
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Password
-                      </label>
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-5">
                         <Lock className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
@@ -433,32 +676,32 @@ const SignUpPage = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
                         placeholder="Create a password"
                         required
                       />
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center z-5 hover:text-gray-600 transition-colors"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
-                          <EyeOff className="h-5 w-5 text-gray-400" />
+                          <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                         ) : (
-                          <Eye className="h-5 w-5 text-gray-400" />
+                          <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                         )}
                       </button>
                     </div>
                   </div>
                   <div>
+                    <label 
+                      htmlFor="confirmPassword" 
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Confirm Password
+                    </label>
                     <div className="relative">
-                      <label 
-                        htmlFor="confirmPassword" 
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Confirm Password
-                      </label>
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                         <Lock className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
@@ -467,19 +710,19 @@ const SignUpPage = () => {
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
                         placeholder="Confirm your password"
                         required
                       />
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center z-10 hover:text-gray-600 transition-colors"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
                         {showConfirmPassword ? (
-                          <EyeOff className="h-5 w-5 text-gray-400" />
+                          <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                         ) : (
-                          <Eye className="h-5 w-5 text-gray-400" />
+                          <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                         )}
                       </button>
                     </div>
