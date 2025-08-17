@@ -430,6 +430,7 @@ const SignUpPage = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
                   <button
+                    type="button"
                     onClick={fillRandomData}
                     className="text-xs text-primary-600 hover:text-primary-700 font-medium px-3 py-1 rounded-md hover:bg-primary-50 transition-colors"
                   >
