@@ -1,26 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Building, Calendar, Save, X, Check } from 'lucide-react';
 
-const SystemSettings = () => {
-  const [activeTab, setActiveTab] = useState('departments');
-  const [departments, setDepartments] = useState([
-    { id: 1, name: 'Computer Science', abbreviation: 'CS', status: 'active' },
-    { id: 2, name: 'Information Technology', abbreviation: 'IT', status: 'active' },
-    { id: 3, name: 'Computer Engineering', abbreviation: 'CE', status: 'active' },
-    { id: 4, name: 'Electrical Engineering', abbreviation: 'EE', status: 'active' },
-    { id: 5, name: 'Mechanical Engineering', abbreviation: 'ME', status: 'active' },
-    { id: 6, name: 'Civil Engineering', abbreviation: 'CE', status: 'active' },
-    { id: 7, name: 'Business Administration', abbreviation: 'BA', status: 'active' },
-    { id: 8, name: 'Accountancy', abbreviation: 'ACC', status: 'active' },
-    { id: 9, name: 'Mathematics', abbreviation: 'MATH', status: 'active' },
-    { id: 10, name: 'Physics', abbreviation: 'PHYS', status: 'active' }
-  ]);
-
-  const [schoolTerms, setSchoolTerms] = useState([
-    { id: 1, name: 'First Semester AY 2024-2025', startDate: '2024-08-26', endDate: '2024-12-20', status: 'active' },
-    { id: 2, name: 'Second Semester AY 2024-2025', startDate: '2025-01-13', endDate: '2025-05-16', status: 'active' },
-    { id: 3, name: 'Summer AY 2024-2025', startDate: '2025-06-02', endDate: '2025-07-25', status: 'inactive' }
-  ]);
+const SchoolConfiguration = () => {
+  const [activeTab, setActiveTab] = useState(() => {
+    // Get the active tab from localStorage or default to departments
+    return localStorage.getItem('schoolConfigActiveTab') || 'departments'
+  });
+  
+  // Start with empty data arrays
+  const [departments, setDepartments] = useState([]);
+  const [schoolTerms, setSchoolTerms] = useState([]);
 
   const [showAddDepartment, setShowAddDepartment] = useState(false);
   const [showAddTerm, setShowAddTerm] = useState(false);
@@ -33,6 +22,17 @@ const SystemSettings = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Update localStorage when activeTab changes
+  useEffect(() => {
+    localStorage.setItem('schoolConfigActiveTab', activeTab)
+    
+    // Dispatch custom event to notify Header component
+    const event = new CustomEvent('schoolConfigTabChanged', { 
+      detail: { activeTab } 
+    })
+    window.dispatchEvent(event)
+  }, [activeTab])
+
   // Department Management
   const handleAddDepartment = () => {
     if (!newDepartment.name.trim() || !newDepartment.abbreviation.trim()) {
@@ -40,11 +40,22 @@ const SystemSettings = () => {
       return;
     }
 
+    // Check if abbreviation already exists
+    const abbreviationExists = departments.some(
+      dept => dept.abbreviation.toLowerCase() === newDepartment.abbreviation.trim().toLowerCase()
+    );
+    
+    if (abbreviationExists) {
+      setErrorMessage('Department abbreviation already exists');
+      return;
+    }
+
     const department = {
       id: Date.now(),
       name: newDepartment.name.trim(),
       abbreviation: newDepartment.abbreviation.trim().toUpperCase(),
-      status: 'active'
+      status: 'active',
+      createdAt: new Date().toISOString()
     };
 
     setDepartments([...departments, department]);
@@ -66,9 +77,25 @@ const SystemSettings = () => {
       return;
     }
 
+    // Check if abbreviation already exists (excluding current department being edited)
+    const abbreviationExists = departments.some(
+      dept => dept.id !== editingDepartment.id && 
+      dept.abbreviation.toLowerCase() === newDepartment.abbreviation.trim().toLowerCase()
+    );
+    
+    if (abbreviationExists) {
+      setErrorMessage('Department abbreviation already exists');
+      return;
+    }
+
     const updatedDepartments = departments.map(dept =>
       dept.id === editingDepartment.id
-        ? { ...dept, name: newDepartment.name.trim(), abbreviation: newDepartment.abbreviation.trim().toUpperCase() }
+        ? { 
+            ...dept, 
+            name: newDepartment.name.trim(), 
+            abbreviation: newDepartment.abbreviation.trim().toUpperCase(),
+            updatedAt: new Date().toISOString()
+          }
         : dept
     );
 
@@ -108,12 +135,23 @@ const SystemSettings = () => {
       return;
     }
 
+    // Check if term name already exists
+    const termNameExists = schoolTerms.some(
+      term => term.name.toLowerCase() === newTerm.name.trim().toLowerCase()
+    );
+    
+    if (termNameExists) {
+      setErrorMessage('School term name already exists');
+      return;
+    }
+
     const term = {
       id: Date.now(),
       name: newTerm.name.trim(),
       startDate: newTerm.startDate,
       endDate: newTerm.endDate,
-      status: 'inactive'
+      status: 'inactive',
+      createdAt: new Date().toISOString()
     };
 
     setSchoolTerms([...schoolTerms, term]);
@@ -140,9 +178,26 @@ const SystemSettings = () => {
       return;
     }
 
+    // Check if term name already exists (excluding current term being edited)
+    const termNameExists = schoolTerms.some(
+      term => term.id !== editingTerm.id && 
+      term.name.toLowerCase() === newTerm.name.trim().toLowerCase()
+    );
+    
+    if (termNameExists) {
+      setErrorMessage('School term name already exists');
+      return;
+    }
+
     const updatedTerms = schoolTerms.map(term =>
       term.id === editingTerm.id
-        ? { ...term, name: newTerm.name.trim(), startDate: newTerm.startDate, endDate: newTerm.endDate }
+        ? { 
+            ...term, 
+            name: newTerm.name.trim(), 
+            startDate: newTerm.startDate, 
+            endDate: newTerm.endDate,
+            updatedAt: new Date().toISOString()
+          }
         : term
     );
 
@@ -181,10 +236,8 @@ const SystemSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">School Configuration Settings</h1>
-        
         {/* Success/Error Messages */}
         {successMessage && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
@@ -246,7 +299,7 @@ const SystemSettings = () => {
 
             {/* Add/Edit Department Form */}
             {showAddDepartment && (
-              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200">
+              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {editingDepartment ? 'Edit Department' : 'Add New Department'}
                 </h3>
@@ -296,68 +349,80 @@ const SystemSettings = () => {
             )}
 
             {/* Departments Table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Abbreviation
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {departments.map((department) => (
-                    <tr key={department.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{department.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {department.abbreviation}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleDepartmentStatus(department.id)}
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            department.status === 'active'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {department.status === 'active' ? 'Active' : 'Inactive'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditDepartment(department)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDepartment(department.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {departments.length > 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-y-auto max-h-96">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Department
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Abbreviation
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {departments.map((department) => (
+                        <tr key={department.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{department.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {department.abbreviation}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleDepartmentStatus(department.id)}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                department.status === 'active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {department.status === 'active' ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEditDepartment(department)}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDepartment(department.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                  <Building className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
+                <p className="text-gray-500 max-w-sm mx-auto">Start building your school structure by adding the first department. This will help organize your academic programs and faculty.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -377,7 +442,7 @@ const SystemSettings = () => {
 
             {/* Add/Edit Term Form */}
             {showAddTerm && (
-              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200">
+              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   {editingTerm ? 'Edit School Term' : 'Add New School Term'}
                 </h3>
@@ -436,72 +501,84 @@ const SystemSettings = () => {
             )}
 
             {/* School Terms Table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Term Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Start Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      End Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {schoolTerms.map((term) => (
-                    <tr key={term.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{term.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(term.startDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(term.endDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleTermStatus(term.id)}
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            term.status === 'active'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {term.status === 'active' ? 'Active' : 'Inactive'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEditTerm(term)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTerm(term.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {schoolTerms.length > 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-y-auto max-h-96">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Term Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Start Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          End Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {schoolTerms.map((term) => (
+                        <tr key={term.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{term.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(term.startDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(term.endDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => handleToggleTermStatus(term.id)}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                term.status === 'active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {term.status === 'active' ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEditTerm(term)}
+                                className="text-indigo-600 hover:text-red-900"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTerm(term.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                  <Calendar className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
+                <p className="text-gray-500 max-w-sm mx-auto">Define your academic calendar by adding school terms. This helps organize your academic year into manageable periods.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -509,4 +586,4 @@ const SystemSettings = () => {
   );
 };
 
-export default SystemSettings; 
+export default SchoolConfiguration;

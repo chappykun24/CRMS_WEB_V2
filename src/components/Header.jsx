@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { 
   Bell, 
   User, 
@@ -13,6 +14,9 @@ import logo from '../images/logo.png'
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useUser()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
 
   const handleLogout = () => {
     logout()
@@ -21,6 +25,23 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const handleSidebarToggle = () => {
     onSidebarToggle()
   }
+
+  // Listen for School Configuration tab changes
+  useEffect(() => {
+    const handleTabChange = (event) => {
+      setSchoolConfigActiveTab(event.detail.activeTab)
+    }
+
+    window.addEventListener('schoolConfigTabChanged', handleTabChange)
+    
+    // Get initial value from localStorage
+    const initialTab = localStorage.getItem('schoolConfigActiveTab') || 'departments'
+    setSchoolConfigActiveTab(initialTab)
+
+    return () => {
+      window.removeEventListener('schoolConfigTabChanged', handleTabChange)
+    }
+  }, [])
 
   const getRoleDisplayName = (role) => {
     if (!role) return 'User'
@@ -41,15 +62,106 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     return roleNames[role] || role
   }
 
+  // Function to get breadcrumb data based on current location
+  const getBreadcrumbData = () => {
+    const path = location.pathname
+    
+    if (path === '/dashboard') {
+      return { 
+        title: 'Dashboard', 
+        subtitle: 'Overview',
+        path: '/dashboard'
+      }
+    } else if (path === '/dashboard/users') {
+      return { 
+        title: 'User Management', 
+        subtitle: 'Manage system users',
+        path: '/dashboard/users'
+      }
+    } else if (path === '/dashboard/faculty-approval') {
+      return { 
+        title: 'Faculty Approval', 
+        subtitle: 'Review faculty applications',
+        path: '/dashboard/faculty-approval'
+      }
+    } else if (path === '/dashboard/school-config') {
+      // Use the state value instead of reading from localStorage
+      if (schoolConfigActiveTab === 'departments') {
+        return { 
+          title: 'School Configuration', 
+          subtitle: 'Manage departments',
+          path: '/dashboard/school-config'
+        }
+      } else if (schoolConfigActiveTab === 'terms') {
+        return { 
+          title: 'School Configuration', 
+          subtitle: 'Manage school terms',
+          path: '/dashboard/school-config'
+        }
+      }
+      
+      return { 
+        title: 'School Configuration', 
+        subtitle: 'Manage departments and terms',
+        path: '/dashboard/school-config'
+      }
+    } else if (path === '/dashboard/settings') {
+      return { 
+        title: 'System Settings', 
+        subtitle: 'Configure system preferences',
+        path: '/dashboard/settings'
+      }
+    } else if (path.startsWith('/dashboard/faculty/')) {
+      return { 
+        title: 'Faculty Dashboard', 
+        subtitle: 'Faculty management',
+        path: '/dashboard/faculty'
+      }
+    } else if (path.startsWith('/dashboard/dean/')) {
+      return { 
+        title: 'Dean Dashboard', 
+        subtitle: 'Dean management',
+        path: '/dashboard/dean'
+      }
+    } else if (path.startsWith('/dashboard/staff/')) {
+      return { 
+        title: 'Staff Dashboard', 
+        subtitle: 'Staff management',
+        path: '/dashboard/staff'
+      }
+    } else if (path.startsWith('/dashboard/program-chair/')) {
+      return { 
+        title: 'Program Chair Dashboard', 
+        subtitle: 'Program management',
+        path: '/dashboard/program-chair'
+      }
+    }
+    
+    return { 
+      title: 'Dashboard', 
+      subtitle: 'Welcome',
+      path: '/dashboard'
+    }
+  }
+
+  const breadcrumbData = getBreadcrumbData()
+
+  // Handle breadcrumb navigation
+  const handleBreadcrumbClick = (path) => {
+    if (path && path !== location.pathname) {
+      navigate(path)
+    }
+  }
+
   return (
     <header className="fixed-header bg-gray-50">
       <div className="flex justify-between items-center h-16 px-4 md:px-6">
         {/* Left side - Hamburger and Logo */}
-        <div className="flex items-center space-x-2 md:space-x-4">
+        <div className="flex items-center space-x-2 md:px-4">
           {/* Hamburger Menu */}
           <button
             onClick={handleSidebarToggle}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0"
+            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0 -ml-5"
             title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             <Menu className="h-5 w-5 text-gray-600" />
@@ -62,6 +174,28 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
               className="w-6 h-6 md:w-8 md:h-8 object-contain"
             />
             <h1 className="text-lg md:text-xl font-bold text-primary-600">CRMS</h1>
+          </div>
+
+          {/* Breadcrumb Navigation - Inline with logo */}
+          <div className="flex items-center text-sm text-gray-600 ml-4">
+            {breadcrumbData.path !== '/dashboard' && (
+              <>
+                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium ml-2 text-gray-900">
+                  {breadcrumbData.title}
+                </span>
+                {breadcrumbData.subtitle && (
+                  <>
+                    <svg className="w-4 h-4 text-gray-400 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-gray-500 ml-2">{breadcrumbData.subtitle}</span>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
 

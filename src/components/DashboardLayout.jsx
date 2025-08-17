@@ -18,7 +18,7 @@ const DashboardLayout = ({ children }) => {
       />
       
       {/* Header spacer to account for fixed header */}
-      <div className="header-spacer"></div>
+      <div className="header-spacer" style={{ height: '88px' }}></div>
       
       {/* Main Content Area with Sidebar and Content */}
       <div className="flex flex-1 min-w-0">

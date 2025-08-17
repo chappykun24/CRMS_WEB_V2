@@ -12,7 +12,8 @@ import {
   ClipboardList,
   Award,
   UserCheck,
-  Database
+  Database,
+  Building
 } from 'lucide-react'
 
 const Sidebar = ({ isExpanded, onToggle }) => {
@@ -30,6 +31,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'User Management', icon: Users, href: '/dashboard/users' },
           { name: 'Faculty Approval', icon: UserCheck, href: '/dashboard/faculty-approval' },
+          { name: 'School Configuration', icon: Building, href: '/dashboard/school-config' },
           { name: 'System Settings', icon: Settings, href: '/dashboard/settings' }
         ]
       
