@@ -20,7 +20,5 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true
-  },
-  // Fix HTML parsing issues
-  assetsInclude: ['**/*.html']
+  }
 }) 

@@ -42,7 +42,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   }
 
   return (
-    <header className="fixed-header bg-white border-b border-gray-200 shadow-sm">
+    <header className="fixed-header bg-gray-50">
       <div className="flex justify-between items-center h-16 px-4 md:px-6">
         {/* Left side - Hamburger and Logo */}
         <div className="flex items-center space-x-2 md:space-x-4">
@@ -100,9 +100,9 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
             {/* Profile Modal */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+              <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl z-50 overflow-hidden">
                 {/* Header with Email and Close Button */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-start">
+                <div className="p-4 flex justify-between items-start">
                   <div className="text-center flex-1">
                     <p className="text-sm font-medium text-gray-900">{user?.email}</p>
                     <p className="text-xs text-gray-500">CRMS Account</p>
@@ -162,7 +162,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 </div>
 
                 {/* Footer Links */}
-                <div className="px-6 py-3 border-t border-gray-100 text-center">
+                <div className="px-6 py-3 text-center">
                   <div className="flex justify-center space-x-4 text-xs text-gray-500">
                     <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
                     <span>•</span>

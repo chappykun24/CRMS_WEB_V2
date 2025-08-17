@@ -30,10 +30,10 @@ const DashboardLayout = ({ children }) => {
         
         {/* Main Content Area - Add left margin for fixed sidebar */}
         <div className={`flex-1 flex flex-col min-w-0 transition-all duration-500 ease-in-out ${
-          sidebarExpanded ? 'ml-64' : 'ml-16'
+          sidebarExpanded ? 'ml-64' : 'ml-20'
         }`}>
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-4 md:p-6">
+          <main className="flex-1 overflow-auto p-4 md:p-6 bg-white rounded-lg">
             {children}
           </main>
         </div>
