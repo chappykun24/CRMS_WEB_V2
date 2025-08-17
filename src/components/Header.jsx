@@ -67,10 +67,11 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
         {/* Right side - Profile */}
         <div className="flex items-center space-x-2 md:space-x-4">
-          {/* Role Display */}
-          <div className="text-right hidden md:block">
-            <p className="text-xs text-gray-500">Role</p>
-            <p className="text-sm font-medium text-gray-900">{getRoleDisplayName(user?.role)}</p>
+          {/* Notification Bell */}
+          <div className="relative">
+            <button className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:border-0">
+              <Bell className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
           
           {/* Profile Menu */}
@@ -93,23 +94,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                     <User className="h-5 w-5 text-white" />
                   </div>
                 )}
-                {/* Online status indicator */}
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
               </div>
             </button>
 
             {/* Profile Modal */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl z-50 overflow-hidden">
+              <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl z-50 overflow-hidden shadow-lg border border-gray-200">
                 {/* Header with Email and Close Button */}
-                <div className="p-4 flex justify-between items-start">
+                <div className="p-4 flex justify-between items-start bg-gray-50">
                   <div className="text-center flex-1">
                     <p className="text-sm font-medium text-gray-900">{user?.email}</p>
                     <p className="text-xs text-gray-500">CRMS Account</p>
                   </div>
                   <button
                     onClick={() => setShowProfileMenu(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -118,9 +117,9 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 </div>
 
                 {/* Profile Section */}
-                <div className="p-4 text-center">
+                <div className="p-4 text-center bg-white">
                   {/* Large Profile Picture */}
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-gray-100 mx-auto mb-3 relative">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-gray-200 mx-auto mb-3 relative shadow-lg">
                     {user?.profilePic ? (
                       <img 
                         src={user.profilePic} 
@@ -132,8 +131,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                         <User className="h-6 w-6 text-white" />
                       </div>
                     )}
-                    {/* Online status indicator */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                   </div>
                   
                   {/* Greeting */}
@@ -142,17 +139,16 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   </h3>
                   
                   {/* Manage Account Button */}
-                  <button className="bg-gray-100 hover:bg-gray-200 text-primary-600 text-sm font-medium py-2 px-5 rounded-full border border-gray-300 transition-colors mb-2 focus:outline-none focus:ring-0 focus:border-gray-300 active:outline-none active:ring-0 active:border-gray-300"
-                    style={{ outline: 'none', boxShadow: 'none' }}>
+                  <button className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 px-5 rounded-full transition-all duration-200 mb-2 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 hover:shadow-md">
                     Manage your CRMS Account
                   </button>
                 </div>
                 
                 {/* Action Buttons */}
-                <div className="px-4 pb-3">
+                <div className="px-4 pb-3 bg-gray-50">
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg flex items-center space-x-3 transition-colors"
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg flex items-center space-x-3 transition-colors hover:text-red-600"
                   >
                     <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -162,11 +158,11 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 </div>
 
                 {/* Footer Links */}
-                <div className="px-6 py-3 text-center">
+                <div className="px-6 py-3 text-center bg-gray-50">
                   <div className="flex justify-center space-x-4 text-xs text-gray-500">
-                    <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
+                    <a href="#" className="hover:text-primary-600 transition-colors">Privacy Policy</a>
                     <span>•</span>
-                    <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
+                    <a href="#" className="hover:text-primary-600 transition-colors">Terms of Service</a>
                   </div>
                 </div>
               </div>

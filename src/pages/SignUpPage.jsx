@@ -193,353 +193,353 @@ const SignUpPage = () => {
         </Link>
       </div>
       
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-4xl">
-        <h2 className="text-center text-3xl font-bold text-gray-900 mb-2">
-          Faculty Registration
-        </h2>
-        <p className="text-center text-sm text-gray-600 mb-8">
-          Create your faculty account
-        </p>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          {/* Fill Random Data Button */}
-          <button
-            onClick={fillRandomData}
-            className="btn-primary w-full mb-8"
-          >
-            Fill Random Data for Testing
-          </button>
+      <div className="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-4xl">
+          <h2 className="text-center text-3xl font-bold text-gray-900 mb-2">
+            Faculty Registration
+          </h2>
+          <p className="text-center text-sm text-gray-600 mb-8">
+            Create your faculty account
+          </p>
+          
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+                  {error}
+                </div>
+              )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                {error}
+              {/* Personal Information */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                  <button
+                    onClick={fillRandomData}
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium px-3 py-1 rounded-md hover:bg-primary-50 transition-colors"
+                  >
+                    Fill Random Data
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      placeholder="Enter last name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      placeholder="Enter first name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Middle Initial
+                    </label>
+                    <input
+                      type="text"
+                      name="middleInitial"
+                      value={formData.middleInitial}
+                      onChange={handleInputChange}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      placeholder="Enter middle initial"
+                      maxLength={1}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Suffix
+                    </label>
+                    <input
+                      type="text"
+                      name="suffix"
+                      value={formData.suffix}
+                      onChange={handleInputChange}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      placeholder="e.g., Jr., Sr."
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Mail className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        placeholder="Enter email address"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Faculty Photo Section */}
-            <div>
-              <h3 className="section-title mb-4">Faculty Photo (Optional)</h3>
-              <div className="space-y-4">
-                <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                  {facultyPhoto ? (
-                    <div className="relative w-full h-full">
-                      <img 
-                        src={facultyPhoto} 
-                        alt="Faculty photo" 
-                        className="w-full h-full object-cover rounded-lg"
+              {/* Academic Information */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Department *
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowDeptDropdown(!showDeptDropdown)}
+                        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                      >
+                        <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
+                          {formData.department 
+                            ? departments.find(d => d.department_id == formData.department)?.name
+                            : 'Select department'
+                          }
+                        </span>
+                        <Building className="h-5 w-5 text-gray-400" />
+                      </button>
+                      {showDeptDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {departments.map((dept) => (
+                            <button
+                              key={dept.department_id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, department: dept.department_id })
+                                setShowDeptDropdown(false)
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+                            >
+                              <div className="font-medium text-gray-900">{dept.name}</div>
+                              <div className="text-sm text-gray-500">{dept.department_abbreviation}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Term Start
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="date"
+                        name="termStart"
+                        value={formData.termStart}
+                        onChange={handleInputChange}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Term End
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="date"
+                        name="termEnd"
+                        value={formData.termEnd}
+                        onChange={handleInputChange}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Security */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Security</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        placeholder="Create a password"
+                        required
                       />
                       <button
                         type="button"
-                        onClick={removePhoto}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowPassword(!showPassword)}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <Eye className="h-5 w-5 text-gray-400" />
+                        )}
                       </button>
                     </div>
-                  ) : (
-                    <div className="text-center">
-                      <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No photo</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirm Password *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        placeholder="Confirm your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <Eye className="h-5 w-5 text-gray-400" />
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-                <div className="flex space-x-4">
-                  <label className="flex-1 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <ImageIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <span className="text-sm font-medium text-gray-700">Choose from Gallery</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Personal Information */}
-            <div>
-              <h3 className="section-title mb-4">Personal Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">
-                    Last Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="input-field"
-                    placeholder="Enter last name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">
-                    First Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className="input-field"
-                    placeholder="Enter first name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">
-                    Middle Initial
-                  </label>
-                  <input
-                    type="text"
-                    name="middleInitial"
-                    value={formData.middleInitial}
-                    onChange={handleInputChange}
-                    className="input-field"
-                    placeholder="Enter middle initial"
-                    maxLength={1}
-                  />
-                </div>
-                <div>
-                  <label className="label">
-                    Suffix
-                  </label>
-                  <input
-                    type="text"
-                    name="suffix"
-                    value={formData.suffix}
-                    onChange={handleInputChange}
-                    className="input-field"
-                    placeholder="e.g., Jr., Sr."
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="label">
-                    Email Address *
-                  </label>
-                  <div className="input-group">
-                    <div className="input-icon">
-                      <Mail className="h-5 w-5" />
-                    </div>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="input-field input-with-icon"
-                      placeholder="Enter email address"
-                      required
-                    />
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Academic Information */}
-            <div>
-              <h3 className="section-title mb-4">Academic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1">
-                  <label className="label">
-                    Department *
-                  </label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-                      className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
-                    >
-                      <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
-                        {formData.department 
-                          ? departments.find(d => d.department_id == formData.department)?.name
-                          : 'Select department'
-                        }
-                      </span>
-                      <Building className="h-5 w-5 text-gray-400" />
-                    </button>
-                    {showDeptDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {departments.map((dept) => (
-                          <button
-                            key={dept.department_id}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, department: dept.department_id })
-                              setShowDeptDropdown(false)
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 transition-colors"
-                          >
-                            <div className="font-medium text-gray-900">{dept.name}</div>
-                            <div className="text-sm text-gray-500">{dept.department_abbreviation}</div>
-                          </button>
-                        ))}
+              {/* Faculty Photo Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Faculty Photo (Optional)</h3>
+                <div className="space-y-4">
+                  <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                    {facultyPhoto ? (
+                      <div className="relative w-full h-full">
+                        <img 
+                          src={facultyPhoto} 
+                          alt="Faculty photo" 
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removePhoto}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">No photo</p>
                       </div>
                     )}
                   </div>
-                </div>
-                <div>
-                  <label className="label">
-                    Term Start
-                  </label>
-                  <div className="input-group">
-                    <div className="input-icon">
-                      <Calendar className="h-5 w-5" />
-                    </div>
-                    <input
-                      type="date"
-                      name="termStart"
-                      value={formData.termStart}
-                      onChange={handleInputChange}
-                      className="input-field input-with-icon"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="label">
-                    Term End
-                  </label>
-                  <div className="input-group">
-                    <div className="input-icon">
-                      <Calendar className="h-5 w-5" />
-                    </div>
-                    <input
-                      type="date"
-                      name="termEnd"
-                      value={formData.termEnd}
-                      onChange={handleInputChange}
-                      className="input-field input-with-icon"
-                    />
+                  <div className="flex space-x-4">
+                    <label className="flex-1 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <ImageIcon className="h-5 w-5 text-gray-500 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">Choose from Gallery</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Account Security */}
-            <div>
-              <h3 className="section-title mb-4">Account Security</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">
-                    Password *
-                  </label>
-                  <div className="input-group">
-                    <div className="input-icon">
-                      <Lock className="h-5 w-5" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="input-field input-with-icon pr-10"
-                      placeholder="Create a password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <Eye className="h-5 w-5 text-gray-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="label">
-                    Confirm Password *
-                  </label>
-                  <div className="input-group">
-                    <div className="input-icon">
-                      <Lock className="h-5 w-5" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className="input-field input-with-icon pr-10"
-                      placeholder="Confirm your password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <Eye className="h-5 w-5 text-gray-400" />
-                      )}
-                    </button>
-                  </div>
+              {/* Information Note */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Info className="h-5 w-5 text-gray-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">
+                    Your application will be reviewed by the administrator. You will receive an email notification once your account is approved.
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Information Note */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <Info className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                <p className="text-sm text-blue-800">
-                  Your application will be reviewed by the administrator. You will receive an email notification once your account is approved.
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="flex-1 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </div>
+                  ) : (
+                    'Submit Application'
+                  )}
+                </button>
+              </div>
+
+              {/* Login Link */}
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
+                  >
+                    Sign in here
+                  </Link>
                 </p>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary flex-1"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="loading-spinner mr-2"></div>
-                    Submitting...
-                  </div>
-                ) : (
-                  'Submit Application'
-                )}
-              </button>
-            </div>
-
-            {/* Login Link */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{' '}
-                <Link
-                  to="/login"
-                  className="font-medium text-primary-600 hover:text-primary-500 transition-colors"
-                >
-                  Sign in here
-                </Link>
-              </p>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
     </>
   )
 }
