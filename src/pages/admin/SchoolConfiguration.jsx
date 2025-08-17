@@ -211,7 +211,7 @@ const SchoolConfiguration = () => {
   const cancelEdit = () => {
     setEditingDepartment(null);
     setEditingTerm(null);
-    setNewDepartment({ name: '', department_abbreviation: '', status: 'active' });
+    setNewDepartment({ name: '', department_abbreviation: '' });
     setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
     setShowAddDepartment(false);
     setShowAddTerm(false);

@@ -144,3 +144,4 @@ deploy.sh
 references/
 
 .vercel
+.env*.local

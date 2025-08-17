@@ -4,7 +4,18 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 
 const { Pool } = pg;
-dotenv.config();
+// Load environment variables from .env.local first, then .env
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // Fallback to .env if .env.local doesn't exist
+
+// Copy VITE_ environment variables to regular ones for backend use
+if (process.env.VITE_NEON_HOST) {
+  process.env.NEON_HOST = process.env.VITE_NEON_HOST;
+  process.env.NEON_DATABASE = process.env.VITE_NEON_DATABASE;
+  process.env.NEON_USER = process.env.VITE_NEON_USER;
+  process.env.NEON_PASSWORD = process.env.VITE_NEON_PASSWORD;
+  process.env.NEON_PORT = process.env.VITE_NEON_PORT;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
