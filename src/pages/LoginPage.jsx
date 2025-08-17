@@ -21,6 +21,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   
   const { login } = useUser()
   const navigate = useNavigate()
@@ -111,9 +112,6 @@ const LoginPage = () => {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email address
-                </label>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
@@ -126,17 +124,14 @@ const LoginPage = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    placeholder="Enter your email"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                    placeholder="Email"
                     disabled={isLoading}
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
@@ -149,8 +144,8 @@ const LoginPage = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    placeholder="Enter your password"
+                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                    placeholder="Password"
                     disabled={isLoading}
                   />
                   <button
@@ -207,67 +202,94 @@ const LoginPage = () => {
                 )}
               </button>
 
-              <div className="text-xs text-center text-gray-500 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <p className="font-semibold text-gray-700 mb-3">Quick Login with User Types:</p>
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'admin@university.edu', password: 'password123' })}
-                    className="bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-left shadow-sm"
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <Link
+                    to="/signup"
+                    className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
                   >
-                    <span className="font-mono">admin@university.edu</span> <span className="text-gray-500">(Admin)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'dean@university.edu', password: 'password123' })}
-                    className="bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-left shadow-sm"
-                  >
-                    <span className="font-mono">dean@university.edu</span> <span className="text-gray-500">(Dean)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'faculty@university.edu', password: 'password123' })}
-                    className="bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-left shadow-sm"
-                  >
-                    <span className="font-mono">faculty@university.edu</span> <span className="text-gray-500">(Faculty)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
-                    className="bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-left shadow-sm"
-                  >
-                    <span className="font-mono">staff@university.edu</span> <span className="text-gray-500">(Staff)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'programchair@university.edu', password: 'password123' })}
-                    className="bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-left shadow-sm"
-                  >
-                    <span className="font-mono">programchair@university.edu</span> <span className="text-gray-500">(Program Chair)</span>
-                  </button>
+                    Create new account
+                  </Link>
                 </div>
               </div>
             </form>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <Link
-                  to="/signup"
-                  className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
-                >
-                  Create new account
-                </Link>
-              </div>
+            {/* Demo Accounts Toggle */}
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setShowDemoAccounts(!showDemoAccounts)}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors underline"
+              >
+                {showDemoAccounts ? 'Hide demo accounts' : 'Show demo accounts'}
+              </button>
             </div>
+
+            {/* Demo Accounts Section */}
+            {showDemoAccounts && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-center mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">Quick Login</h4>
+                  <p className="text-xs text-gray-500">Click to auto-fill</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'admin@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                  >
+                    <span className="font-mono text-gray-700">admin@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Admin)</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'dean@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                  >
+                    <span className="font-mono text-gray-700">dean@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Dean)</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'faculty@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                  >
+                    <span className="font-mono text-gray-700">faculty@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Faculty)</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                  >
+                    <span className="font-mono text-gray-700">staff@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Staff)</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ email: 'programchair@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                  >
+                    <span className="font-mono text-gray-700">programchair@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Program Chair)</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -223,75 +223,103 @@ const SignUpPage = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      placeholder="Enter last name"
-                      required
-                    />
+                    <div className="relative">
+                      <label 
+                        htmlFor="lastName" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        placeholder="Last name"
+                        required
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      placeholder="Enter first name"
-                      required
-                    />
+                    <div className="relative">
+                      <label 
+                        htmlFor="firstName" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        First Name
+                      </label>
+                      <input
+                        type="text"
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        placeholder="First name"
+                        required
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Middle Initial
-                    </label>
-                    <input
-                      type="text"
-                      name="middleInitial"
-                      value={formData.middleInitial}
-                      onChange={handleInputChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      placeholder="Enter middle initial"
-                      maxLength={1}
-                    />
+                    <div className="relative">
+                      <label 
+                        htmlFor="middleInitial" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Middle Initial
+                      </label>
+                      <input
+                        type="text"
+                        id="middleInitial"
+                        name="middleInitial"
+                        value={formData.middleInitial}
+                        onChange={handleInputChange}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        placeholder="Middle initial"
+                        maxLength={1}
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Suffix
-                    </label>
-                    <input
-                      type="text"
-                      name="suffix"
-                      value={formData.suffix}
-                      onChange={handleInputChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      placeholder="e.g., Jr., Sr."
-                    />
+                    <div className="relative">
+                      <label 
+                        htmlFor="suffix" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Suffix
+                      </label>
+                      <input
+                        type="text"
+                        id="suffix"
+                        name="suffix"
+                        value={formData.suffix}
+                        onChange={handleInputChange}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        placeholder="e.g., Jr., Sr."
+                      />
+                    </div>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
-                    </label>
                     <div className="relative">
+                      <label 
+                        htmlFor="email" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Email Address
+                      </label>
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Mail className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
                         type="email"
+                        id="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        placeholder="Enter email address"
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        placeholder="Email address"
                         required
                       />
                     </div>
@@ -356,6 +384,9 @@ const SignUpPage = () => {
                         onChange={handleInputChange}
                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                       />
+                      {!formData.termStart && (
+                        <p className="text-xs text-red-500 mt-1">Term start date is required</p>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -373,6 +404,9 @@ const SignUpPage = () => {
                         onChange={handleInputChange}
                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                       />
+                      {!formData.termEnd && (
+                        <p className="text-xs text-red-500 mt-1">Term end date is required</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -383,19 +417,23 @@ const SignUpPage = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Security</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Password *
-                    </label>
                     <div className="relative">
+                      <label 
+                        htmlFor="password" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Password
+                      </label>
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Lock className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        id="password"
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Create a password"
                         required
                       />
@@ -413,19 +451,23 @@ const SignUpPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm Password *
-                    </label>
                     <div className="relative">
+                      <label 
+                        htmlFor="confirmPassword" 
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Confirm Password
+                      </label>
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Lock className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
+                        id="confirmPassword"
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Confirm your password"
                         required
                       />
