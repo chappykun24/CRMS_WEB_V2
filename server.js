@@ -123,8 +123,22 @@ app.get('/api/classes', async (req, res) => {
   }
 });
 
+// Import API routes
+import departmentsRouter from './api/departments/index.js';
+import schoolTermsRouter from './api/school-terms/index.js';
+
+// Use API routes
+app.use('/api/departments', departmentsRouter);
+app.use('/api/school-terms', schoolTermsRouter);
+
+console.log('🚀 [SERVER] School Configuration API routes loaded:');
+console.log('   📍 /api/departments');
+console.log('   📍 /api/school-terms');
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🚀 [SERVER] Server running on port ${PORT}`);
+  console.log(`🔍 [SERVER] Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📊 [SERVER] Departments API: http://localhost:${PORT}/api/departments`);
+  console.log(`📅 [SERVER] School Terms API: http://localhost:${PORT}/api/school-terms`);
 });

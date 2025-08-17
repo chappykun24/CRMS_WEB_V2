@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Building, Calendar, Save, X, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Building, GraduationCap } from 'lucide-react';
+import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 
 const SchoolConfiguration = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -7,20 +8,28 @@ const SchoolConfiguration = () => {
     return localStorage.getItem('schoolConfigActiveTab') || 'departments'
   });
   
-  // Start with empty data arrays
+  // Database state
   const [departments, setDepartments] = useState([]);
   const [schoolTerms, setSchoolTerms] = useState([]);
-
+  const [loading, setLoading] = useState(true);
+  
+  // Form states
   const [showAddDepartment, setShowAddDepartment] = useState(false);
   const [showAddTerm, setShowAddTerm] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [editingTerm, setEditingTerm] = useState(null);
-
-  const [newDepartment, setNewDepartment] = useState({ name: '', abbreviation: '' });
-  const [newTerm, setNewTerm] = useState({ name: '', startDate: '', endDate: '' });
-
+  const [newDepartment, setNewDepartment] = useState({ name: '', department_abbreviation: '', status: 'active' });
+  const [newTerm, setNewTerm] = useState({ name: '', term_start: '', term_end: '', status: 'active' });
+  
+  // Messages
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // Calendar states
+  const [showTermStartCalendar, setShowTermStartCalendar] = useState(false);
+  const [showTermEndCalendar, setShowTermEndCalendar] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Update localStorage when activeTab changes
   useEffect(() => {
@@ -33,227 +42,254 @@ const SchoolConfiguration = () => {
     window.dispatchEvent(event)
   }, [activeTab])
 
-  // Department Management
-  const handleAddDepartment = () => {
-    if (!newDepartment.name.trim() || !newDepartment.abbreviation.trim()) {
-      setErrorMessage('Please fill in all fields');
-      return;
+  // Load data from database
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [deptData, termData] = await Promise.all([
+        departmentService.getAll(),
+        schoolTermService.getAll()
+      ]);
+      setDepartments(deptData);
+      setSchoolTerms(termData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setErrorMessage('Failed to load data from database');
+    } finally {
+      setLoading(false);
     }
-
-    // Check if abbreviation already exists
-    const abbreviationExists = departments.some(
-      dept => dept.abbreviation.toLowerCase() === newDepartment.abbreviation.trim().toLowerCase()
-    );
-    
-    if (abbreviationExists) {
-      setErrorMessage('Department abbreviation already exists');
-      return;
-    }
-
-    const department = {
-      id: Date.now(),
-      name: newDepartment.name.trim(),
-      abbreviation: newDepartment.abbreviation.trim().toUpperCase(),
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-
-    setDepartments([...departments, department]);
-    setNewDepartment({ name: '', abbreviation: '' });
-    setShowAddDepartment(false);
-    setSuccessMessage('Department added successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  const handleEditDepartment = (department) => {
-    setEditingDepartment(department);
-    setNewDepartment({ name: department.name, abbreviation: department.abbreviation });
+  // Department Management
+  const handleAddDepartment = async () => {
+    try {
+      if (!newDepartment.name || !newDepartment.department_abbreviation) {
+        setErrorMessage('Name and abbreviation are required');
+        return;
+      }
+
+      const createdDept = await departmentService.create(newDepartment);
+      setDepartments([...departments, createdDept]);
+      setNewDepartment({ name: '', department_abbreviation: '', status: 'active' });
+      setShowAddDepartment(false);
+      setSuccessMessage('Department added successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
+    }
+  };
+
+  const handleEditDepartment = (dept) => {
+    setEditingDepartment(dept);
+    setNewDepartment({ ...dept });
     setShowAddDepartment(true);
   };
 
-  const handleUpdateDepartment = () => {
-    if (!newDepartment.name.trim() || !newDepartment.abbreviation.trim()) {
-      setErrorMessage('Please fill in all fields');
-      return;
-    }
+  const handleUpdateDepartment = async () => {
+    try {
+      if (!newDepartment.name || !newDepartment.department_abbreviation) {
+        setErrorMessage('Name and abbreviation are required');
+        return;
+      }
 
-    // Check if abbreviation already exists (excluding current department being edited)
-    const abbreviationExists = departments.some(
-      dept => dept.id !== editingDepartment.id && 
-      dept.abbreviation.toLowerCase() === newDepartment.abbreviation.trim().toLowerCase()
-    );
-    
-    if (abbreviationExists) {
-      setErrorMessage('Department abbreviation already exists');
-      return;
-    }
-
-    const updatedDepartments = departments.map(dept =>
-      dept.id === editingDepartment.id
-        ? { 
-            ...dept, 
-            name: newDepartment.name.trim(), 
-            abbreviation: newDepartment.abbreviation.trim().toUpperCase(),
-            updatedAt: new Date().toISOString()
-          }
-        : dept
-    );
-
-    setDepartments(updatedDepartments);
-    setEditingDepartment(null);
-    setNewDepartment({ name: '', abbreviation: '' });
-    setShowAddDepartment(false);
-    setSuccessMessage('Department updated successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
-  };
-
-  const handleDeleteDepartment = (id) => {
-    if (window.confirm('Are you sure you want to delete this department?')) {
-      setDepartments(departments.filter(dept => dept.id !== id));
-      setSuccessMessage('Department deleted successfully');
+      const updatedDept = await departmentService.update(editingDepartment.department_id, newDepartment);
+      setDepartments(departments.map(dept => 
+        dept.department_id === editingDepartment.department_id ? updatedDept : dept
+      ));
+      setNewDepartment({ name: '', department_abbreviation: '', status: 'active' });
+      setEditingDepartment(null);
+      setShowAddDepartment(false);
+      setSuccessMessage('Department updated successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
     }
   };
 
-  const handleToggleDepartmentStatus = (id) => {
-    setDepartments(departments.map(dept =>
-      dept.id === id
-        ? { ...dept, status: dept.status === 'active' ? 'inactive' : 'active' }
-        : dept
-    ));
+  const handleDeleteDepartment = async (id) => {
+    if (window.confirm('Are you sure you want to delete this department?')) {
+      try {
+        await departmentService.delete(id);
+        setDepartments(departments.filter(dept => dept.department_id !== id));
+        setSuccessMessage('Department deleted successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        setErrorMessage(error.message);
+        setTimeout(() => setErrorMessage(''), 5000);
+      }
+    }
+  };
+
+  const handleToggleDepartmentStatus = async (id) => {
+    try {
+      const updatedDept = await departmentService.toggleStatus(id);
+      setDepartments(departments.map(dept => 
+        dept.department_id === id ? updatedDept : dept
+      ));
+      setSuccessMessage('Department status updated successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
+    }
   };
 
   // School Term Management
-  const handleAddTerm = () => {
-    if (!newTerm.name.trim() || !newTerm.startDate || !newTerm.endDate) {
-      setErrorMessage('Please fill in all fields');
-      return;
+  const handleAddTerm = async () => {
+    try {
+      if (!newTerm.name || !newTerm.term_start || !newTerm.term_end) {
+        setErrorMessage('Name, start date, and end date are required');
+        return;
+      }
+
+      const createdTerm = await schoolTermService.create(newTerm);
+      setSchoolTerms([...schoolTerms, createdTerm]);
+      setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
+      setShowAddTerm(false);
+      setSuccessMessage('School term added successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
     }
-
-    if (new Date(newTerm.startDate) >= new Date(newTerm.endDate)) {
-      setErrorMessage('End date must be after start date');
-      return;
-    }
-
-    // Check if term name already exists
-    const termNameExists = schoolTerms.some(
-      term => term.name.toLowerCase() === newTerm.name.trim().toLowerCase()
-    );
-    
-    if (termNameExists) {
-      setErrorMessage('School term name already exists');
-      return;
-    }
-
-    const term = {
-      id: Date.now(),
-      name: newTerm.name.trim(),
-      startDate: newTerm.startDate,
-      endDate: newTerm.endDate,
-      status: 'inactive',
-      createdAt: new Date().toISOString()
-    };
-
-    setSchoolTerms([...schoolTerms, term]);
-    setNewTerm({ name: '', startDate: '', endDate: '' });
-    setShowAddTerm(false);
-    setSuccessMessage('School term added successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleEditTerm = (term) => {
     setEditingTerm(term);
-    setNewTerm({ name: term.name, startDate: term.startDate, endDate: term.endDate });
+    setNewTerm({ ...term });
     setShowAddTerm(true);
   };
 
-  const handleUpdateTerm = () => {
-    if (!newTerm.name.trim() || !newTerm.startDate || !newTerm.endDate) {
-      setErrorMessage('Please fill in all fields');
-      return;
-    }
+  const handleUpdateTerm = async () => {
+    try {
+      if (!newTerm.name || !newTerm.term_start || !newTerm.term_end) {
+        setErrorMessage('Name, start date, and end date are required');
+        return;
+      }
 
-    if (new Date(newTerm.startDate) >= new Date(newTerm.endDate)) {
-      setErrorMessage('End date must be after start date');
-      return;
-    }
-
-    // Check if term name already exists (excluding current term being edited)
-    const termNameExists = schoolTerms.some(
-      term => term.id !== editingTerm.id && 
-      term.name.toLowerCase() === newTerm.name.trim().toLowerCase()
-    );
-    
-    if (termNameExists) {
-      setErrorMessage('School term name already exists');
-      return;
-    }
-
-    const updatedTerms = schoolTerms.map(term =>
-      term.id === editingTerm.id
-        ? { 
-            ...term, 
-            name: newTerm.name.trim(), 
-            startDate: newTerm.startDate, 
-            endDate: newTerm.endDate,
-            updatedAt: new Date().toISOString()
-          }
-        : term
-    );
-
-    setSchoolTerms(updatedTerms);
-    setEditingTerm(null);
-    setNewTerm({ name: '', startDate: '', endDate: '' });
-    setShowAddTerm(false);
-    setSuccessMessage('School term updated successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
-  };
-
-  const handleDeleteTerm = (id) => {
-    if (window.confirm('Are you sure you want to delete this school term?')) {
-      setSchoolTerms(schoolTerms.filter(term => term.id !== id));
-      setSuccessMessage('School term deleted successfully');
+      const updatedTerm = await schoolTermService.update(editingTerm.term_id, newTerm);
+      setSchoolTerms(schoolTerms.map(term => 
+        term.term_id === editingTerm.term_id ? updatedTerm : term
+      ));
+      setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
+      setEditingTerm(null);
+      setShowAddTerm(false);
+      setSuccessMessage('School term updated successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
     }
   };
 
-  const handleToggleTermStatus = (id) => {
-    setSchoolTerms(schoolTerms.map(term =>
-      term.id === id
-        ? { ...term, status: term.status === 'active' ? 'inactive' : 'active' }
-        : term
-    ));
+  const handleDeleteTerm = async (id) => {
+    if (window.confirm('Are you sure you want to delete this school term?')) {
+      try {
+        await schoolTermService.delete(id);
+        setSchoolTerms(schoolTerms.filter(term => term.term_id !== id));
+        setSuccessMessage('School term deleted successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        setErrorMessage(error.message);
+        setTimeout(() => setErrorMessage(''), 5000);
+      }
+    }
+  };
+
+  const handleToggleTermStatus = async (id) => {
+    try {
+      const updatedTerm = await schoolTermService.toggleStatus(id);
+      setSchoolTerms(schoolTerms.map(term => 
+        term.term_id === id ? updatedTerm : term
+      ));
+      setSuccessMessage('School term status updated successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setErrorMessage(error.message);
+      setTimeout(() => setErrorMessage(''), 5000);
+    }
   };
 
   const cancelEdit = () => {
     setEditingDepartment(null);
     setEditingTerm(null);
-    setNewDepartment({ name: '', abbreviation: '' });
-    setNewTerm({ name: '', startDate: '', endDate: '' });
+    setNewDepartment({ name: '', department_abbreviation: '', status: 'active' });
+    setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
     setShowAddDepartment(false);
     setShowAddTerm(false);
-    setErrorMessage('');
   };
+
+  // Calendar functions
+  const handleDateSelect = (date) => {
+    const formattedDate = date.toISOString().split('T')[0];
+    if (showTermStartCalendar) {
+      setNewTerm({ ...newTerm, term_start: formattedDate });
+      setShowTermStartCalendar(false);
+    } else if (showTermEndCalendar) {
+      setNewTerm({ ...newTerm, term_end: formattedDate });
+      setShowTermEndCalendar(false);
+    }
+  };
+
+  const goToPreviousMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const clearDate = (field) => {
+    if (field === 'start') {
+      setNewTerm({ ...newTerm, term_start: '' });
+    } else {
+      setNewTerm({ ...newTerm, term_end: '' });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading school configuration...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
+        
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center">
-            <Check className="h-5 w-5 mr-2" />
-            {successMessage}
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800">{successMessage}</p>
           </div>
         )}
         
         {errorMessage && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center">
-            <X className="h-5 w-5 mr-2" />
-            {errorMessage}
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">{errorMessage}</p>
           </div>
         )}
 
-        {/* Tab Navigation */}
+        {/* Tabs */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
@@ -261,49 +297,60 @@ const SchoolConfiguration = () => {
                 onClick={() => setActiveTab('departments')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'departments'
-                    ? 'border-red-500 text-red-600'
+                    ? 'border-primary-600 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <Building className="inline h-4 w-4 mr-2" />
-                Departments
+                <div className="flex items-center space-x-2">
+                  <Building className="h-5 w-5" />
+                  <span>Departments</span>
+                </div>
               </button>
+              
               <button
                 onClick={() => setActiveTab('terms')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'terms'
-                    ? 'border-red-500 text-red-600'
+                    ? 'border-primary-600 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <Calendar className="inline h-4 w-4 mr-2" />
-                School Terms
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="h-5 w-5" />
+                  <span>School Terms</span>
+                </div>
               </button>
             </nav>
           </div>
         </div>
 
-        {/* Departments Tab */}
+        {/* Tab Content */}
         {activeTab === 'departments' && (
           <div>
+            {/* Departments Header */}
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Department Management</h2>
+              <div className="flex items-center space-x-3">
+                <Building className="h-8 w-8 text-primary-600" />
+                <h2 className="text-2xl font-bold text-gray-900">Departments</h2>
+              </div>
+              
               <button
                 onClick={() => setShowAddDepartment(true)}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Department
+                <Plus className="h-5 w-5" />
+                <span>Add Department</span>
               </button>
             </div>
 
             {/* Add/Edit Department Form */}
             {showAddDepartment && (
-              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   {editingDepartment ? 'Edit Department' : 'Add New Department'}
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Department Name *
@@ -312,25 +359,41 @@ const SchoolConfiguration = () => {
                       type="text"
                       value={newDepartment.name}
                       onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                       placeholder="Enter department name"
                     />
                   </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Abbreviation *
                     </label>
                     <input
                       type="text"
-                      value={newDepartment.abbreviation}
-                      onChange={(e) => setNewDepartment({ ...newDepartment, abbreviation: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                      placeholder="e.g., CS, IT"
-                      maxLength={10}
+                      value={newDepartment.department_abbreviation}
+                      onChange={(e) => setNewDepartment({ ...newDepartment, department_abbreviation: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter abbreviation"
+                      maxLength="10"
                     />
                   </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={newDepartment.status}
+                      onChange={(e) => setNewDepartment({ ...newDepartment, status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex justify-end space-x-3 mt-4">
+                
+                <div className="flex justify-end space-x-3 mt-6">
                   <button
                     onClick={cancelEdit}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -339,9 +402,8 @@ const SchoolConfiguration = () => {
                   </button>
                   <button
                     onClick={editingDepartment ? handleUpdateDepartment : handleAddDepartment}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
-                    <Save className="h-4 w-4 mr-2" />
                     {editingDepartment ? 'Update' : 'Add'} Department
                   </button>
                 </div>
@@ -356,7 +418,7 @@ const SchoolConfiguration = () => {
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Department
+                          Department Name
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Abbreviation
@@ -365,43 +427,54 @@ const SchoolConfiguration = () => {
                           Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {departments.map((department) => (
-                        <tr key={department.id} className="hover:bg-gray-50">
+                      {departments.map((dept) => (
+                        <tr key={dept.department_id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{department.name}</div>
+                            <div className="text-sm font-medium text-gray-900">{dept.name}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {department.abbreviation}
-                            </span>
+                            <div className="text-sm text-gray-900">{dept.department_abbreviation}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => handleToggleDepartmentStatus(department.id)}
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                department.status === 'active'
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                dept.status === 'active'
                                   ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {department.status === 'active' ? 'Active' : 'Inactive'}
-                            </button>
+                              {dept.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(dept.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
-                                onClick={() => handleEditDepartment(department)}
-                                className="text-indigo-600 hover:text-indigo-900"
+                                onClick={() => handleEditDepartment(dept)}
+                                className="text-primary-600 hover:text-primary-900"
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => handleDeleteDepartment(department.id)}
+                                onClick={() => handleToggleDepartmentStatus(dept.department_id)}
+                                className={`${
+                                  dept.status === 'active' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'
+                                }`}
+                              >
+                                {dept.status === 'active' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDepartment(dept.department_id)}
                                 className="text-red-600 hover:text-red-900"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -415,38 +488,41 @@ const SchoolConfiguration = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                  <Building className="h-12 w-12 text-gray-400" />
-                </div>
+              <div className="text-center py-12">
+                <Building className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
-                <p className="text-gray-500 max-w-sm mx-auto">Start building your school structure by adding the first department. This will help organize your academic programs and faculty.</p>
+                <p className="text-gray-500 mb-6">Get started by adding your first department to the system.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* School Terms Tab */}
         {activeTab === 'terms' && (
           <div>
+            {/* School Terms Header */}
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">School Term Management</h2>
+              <div className="flex items-center space-x-3">
+                <GraduationCap className="h-8 w-8 text-primary-600" />
+                <h2 className="text-2xl font-bold text-gray-900">School Terms</h2>
+              </div>
+              
               <button
                 onClick={() => setShowAddTerm(true)}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add School Term
+                <Plus className="h-5 w-5" />
+                <span>Add Term</span>
               </button>
             </div>
 
             {/* Add/Edit Term Form */}
             {showAddTerm && (
-              <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   {editingTerm ? 'Edit School Term' : 'Add New School Term'}
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Term Name *
@@ -455,34 +531,91 @@ const SchoolConfiguration = () => {
                       type="text"
                       value={newTerm.name}
                       onChange={(e) => setNewTerm({ ...newTerm, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                      placeholder="e.g., First Semester AY 2024-2025"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Enter term name"
                     />
                   </div>
-                  <div>
+                  
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date *
+                      Term Start *
                     </label>
-                    <input
-                      type="date"
-                      value={newTerm.startDate}
-                      onChange={(e) => setNewTerm({ ...newTerm, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={newTerm.term_start}
+                        onChange={(e) => setNewTerm({ ...newTerm, term_start: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
+                        placeholder="Select start date"
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTermStartCalendar(!showTermStartCalendar)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                      </button>
+                      {newTerm.term_start && (
+                        <button
+                          type="button"
+                          onClick={() => clearDate('start')}
+                          className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Term End *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={newTerm.term_end}
+                        onChange={(e) => setNewTerm({ ...newTerm, term_end: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
+                        placeholder="Select end date"
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTermEndCalendar(!showTermEndCalendar)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                      </button>
+                      {newTerm.term_end && (
+                        <button
+                          type="button"
+                          onClick={() => clearDate('end')}
+                          className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Date *
+                      Status
                     </label>
-                    <input
-                      type="date"
-                      value={newTerm.endDate}
-                      onChange={(e) => setNewTerm({ ...newTerm, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    />
+                    <select
+                      value={newTerm.status}
+                      onChange={(e) => setNewTerm({ ...newTerm, status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
                   </div>
                 </div>
-                <div className="flex justify-end space-x-3 mt-4">
+                
+                <div className="flex justify-end space-x-3 mt-6">
                   <button
                     onClick={cancelEdit}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -491,10 +624,9 @@ const SchoolConfiguration = () => {
                   </button>
                   <button
                     onClick={editingTerm ? handleUpdateTerm : handleAddTerm}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    {editingTerm ? 'Update' : 'Add'} School Term
+                    {editingTerm ? 'Update' : 'Add'} Term
                   </button>
                 </div>
               </div>
@@ -520,44 +652,57 @@ const SchoolConfiguration = () => {
                           Status
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {schoolTerms.map((term) => (
-                        <tr key={term.id} className="hover:bg-gray-50">
+                        <tr key={term.term_id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{term.name}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.startDate).toLocaleDateString()}
+                            {new Date(term.term_start).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.endDate).toLocaleDateString()}
+                            {new Date(term.term_end).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => handleToggleTermStatus(term.id)}
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                 term.status === 'active'
                                   ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {term.status === 'active' ? 'Active' : 'Inactive'}
-                            </button>
+                              {term.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(term.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => handleEditTerm(term)}
-                                className="text-indigo-600 hover:text-red-900"
+                                className="text-primary-600 hover:text-primary-900"
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => handleDeleteTerm(term.id)}
+                                onClick={() => handleToggleTermStatus(term.term_id)}
+                                className={`${
+                                  term.status === 'active' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'
+                                }`}
+                              >
+                                {term.status === 'active' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTerm(term.term_id)}
                                 className="text-red-600 hover:text-red-900"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -571,14 +716,93 @@ const SchoolConfiguration = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                  <Calendar className="h-12 w-12 text-gray-400" />
-                </div>
+              <div className="text-center py-12">
+                <GraduationCap className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
-                <p className="text-gray-500 max-w-sm mx-auto">Define your academic calendar by adding school terms. This helps organize your academic year into manageable periods.</p>
+                <p className="text-gray-500 mb-6">Get started by adding your first school term to the system.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Custom Calendar Component */}
+        {(showTermStartCalendar || showTermEndCalendar) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={goToPreviousMonth}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h2>
+                
+                <button
+                  onClick={goToNextMonth}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate() }, (_, i) => {
+                  const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  const isSelected = (showTermStartCalendar && newTerm.term_start === date.toISOString().split('T')[0]) ||
+                                   (showTermEndCalendar && newTerm.term_end === date.toISOString().split('T')[0]);
+                  
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleDateSelect(date)}
+                      className={`p-2 text-sm rounded-lg hover:bg-gray-100 ${
+                        isToday ? 'bg-blue-100 text-blue-600 font-semibold' : ''
+                      } ${
+                        isSelected ? 'bg-primary-100 text-primary-600 font-semibold' : ''
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <div className="flex justify-between mt-4">
+                <button
+                  onClick={goToToday}
+                  className="px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg"
+                >
+                  Today
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowTermStartCalendar(false);
+                    setShowTermEndCalendar(false);
+                  }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

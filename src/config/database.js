@@ -54,13 +54,30 @@ export const getClient = async () => {
 // Execute query with parameters
 export const query = async (text, params) => {
   try {
+    console.log('🔍 [DATABASE] Executing query:', { text, params });
     const start = Date.now();
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: result.rowCount });
+    console.log(`✅ [DATABASE] Query executed successfully in ${duration}ms`, { 
+      text, 
+      duration, 
+      rows: result.rowCount,
+      hasData: result.rows.length > 0
+    });
+    if (result.rows.length > 0) {
+      console.log('📊 [DATABASE] Sample data from result:', result.rows.slice(0, 2));
+    }
     return result;
   } catch (error) {
-    console.error('Query error:', error);
+    console.error('❌ [DATABASE] Query error:', error);
+    console.error('🔍 [DATABASE] Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
+      stack: error.stack
+    });
     throw error;
   }
 };
