@@ -13,9 +13,9 @@ router.get('/test', (req, res) => {
 router.get('/', async (req, res) => {
   console.log('🔍 [SCHOOL TERMS API] GET / - Fetching all school terms');
   try {
-    console.log('📡 [SCHOOL TERMS API] Executing database query: SELECT * FROM school_terms ORDER BY term_start DESC');
+    console.log('📡 [SCHOOL TERMS API] Executing database query: SELECT * FROM school_terms ORDER BY start_date DESC');
     const result = await query(
-      'SELECT * FROM school_terms ORDER BY term_start DESC'
+      'SELECT * FROM school_terms ORDER BY start_date DESC'
     );
     console.log(`✅ [SCHOOL TERMS API] Query successful. Found ${result.rows.length} school terms`);
     console.log('📊 [SCHOOL TERMS API] School terms data:', result.rows);
@@ -66,36 +66,36 @@ router.post('/', async (req, res) => {
   console.log('📝 [SCHOOL TERMS API] Request body:', req.body);
   
   try {
-    const { name, term_start, term_end, status = 'active' } = req.body;
+    const { school_year, semester, start_date, end_date, is_active = false } = req.body;
     
     // Validate required fields
-    if (!name || !term_start || !term_end) {
+    if (!school_year || !semester || !start_date || !end_date) {
       console.log('⚠️ [SCHOOL TERMS API] Validation failed: Missing required fields');
       return res.status(400).json({ 
-        error: 'Name, start date, and end date are required' 
+        error: 'School year, semester, start date, and end date are required' 
       });
     }
     
     console.log('✅ [SCHOOL TERMS API] Validation passed. Checking for duplicates...');
     
-    // Check if name already exists
+    // Check if school year and semester combination already exists
     const existingTerm = await query(
-      'SELECT * FROM school_terms WHERE name = $1',
-      [name]
+      'SELECT * FROM school_terms WHERE school_year = $1 AND semester = $2',
+      [school_year, semester]
     );
     
     if (existingTerm.rows.length > 0) {
       console.log('⚠️ [SCHOOL TERMS API] Duplicate found:', existingTerm.rows);
       return res.status(400).json({ 
-        error: 'School term name already exists' 
+        error: 'School term with this year and semester already exists' 
       });
     }
     
     console.log('✅ [SCHOOL TERMS API] No duplicates found. Validating date range...');
     
     // Validate date range
-    const startDate = new Date(term_start);
-    const endDate = new Date(term_end);
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
     
     if (startDate >= endDate) {
       console.log('⚠️ [SCHOOL TERMS API] Date validation failed: Start date must be before end date');
@@ -109,13 +109,13 @@ router.post('/', async (req, res) => {
     // Check for overlapping terms
     const overlappingTerms = await query(
       `SELECT * FROM school_terms 
-       WHERE status = 'active' 
+       WHERE is_active = true 
        AND (
-         (term_start <= $1 AND term_end >= $1) OR
-         (term_start <= $2 AND term_end >= $2) OR
-         (term_start >= $1 AND term_end <= $2)
+         (start_date <= $1 AND end_date >= $1) OR
+         (start_date <= $2 AND end_date >= $2) OR
+         (start_date >= $1 AND end_date <= $2)
        )`,
-      [term_start, term_end]
+      [start_date, end_date]
     );
     
     if (overlappingTerms.rows.length > 0) {
@@ -129,10 +129,10 @@ router.post('/', async (req, res) => {
     
     // Insert new school term
     const result = await query(
-      `INSERT INTO school_terms (name, term_start, term_end, status, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, NOW(), NOW()) 
+      `INSERT INTO school_terms (school_year, semester, start_date, end_date, is_active) 
+       VALUES ($1, $2, $3, $4, $5) 
        RETURNING *`,
-      [name, term_start, term_end, status]
+      [school_year, semester, start_date, end_date, is_active]
     );
     
     console.log(`✅ [SCHOOL TERMS API] School term created successfully:`, result.rows[0]);
@@ -155,36 +155,36 @@ router.put('/:id', async (req, res) => {
   console.log('📝 [SCHOOL TERMS API] Request body:', req.body);
   
   try {
-    const { name, term_start, term_end, status } = req.body;
+    const { school_year, semester, start_date, end_date, is_active } = req.body;
     
     // Validate required fields
-    if (!name || !term_start || !term_end) {
+    if (!school_year || !semester || !start_date || !end_date) {
       console.log('⚠️ [SCHOOL TERMS API] Validation failed: Missing required fields');
       return res.status(400).json({ 
-        error: 'Name, start date, and end date are required' 
+        error: 'School year, semester, start date, and end date are required' 
       });
     }
     
     console.log('✅ [SCHOOL TERMS API] Validation passed. Checking for duplicates...');
     
-    // Check if name already exists (excluding current term)
+    // Check if school year and semester combination already exists (excluding current term)
     const existingTerm = await query(
-      'SELECT * FROM school_terms WHERE name = $1 AND term_id != $2',
-      [name, id]
+      'SELECT * FROM school_terms WHERE school_year = $1 AND semester = $2 AND term_id != $3',
+      [school_year, semester, id]
     );
     
     if (existingTerm.rows.length > 0) {
       console.log('⚠️ [SCHOOL TERMS API] Duplicate found:', existingTerm.rows);
       return res.status(400).json({ 
-        error: 'School term name already exists' 
+        error: 'School term with this year and semester already exists' 
       });
     }
     
     console.log('✅ [SCHOOL TERMS API] No duplicates found. Validating date range...');
     
     // Validate date range
-    const startDate = new Date(term_start);
-    const endDate = new Date(term_end);
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
     
     if (startDate >= endDate) {
       console.log('⚠️ [SCHOOL TERMS API] Date validation failed: Start date must be before end date');
@@ -198,14 +198,14 @@ router.put('/:id', async (req, res) => {
     // Check for overlapping terms (excluding current term)
     const overlappingTerms = await query(
       `SELECT * FROM school_terms 
-       WHERE status = 'active' 
+       WHERE is_active = true 
        AND term_id != $1
        AND (
-         (term_start <= $2 AND term_end >= $2) OR
-         (term_start <= $3 AND term_end >= $3) OR
-         (term_start >= $2 AND term_end <= $3)
+         (start_date <= $2 AND end_date >= $2) OR
+         (start_date <= $3 AND end_date >= $3) OR
+         (start_date >= $2 AND end_date <= $3)
        )`,
-      [id, term_start, term_end]
+      [id, start_date, end_date]
     );
     
     if (overlappingTerms.rows.length > 0) {
@@ -220,10 +220,10 @@ router.put('/:id', async (req, res) => {
     // Update school term
     const result = await query(
       `UPDATE school_terms 
-       SET name = $1, term_start = $2, term_end = $3, status = $4, updated_at = NOW() 
-       WHERE term_id = $5 
+       SET school_year = $1, semester = $2, start_date = $3, end_date = $4, is_active = $5 
+       WHERE term_id = $6 
        RETURNING *`,
-      [name, term_start, term_end, status, id]
+      [school_year, semester, start_date, end_date, is_active, id]
     );
     
     if (result.rows.length === 0) {
@@ -289,7 +289,7 @@ router.patch('/:id/toggle-status', async (req, res) => {
   try {
     // Get current status
     const currentTerm = await query(
-      'SELECT status FROM school_terms WHERE term_id = $1',
+      'SELECT is_active FROM school_terms WHERE term_id = $1',
       [id]
     );
     
@@ -298,13 +298,13 @@ router.patch('/:id/toggle-status', async (req, res) => {
       return res.status(404).json({ error: 'School term not found' });
     }
     
-    const newStatus = currentTerm.rows[0].status === 'active' ? 'inactive' : 'active';
-    console.log(`🔄 [SCHOOL TERMS API] Toggling status from ${currentTerm.rows[0].status} to ${newStatus}`);
+    const newStatus = !currentTerm.rows[0].is_active;
+    console.log(`🔄 [SCHOOL TERMS API] Toggling status from ${currentTerm.rows[0].is_active} to ${newStatus}`);
     
     // Update status
     const result = await query(
       `UPDATE school_terms 
-       SET status = $1, updated_at = NOW() 
+       SET is_active = $1 
        WHERE term_id = $2 
        RETURNING *`,
       [newStatus, id]

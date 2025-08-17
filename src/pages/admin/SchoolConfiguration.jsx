@@ -19,7 +19,7 @@ const SchoolConfiguration = () => {
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [editingTerm, setEditingTerm] = useState(null);
   const [newDepartment, setNewDepartment] = useState({ name: '', department_abbreviation: '' });
-  const [newTerm, setNewTerm] = useState({ name: '', term_start: '', term_end: '', status: 'active' });
+  const [newTerm, setNewTerm] = useState({ school_year: '', semester: '', start_date: '', end_date: '', is_active: false });
   
   // Messages
   const [successMessage, setSuccessMessage] = useState('');
@@ -135,14 +135,14 @@ const SchoolConfiguration = () => {
   // School Term Management
   const handleAddTerm = async () => {
     try {
-      if (!newTerm.name || !newTerm.term_start || !newTerm.term_end) {
-        setErrorMessage('Name, start date, and end date are required');
+      if (!newTerm.school_year || !newTerm.semester || !newTerm.start_date || !newTerm.end_date) {
+        setErrorMessage('School year, semester, start date, and end date are required');
         return;
       }
 
       const createdTerm = await schoolTermService.create(newTerm);
       setSchoolTerms([...schoolTerms, createdTerm]);
-      setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
+      setNewTerm({ school_year: '', semester: '', start_date: '', end_date: '', is_active: false });
       setShowAddTerm(false);
       setSuccessMessage('School term added successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -160,8 +160,8 @@ const SchoolConfiguration = () => {
 
   const handleUpdateTerm = async () => {
     try {
-      if (!newTerm.name || !newTerm.term_start || !newTerm.term_end) {
-        setErrorMessage('Name, start date, and end date are required');
+      if (!newTerm.school_year || !newTerm.semester || !newTerm.start_date || !newTerm.end_date) {
+        setErrorMessage('School year, semester, start date, and end date are required');
         return;
       }
 
@@ -169,7 +169,7 @@ const SchoolConfiguration = () => {
       setSchoolTerms(schoolTerms.map(term => 
         term.term_id === editingTerm.term_id ? updatedTerm : term
       ));
-      setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
+      setNewTerm({ school_year: '', semester: '', start_date: '', end_date: '', is_active: false });
       setEditingTerm(null);
       setShowAddTerm(false);
       setSuccessMessage('School term updated successfully');
@@ -212,7 +212,7 @@ const SchoolConfiguration = () => {
     setEditingDepartment(null);
     setEditingTerm(null);
     setNewDepartment({ name: '', department_abbreviation: '' });
-    setNewTerm({ name: '', term_start: '', term_end: '', status: 'active' });
+    setNewTerm({ school_year: '', semester: '', start_date: '', end_date: '', is_active: false });
     setShowAddDepartment(false);
     setShowAddTerm(false);
   };
@@ -221,10 +221,10 @@ const SchoolConfiguration = () => {
   const handleDateSelect = (date) => {
     const formattedDate = date.toISOString().split('T')[0];
     if (showTermStartCalendar) {
-      setNewTerm({ ...newTerm, term_start: formattedDate });
+      setNewTerm({ ...newTerm, start_date: formattedDate });
       setShowTermStartCalendar(false);
     } else if (showTermEndCalendar) {
-      setNewTerm({ ...newTerm, term_end: formattedDate });
+      setNewTerm({ ...newTerm, end_date: formattedDate });
       setShowTermEndCalendar(false);
     }
   };
@@ -243,9 +243,9 @@ const SchoolConfiguration = () => {
 
   const clearDate = (field) => {
     if (field === 'start') {
-      setNewTerm({ ...newTerm, term_start: '' });
+      setNewTerm({ ...newTerm, start_date: '' });
     } else {
-      setNewTerm({ ...newTerm, term_end: '' });
+              setNewTerm({ ...newTerm, end_date: '' });
     }
   };
 
@@ -482,15 +482,31 @@ const SchoolConfiguration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term Name *
+                      School Year *
                     </label>
                     <input
                       type="text"
-                      value={newTerm.name}
-                      onChange={(e) => setNewTerm({ ...newTerm, name: e.target.value })}
+                      value={newTerm.school_year}
+                      onChange={(e) => setNewTerm({ ...newTerm, school_year: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Enter term name"
+                      placeholder="e.g., 2024-2025"
                     />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Semester *
+                    </label>
+                    <select
+                      value={newTerm.semester}
+                      onChange={(e) => setNewTerm({ ...newTerm, semester: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="">Select semester</option>
+                      <option value="1st">1st Semester</option>
+                      <option value="2nd">2nd Semester</option>
+                      <option value="Summer">Summer</option>
+                    </select>
                   </div>
                   
                   <div className="relative">
@@ -500,8 +516,8 @@ const SchoolConfiguration = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        value={newTerm.term_start}
-                        onChange={(e) => setNewTerm({ ...newTerm, term_start: e.target.value })}
+                        value={newTerm.start_date}
+                        onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
                         placeholder="Select start date"
                         readOnly
@@ -513,7 +529,7 @@ const SchoolConfiguration = () => {
                       >
                         <Calendar className="h-5 w-5 text-gray-400" />
                       </button>
-                      {newTerm.term_start && (
+                      {newTerm.start_date && (
                         <button
                           type="button"
                           onClick={() => clearDate('start')}
@@ -532,8 +548,8 @@ const SchoolConfiguration = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        value={newTerm.term_end}
-                        onChange={(e) => setNewTerm({ ...newTerm, term_end: e.target.value })}
+                        value={newTerm.end_date}
+                        onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
                         placeholder="Select end date"
                         readOnly
@@ -543,9 +559,9 @@ const SchoolConfiguration = () => {
                         onClick={() => setShowTermEndCalendar(!showTermEndCalendar)}
                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                       >
-                        <Calendar className="h-5 w-5 text-gray-400" />
+                        <Calendar className="h-5 w-5 text-gray-500" />
                       </button>
-                      {newTerm.term_end && (
+                      {newTerm.end_date && (
                         <button
                           type="button"
                           onClick={() => clearDate('end')}
@@ -559,15 +575,15 @@ const SchoolConfiguration = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
+                      Active Status
                     </label>
                     <select
-                      value={newTerm.status}
-                      onChange={(e) => setNewTerm({ ...newTerm, status: e.target.value })}
+                      value={newTerm.is_active ? 'true' : 'false'}
+                      onChange={(e) => setNewTerm({ ...newTerm, is_active: e.target.value === 'true' })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
+                      <option value="false">Inactive</option>
+                      <option value="true">Active</option>
                     </select>
                   </div>
                 </div>
@@ -597,7 +613,10 @@ const SchoolConfiguration = () => {
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Term Name
+                          School Year
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Semester
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Start Date
@@ -606,10 +625,7 @@ const SchoolConfiguration = () => {
                           End Date
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Created
+                          Active
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
@@ -620,27 +636,27 @@ const SchoolConfiguration = () => {
                       {schoolTerms.map((term) => (
                         <tr key={term.term_id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{term.name}</div>
+                            <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.term_start).toLocaleDateString()}
+                            {term.semester}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.term_end).toLocaleDateString()}
+                            {new Date(term.start_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(term.end_date).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                term.status === 'active'
+                                term.is_active
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
                               }`}
                             >
-                              {term.status}
+                              {term.is_active ? 'Active' : 'Inactive'}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(term.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
@@ -653,10 +669,10 @@ const SchoolConfiguration = () => {
                               <button
                                 onClick={() => handleToggleTermStatus(term.term_id)}
                                 className={`${
-                                  term.status === 'active' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'
+                                  term.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'
                                 }`}
                               >
-                                {term.status === 'active' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {term.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </button>
                               <button
                                 onClick={() => handleDeleteTerm(term.term_id)}
@@ -722,8 +738,8 @@ const SchoolConfiguration = () => {
                 {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate() }, (_, i) => {
                   const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
                   const isToday = date.toDateString() === new Date().toDateString();
-                  const isSelected = (showTermStartCalendar && newTerm.term_start === date.toISOString().split('T')[0]) ||
-                                   (showTermEndCalendar && newTerm.term_end === date.toISOString().split('T')[0]);
+                    const isSelected = (showTermStartCalendar && newTerm.start_date === date.toISOString().split('T')[0]) ||
+                    (showTermEndCalendar && newTerm.end_date === date.toISOString().split('T')[0]);
                   
                   return (
                     <button
