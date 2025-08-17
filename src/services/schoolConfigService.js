@@ -5,13 +5,28 @@ export const departmentService = {
   // Get all departments
   async getAll() {
     try {
+      console.log('🔍 [FRONTEND] Fetching departments from:', `${API_BASE_URL}/departments`);
       const response = await fetch(`${API_BASE_URL}/departments`);
+      console.log('📡 [FRONTEND] Response status:', response.status);
+      console.log('📡 [FRONTEND] Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch departments');
+        const errorText = await response.text();
+        console.error('❌ [FRONTEND] Response not ok. Status:', response.status);
+        console.error('❌ [FRONTEND] Error response text:', errorText);
+        throw new Error(`Failed to fetch departments: ${response.status} - ${errorText}`);
       }
-      return await response.json();
+      
+      const data = await response.json();
+      console.log('✅ [FRONTEND] Departments fetched successfully:', data);
+      return data;
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      console.error('❌ [FRONTEND] Error fetching departments:', error);
+      console.error('🔍 [FRONTEND] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       throw error;
     }
   },
@@ -118,13 +133,28 @@ export const schoolTermService = {
   // Get all school terms
   async getAll() {
     try {
+      console.log('🔍 [FRONTEND] Fetching school terms from:', `${API_BASE_URL}/school-terms`);
       const response = await fetch(`${API_BASE_URL}/school-terms`);
+      console.log('📡 [FRONTEND] Response status:', response.status);
+      console.log('📡 [FRONTEND] Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch school terms');
+        const errorText = await response.text();
+        console.error('❌ [FRONTEND] Response not ok. Status:', response.status);
+        console.error('❌ [FRONTEND] Error response text:', errorText);
+        throw new Error(`Failed to fetch school terms: ${response.status} - ${errorText}`);
       }
-      return await response.json();
+      
+      const data = await response.json();
+      console.log('✅ [FRONTEND] School terms fetched successfully:', data);
+      return data;
     } catch (error) {
-      console.error('Error fetching school terms:', error);
+      console.error('❌ [FRONTEND] Error fetching school terms:', error);
+      console.error('🔍 [FRONTEND] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       throw error;
     }
   },

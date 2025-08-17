@@ -1,7 +1,13 @@
 import express from 'express';
-import { query } from '../../src/config/database.js';
+import { query } from '../../../src/config/database.js';
 
 const router = express.Router();
+
+// Test endpoint to verify API is working
+router.get('/test', (req, res) => {
+  console.log('🧪 [SCHOOL TERMS API] Test endpoint hit - API is working');
+  res.json({ message: 'School Terms API is working!', timestamp: new Date().toISOString() });
+});
 
 // GET all school terms
 router.get('/', async (req, res) => {
