@@ -413,37 +413,33 @@ const SchoolConfiguration = () => {
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out">
 
           {/* Tabs */}
-          <div className="absolute top-0 right-0 z-40 bg-white transition-all duration-500 ease-in-out left-0 shadow-sm">
+          <div className="absolute top-0 right-0 z-40 bg-transparent transition-all duration-500 ease-in-out left-0">
             <div className="w-full border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => setActiveTab('departments')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'departments'
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-5 w-5" />
-                    <span>Departments</span>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab('terms')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'terms'
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <GraduationCap className="h-5 w-5" />
-                    <span>School Terms</span>
-                  </div>
-                </button>
-              </nav>
+              <div className="px-8">
+                <nav className="flex space-x-8">
+                  <button
+                    onClick={() => setActiveTab('departments')}
+                    className={`py-4 px-4 border-b-2 font-medium text-sm rounded-t-lg ${
+                      activeTab === 'departments'
+                        ? 'border-primary-600 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Departments
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('terms')}
+                    className={`py-4 px-4 border-b-2 font-medium text-sm rounded-t-lg ${
+                      activeTab === 'terms'
+                        ? 'border-primary-600 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    School Terms
+                  </button>
+                </nav>
+              </div>
             </div>
           </div>
 
