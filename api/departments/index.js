@@ -94,10 +94,10 @@ router.post('/', async (req, res) => {
     console.log('📡 [DEPARTMENTS API] Executing INSERT query...');
     // Insert new department
     const result = await query(
-      `INSERT INTO departments (name, department_abbreviation, status, created_at, updated_at) 
-       VALUES ($1, $2, $3, NOW(), NOW()) 
+      `INSERT INTO departments (name, department_abbreviation) 
+       VALUES ($1, $2) 
        RETURNING *`,
-      [name, department_abbreviation, status]
+      [name, department_abbreviation]
     );
     
     console.log(`✅ [DEPARTMENTS API] Department created successfully:`, result.rows[0]);
@@ -149,10 +149,10 @@ router.put('/:id', async (req, res) => {
     // Update department
     const result = await query(
       `UPDATE departments 
-       SET name = $1, department_abbreviation = $2, status = $3, updated_at = NOW() 
-       WHERE department_id = $4 
+       SET name = $1, department_abbreviation = $2 
+       WHERE department_id = $3 
        RETURNING *`,
-      [name, department_abbreviation, status, id]
+      [name, department_abbreviation, id]
     );
     
     if (result.rows.length === 0) {
@@ -210,46 +210,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PATCH toggle department status
+// PATCH toggle department status - DISABLED (status column not in schema)
 router.patch('/:id/toggle-status', async (req, res) => {
-  const { id } = req.params;
-  console.log(`🔍 [DEPARTMENTS API] PATCH /${id}/toggle-status - Toggling department status`);
-  
-  try {
-    // Get current status
-    const currentDept = await query(
-      'SELECT status FROM departments WHERE department_id = $1',
-      [id]
-    );
-    
-    if (currentDept.rows.length === 0) {
-      console.log(`⚠️ [DEPARTMENTS API] Department with ID ${id} not found for status toggle`);
-      return res.status(404).json({ error: 'Department not found' });
-    }
-    
-    const newStatus = currentDept.rows[0].status === 'active' ? 'inactive' : 'active';
-    console.log(`🔄 [DEPARTMENTS API] Toggling status from ${currentDept.rows[0].status} to ${newStatus}`);
-    
-    // Update status
-    const result = await query(
-      `UPDATE departments 
-       SET status = $1, updated_at = NOW() 
-       WHERE department_id = $2 
-       RETURNING *`,
-      [newStatus, id]
-    );
-    
-    console.log(`✅ [DEPARTMENTS API] Department status updated successfully:`, result.rows[0]);
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error(`❌ [DEPARTMENTS API] Error toggling department status ${id}:`, error);
-    console.error('🔍 [DEPARTMENTS API] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
-    res.status(500).json({ error: 'Failed to toggle department status' });
-  }
+  res.status(501).json({ error: 'Status toggle not supported - status column not in database schema' });
 });
 
 export default router;
