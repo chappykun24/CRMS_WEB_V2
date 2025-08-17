@@ -1,19 +1,16 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
+import { useSidebar } from '../contexts/SidebarContext'
 
 const DashboardLayout = ({ children }) => {
-  const [sidebarExpanded, setSidebarExpanded] = useState(false)
-
-  const handleSidebarToggle = () => {
-    setSidebarExpanded(!sidebarExpanded)
-  }
+  const { sidebarExpanded, toggleSidebar } = useSidebar()
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header - Fixed at top */}
       <Header 
-        onSidebarToggle={handleSidebarToggle}
+        onSidebarToggle={toggleSidebar}
         sidebarExpanded={sidebarExpanded}
       />
       
@@ -25,7 +22,7 @@ const DashboardLayout = ({ children }) => {
         {/* Sidebar - Fixed at left side */}
         <Sidebar 
           isExpanded={sidebarExpanded} 
-          onToggle={handleSidebarToggle} 
+          onToggle={toggleSidebar} 
         />
         
         {/* Main Content Area - Add left margin for fixed sidebar */}

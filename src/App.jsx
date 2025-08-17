@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { UserProvider } from './contexts/UserContext'
+import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
@@ -54,9 +55,11 @@ function App() {
                 path="/dashboard/*" 
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Dashboard />
-                    </DashboardLayout>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <Dashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />

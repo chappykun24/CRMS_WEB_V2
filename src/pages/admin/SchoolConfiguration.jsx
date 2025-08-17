@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Building, GraduationCap } from 'lucide-react';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 const SchoolConfiguration = () => {
+  const { sidebarExpanded } = useSidebar();
   const [activeTab, setActiveTab] = useState(() => {
     // Get the active tab from localStorage or default to departments
     return localStorage.getItem('schoolConfigActiveTab') || 'departments'
@@ -265,207 +267,208 @@ const SchoolConfiguration = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <>
+      <style>
+        {`
+          html, body {
+            overflow: hidden !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        `}
+      </style>
+      <div className="relative w-full h-screen bg-white border-4 border-red-500 overflow-hidden">
+      <div className={`w-full pr-2 pl-2 transition-all duration-500 ease-in-out`}>
         
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="mb-3 p-2 bg-green-50 border-4 border-green-500 rounded-lg">
             <p className="text-green-800">{successMessage}</p>
           </div>
         )}
         
         {errorMessage && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-3 p-2 bg-red-50 border-4 border-red-500 rounded-lg">
             <p className="text-red-800">{errorMessage}</p>
           </div>
         )}
 
         {/* Tabs */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('departments')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'departments'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Building className="h-5 w-5" />
-                  <span>Departments</span>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setActiveTab('terms')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'terms'
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <GraduationCap className="h-5 w-5" />
-                  <span>School Terms</span>
-                </div>
-              </button>
-            </nav>
+        <div className={`absolute top-0 right-0 z-30 bg-white transition-all duration-500 ease-in-out border-4 border-orange-500 left-0`}>
+          <div className="w-full border-4 border-purple-500">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'departments'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Building className="h-5 w-5" />
+                <span>Departments</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('terms')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'terms'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <GraduationCap className="h-5 w-5" />
+                <span>School Terms</span>
+              </div>
+            </button>
+          </nav>
           </div>
         </div>
 
-        {/* Tab Content */}
+                {/* Tab Content */}
+        <div className={`mt-16 overflow-y-auto transition-all duration-500 ease-in-out border-4 border-green-500`} style={{ height: 'calc(100vh - 200px)' }}>
         {activeTab === 'departments' && (
-          <div>
-            {/* Departments Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center space-x-3">
-                <Building className="h-8 w-8 text-primary-600" />
-                <h2 className="text-2xl font-bold text-gray-900">Departments</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4">
+            {/* List Container - Left Side */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow-sm p-4 h-full min-h-[600px]">
+                {/* Departments Table */}
+                {departments.length > 0 ? (
+                  <div className="mt-4 bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="overflow-y-auto max-h-96">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Department Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Abbreviation
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {departments.map((dept) => (
+                            <tr key={dept.department_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">{dept.name}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{dept.department_abbreviation}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleEditDepartment(dept)}
+                                    className="text-primary-600 hover:text-primary-900"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDepartment(dept.department_id)}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center py-8">
+                      <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
+                      <p className="text-gray-500">Get started by adding your first department to the system.</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              <button
-                onClick={() => setShowAddDepartment(true)}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Add Department</span>
-              </button>
             </div>
 
-            {/* Add/Edit Department Form */}
-            {showAddDepartment && (
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {editingDepartment ? 'Edit Department' : 'Add New Department'}
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Department Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newDepartment.name}
-                      onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Enter department name"
-                    />
+            {/* Add Functions Container - Right Side */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-4 h-full min-h-[600px]">
+                {/* Add/Edit Department Form */}
+                <div className="mt-4">
+                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 text-left">
+                      {editingDepartment ? 'Edit Department' : 'Add New Department'}
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Department Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newDepartment.name}
+                          onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Enter department name"
+                        />
+                      </div>
+                       
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Abbreviation *
+                        </label>
+                        <input
+                          type="text"
+                          value={newDepartment.department_abbreviation}
+                          onChange={(e) => setNewDepartment({ ...newDepartment, department_abbreviation: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Enter abbreviation"
+                          maxLength="10"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-3 mt-4">
+                      <button
+                        onClick={cancelEdit}
+                        className="flex-1 px-3 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={editingDepartment ? handleUpdateDepartment : handleAddDepartment}
+                        className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                      >
+                        {editingDepartment ? 'Update' : 'Add'}
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Abbreviation *
-                    </label>
-                    <input
-                      type="text"
-                      value={newDepartment.department_abbreviation}
-                      onChange={(e) => setNewDepartment({ ...newDepartment, department_abbreviation: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Enter abbreviation"
-                      maxLength="10"
-                    />
-                  </div>
-                  
-
-                </div>
-                
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={cancelEdit}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={editingDepartment ? handleUpdateDepartment : handleAddDepartment}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    {editingDepartment ? 'Update' : 'Add'} Department
-                  </button>
                 </div>
               </div>
-            )}
-
-            {/* Departments Table */}
-            {departments.length > 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-y-auto max-h-96">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Department Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Abbreviation
-                        </th>
-
-
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {departments.map((dept) => (
-                        <tr key={dept.department_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{dept.name}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{dept.department_abbreviation}</div>
-                          </td>
-
-
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleEditDepartment(dept)}
-                                className="text-primary-600 hover:text-primary-900"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-
-                              <button
-                                onClick={() => handleDeleteDepartment(dept.department_id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Building className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
-                <p className="text-gray-500 mb-6">Get started by adding your first department to the system.</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
         {activeTab === 'terms' && (
-          <div>
+          <div className="border-4 border-red-500 px-4">
             {/* School Terms Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center space-x-3">
+            <div className="flex justify-between items-center mb-6 border-4 border-blue-500">
+              <div className="flex items-center space-x-3 border-4 border-green-500">
                 <GraduationCap className="h-8 w-8 text-primary-600" />
                 <h2 className="text-2xl font-bold text-gray-900">School Terms</h2>
               </div>
               
               <button
                 onClick={() => setShowAddTerm(true)}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2 border-4 border-orange-500"
               >
                 <Plus className="h-5 w-5" />
                 <span>Add Term</span>
@@ -474,13 +477,13 @@ const SchoolConfiguration = () => {
 
             {/* Add/Edit Term Form */}
             {showAddTerm && (
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+              <div className="bg-white p-6 rounded-lg border-4 border-green-500 shadow-sm mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   {editingTerm ? 'Edit School Term' : 'Add New School Term'}
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-4 border-purple-500">
+                  <div className="border-4 border-blue-500">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       School Year *
                     </label>
@@ -493,7 +496,7 @@ const SchoolConfiguration = () => {
                     />
                   </div>
                   
-                  <div>
+                  <div className="border-4 border-blue-500">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Semester *
                     </label>
@@ -509,7 +512,7 @@ const SchoolConfiguration = () => {
                     </select>
                   </div>
                   
-                  <div className="relative">
+                  <div className="relative border-4 border-blue-500">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Term Start *
                     </label>
@@ -541,7 +544,7 @@ const SchoolConfiguration = () => {
                     </div>
                   </div>
                   
-                  <div className="relative">
+                  <div className="relative border-4 border-blue-500">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Term End *
                     </label>
@@ -573,7 +576,7 @@ const SchoolConfiguration = () => {
                     </div>
                   </div>
                   
-                  <div>
+                  <div className="border-4 border-blue-500">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Active Status
                     </label>
@@ -588,7 +591,7 @@ const SchoolConfiguration = () => {
                   </div>
                 </div>
                 
-                <div className="flex justify-end space-x-3 mt-6">
+                <div className="flex justify-end space-x-3 mt-6 border-4 border-orange-500">
                   <button
                     onClick={cancelEdit}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -607,8 +610,8 @@ const SchoolConfiguration = () => {
 
             {/* School Terms Table */}
             {schoolTerms.length > 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-y-auto max-h-96">
+              <div className="bg-white rounded-lg border-4 border-purple-500 shadow-sm overflow-hidden">
+                <div className="overflow-y-auto max-h-96 border-4 border-red-500">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
@@ -689,20 +692,24 @@ const SchoolConfiguration = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-12">
-                <GraduationCap className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
-                <p className="text-gray-500 mb-6">Get started by adding your first school term to the system.</p>
+              <div className="flex-1 flex items-center justify-center border-4 border-blue-500">
+                <div className="text-center py-8 border-4 border-green-500">
+                  <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
+                  <p className="text-gray-500">Get started by adding your first school term to the system.</p>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Custom Calendar Component */}
-        {(showTermStartCalendar || showTermEndCalendar) && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
+                 </div>
+
+         {/* Custom Calendar Component */}
+         {(showTermStartCalendar || showTermEndCalendar) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 border-4 border-red-500">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 border-4 border-green-500">
+              <div className="flex items-center justify-between mb-4 border-4 border-blue-500">
                 <button
                   onClick={goToPreviousMonth}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -726,7 +733,7 @@ const SchoolConfiguration = () => {
                 </button>
               </div>
               
-              <div className="grid grid-cols-7 gap-1 mb-4">
+              <div className="grid grid-cols-7 gap-1 mb-4 border-4 border-purple-500">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                   <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
                     {day}
@@ -734,7 +741,7 @@ const SchoolConfiguration = () => {
                 ))}
               </div>
               
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1 border-4 border-orange-500">
                 {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate() }, (_, i) => {
                   const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
                   const isToday = date.toDateString() === new Date().toDateString();
@@ -757,7 +764,7 @@ const SchoolConfiguration = () => {
                 })}
               </div>
               
-              <div className="flex justify-between mt-4">
+              <div className="flex justify-between mt-4 border-4 border-blue-500">
                 <button
                   onClick={goToToday}
                   className="px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg"
@@ -780,6 +787,7 @@ const SchoolConfiguration = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
