@@ -247,7 +247,7 @@ const SchoolConfiguration = () => {
     if (field === 'start') {
       setNewTerm({ ...newTerm, start_date: '' });
     } else {
-              setNewTerm({ ...newTerm, end_date: '' });
+      setNewTerm({ ...newTerm, end_date: '' });
     }
   };
 
@@ -278,131 +278,129 @@ const SchoolConfiguration = () => {
           }
         `}
       </style>
-      <div className="relative w-full h-screen bg-white border-4 border-red-500 overflow-hidden">
-      <div className={`w-full pr-2 pl-2 transition-all duration-500 ease-in-out`}>
-        
-        {/* Success/Error Messages */}
-        {successMessage && (
-          <div className="mb-3 p-2 bg-green-50 border-4 border-green-500 rounded-lg">
-            <p className="text-green-800">{successMessage}</p>
-          </div>
-        )}
-        
-        {errorMessage && (
-          <div className="mb-3 p-2 bg-red-50 border-4 border-red-500 rounded-lg">
-            <p className="text-red-800">{errorMessage}</p>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className={`absolute top-0 right-0 z-30 bg-white transition-all duration-500 ease-in-out border-4 border-orange-500 left-0`}>
-          <div className="w-full border-4 border-purple-500">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('departments')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'departments'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Building className="h-5 w-5" />
-                <span>Departments</span>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('terms')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'terms'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <GraduationCap className="h-5 w-5" />
-                <span>School Terms</span>
-              </div>
-            </button>
-          </nav>
-          </div>
-        </div>
-
-                {/* Tab Content */}
-        <div className={`mt-16 overflow-y-auto transition-all duration-500 ease-in-out border-4 border-green-500`} style={{ height: 'calc(100vh - 200px)' }}>
-        {activeTab === 'departments' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4">
-            {/* List Container - Left Side */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-sm p-4 h-full min-h-[600px]">
-                {/* Departments Table */}
-                {departments.length > 0 ? (
-                  <div className="mt-4 bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div className="overflow-y-auto max-h-96">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Department Name
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Abbreviation
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {departments.map((dept) => (
-                            <tr key={dept.department_id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">{dept.name}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900">{dept.department_abbreviation}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => handleEditDepartment(dept)}
-                                    className="text-primary-600 hover:text-primary-900"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteDepartment(dept.department_id)}
-                                    className="text-red-600 hover:text-red-900"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center py-8">
-                      <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
-                      <p className="text-gray-500">Get started by adding your first department to the system.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+      <div className={`absolute top-20 bottom-0 bg-white overflow-hidden transition-all duration-500 ease-in-out ${
+          sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+        }`}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out">
+          
+          {/* Success/Error Messages */}
+          {successMessage && (
+            <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800">{successMessage}</p>
             </div>
+          )}
+          
+          {errorMessage && (
+            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">{errorMessage}</p>
+            </div>
+          )}
 
-            {/* Add Functions Container - Right Side */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-4 h-full min-h-[600px]">
-                {/* Add/Edit Department Form */}
-                <div className="mt-4">
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
+          {/* Tabs */}
+          <div className="absolute top-0 right-0 z-30 bg-white transition-all duration-500 ease-in-out left-0">
+            <div className="w-full border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('departments')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'departments'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-5 w-5" />
+                    <span>Departments</span>
+                  </div>
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab('terms')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'terms'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <GraduationCap className="h-5 w-5" />
+                    <span>School Terms</span>
+                  </div>
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="mt-16 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+            {activeTab === 'departments' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 h-full">
+                {/* List Container - Left Side */}
+                <div className="lg:col-span-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
+                  {/* Departments Table */}
+                  {departments.length > 0 ? (
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div className="overflow-y-auto max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Department Name
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Abbreviation
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {departments.map((dept) => (
+                              <tr key={dept.department_id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">{dept.name}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900">{dept.department_abbreviation}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleEditDepartment(dept)}
+                                      className="text-primary-600 hover:text-primary-900"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteDepartment(dept.department_id)}
+                                      className="text-red-600 hover:text-red-900"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center py-8">
+                        <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
+                        <p className="text-gray-500">Get started by adding your first department to the system.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Add Functions Container - Right Side */}
+                <div className="lg:col-span-1">
+                  {/* Add/Edit Department Form */}
+                  <div className="bg-white rounded-lg shadow-sm p-4">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4 text-left">
                       {editingDepartment ? 'Edit Department' : 'Add New Department'}
                     </h4>
@@ -453,340 +451,325 @@ const SchoolConfiguration = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'terms' && (
-          <div className="border-4 border-red-500 px-4">
-            {/* School Terms Header */}
-            <div className="flex justify-between items-center mb-6 border-4 border-blue-500">
-              <div className="flex items-center space-x-3 border-4 border-green-500">
-                <GraduationCap className="h-8 w-8 text-primary-600" />
-                <h2 className="text-2xl font-bold text-gray-900">School Terms</h2>
-              </div>
-              
-              <button
-                onClick={() => setShowAddTerm(true)}
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2 border-4 border-orange-500"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Add Term</span>
-              </button>
-            </div>
-
-            {/* Add/Edit Term Form */}
-            {showAddTerm && (
-              <div className="bg-white p-6 rounded-lg border-4 border-green-500 shadow-sm mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {editingTerm ? 'Edit School Term' : 'Add New School Term'}
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-4 border-purple-500">
-                  <div className="border-4 border-blue-500">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      School Year *
-                    </label>
-                    <input
-                      type="text"
-                      value={newTerm.school_year}
-                      onChange={(e) => setNewTerm({ ...newTerm, school_year: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., 2024-2025"
-                    />
-                  </div>
-                  
-                  <div className="border-4 border-blue-500">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Semester *
-                    </label>
-                    <select
-                      value={newTerm.semester}
-                      onChange={(e) => setNewTerm({ ...newTerm, semester: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="">Select semester</option>
-                      <option value="1st">1st Semester</option>
-                      <option value="2nd">2nd Semester</option>
-                      <option value="Summer">Summer</option>
-                    </select>
-                  </div>
-                  
-                  <div className="relative border-4 border-blue-500">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term Start *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={newTerm.start_date}
-                        onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
-                        placeholder="Select start date"
-                        readOnly
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowTermStartCalendar(!showTermStartCalendar)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      >
-                        <Calendar className="h-5 w-5 text-gray-400" />
-                      </button>
-                      {newTerm.start_date && (
-                        <button
-                          type="button"
-                          onClick={() => clearDate('start')}
-                          className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="relative border-4 border-blue-500">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term End *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={newTerm.end_date}
-                        onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
-                        placeholder="Select end date"
-                        readOnly
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowTermEndCalendar(!showTermEndCalendar)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      >
-                        <Calendar className="h-5 w-5 text-gray-500" />
-                      </button>
-                      {newTerm.end_date && (
-                        <button
-                          type="button"
-                          onClick={() => clearDate('end')}
-                          className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="border-4 border-blue-500">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Active Status
-                    </label>
-                    <select
-                      value={newTerm.is_active ? 'true' : 'false'}
-                      onChange={(e) => setNewTerm({ ...newTerm, is_active: e.target.value === 'true' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="false">Inactive</option>
-                      <option value="true">Active</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end space-x-3 mt-6 border-4 border-orange-500">
-                  <button
-                    onClick={cancelEdit}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={editingTerm ? handleUpdateTerm : handleAddTerm}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    {editingTerm ? 'Update' : 'Add'} Term
-                  </button>
-                </div>
-              </div>
             )}
 
-            {/* School Terms Table */}
-            {schoolTerms.length > 0 ? (
-              <div className="bg-white rounded-lg border-4 border-purple-500 shadow-sm overflow-hidden">
-                <div className="overflow-y-auto max-h-96 border-4 border-red-500">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          School Year
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Semester
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Start Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          End Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Active
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {schoolTerms.map((term) => (
-                        <tr key={term.term_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {term.semester}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.start_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(term.end_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                term.is_active
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}
+            {activeTab === 'terms' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 h-full">
+                {/* List Container - Left Side */}
+                <div className="lg:col-span-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
+                  <div className="bg-white rounded-lg shadow-sm h-full">
+                    {/* School Terms Table */}
+                    {schoolTerms.length > 0 ? (
+                      <div className="overflow-y-auto max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                School Year
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Semester
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Start Date
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                End Date
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Active
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {schoolTerms.map((term) => (
+                              <tr key={term.term_id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {term.semester}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {new Date(term.start_date).toLocaleDateString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {new Date(term.end_date).toLocaleDateString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                      term.is_active
+                                        ? 'bg-gray-100 text-gray-800'
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}
+                                  >
+                                    {term.is_active ? 'Active' : 'Inactive'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex space-x-2">
+                                    <button
+                                      onClick={() => handleEditTerm(term)}
+                                      className="text-primary-600 hover:text-primary-900"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleToggleTermStatus(term.term_id)}
+                                      className="text-gray-600 hover:text-gray-900"
+                                    >
+                                      {term.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteTerm(term.term_id)}
+                                      className="text-red-600 hover:text-red-900"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center py-8">
+                          <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
+                          <p className="text-gray-500">Get started by adding your first school term to the system.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add Functions Container - Right Side */}
+                <div className="lg:col-span-1">
+                  <div className="bg-white rounded-lg shadow-sm h-full">
+                    {/* Add/Edit Term Form */}
+                    <div className="p-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 text-left">
+                        {editingTerm ? 'Edit School Term' : 'Add New School Term'}
+                      </h4>
+                  
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            School Year *
+                          </label>
+                          <input
+                            type="text"
+                            value={newTerm.school_year}
+                            onChange={(e) => setNewTerm({ ...newTerm, school_year: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="e.g., 2024-2025"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Semester *
+                          </label>
+                          <select
+                            value={newTerm.semester}
+                            onChange={(e) => setNewTerm({ ...newTerm, semester: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="">Select semester</option>
+                            <option value="1st">1st Semester</option>
+                            <option value="2nd">2nd Semester</option>
+                            <option value="Summer">Summer</option>
+                          </select>
+                        </div>
+                        
+                        <div className="relative">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Term Start *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={newTerm.start_date}
+                              onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
+                              placeholder="Select start date"
+                              readOnly
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowTermStartCalendar(!showTermStartCalendar)}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
                             >
-                              {term.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                              <Calendar className="h-5 w-5 text-gray-400" />
+                            </button>
+                            {newTerm.start_date && (
                               <button
-                                onClick={() => handleEditTerm(term)}
-                                className="text-primary-600 hover:text-primary-900"
+                                type="button"
+                                onClick={() => clearDate('start')}
+                                className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
                               >
-                                <Edit className="h-4 w-4" />
+                                ×
                               </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="relative">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Term End *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={newTerm.end_date}
+                              onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10"
+                              placeholder="Select end date"
+                              readOnly
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowTermEndCalendar(!showTermEndCalendar)}
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            >
+                              <Calendar className="h-5 w-5 text-gray-500" />
+                            </button>
+                            {newTerm.end_date && (
                               <button
-                                onClick={() => handleToggleTermStatus(term.term_id)}
-                                className={`${
-                                  term.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'
-                                }`}
+                                type="button"
+                                onClick={() => clearDate('end')}
+                                className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
                               >
-                                {term.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                ×
                               </button>
-                              <button
-                                onClick={() => handleDeleteTerm(term.term_id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center border-4 border-blue-500">
-                <div className="text-center py-8 border-4 border-green-500">
-                  <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
-                  <p className="text-gray-500">Get started by adding your first school term to the system.</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Active Status
+                          </label>
+                          <select
+                            value={newTerm.is_active ? 'true' : 'false'}
+                            onChange={(e) => setNewTerm({ ...newTerm, is_active: e.target.value === 'true' })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          >
+                            <option value="false">Inactive</option>
+                            <option value="true">Active</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-3 mt-4">
+                        <button
+                          onClick={cancelEdit}
+                          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={editingTerm ? handleUpdateTerm : handleAddTerm}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        >
+                          {editingTerm ? 'Update' : 'Add'} Term
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
           </div>
-        )}
 
-                 </div>
-
-         {/* Custom Calendar Component */}
-         {(showTermStartCalendar || showTermEndCalendar) && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 border-4 border-red-500">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 border-4 border-green-500">
-              <div className="flex items-center justify-between mb-4 border-4 border-blue-500">
-                <button
-                  onClick={goToPreviousMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
+          {/* Custom Calendar Component */}
+          {(showTermStartCalendar || showTermEndCalendar) && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={goToPreviousMonth}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </h2>
+                  
+                  <button
+                    onClick={goToNextMonth}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
                 
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                </h2>
+                <div className="grid grid-cols-7 gap-1 mb-4">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                      {day}
+                    </div>
+                  ))}
+                </div>
                 
-                <button
-                  onClick={goToNextMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-7 gap-1 mb-4 border-4 border-purple-500">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="grid grid-cols-7 gap-1 border-4 border-orange-500">
-                {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate() }, (_, i) => {
-                  const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
-                  const isToday = date.toDateString() === new Date().toDateString();
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate() }, (_, i) => {
+                    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
+                    const isToday = date.toDateString() === new Date().toDateString();
                     const isSelected = (showTermStartCalendar && newTerm.start_date === date.toISOString().split('T')[0]) ||
                     (showTermEndCalendar && newTerm.end_date === date.toISOString().split('T')[0]);
-                  
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => handleDateSelect(date)}
-                      className={`p-2 text-sm rounded-lg hover:bg-gray-100 ${
-                        isToday ? 'bg-blue-100 text-blue-600 font-semibold' : ''
-                      } ${
-                        isSelected ? 'bg-primary-100 text-primary-600 font-semibold' : ''
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <div className="flex justify-between mt-4 border-4 border-blue-500">
-                <button
-                  onClick={goToToday}
-                  className="px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg"
-                >
-                  Today
-                </button>
+                    
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleDateSelect(date)}
+                        className={`p-2 text-sm rounded-lg hover:bg-gray-100 ${
+                          isToday ? 'bg-gray-100 text-gray-600 font-semibold' : ''
+                        } ${
+                          isSelected ? 'bg-primary-100 text-primary-600 font-semibold' : ''
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
                 
-                <button
-                  onClick={() => {
-                    setShowTermStartCalendar(false);
-                    setShowTermEndCalendar(false);
-                  }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Close
-                </button>
+                <div className="flex justify-between mt-4">
+                  <button
+                    onClick={goToToday}
+                    className="px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg"
+                  >
+                    Today
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowTermStartCalendar(false);
+                      setShowTermEndCalendar(false);
+                    }}
+                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 };
