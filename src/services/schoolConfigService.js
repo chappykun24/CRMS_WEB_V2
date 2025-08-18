@@ -1,6 +1,6 @@
 // Dynamic API base URL that works both locally and in production
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/api'  // In production, use relative path (Vercel will route to backend)
+  ? '/api'  // In production, use relative path (Vercel will route to API functions)
   : 'http://localhost:3001/api';  // In development, use local backend
 
 // Department API calls
@@ -40,7 +40,7 @@ export const departmentService = {
   // Get single department
   async getById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments/${id}`);
+      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch department');
       }
@@ -77,7 +77,7 @@ export const departmentService = {
   // Update department
   async update(id, departmentData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export const departmentService = {
   // Delete department
   async delete(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`, {
         method: 'DELETE',
       });
       
@@ -140,6 +140,9 @@ export const schoolTermService = {
   async getAll() {
     try {
       console.log('🔍 [FRONTEND] Fetching school terms from:', `${API_BASE_URL}/school-terms`);
+      console.log('🌍 [FRONTEND] Environment:', process.env.NODE_ENV);
+      console.log('🔗 [FRONTEND] API Base URL:', API_BASE_URL);
+      
       const response = await fetch(`${API_BASE_URL}/school-terms`);
       console.log('📡 [FRONTEND] Response status:', response.status);
       console.log('📡 [FRONTEND] Response ok:', response.ok);
@@ -168,14 +171,13 @@ export const schoolTermService = {
   // Get single school term
   async getById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`);
+      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch school term');
       }
       return await response.json();
     } catch (error) {
       console.error('Error fetching school term:', error);
-      throw error;
       throw error;
     }
   },
@@ -206,7 +208,7 @@ export const schoolTermService = {
   // Update school term
   async update(id, termData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +231,7 @@ export const schoolTermService = {
   // Delete school term
   async delete(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`, {
         method: 'DELETE',
       });
       
