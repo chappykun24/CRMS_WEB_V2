@@ -55,6 +55,7 @@ export const endpoints = {
   user: (id) => `/users/${id}`,
   userProfile: (id) => `/users/${id}/profile`,
   userApprove: (id) => `/users/${id}/approve`,
+  userReject: (id) => `/users/${id}/reject`,
 
   // Role endpoints
   roles: '/roles',

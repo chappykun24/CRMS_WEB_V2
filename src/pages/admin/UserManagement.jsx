@@ -25,6 +25,19 @@ const UserManagement = () => {
   const [roles, setRoles] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('') // '', 'approved', 'pending'
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [sortOption, setSortOption] = useState('created_desc')
+
+  const formatDateTime = (value) => {
+    if (!value) return '—'
+    try {
+      return new Date(value).toLocaleString()
+    } catch (_) {
+      return String(value)
+    }
+  }
 
   const formatRoleName = (name) => {
     if (!name) return ''
@@ -41,6 +54,10 @@ const UserManagement = () => {
     // Remove role filter when on Faculty Approval tab
     if (activeTab === 'pending' && roleFilter) {
       setRoleFilter('')
+    }
+    // Ensure default status is All when switching tabs
+    if (statusFilter !== '') {
+      setStatusFilter('')
     }
   }, [activeTab])
 
@@ -63,6 +80,7 @@ const UserManagement = () => {
     const r = roles.find((r) => String(r.name).toUpperCase() === 'FACULTY')
     return r ? r.role_id : null
   }, [roles])
+
 
   useEffect(() => {
     const loadRoles = async () => {
@@ -88,9 +106,15 @@ const UserManagement = () => {
   const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase()
     let list = users
-    // Tab constraint
+    // When on Faculty Approval tab, always show only Faculty users
     if (activeTab === 'pending') {
-      list = list.filter(u => !u.is_approved)
+      list = list.filter(u => {
+        const roleName = (u.role_name || '').toString().toUpperCase()
+        const isFacultyByName = roleName === 'FACULTY'
+        const facultyId = facultyRoleId ?? 2
+        const isFacultyById = Number(u.role_id) === Number(facultyId)
+        return isFacultyByName || isFacultyById
+      })
     }
     // Exclude faculty by default on All Users tab
     if (activeTab === 'all') {
@@ -120,14 +144,42 @@ const UserManagement = () => {
         (u.email || '').toLowerCase().includes(q)
       ))
     }
-    return list
-  }, [users, query, activeTab, roleFilter, statusFilter, facultyRoleId])
+    // Sorting
+    const sorted = [...list]
+    switch (sortOption) {
+      case 'created_asc':
+        sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        break
+      case 'name_asc':
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        break
+      case 'name_desc':
+        sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+        break
+      case 'approved_first':
+        sorted.sort((a, b) => Number(b.is_approved) - Number(a.is_approved))
+        break
+      case 'pending_first':
+        sorted.sort((a, b) => Number(a.is_approved) - Number(b.is_approved))
+        break
+      case 'created_desc':
+      default:
+        sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        break
+    }
+    return sorted
+  }, [users, query, activeTab, roleFilter, statusFilter, facultyRoleId, sortOption])
 
   const handleApprove = async (userId) => {
     try {
       setIsApproving(prev => ({ ...prev, [userId]: true }))
       await api.patch(endpoints.userApprove(userId))
       setUsers(prev => prev.map(u => (u.user_id === userId ? { ...u, is_approved: true } : u)))
+      if (selectedUser && selectedUser.user_id === userId) {
+        setSelectedUser(prev => ({ ...prev, is_approved: true }))
+      }
+      setSuccessMessage('User approved successfully')
+      setShowSuccessModal(true)
     } catch (e) {
       setError(e.message || 'Failed to approve user')
     } finally {
@@ -156,17 +208,19 @@ const UserManagement = () => {
         {`
           .tab-button { transition: all 0.2s ease-in-out !important; border-bottom: 2px solid transparent !important; }
           .tab-button.active { border-bottom: 2px solid #dc2626 !important; }
+          .tab-button:focus { outline: none !important; box-shadow: none !important; }
+          .tab-button:focus-visible { outline: none !important; box-shadow: none !important; }
         `}
       </style>
-      <div className={`absolute top-20 bottom-0 bg-white overflow-hidden transition-all duration-500 ease-in-out ${
+      <div className={`absolute top-16 bottom-0 bg-white rounded-tl-lg overflow-hidden transition-all duration-500 ease-in-out ${
           sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-        }`} style={{ marginTop: '20px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '20px' }}>
+        }`} style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
           {/* Tabs */}
           <div className="absolute top-0 right-0 z-40 bg-transparent transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-transparent">
-              <nav className="flex space-x-8 bg-transparent">
+              <nav className="flex space-x-8 bg-transparent border-b border-gray-200">
                 <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
                   All Users
                 </TabButton>
@@ -179,9 +233,9 @@ const UserManagement = () => {
 
           {/* Content */}
           <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+            <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full`}>
               {/* List */}
-              <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
+              <div className={`lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full`}>
                 <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
                   <div className="p-4 border-b border-gray-200 flex items-center gap-3">
                     <div className="relative flex-1">
@@ -217,56 +271,58 @@ const UserManagement = () => {
                       <option value="approved">Approved</option>
                       <option value="pending">Pending</option>
                     </select>
+                    <select
+                      value={sortOption}
+                      onChange={(e) => setSortOption(e.target.value)}
+                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    >
+                      <option value="created_desc">Newest</option>
+                      <option value="created_asc">Oldest</option>
+                      <option value="name_asc">Name A–Z</option>
+                      <option value="name_desc">Name Z–A</option>
+                      <option value="approved_first">Approved First</option>
+                      <option value="pending_first">Pending First</option>
+                    </select>
                   </div>
                   {filteredUsers.length > 0 ? (
                     <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
                             <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                             <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                             <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {filteredUsers.map(u => (
-                            <tr key={u.user_id} className="hover:bg-gray-50">
-                              <td className="px-8 py-6">
+                            <tr
+                              key={u.user_id}
+                              onClick={() => setSelectedUser(u)}
+                              className={`hover:bg-gray-50 cursor-pointer ${selectedUser?.user_id === u.user_id ? 'bg-red-50' : ''}`}
+                            >
+                              <td className="px-6 py-3">
+                                <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
+                                  {u.profile_pic ? (
+                                    <img src={u.profile_pic} alt={`${u.name || 'User'} avatar`} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <span className="text-sm font-semibold text-gray-500">
+                                      {(u.name || u.email || '?').toString().trim().charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-8 py-3">
                                 <div className="text-sm font-medium text-gray-900 break-words">{u.name}</div>
                               </td>
-                              <td className="px-8 py-6">
+                              <td className="px-8 py-3">
                                 <div className="text-sm text-gray-700">{u.email}</div>
                               </td>
-                              <td className="px-8 py-6">
+                              <td className="px-8 py-3">
                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                   {u.is_approved ? 'Approved' : 'Pending'}
                                 </span>
-                              </td>
-                              <td className="px-8 py-6 text-sm font-medium">
-                                <div className="flex space-x-3">
-                                  {!u.is_approved ? (
-                                    <button
-                                      onClick={() => handleApprove(u.user_id)}
-                                      disabled={!!isApproving[u.user_id]}
-                                      className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-gray-100 disabled:opacity-50"
-                                      title="Approve"
-                                    >
-                                      {isApproving[u.user_id] ? (
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
-                                      ) : (
-                                        <ShieldCheck className="h-5 w-5" />
-                                      )}
-                                    </button>
-                                  ) : (
-                                    <button className="text-gray-400 p-1 cursor-not-allowed" title="Already approved">
-                                      <ShieldCheck className="h-5 w-5" />
-                                    </button>
-                                  )}
-                                  <button className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-gray-100" title="Disable">
-                                    <Ban className="h-5 w-5" />
-                                  </button>
-                                </div>
                               </td>
                             </tr>
                           ))}
@@ -289,24 +345,109 @@ const UserManagement = () => {
                 </div>
               </div>
 
-              {/* Side actions (reserved for future: add user, edit) */}
+              {/* Side actions / User details */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 text-left">
-                    {activeTab === 'pending' ? 'Approval Queue' : 'User Actions'}
-                  </h4>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <p>Search and approve faculty accounts. More actions coming soon.</p>
-                    {error && (
-                      <div className="text-red-600 text-sm">{error}</div>
-                    )}
-                  </div>
+                  {selectedUser ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
+                          {selectedUser.profile_pic ? (
+                            <img src={selectedUser.profile_pic} alt={`${selectedUser.name || 'User'} avatar`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-base font-semibold text-gray-500">
+                              {(selectedUser.name || selectedUser.email || '?').toString().trim().charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900">{selectedUser.name || 'Unnamed User'}</h4>
+                          <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                          <p className="text-xs text-gray-500">Role: {formatRoleName(selectedUser.role_name) || selectedUser.role_id || '—'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Status</span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${selectedUser.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {selectedUser.is_approved ? 'Approved' : 'Pending'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">User ID</span>
+                          <span className="text-gray-800">{selectedUser.user_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Created</span>
+                          <span className="text-gray-800">{formatDateTime(selectedUser.created_at)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Updated</span>
+                          <span className="text-gray-800">{formatDateTime(selectedUser.updated_at)}</span>
+                        </div>
+                      </div>
+
+                      {!selectedUser.is_approved && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => handleApprove(selectedUser.user_id)}
+                            disabled={!!isApproving[selectedUser.user_id]}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
+                          >
+                            {isApproving[selectedUser.user_id] ? 'Approving…' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => alert('Reject handler not implemented yet')}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-white text-red-600 border border-red-300 hover:bg-red-50"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+
+                      {error && <div className="text-red-600 text-sm">{error}</div>}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-10">
+                      <Users className="h-12 w-12 text-gray-300 mb-3" />
+                      <p className="text-sm">Select a user from the list to view details here.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Success!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false)
+                  setSuccessMessage('')
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

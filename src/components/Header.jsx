@@ -17,6 +17,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
+  const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
 
   const handleLogout = () => {
     logout()
@@ -40,6 +41,19 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
     return () => {
       window.removeEventListener('schoolConfigTabChanged', handleTabChange)
+    }
+  }, [])
+
+  // Listen for User Management tab changes (All Users / Faculty Approval)
+  useEffect(() => {
+    const handleUserMgmtTabChange = (event) => {
+      setUserMgmtActiveTab(event.detail.activeTab)
+    }
+    window.addEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
+    const initialUserTab = localStorage.getItem('userMgmtActiveTab') || 'all'
+    setUserMgmtActiveTab(initialUserTab)
+    return () => {
+      window.removeEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
     }
   }, [])
 
@@ -72,17 +86,20 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         subtitle: 'Overview',
         path: '/dashboard'
       }
-    } else if (path === '/dashboard/users') {
-      return { 
-        title: 'User Management', 
-        subtitle: 'Manage system users',
+    } else if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
+      // Show which tab is active: All Users or Faculty Approval
+      const subtitle = userMgmtActiveTab === 'pending' ? 'Faculty Approval' : 'All Users'
+      return {
+        title: 'User Management',
+        subtitle,
         path: '/dashboard/users'
       }
-    } else if (path === '/dashboard/faculty-approval') {
-      return { 
-        title: 'Faculty Approval', 
-        subtitle: 'Review faculty applications',
-        path: '/dashboard/faculty-approval'
+    } else if (path.startsWith('/dashboard/users/')) {
+      // In case we introduce nested routes under user management later
+      return {
+        title: 'User Management',
+        subtitle: 'Manage system users',
+        path: '/dashboard/users'
       }
     } else if (path === '/dashboard/school-config') {
       // Use the state value instead of reading from localStorage

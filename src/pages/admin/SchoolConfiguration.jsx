@@ -493,15 +493,15 @@ const SchoolConfiguration = () => {
           }
         `}
       </style>
-      <div className={`absolute top-20 bottom-0 bg-white overflow-hidden transition-all duration-500 ease-in-out ${
+      <div className={`absolute top-16 bottom-0 bg-white rounded-tl-lg overflow-hidden transition-all duration-500 ease-in-out ${
           sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-        }`} style={{ marginTop: '20px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '20px' }}>
+        }`} style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
           {/* Tabs */}
           <div className="absolute top-0 right-0 z-40 bg-transparent transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-transparent">
-              <nav className="flex space-x-8 bg-transparent">
+              <nav className="flex space-x-8 bg-transparent border-b border-gray-200">
                                   <button
                     onClick={() => setActiveTab('departments')}
                     className={`tab-button py-4 px-4 font-medium text-sm ${

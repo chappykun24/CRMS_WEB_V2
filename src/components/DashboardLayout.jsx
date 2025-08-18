@@ -14,8 +14,8 @@ const DashboardLayout = ({ children }) => {
         sidebarExpanded={sidebarExpanded}
       />
       
-      {/* Header spacer to account for fixed header */}
-      <div className="header-spacer" style={{ height: '88px' }}></div>
+      {/* Header spacer to account for fixed header (match h-16 = 64px) */}
+      <div className="header-spacer" style={{ height: '64px' }}></div>
       
       {/* Main Content Area with Sidebar and Content */}
       <div className="flex flex-1 min-w-0">
@@ -30,7 +30,7 @@ const DashboardLayout = ({ children }) => {
           sidebarExpanded ? 'ml-64' : 'ml-20'
         }`}>
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-4 md:p-6 bg-white rounded-lg">
+          <main className="flex-1 overflow-auto p-3 md:p-5 bg-white rounded-tl-lg">
             {children}
           </main>
         </div>
