@@ -30,7 +30,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
         return [
           { name: 'Home', icon: Home, href: '/dashboard' },
           { name: 'User Management', icon: Users, href: '/dashboard/users' },
-          { name: 'Faculty Approval', icon: UserCheck, href: '/dashboard/faculty-approval' },
           { name: 'School Configuration', icon: Building, href: '/dashboard/school-config' },
           { name: 'System Settings', icon: Settings, href: '/dashboard/settings' }
         ]

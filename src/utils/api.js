@@ -54,6 +54,11 @@ export const endpoints = {
   users: '/users',
   user: (id) => `/users/${id}`,
   userProfile: (id) => `/users/${id}/profile`,
+  userApprove: (id) => `/users/${id}/approve`,
+
+  // Role endpoints
+  roles: '/roles',
+  role: (id) => `/roles/${id}`,
   
   // Student endpoints
   students: '/students',

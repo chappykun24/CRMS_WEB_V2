@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Building, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Building, GraduationCap, Search } from 'lucide-react';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 import { useSidebar } from '../../contexts/SidebarContext';
 
@@ -45,6 +45,12 @@ const SchoolConfiguration = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
 
+  // Search & Filter states
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const [termQuery, setTermQuery] = useState('');
+  const [termSemester, setTermSemester] = useState(''); // '', '1st', '2nd', 'Summer'
+  const [termActive, setTermActive] = useState(''); // '', 'true', 'false'
+
   // Update localStorage when activeTab changes
   useEffect(() => {
     localStorage.setItem('schoolConfigActiveTab', activeTab)
@@ -77,6 +83,28 @@ const SchoolConfiguration = () => {
       setLoading(false);
     }
   };
+
+  // Derived filtered lists
+  const filteredDepartments = useMemo(() => {
+    const q = departmentQuery.trim().toLowerCase();
+    if (!q) return departments;
+    return departments.filter((dept) =>
+      (dept.name || '').toLowerCase().includes(q) ||
+      (dept.department_abbreviation || '').toLowerCase().includes(q)
+    );
+  }, [departments, departmentQuery]);
+
+  const filteredTerms = useMemo(() => {
+    const q = termQuery.trim().toLowerCase();
+    return schoolTerms.filter((term) => {
+      const matchesQuery = !q ||
+        (term.school_year || '').toLowerCase().includes(q) ||
+        (term.semester || '').toLowerCase().includes(q);
+      const matchesSemester = !termSemester || term.semester === termSemester;
+      const matchesActive = !termActive || String(!!term.is_active) === (termActive === 'true' ? 'true' : 'false');
+      return matchesQuery && matchesSemester && (termActive ? matchesActive : true);
+    });
+  }, [schoolTerms, termQuery, termSemester, termActive]);
 
   // Validation functions
   const validateDepartment = () => {
@@ -506,8 +534,20 @@ const SchoolConfiguration = () => {
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
                   {/* Departments Table */}
-                  {departments.length > 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={departmentQuery}
+                          onChange={(e) => setDepartmentQuery(e.target.value)}
+                          placeholder="Search departments or abbreviations"
+                          className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                        />
+                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                      </div>
+                    </div>
+                    {filteredDepartments.length > 0 ? (
                       <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
@@ -524,7 +564,7 @@ const SchoolConfiguration = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {departments.map((dept) => (
+                            {filteredDepartments.map((dept) => (
                               <tr key={dept.department_id} className="hover:bg-gray-50">
                                 <td className="px-8 py-6">
                                   <div className="text-sm font-medium text-gray-900 break-words">{dept.name}</div>
@@ -553,16 +593,16 @@ const SchoolConfiguration = () => {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center py-8">
-                        <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No departments yet</h3>
-                        <p className="text-gray-500">Get started by adding your first department to the system.</p>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No departments found</h3>
+                          <p className="text-gray-500">Try adjusting your search.</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Add Functions Container - Right Side */}
@@ -655,8 +695,39 @@ const SchoolConfiguration = () => {
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
                   {/* School Terms Table */}
-                  {schoolTerms.length > 0 ? (
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={termQuery}
+                          onChange={(e) => setTermQuery(e.target.value)}
+                          placeholder="Search school year or semester"
+                          className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                        />
+                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                      </div>
+                      <select
+                        value={termSemester}
+                        onChange={(e) => setTermSemester(e.target.value)}
+                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      >
+                        <option value="">All Semesters</option>
+                        <option value="1st">1st Semester</option>
+                        <option value="2nd">2nd Semester</option>
+                        <option value="Summer">Summer</option>
+                      </select>
+                      <select
+                        value={termActive}
+                        onChange={(e) => setTermActive(e.target.value)}
+                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      >
+                        <option value="">All Status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                    </div>
+                    {filteredTerms.length > 0 ? (
                       <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
@@ -682,7 +753,7 @@ const SchoolConfiguration = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {schoolTerms.map((term) => (
+                            {filteredTerms.map((term) => (
                               <tr key={term.term_id} className="hover:bg-gray-50">
                                 <td className="px-8 py-6">
                                   <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
@@ -732,16 +803,16 @@ const SchoolConfiguration = () => {
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center py-8">
-                        <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No school terms yet</h3>
-                        <p className="text-gray-500">Get started by adding your first school term to the system.</p>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No terms found</h3>
+                          <p className="text-gray-500">Adjust your search or filters.</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Add Functions Container - Right Side */}

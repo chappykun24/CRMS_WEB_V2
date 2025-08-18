@@ -31,7 +31,7 @@ const corsOptions = {
       ]
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
@@ -281,8 +281,41 @@ app.post('/api/auth/register', upload.single('profilePic'), async (req, res) => 
 // Get users endpoint
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users');
+    const result = await pool.query(`
+      SELECT u.*, r.name AS role_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      ORDER BY u.created_at DESC
+    `);
     res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get roles endpoint
+app.get('/api/roles', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT role_id, name FROM roles ORDER BY name ASC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve user endpoint
+app.patch('/api/users/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Approve user and insert approval record
+    const approveQuery = 'UPDATE users SET is_approved = TRUE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 RETURNING user_id, is_approved';
+    const result = await pool.query(approveQuery, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const insertApproval = 'INSERT INTO user_approvals (user_id, approval_note) VALUES ($1, $2)';
+    await pool.query(insertApproval, [id, 'Approved by admin']);
+    res.json({ success: true, userId: id, isApproved: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
