@@ -1,4 +1,5 @@
-import { query } from '../../src/config/database.js';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 export default async function handler(req, res) {
   console.log('🔍 [DEPARTMENTS API] Request received:', {
@@ -17,6 +18,17 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Create database connection
+  const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
+  
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    max: 1, // Limit connections for serverless
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+
   try {
     if (req.method === 'GET') {
       // Check if this is a request for a specific department
@@ -25,7 +37,7 @@ export default async function handler(req, res) {
         const { id } = req.query;
         console.log(`📡 [DEPARTMENTS API] Fetching department with ID: ${id}`);
         
-        const result = await query('SELECT * FROM departments WHERE department_id = $1', [id]);
+        const result = await pool.query('SELECT * FROM departments WHERE department_id = $1', [id]);
         
         if (result.rows.length === 0) {
           return res.status(404).json({ error: 'Department not found' });
@@ -35,7 +47,7 @@ export default async function handler(req, res) {
       } else {
         // Get all departments
         console.log('📡 [DEPARTMENTS API] Executing database query: SELECT * FROM departments ORDER BY name ASC');
-        const result = await query('SELECT * FROM departments ORDER BY name ASC');
+        const result = await pool.query('SELECT * FROM departments ORDER BY name ASC');
         console.log(`✅ [DEPARTMENTS API] Query successful. Found ${result.rows.length} departments`);
         
         res.status(200).json(result.rows);
@@ -50,7 +62,7 @@ export default async function handler(req, res) {
       }
       
       // Check for duplicates
-      const existingDept = await query(
+      const existingDept = await pool.query(
         'SELECT * FROM departments WHERE name = $1 OR department_abbreviation = $2',
         [name, department_abbreviation]
       );
@@ -60,7 +72,7 @@ export default async function handler(req, res) {
       }
       
       // Insert new department
-      const result = await query(
+      const result = await pool.query(
         `INSERT INTO departments (name, department_abbreviation) VALUES ($1, $2) RETURNING *`,
         [name, department_abbreviation]
       );
@@ -77,7 +89,7 @@ export default async function handler(req, res) {
       }
       
       // Check for duplicates (excluding current department)
-      const existingDept = await query(
+      const existingDept = await pool.query(
         'SELECT * FROM departments WHERE (name = $1 OR department_abbreviation = $2) AND department_id != $3',
         [name, department_abbreviation, id]
       );
@@ -87,7 +99,7 @@ export default async function handler(req, res) {
       }
       
       // Update department
-      const result = await query(
+      const result = await pool.query(
         `UPDATE departments SET name = $1, department_abbreviation = $2 WHERE department_id = $3 RETURNING *`,
         [name, department_abbreviation, id]
       );
@@ -107,14 +119,14 @@ export default async function handler(req, res) {
       }
       
       // Check if department exists
-      const existingDept = await query('SELECT * FROM departments WHERE department_id = $1', [id]);
+      const existingDept = await pool.query('SELECT * FROM departments WHERE department_id = $1', [id]);
       
       if (existingDept.rows.length === 0) {
         return res.status(404).json({ error: 'Department not found' });
       }
       
       // Delete department
-      await query('DELETE FROM departments WHERE department_id = $1', [id]);
+      await pool.query('DELETE FROM departments WHERE department_id = $1', [id]);
       
       res.status(200).json({ message: 'Department deleted successfully' });
       
@@ -126,5 +138,8 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ [DEPARTMENTS API] Error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
+  } finally {
+    // Always close the pool
+    await pool.end();
   }
 }
