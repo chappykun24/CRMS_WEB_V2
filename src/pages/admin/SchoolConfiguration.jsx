@@ -266,9 +266,44 @@ const SchoolConfiguration = () => {
     }
   };
 
+  // Helper function to format date to YYYY-MM-DD
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return ''; // Check if date is valid
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  };
+
+  // Helper function to format semester for display
+  const formatSemesterForDisplay = (semester) => {
+    switch (semester) {
+      case '1st':
+        return '1st Semester';
+      case '2nd':
+        return '2nd Semester';
+      case 'Summer':
+        return 'Summer';
+      default:
+        return semester;
+    }
+  };
+
   const handleEditTerm = (term) => {
     setEditingTerm(term);
-    setNewTerm({ ...term });
+    // Format dates to show only date portion without time
+    setNewTerm({ 
+      ...term, 
+      start_date: formatDateForDisplay(term.start_date),
+      end_date: formatDateForDisplay(term.end_date)
+    });
     setShowAddTerm(true);
   };
 
@@ -653,7 +688,7 @@ const SchoolConfiguration = () => {
                                   <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
                                 </td>
                                 <td className="px-8 py-6">
-                                  <div className="text-sm font-medium text-gray-900">{term.semester}</div>
+                                  <div className="text-sm font-medium text-gray-900">{formatSemesterForDisplay(term.semester)}</div>
                                 </td>
                                 <td className="px-8 py-6">
                                   <div className="text-sm font-medium text-gray-900">
@@ -940,8 +975,8 @@ const SchoolConfiguration = () => {
                     for (let i = 1; i <= daysInMonth; i++) {
                       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
                       const isToday = date.toDateString() === new Date().toDateString();
-                      const isSelected = (showTermStartCalendar && newTerm.start_date === date.toISOString().split('T')[0]) ||
-                        (showTermEndCalendar && newTerm.end_date === date.toISOString().split('T')[0]);
+                      const isSelected = (showTermStartCalendar && newTerm.start_date === formatDateForDisplay(date)) ||
+                        (showTermEndCalendar && newTerm.end_date === formatDateForDisplay(date));
                       
                       dates.push(
                         <button

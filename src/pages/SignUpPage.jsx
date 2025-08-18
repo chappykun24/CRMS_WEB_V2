@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
+import { departmentService, schoolTermService } from '../services/schoolConfigService'
 import { 
   User, 
   Mail, 
@@ -10,7 +11,6 @@ import {
   GraduationCap,
   Camera,
   Image as ImageIcon,
-  Calendar,
   Building,
   Info,
   ArrowLeft
@@ -63,7 +63,12 @@ const CustomCalendar = ({ value, onChange, onClose, isOpen }) => {
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    onChange(date.toISOString().split('T')[0]);
+    // Format date as YYYY-MM-DD without timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    onChange(formattedDate);
     onClose();
   };
 
@@ -79,7 +84,12 @@ const CustomCalendar = ({ value, onChange, onClose, isOpen }) => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDate(today);
-    onChange(today.toISOString().split('T')[0]);
+    // Format date as YYYY-MM-DD without timezone conversion
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    onChange(formattedDate);
     onClose();
   };
 
@@ -189,6 +199,7 @@ const SignUpPage = () => {
     password: '',
     confirmPassword: '',
     department: '',
+    schoolTerm: '',
     termStart: '',
     termEnd: '',
     profilePic: null
@@ -199,20 +210,9 @@ const SignUpPage = () => {
   const [error, setError] = useState('')
   const [facultyPhoto, setFacultyPhoto] = useState(null)
   const [showDeptDropdown, setShowDeptDropdown] = useState(false)
-  const [showTermStartCalendar, setShowTermStartCalendar] = useState(false)
-  const [showTermEndCalendar, setShowTermEndCalendar] = useState(false)
-  const [departments, setDepartments] = useState([
-    { department_id: 1, name: 'Computer Science', department_abbreviation: 'CS' },
-    { department_id: 2, name: 'Information Technology', department_abbreviation: 'IT' },
-    { department_id: 3, name: 'Computer Engineering', department_abbreviation: 'CE' },
-    { department_id: 4, name: 'Electrical Engineering', department_abbreviation: 'EE' },
-    { department_id: 5, name: 'Mechanical Engineering', department_abbreviation: 'ME' },
-    { department_id: 6, name: 'Civil Engineering', department_abbreviation: 'CE' },
-    { department_id: 7, name: 'Business Administration', department_abbreviation: 'BA' },
-    { department_id: 8, name: 'Accountancy', department_abbreviation: 'ACC' },
-    { department_id: 9, name: 'Mathematics', department_abbreviation: 'MATH' },
-    { department_id: 10, name: 'Physics', department_abbreviation: 'PHYS' }
-  ])
+  const [departments, setDepartments] = useState([])
+  const [schoolTerms, setSchoolTerms] = useState([])
+  const [loading, setLoading] = useState(false)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -240,67 +240,80 @@ const SignUpPage = () => {
     setFormData(prev => ({ ...prev, profilePic: null }))
   }
 
-  // Close calendars when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showTermStartCalendar || showTermEndCalendar) {
-        const calendar = event.target.closest('.calendar-container');
-        const input = event.target.closest('input[name="termStart"], input[name="termEnd"]');
-        const calendarIcon = event.target.closest('.calendar-icon');
-        
-        // Close both calendars if clicking outside
-        if (!calendar && !input && !calendarIcon) {
-          setShowTermStartCalendar(false);
-          setShowTermEndCalendar(false);
-        }
-      }
-    };
-
-    const handleEscapeKey = (event) => {
-      if (event.key === 'Escape') {
-        setShowTermStartCalendar(false);
-        setShowTermEndCalendar(false);
-      }
-    };
-
-    // Use mousedown for immediate response
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscapeKey);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [showTermStartCalendar, showTermEndCalendar]);
-
-  // Additional click outside handler for better reliability
-  useEffect(() => {
-    if (showTermStartCalendar || showTermEndCalendar) {
-      const handleBodyClick = () => {
-        // Small delay to ensure proper event handling
-        setTimeout(() => {
-          setShowTermStartCalendar(false);
-          setShowTermEndCalendar(false);
-        }, 100);
-      };
-
-      // Add click listener to body
-      document.body.addEventListener('click', handleBodyClick);
-      
-      return () => {
-        document.body.removeEventListener('click', handleBodyClick);
-      };
+  // Helper function to format date to YYYY-MM-DD
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return ''; // Check if date is valid
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
     }
-  }, [showTermStartCalendar, showTermEndCalendar]);
+  };
+
+  // Helper function to format semester for display
+  const formatSemesterForDisplay = (semester) => {
+    switch (semester) {
+      case '1st':
+        return '1st Semester';
+      case '2nd':
+        return '2nd Semester';
+      case 'Summer':
+        return 'Summer';
+      default:
+        return semester;
+    }
+  };
+
+  // Fetch departments and school terms from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [departmentsData, schoolTermsData] = await Promise.all([
+          departmentService.getAll(),
+          schoolTermService.getAll()
+        ]);
+        setDepartments(departmentsData);
+        setSchoolTerms(schoolTermsData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load academic information. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+
 
   const fillRandomData = () => {
+    // Check if we have the required data
+    if (departments.length === 0 || schoolTerms.filter(term => term.is_active).length === 0) {
+      setError('Cannot fill random data: No departments or active school terms available')
+      return
+    }
+
     const firstNames = ['Juan', 'Maria', 'Jose', 'Ana', 'Pedro', 'Liza', 'Carlos', 'Grace', 'Ramon', 'Cecilia']
     const lastNames = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Torres', 'Gonzales', 'Ramos', 'Lopez', 'Aquino']
     const middleInitials = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
     
     const randomItem = arr => arr[Math.floor(Math.random() * arr.length)]
     const randomEmail = (first, last) => `${first.toLowerCase()}.${last.toLowerCase().replace(/\s/g, '')}${Math.floor(Math.random()*1000)}@university.edu`
-    const randomDept = departments[Math.floor(Math.random() * departments.length)].department_id
+    
+    // Get random department from available departments
+    const randomDept = randomItem(departments).department_id
+    
+    // Get random active school term
+    const activeTerms = schoolTerms.filter(term => term.is_active)
+    const randomTerm = randomItem(activeTerms)
     
     const firstName = randomItem(firstNames)
     const lastName = randomItem(lastNames)
@@ -314,8 +327,9 @@ const SignUpPage = () => {
       password: 'Password123!',
       confirmPassword: 'Password123!',
       department: randomDept,
-      termStart: '2024-01-01',
-      termEnd: '2025-01-01',
+      schoolTerm: randomTerm.term_id,
+      termStart: formatDateForDisplay(randomTerm.start_date),
+      termEnd: formatDateForDisplay(randomTerm.end_date),
       profilePic: null
     })
   }
@@ -349,6 +363,10 @@ const SignUpPage = () => {
       setError('Department is required')
       return false
     }
+    if (!formData.schoolTerm) {
+      setError('School term is required')
+      return false
+    }
 
     return true
   }
@@ -378,6 +396,8 @@ const SignUpPage = () => {
         role: 'FACULTY',
         department: formData.department,
         departmentName: departments.find(d => d.department_id == formData.department)?.name,
+        schoolTerm: formData.schoolTerm,
+        schoolTermName: schoolTerms.find(t => t.term_id == formData.schoolTerm)?.school_year + ' - ' + formatSemesterForDisplay(schoolTerms.find(t => t.term_id == formData.schoolTerm)?.semester),
         termStart: formData.termStart,
         termEnd: formData.termEnd,
         profilePic: facultyPhoto
@@ -546,114 +566,111 @@ const SignUpPage = () => {
               {/* Academic Information */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Department *
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-                        className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
-                      >
-                        <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
-                          {formData.department 
-                            ? departments.find(d => d.department_id == formData.department)?.name
-                            : 'Select department'
-                          }
-                        </span>
-                        <Building className="h-5 w-5 text-gray-400" />
-                      </button>
-                      {showDeptDropdown && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                          {departments.map((dept) => (
-                            <button
-                              key={dept.department_id}
-                              type="button"
-                              onClick={() => {
-                                setFormData({ ...formData, department: dept.department_id })
-                                setShowDeptDropdown(false)
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 transition-colors"
-                            >
-                              <div className="font-medium text-gray-900">{dept.name}</div>
-                              <div className="text-sm text-gray-500">{dept.department_abbreviation}</div>
-                            </button>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                    <span className="ml-3 text-gray-600">Loading academic information...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Department *
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowDeptDropdown(!showDeptDropdown)}
+                          className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                        >
+                          <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
+                            {formData.department 
+                              ? departments.find(d => d.department_id == formData.department)?.name
+                              : 'Select department'
+                            }
+                          </span>
+                          <Building className="h-5 w-5 text-gray-400" />
+                        </button>
+                        {showDeptDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {departments.map((dept) => (
+                              <button
+                                key={dept.department_id}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, department: dept.department_id })
+                                  setShowDeptDropdown(false)
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100 transition-colors"
+                              >
+                                <div className="font-medium text-gray-900">{dept.name}</div>
+                                <div className="text-sm text-gray-500">{dept.department_abbreviation}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        School Term *
+                      </label>
+                      <div className="relative">
+                        <select
+                          name="schoolTerm"
+                          value={formData.schoolTerm || ''}
+                          onChange={(e) => {
+                            const selectedTerm = schoolTerms.find(term => term.term_id == e.target.value);
+                            if (selectedTerm) {
+                              setFormData(prev => ({
+                                ...prev,
+                                schoolTerm: selectedTerm.term_id,
+                                termStart: formatDateForDisplay(selectedTerm.start_date),
+                                termEnd: formatDateForDisplay(selectedTerm.end_date)
+                              }));
+                            }
+                          }}
+                          className="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                          disabled={schoolTerms.filter(term => term.is_active).length === 0}
+                        >
+                          <option value="">{schoolTerms.filter(term => term.is_active).length === 0 ? 'No active school terms available' : 'Select school term'}</option>
+                          {schoolTerms.filter(term => term.is_active).map((term) => (
+                            <option key={term.term_id} value={term.term_id}>
+                              {term.school_year} - {formatSemesterForDisplay(term.semester)}
+                            </option>
                           ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term Start *
-                    </label>
-                    <div className="relative">
-                      <div className="calendar-icon absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <Calendar className="h-5 w-5 text-gray-500" />
+                        </select>
+                        {schoolTerms.filter(term => term.is_active).length === 0 && (
+                          <p className="mt-1 text-sm text-amber-600">
+                            No active school terms are currently available. Please contact an administrator.
+                          </p>
+                        )}
                       </div>
-                      <input
-                        type="text"
-                        name="termStart"
-                        value={formData.termStart}
-                        onChange={handleInputChange}
-                        onClick={() => {
-                          setShowTermEndCalendar(false);
-                          setShowTermStartCalendar(true);
-                        }}
-                        readOnly
-                        className="block w-full pr-10 pl-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 cursor-pointer"
-                        placeholder="dd/mm/yyyy"
-                      />
-                      {showTermStartCalendar && (
-                        <CustomCalendar
-                          value={formData.termStart}
-                          onChange={(date) => {
-                            setFormData(prev => ({ ...prev, termStart: date }));
-                            setShowTermStartCalendar(false);
-                          }}
-                          onClose={() => setShowTermStartCalendar(false)}
-                          isOpen={showTermStartCalendar}
-                        />
-                      )}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term End *
-                    </label>
-                    <div className="relative">
-                      <div className="calendar-icon absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <Calendar className="h-5 w-5 text-gray-500" />
+                )}
+                
+                {/* Display selected term dates */}
+                {formData.schoolTerm && (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Term Start
+                      </label>
+                      <div className="px-3 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                        {formData.termStart}
                       </div>
-                      <input
-                        type="text"
-                        name="termEnd"
-                        value={formData.termEnd}
-                        onChange={handleInputChange}
-                        onClick={() => {
-                          setShowTermStartCalendar(false);
-                          setShowTermEndCalendar(true);
-                        }}
-                        readOnly
-                        className="block w-full pr-10 pl-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 cursor-pointer"
-                        placeholder="dd/mm/yyyy"
-                      />
-                      {showTermEndCalendar && (
-                        <CustomCalendar
-                          value={formData.termEnd}
-                          onChange={(date) => {
-                            setFormData(prev => ({ ...prev, termEnd: date }));
-                            setShowTermEndCalendar(false);
-                          }}
-                          onClose={() => setShowTermEndCalendar(false)}
-                          isOpen={showTermEndCalendar}
-                        />
-                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Term End
+                      </label>
+                      <div className="px-3 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                        {formData.termEnd}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Account Security */}
