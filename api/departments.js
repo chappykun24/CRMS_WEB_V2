@@ -8,6 +8,13 @@ export default async function handler(req, res) {
     timestamp: new Date().toISOString()
   });
 
+  // Debug environment variables
+  console.log('🔍 [DEPARTMENTS API] Environment check:');
+  console.log('NEON_HOST:', process.env.NEON_HOST ? 'SET' : 'NOT SET');
+  console.log('NEON_DATABASE:', process.env.NEON_DATABASE ? 'SET' : 'NOT SET');
+  console.log('NEON_USER:', process.env.NEON_USER ? 'SET' : 'NOT SET');
+  console.log('NEON_PASSWORD:', process.env.NEON_PASSWORD ? 'SET' : 'NOT SET');
+
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -18,8 +25,25 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Check if environment variables are available
+  if (!process.env.NEON_HOST || !process.env.NEON_DATABASE || !process.env.NEON_USER || !process.env.NEON_PASSWORD) {
+    console.error('❌ [DEPARTMENTS API] Missing environment variables');
+    return res.status(500).json({ 
+      error: 'Missing environment variables',
+      missing: {
+        NEON_HOST: !process.env.NEON_HOST,
+        NEON_DATABASE: !process.env.NEON_DATABASE,
+        NEON_USER: !process.env.NEON_USER,
+        NEON_PASSWORD: !process.env.NEON_PASSWORD
+      }
+    });
+  }
+
   // Create database connection
   const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
+  
+  console.log('🔗 [DEPARTMENTS API] Connection string (masked):', 
+    connectionString.replace(process.env.NEON_PASSWORD, '***'));
   
   const pool = new Pool({
     connectionString,
