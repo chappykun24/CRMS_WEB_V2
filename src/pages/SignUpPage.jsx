@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { departmentService, schoolTermService } from '../services/schoolConfigService'
+import { facultyService } from '../services/facultyService'
 import { 
   User, 
   Mail, 
@@ -213,6 +214,8 @@ const SignUpPage = () => {
   const [departments, setDepartments] = useState([])
   const [schoolTerms, setSchoolTerms] = useState([])
   const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -382,34 +385,74 @@ const SignUpPage = () => {
     setError('')
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('📝 [SIGNUP] Starting faculty registration...')
       
-      // Combine name fields
-      const name = [formData.firstName, formData.middleInitial, formData.lastName, formData.suffix].filter(Boolean).join(' ')
-      
-      // Simulate successful registration
-      const user = {
-        id: Date.now(),
-        name,
+      // Prepare faculty data for registration
+      const facultyData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        middleInitial: formData.middleInitial,
+        suffix: formData.suffix,
         email: formData.email,
-        role: 'FACULTY',
+        password: formData.password,
         department: formData.department,
-        departmentName: departments.find(d => d.department_id == formData.department)?.name,
         schoolTerm: formData.schoolTerm,
-        schoolTermName: schoolTerms.find(t => t.term_id == formData.schoolTerm)?.school_year + ' - ' + formatSemesterForDisplay(schoolTerms.find(t => t.term_id == formData.schoolTerm)?.semester),
         termStart: formData.termStart,
         termEnd: formData.termEnd,
         profilePic: facultyPhoto
       }
 
-      // Auto-login after successful registration
-      await login(formData.email, formData.password)
+      console.log('📝 [SIGNUP] Faculty data prepared:', {
+        firstName: facultyData.firstName,
+        lastName: facultyData.lastName,
+        email: facultyData.email,
+        department: facultyData.department,
+        schoolTerm: facultyData.schoolTerm
+      })
+
+      // Register faculty using the API
+      const result = await facultyService.register(facultyData)
       
-      // Navigate to dashboard
-      navigate('/dashboard')
+      console.log('✅ [SIGNUP] Registration successful:', result)
+
+      if (result.success) {
+        // Show success message
+        setSuccessMessage(result.message || 'Faculty registration successful! Your account is pending approval.')
+        setShowSuccessModal(true)
+        
+        // Reset form after successful registration
+        setFormData({
+          lastName: '',
+          firstName: '',
+          middleInitial: '',
+          suffix: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          department: '',
+          schoolTerm: '',
+          termStart: '',
+          termEnd: '',
+          profilePic: null
+        })
+        setFacultyPhoto(null)
+        
+        // Don't auto-login since account needs approval
+        // Instead, redirect to a pending approval page or show message
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Registration successful! Please wait for admin approval before logging in.',
+              type: 'success'
+            }
+          })
+        }, 3000)
+      } else {
+        setError(result.error || 'Registration failed. Please try again.')
+      }
     } catch (err) {
-      setError('Registration failed. Please try again.')
+      console.error('❌ [SIGNUP] Registration error:', err)
+      setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -843,6 +886,34 @@ const SignUpPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Registration Successful!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
