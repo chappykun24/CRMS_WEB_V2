@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = (req, res) => {
   console.log('🔍 [SCHOOL TERMS API] Request received:', {
     method: req.method,
     url: req.url,
@@ -74,4 +74,4 @@ export default async function handler(req, res) {
     console.error('❌ [SCHOOL TERMS API] Error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
-}
+};

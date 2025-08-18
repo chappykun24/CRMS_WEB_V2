@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = (req, res) => {
   if (req.method === 'GET') {
     try {
       console.log('🔍 [HEALTH API] Health check requested');
@@ -21,4 +21,4 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-}
+};
