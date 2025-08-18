@@ -20,31 +20,64 @@ export const facultyService = {
       console.log('🔍 [FRONTEND] Sending request to:', `${API_BASE_URL}/api/auth/register`);
       console.log('🌍 [FRONTEND] Environment:', process.env.NODE_ENV);
       console.log('🔗 [FRONTEND] API Base URL:', API_BASE_URL);
-      
-      // Use FormData for file uploads
-      const formData = new FormData();
-      
-      // Add all text fields
-      Object.keys(facultyData).forEach(key => {
-        if (key === 'profilePic' && facultyData[key] instanceof File) {
-          // Add file with proper field name
-          formData.append('profilePic', facultyData[key]);
-        } else if (key !== 'profilePic') {
-          // Add all other fields as text
-          formData.append(key, facultyData[key]);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      // Helper: convert File to base64 data URL
+      const fileToDataURL = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      let response;
+
+      if (isProduction) {
+        // In production (Vercel), send JSON. Serverless functions don't parse multipart automatically.
+        const payload = { ...facultyData };
+
+        if (payload.profilePic && payload.profilePic instanceof File) {
+          try {
+            payload.profilePic = await fileToDataURL(payload.profilePic);
+            console.log('📸 [FRONTEND] Converted profile picture to base64 for JSON payload');
+          } catch (e) {
+            console.warn('⚠️ [FRONTEND] Failed to convert image to base64. Proceeding without image.', e);
+            payload.profilePic = null;
+          }
+        } else if (!payload.profilePic) {
+          payload.profilePic = null;
         }
-      });
-      
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        body: formData, // Don't set Content-Type header - let browser set it with boundary
-      });
+
+        response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // In development (local server), keep using multipart/form-data for multer
+        const formData = new FormData();
+        Object.keys(facultyData).forEach(key => {
+          if (key === 'profilePic' && facultyData[key] instanceof File) {
+            formData.append('profilePic', facultyData[key]);
+          } else if (facultyData[key] !== undefined && facultyData[key] !== null) {
+            formData.append(key, facultyData[key]);
+          }
+        });
+
+        response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
       
       console.log('📡 [FRONTEND] Response status:', response.status);
       console.log('📡 [FRONTEND] Response ok:', response.ok);
       
       if (!response.ok) {
-        const errorData = await response.json();
+        // Try to parse JSON error; if empty, throw generic
+        let errorData = {};
+        try { errorData = await response.json(); } catch (_) {}
         console.error('❌ [FRONTEND] Response not ok. Status:', response.status);
         console.error('❌ [FRONTEND] Error response:', errorData);
         throw new Error(errorData.error || `Registration failed: ${response.status}`);
