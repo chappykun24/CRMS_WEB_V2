@@ -1,4 +1,7 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+// Dynamic API base URL that works both locally and in production
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? '/api'  // In production, use relative path (Vercel will route to backend)
+  : 'http://localhost:3001/api';  // In development, use local backend
 
 // Department API calls
 export const departmentService = {
@@ -6,6 +9,9 @@ export const departmentService = {
   async getAll() {
     try {
       console.log('🔍 [FRONTEND] Fetching departments from:', `${API_BASE_URL}/departments`);
+      console.log('🌍 [FRONTEND] Environment:', process.env.NODE_ENV);
+      console.log('🔗 [FRONTEND] API Base URL:', API_BASE_URL);
+      
       const response = await fetch(`${API_BASE_URL}/departments`);
       console.log('📡 [FRONTEND] Response status:', response.status);
       console.log('📡 [FRONTEND] Response ok:', response.ok);

@@ -20,9 +20,14 @@ if (process.env.VITE_NEON_HOST) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Enhanced CORS configuration for development
+// Enhanced CORS configuration for both development and production
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        'https://your-domain.vercel.app', // Replace with your actual Vercel domain
+        'https://your-custom-domain.com'  // Replace with your custom domain if any
+      ]
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -39,11 +44,14 @@ app.use((req, res, next) => {
 });
 
 // Database connection
-const connectionString = `postgresql://${process.env.VITE_NEON_USER}:${process.env.VITE_NEON_PASSWORD}@${process.env.VITE_NEON_HOST}:${process.env.VITE_NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE}?sslmode=require`;
+const connectionString = `postgresql://${process.env.VITE_NEON_USER || process.env.NEON_USER}:${process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD}@${process.env.VITE_NEON_HOST || process.env.NEON_HOST}:${process.env.VITE_NEON_PORT || process.env.NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE || process.env.NEON_DATABASE}?sslmode=require`;
+
+console.log('🔗 [SERVER] Database connection string:', connectionString.replace(process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD, '***PASSWORD***'));
+console.log('🌍 [SERVER] Environment:', process.env.NODE_ENV);
 
 const pool = new Pool({
   connectionString,
-  ssl: true,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : true,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

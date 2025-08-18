@@ -8,6 +8,7 @@ dotenv.config(); // Fallback to .env if .env.local doesn't exist
 
 // Debug: Log environment variables
 console.log('Environment variables loaded:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('NEON_HOST:', process.env.NEON_HOST || process.env.VITE_NEON_HOST);
 console.log('NEON_DATABASE:', process.env.NEON_DATABASE || process.env.VITE_NEON_DATABASE);
 console.log('NEON_USER:', process.env.NEON_USER || process.env.VITE_NEON_USER);
@@ -16,11 +17,12 @@ console.log('NEON_PASSWORD:', (process.env.NEON_PASSWORD || process.env.VITE_NEO
 // Neon Database Configuration - Using connection string format
 const connectionString = `postgresql://${process.env.NEON_USER || process.env.VITE_NEON_USER}:${process.env.NEON_PASSWORD || process.env.VITE_NEON_PASSWORD}@${process.env.NEON_HOST || process.env.VITE_NEON_HOST}:${process.env.NEON_PORT || process.env.VITE_NEON_PORT || 5432}/${process.env.NEON_DATABASE || process.env.VITE_NEON_DATABASE}?sslmode=require`;
 
-console.log('Connection string:', connectionString.replace(process.env.VITE_NEON_PASSWORD, '***PASSWORD***'));
+console.log('Connection string:', connectionString.replace(process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD, '***PASSWORD***'));
+console.log('Environment:', process.env.NODE_ENV);
 
 const neonConfig = {
   connectionString,
-  ssl: true,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : true,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 10000, // Increased timeout to 10 seconds
