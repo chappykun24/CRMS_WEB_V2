@@ -19,12 +19,27 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Get all departments
-      console.log('📡 [DEPARTMENTS API] Executing database query: SELECT * FROM departments ORDER BY name ASC');
-      const result = await query('SELECT * FROM departments ORDER BY name ASC');
-      console.log(`✅ [DEPARTMENTS API] Query successful. Found ${result.rows.length} departments`);
-      
-      res.status(200).json(result.rows);
+      // Check if this is a request for a specific department
+      if (req.query.id) {
+        // Get single department by ID
+        const { id } = req.query;
+        console.log(`📡 [DEPARTMENTS API] Fetching department with ID: ${id}`);
+        
+        const result = await query('SELECT * FROM departments WHERE department_id = $1', [id]);
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: 'Department not found' });
+        }
+        
+        res.status(200).json(result.rows[0]);
+      } else {
+        // Get all departments
+        console.log('📡 [DEPARTMENTS API] Executing database query: SELECT * FROM departments ORDER BY name ASC');
+        const result = await query('SELECT * FROM departments ORDER BY name ASC');
+        console.log(`✅ [DEPARTMENTS API] Query successful. Found ${result.rows.length} departments`);
+        
+        res.status(200).json(result.rows);
+      }
       
     } else if (req.method === 'POST') {
       // Create new department
@@ -53,7 +68,7 @@ export default async function handler(req, res) {
       res.status(201).json(result.rows[0]);
       
     } else if (req.method === 'PUT') {
-      // Update department
+      // Update department - ID comes from URL path
       const { id } = req.query;
       const { name, department_abbreviation } = req.body;
       
@@ -84,7 +99,7 @@ export default async function handler(req, res) {
       res.status(200).json(result.rows[0]);
       
     } else if (req.method === 'DELETE') {
-      // Delete department
+      // Delete department - ID comes from URL path
       const { id } = req.query;
       
       if (!id) {

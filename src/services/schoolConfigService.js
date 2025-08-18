@@ -40,7 +40,7 @@ export const departmentService = {
   // Get single department
   async getById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`);
+      const response = await fetch(`${API_BASE_URL}/departments/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch department');
       }
@@ -77,7 +77,7 @@ export const departmentService = {
   // Update department
   async update(id, departmentData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/departments/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export const departmentService = {
   // Delete department
   async delete(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/departments?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/departments/${id}`, {
         method: 'DELETE',
       });
       
@@ -171,7 +171,7 @@ export const schoolTermService = {
   // Get single school term
   async getById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`);
+      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch school term');
       }
@@ -208,7 +208,7 @@ export const schoolTermService = {
   // Update school term
   async update(id, termData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ export const schoolTermService = {
   // Delete school term
   async delete(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/school-terms?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/school-terms/${id}`, {
         method: 'DELETE',
       });
       

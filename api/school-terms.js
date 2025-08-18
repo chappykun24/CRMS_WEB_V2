@@ -19,12 +19,27 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      // Get all school terms
-      console.log('📡 [SCHOOL TERMS API] Executing database query: SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
-      const result = await query('SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
-      console.log(`✅ [SCHOOL TERMS API] Query successful. Found ${result.rows.length} school terms`);
-      
-      res.status(200).json(result.rows);
+      // Check if this is a request for a specific school term
+      if (req.query.id) {
+        // Get single school term by ID
+        const { id } = req.query;
+        console.log(`📡 [SCHOOL TERMS API] Fetching school term with ID: ${id}`);
+        
+        const result = await query('SELECT * FROM school_terms WHERE term_id = $1', [id]);
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: 'School term not found' });
+        }
+        
+        res.status(200).json(result.rows[0]);
+      } else {
+        // Get all school terms
+        console.log('📡 [SCHOOL TERMS API] Executing database query: SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
+        const result = await query('SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
+        console.log(`✅ [SCHOOL TERMS API] Query successful. Found ${result.rows.length} school terms`);
+        
+        res.status(200).json(result.rows);
+      }
       
     } else if (req.method === 'POST') {
       // Create new school term
@@ -53,7 +68,7 @@ export default async function handler(req, res) {
       res.status(201).json(result.rows[0]);
       
     } else if (req.method === 'PUT') {
-      // Update school term
+      // Update school term - ID comes from URL path
       const { id } = req.query;
       const { school_year, semester, start_date, end_date, is_active } = req.body;
       
@@ -84,7 +99,7 @@ export default async function handler(req, res) {
       res.status(200).json(result.rows[0]);
       
     } else if (req.method === 'DELETE') {
-      // Delete school term
+      // Delete school term - ID comes from URL path
       const { id } = req.query;
       
       if (!id) {
