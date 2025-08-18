@@ -1,6 +1,7 @@
-const { Pool } = require('pg');
+import pkg from 'pg';
+const { Pool } = pkg;
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       console.log('🔍 [HEALTH API] Health check requested');
@@ -11,11 +12,12 @@ module.exports = async (req, res) => {
       const pool = new Pool({
         connectionString,
         ssl: { rejectUnauthorized: false },
-        max: 1,
+        max: 1, // Limit connections for serverless
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
       });
       
+      // Test database connection
       const client = await pool.connect();
       const result = await client.query('SELECT NOW()');
       client.release();
@@ -39,4 +41,4 @@ module.exports = async (req, res) => {
     res.setHeader('Allow', ['GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-};
+}

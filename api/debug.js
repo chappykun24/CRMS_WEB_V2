@@ -1,59 +1,71 @@
+import pkg from 'pg';
+const { Pool } = pkg;
+
 export default async function handler(req, res) {
-  console.log('🔍 [DEBUG] Request received:', {
-    method: req.method,
-    url: req.url,
-    headers: req.headers,
-    timestamp: new Date().toISOString()
-  });
-
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    console.log('🔍 [DEBUG] OPTIONS request, sending CORS response');
-    res.status(200).end();
-    return;
-  }
-
   try {
-    console.log('🔍 [DEBUG] Processing request...');
+    // Log environment variables (without sensitive data)
+    console.log('🔍 [DEBUG API] Environment check:');
+    console.log('NEON_HOST:', process.env.NEON_HOST ? 'SET' : 'NOT SET');
+    console.log('NEON_DATABASE:', process.env.NEON_DATABASE ? 'SET' : 'NOT SET');
+    console.log('NEON_USER:', process.env.NEON_USER ? 'SET' : 'NOT SET');
+    console.log('NEON_PASSWORD:', process.env.NEON_PASSWORD ? 'SET' : 'NOT SET');
+    console.log('NEON_PORT:', process.env.NEON_PORT || '5432 (default)');
+
+    // Check if environment variables are available
+    if (!process.env.NEON_HOST || !process.env.NEON_DATABASE || !process.env.NEON_USER || !process.env.NEON_PASSWORD) {
+      return res.status(500).json({
+        error: 'Missing environment variables',
+        missing: {
+          NEON_HOST: !process.env.NEON_HOST,
+          NEON_DATABASE: !process.env.NEON_DATABASE,
+          NEON_USER: !process.env.NEON_USER,
+          NEON_PASSWORD: !process.env.NEON_PASSWORD
+        },
+        message: 'Please set all required Neon database environment variables in Vercel dashboard'
+      });
+    }
+
+    // Try to connect to database
+    const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
     
-    // Check environment variables
-    const envCheck = {
-      NEON_HOST: process.env.VITE_NEON_HOST || 'NOT SET',
-      NEON_DATABASE: process.env.VITE_NEON_DATABASE || 'NOT SET',
-      NEON_USER: process.env.VITE_NEON_USER || 'NOT SET',
-      NEON_PASSWORD: process.env.VITE_NEON_PASSWORD ? 'SET (hidden)' : 'NOT SET',
-      NEON_PORT: process.env.VITE_NEON_PORT || 'NOT SET',
-      NODE_ENV: process.env.NODE_ENV || 'NOT SET'
-    };
+    console.log('🔗 [DEBUG API] Attempting database connection...');
+    
+    const pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
 
-    console.log('🔍 [DEBUG] Environment variables check:', envCheck);
+    const client = await pool.connect();
+    console.log('✅ [DEBUG API] Database connection successful!');
+    
+    // Test a simple query
+    const result = await client.query('SELECT NOW() as current_time, version() as db_version');
+    client.release();
+    await pool.end();
 
-    // Simple response without database connection
-    const response = {
-      success: true,
-      message: 'Debug endpoint working',
-      timestamp: new Date().toISOString(),
-      environment: envCheck,
-      method: req.method,
-      headers: req.headers
-    };
-
-    console.log('🔍 [DEBUG] Sending response:', response);
-    res.status(200).json(response);
-    console.log('🔍 [DEBUG] Response sent successfully');
+    res.status(200).json({
+      status: 'success',
+      message: 'Database connection and query successful!',
+      database: {
+        current_time: result.rows[0].current_time,
+        version: result.rows[0].db_version
+      },
+      environment: process.env.NODE_ENV || 'production'
+    });
 
   } catch (error) {
-    console.error('❌ [DEBUG] Error occurred:', error);
-    const errorResponse = { 
-      success: false, 
-      error: error.message,
-      stack: error.stack 
-    };
-    console.log('❌ [DEBUG] Sending error response:', errorResponse);
-    res.status(500).json(errorResponse);
+    console.error('❌ [DEBUG API] Error:', error);
+    res.status(500).json({
+      error: 'Database connection failed',
+      message: error.message,
+      details: {
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint
+      }
+    });
   }
 }

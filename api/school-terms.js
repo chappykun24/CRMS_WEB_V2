@@ -1,6 +1,7 @@
-const { Pool } = require('pg');
+import pkg from 'pg';
+const { Pool } = pkg;
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   console.log('🔍 [SCHOOL TERMS API] Request received:', {
     method: req.method,
     url: req.url,
@@ -76,7 +77,7 @@ module.exports = async (req, res) => {
         [school_year, semester, start_date, end_date, is_active || false]
       );
       
-      res.status(201).json(result.rows[0]);
+      res.status(200).json(result.rows[0]);
       
     } else if (req.method === 'PUT') {
       // Update school term - ID comes from URL path
@@ -141,4 +142,4 @@ module.exports = async (req, res) => {
     // Always close the pool
     await pool.end();
   }
-};
+}

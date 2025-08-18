@@ -1,6 +1,7 @@
-const { Pool } = require('pg');
+import pkg from 'pg';
+const { Pool } = pkg;
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   console.log('🔍 [DEPARTMENTS API] Request received:', {
     method: req.method,
     url: req.url,
@@ -141,4 +142,4 @@ module.exports = async (req, res) => {
     // Always close the pool
     await pool.end();
   }
-};
+}
