@@ -28,16 +28,16 @@ export default async function handler(req, res) {
     console.log('📝 [VERCEL-REGISTER] Processing registration request...');
     
     // Check if environment variables are set
-    const requiredEnvVars = ['VITE_NEON_HOST', 'VITE_NEON_DATABASE', 'VITE_NEON_USER', 'VITE_NEON_PASSWORD'];
+    const requiredEnvVars = ['NEON_HOST', 'NEON_DATABASE', 'NEON_USER', 'NEON_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
     
     console.log('📝 [VERCEL-REGISTER] Environment variables check:', {
       required: requiredEnvVars,
       missing: missingVars,
-      host: process.env.VITE_NEON_HOST ? 'SET' : 'NOT SET',
-      database: process.env.VITE_NEON_DATABASE ? 'SET' : 'NOT SET',
-      user: process.env.VITE_NEON_USER ? 'SET' : 'NOT SET',
-      password: process.env.VITE_NEON_PASSWORD ? 'SET' : 'NOT SET'
+      host: process.env.NEON_HOST ? 'SET' : 'NOT SET',
+      database: process.env.NEON_DATABASE ? 'SET' : 'NOT SET',
+      user: process.env.NEON_USER ? 'SET' : 'NOT SET',
+      password: process.env.NEON_PASSWORD ? 'SET' : 'NOT SET'
     });
     
     if (missingVars.length > 0) {
@@ -52,9 +52,9 @@ export default async function handler(req, res) {
     console.log('📝 [VERCEL-REGISTER] Environment variables OK, connecting to database...');
 
     // Database connection
-    const connectionString = `postgresql://${process.env.VITE_NEON_USER}:${process.env.VITE_NEON_PASSWORD}@${process.env.VITE_NEON_HOST}:${process.env.VITE_NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE}?sslmode=require`;
+    const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
     
-    console.log('📝 [VERCEL-REGISTER] Connection string (masked):', connectionString.replace(process.env.VITE_NEON_PASSWORD, '***PASSWORD***'));
+    console.log('📝 [VERCEL-REGISTER] Connection string (masked):', connectionString.replace(process.env.NEON_PASSWORD, '***PASSWORD***'));
     
     const pool = new Pool({
       connectionString,
