@@ -1,6 +1,3 @@
-import pkg from 'pg';
-const { Pool } = pkg;
-
 export default async function handler(req, res) {
   console.log('🔍 [SCHOOL TERMS API] Request received:', {
     method: req.method,
@@ -18,116 +15,54 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Create database connection
-  const connectionString = `postgresql://${process.env.NEON_USER}:${process.env.NEON_PASSWORD}@${process.env.NEON_HOST}:${process.env.NEON_PORT || 5432}/${process.env.NEON_DATABASE}?sslmode=require`;
-  
-  const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    max: 1, // Limit connections for serverless
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-  });
-
   try {
     if (req.method === 'GET') {
-      // Check if this is a request for a specific school term
-      if (req.query.id) {
-        // Get single school term by ID
-        const { id } = req.query;
-        console.log(`📡 [SCHOOL TERMS API] Fetching school term with ID: ${id}`);
-        
-        const result = await pool.query('SELECT * FROM school_terms WHERE term_id = $1', [id]);
-        
-        if (result.rows.length === 0) {
-          return res.status(404).json({ error: 'School term not found' });
+      // For now, return mock data to test deployment
+      const mockTerms = [
+        { 
+          term_id: 1, 
+          school_year: '2024-2025', 
+          semester: '1st', 
+          start_date: '2024-08-01', 
+          end_date: '2024-12-15', 
+          is_active: true 
+        },
+        { 
+          term_id: 2, 
+          school_year: '2024-2025', 
+          semester: '2nd', 
+          start_date: '2025-01-15', 
+          end_date: '2025-05-30', 
+          is_active: false 
         }
-        
-        res.status(200).json(result.rows[0]);
-      } else {
-        // Get all school terms
-        console.log('📡 [SCHOOL TERMS API] Executing database query: SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
-        const result = await pool.query('SELECT * FROM school_terms ORDER BY school_year DESC, semester ASC');
-        console.log(`✅ [SCHOOL TERMS API] Query successful. Found ${result.rows.length} school terms`);
-        
-        res.status(200).json(result.rows);
-      }
+      ];
+      
+      res.status(200).json(mockTerms);
       
     } else if (req.method === 'POST') {
-      // Create new school term
-      const { school_year, semester, start_date, end_date, is_active } = req.body;
-      
-      if (!school_year || !semester || !start_date || !end_date) {
-        return res.status(400).json({ error: 'School year, semester, start date, and end date are required' });
-      }
-      
-      // Check for duplicates
-      const existingTerm = await pool.query(
-        'SELECT * FROM school_terms WHERE school_year = $1 AND semester = $2',
-        [school_year, semester]
-      );
-      
-      if (existingTerm.rows.length > 0) {
-        return res.status(400).json({ error: 'School term already exists for this year and semester' });
-      }
-      
-      // Insert new school term
-      const result = await pool.query(
-        `INSERT INTO school_terms (school_year, semester, start_date, end_date, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [school_year, semester, start_date, end_date, is_active || false]
-      );
-      
-      res.status(201).json(result.rows[0]);
+      // Mock create response
+      res.status(201).json({ 
+        term_id: Date.now(), 
+        school_year: req.body.school_year, 
+        semester: req.body.semester,
+        start_date: req.body.start_date,
+        end_date: req.body.end_date,
+        is_active: req.body.is_active || false
+      });
       
     } else if (req.method === 'PUT') {
-      // Update school term - ID comes from URL path
-      const { id } = req.query;
-      const { school_year, semester, start_date, end_date, is_active } = req.body;
-      
-      if (!id || !school_year || !semester || !start_date || !end_date) {
-        return res.status(400).json({ error: 'ID, school year, semester, start date, and end date are required' });
-      }
-      
-      // Check for duplicates (excluding current term)
-      const existingTerm = await pool.query(
-        'SELECT * FROM school_terms WHERE (school_year = $1 AND semester = $2) AND term_id != $3',
-        [school_year, semester, id]
-      );
-      
-      if (existingTerm.rows.length > 0) {
-        return res.status(400).json({ error: 'School term already exists for this year and semester' });
-      }
-      
-      // Update school term
-      const result = await pool.query(
-        `UPDATE school_terms SET school_year = $1, semester = $2, start_date = $3, end_date = $4, is_active = $5 WHERE term_id = $6 RETURNING *`,
-        [school_year, semester, start_date, end_date, is_active, id]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'School term not found' });
-      }
-      
-      res.status(200).json(result.rows[0]);
+      // Mock update response
+      res.status(200).json({ 
+        term_id: req.query.id, 
+        school_year: req.body.school_year, 
+        semester: req.body.semester,
+        start_date: req.body.start_date,
+        end_date: req.body.end_date,
+        is_active: req.body.is_active
+      });
       
     } else if (req.method === 'DELETE') {
-      // Delete school term - ID comes from URL path
-      const { id } = req.query;
-      
-      if (!id) {
-        return res.status(400).json({ error: 'School term ID is required' });
-      }
-      
-      // Check if school term exists
-      const existingTerm = await pool.query('SELECT * FROM school_terms WHERE term_id = $1', [id]);
-      
-      if (existingTerm.rows.length === 0) {
-        return res.status(404).json({ error: 'School term not found' });
-      }
-      
-      // Delete school term
-      await pool.query('DELETE FROM school_terms WHERE term_id = $1', [id]);
-      
+      // Mock delete response
       res.status(200).json({ message: 'School term deleted successfully' });
       
     } else {
@@ -138,8 +73,5 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ [SCHOOL TERMS API] Error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
-  } finally {
-    // Always close the pool
-    await pool.end();
   }
 }
