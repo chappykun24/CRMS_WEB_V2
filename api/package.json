@@ -1,0 +1,13 @@
+{
+  "name": "crms-api",
+  "version": "1.0.0",
+  "description": "CRMS API Functions for Vercel",
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.12.0",
+    "bcrypt": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,6 +1,6 @@
 // Dynamic API base URL that works both locally and in production
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/api'  // In production, use relative path (Vercel will route to API functions)
+  ? ''  // In production, use relative path (Vercel will route to API functions)
   : 'http://localhost:3001';  // In development, use local backend (no /api suffix)
 
 // Faculty Registration API calls
