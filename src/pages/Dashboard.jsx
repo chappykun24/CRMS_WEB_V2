@@ -31,20 +31,26 @@ const Dashboard = () => {
     )
   }
 
-  // Route to role-specific dashboard
-  switch (user.role?.toLowerCase()) {
-    case 'admin':
-      return <AdminDashboard user={user} />
-    case 'faculty':
-      return <FacultyDashboard user={user} />
-    case 'dean':
-      return <DeanDashboard user={user} />
-    case 'staff':
-      return <StaffDashboard user={user} />
-    case 'program chair':
-      return <ProgramChairDashboard user={user} />
-    default:
-      return (
+  // Route to role-specific dashboard (normalize role variants)
+  const role = String(user.role || '').toLowerCase()
+
+  if (role === 'admin') {
+    return <AdminDashboard user={user} />
+  }
+  if (role === 'faculty') {
+    return <FacultyDashboard user={user} />
+  }
+  if (role === 'dean') {
+    return <DeanDashboard user={user} />
+  }
+  if (role === 'staff') {
+    return <StaffDashboard user={user} />
+  }
+  if (role === 'program chair' || role === 'programchair' || role === 'program_chair') {
+    return <ProgramChairDashboard user={user} />
+  }
+
+  return (
         <div className="min-h-screen bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
@@ -63,7 +69,6 @@ const Dashboard = () => {
           </div>
         </div>
       )
-  }
 }
 
 export default Dashboard 

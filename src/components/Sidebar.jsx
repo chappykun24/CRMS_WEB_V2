@@ -23,7 +23,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
   const hoverTimeoutRef = useRef(null)
 
   const getNavigationItems = () => {
-    const userRole = user?.role?.toUpperCase()
+    const userRole = user?.role ? String(user.role).replace(/\s|_/g, '').toUpperCase() : undefined
     
     switch (userRole) {
       case 'ADMIN':
@@ -61,8 +61,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Assign Faculty', icon: UserPlusIcon, href: '/dashboard/assign-faculty' }
         ]
       
-      case 'PROGRAM_CHAIR':
-      case 'PROGRAM CHAIR':
+      case 'PROGRAMCHAIR':
         return [
           { name: 'Home', icon: HomeIcon, href: '/dashboard' },
           { name: 'Course Management', icon: BookOpenIcon, href: '/dashboard/courses' },
