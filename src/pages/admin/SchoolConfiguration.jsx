@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Building, GraduationCap, Search } from 'lucide-react';
+import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, AcademicCapIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 import { useSidebar } from '../../contexts/SidebarContext';
 
@@ -488,26 +488,63 @@ const SchoolConfiguration = () => {
             border-bottom: 2px solid transparent !important;
           }
           
-          .tab-button.active {
-            border-bottom: 2px solid #dc2626 !important;
+          /* Remove any red styling from search inputs */
+          input[type="text"], input[type="search"], select {
+            border-color: #d1d5db !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          input[type="text"]:focus, input[type="search"]:focus, select:focus {
+            border-color: #9ca3af !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          /* Clean dropdown styling */
+          select {
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+            background-position: right 8px center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px !important;
+            padding-right: 40px !important;
+            cursor: pointer !important;
+          }
+          
+          select option {
+            background-color: white !important;
+            color: #374151 !important;
+            padding: 12px 16px !important;
+            border: none !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+          }
+          
+          select option:hover {
+            background-color: #f3f4f6 !important;
+          }
+          
+          select option:checked {
+            background-color: #e5e7eb !important;
+            color: #111827 !important;
+            font-weight: 500 !important;
           }
         `}
       </style>
-      <div className={`absolute top-16 bottom-0 bg-white rounded-tl-lg overflow-hidden transition-all duration-500 ease-in-out ${
+      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
           sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
         }`} style={{ marginTop: '0px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out rounded-tl-3xl" style={{ marginTop: '0px' }}>
 
           {/* Tabs */}
-          <div className="absolute top-0 right-0 z-40 bg-transparent transition-all duration-500 ease-in-out left-0">
-            <div className="px-8 bg-transparent">
-              <nav className="flex space-x-8 bg-transparent border-b border-gray-200">
+          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0 rounded-tl-3xl">
+            <div className="px-8 bg-gray-50">
+              <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
                                   <button
                     onClick={() => setActiveTab('departments')}
                     className={`tab-button py-4 px-4 font-medium text-sm ${
-                      activeTab === 'departments'
-                        ? 'active text-primary-600'
-                        : 'text-gray-500 hover:text-gray-700'
+                      activeTab === 'departments' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     Departments
@@ -516,9 +553,7 @@ const SchoolConfiguration = () => {
                   <button
                     onClick={() => setActiveTab('terms')}
                     className={`tab-button py-4 px-4 font-medium text-sm ${
-                      activeTab === 'terms'
-                        ? 'active text-primary-600'
-                        : 'text-gray-500 hover:text-gray-700'
+                      activeTab === 'terms' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     School Terms
@@ -533,20 +568,21 @@ const SchoolConfiguration = () => {
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
+                  {/* Controls toolbar */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative flex-1 z-50">
+                      <input
+                        type="text"
+                        value={departmentQuery}
+                        onChange={(e) => setDepartmentQuery(e.target.value)}
+                        placeholder="Search departments or abbreviations"
+                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 bg-white"
+                      />
+                      <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                    </div>
+                  </div>
                   {/* Departments Table */}
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={departmentQuery}
-                          onChange={(e) => setDepartmentQuery(e.target.value)}
-                          placeholder="Search departments or abbreviations"
-                          className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                        />
-                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
-                      </div>
-                    </div>
                     {filteredDepartments.length > 0 ? (
                       <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -566,25 +602,25 @@ const SchoolConfiguration = () => {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredDepartments.map((dept) => (
                               <tr key={dept.department_id} className="hover:bg-gray-50">
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900 break-words">{dept.name}</div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">{dept.department_abbreviation}</div>
                                 </td>
-                                <td className="px-8 py-6 text-sm font-medium">
+                                <td className="px-8 py-3 text-sm font-medium">
                                   <div className="flex space-x-3">
                                     <button
                                       onClick={() => handleEditDepartment(dept)}
                                       className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-gray-100"
                                     >
-                                      <Edit className="h-5 w-5" />
+                                      <PencilSquareIcon className="h-5 w-5" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteDepartment(dept.department_id)}
                                       className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-gray-100"
                                     >
-                                      <Trash2 className="h-5 w-5" />
+                                      <TrashIcon className="h-5 w-5" />
                                     </button>
                                   </div>
                                 </td>
@@ -596,7 +632,7 @@ const SchoolConfiguration = () => {
                     ) : (
                       <div className="flex-1 flex items-center justify-center py-12">
                         <div className="text-center">
-                          <Building className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <BuildingOffice2Icon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">No departments found</h3>
                           <p className="text-gray-500">Try adjusting your search.</p>
                         </div>
@@ -627,9 +663,7 @@ const SchoolConfiguration = () => {
                                   setDepartmentErrors({ ...departmentErrors, name: '' });
                                 }
                               }}
-                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
-                                departmentErrors.name ? 'border-red-300' : 'border-gray-300'
-                              }`}
+                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
                               placeholder="Enter department name"
                             />
                             {departmentErrors.name && (
@@ -650,9 +684,7 @@ const SchoolConfiguration = () => {
                                   setDepartmentErrors({ ...departmentErrors, abbreviation: '' });
                                 }
                               }}
-                              className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
-                                departmentErrors.abbreviation ? 'border-red-300' : 'border-gray-300'
-                              }`}
+                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
                               placeholder="Enter abbreviation"
                               maxLength="10"
                             />
@@ -694,39 +726,40 @@ const SchoolConfiguration = () => {
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
+                  {/* Controls toolbar */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={termQuery}
+                        onChange={(e) => setTermQuery(e.target.value)}
+                        placeholder="Search school year or semester"
+                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 bg-white"
+                      />
+                      <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                    </div>
+                    <select
+                      value={termSemester}
+                      onChange={(e) => setTermSemester(e.target.value)}
+                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
+                    >
+                      <option value="">All Semesters</option>
+                      <option value="1st">1st Semester</option>
+                      <option value="2nd">2nd Semester</option>
+                      <option value="Summer">Summer</option>
+                    </select>
+                    <select
+                      value={termActive}
+                      onChange={(e) => setTermActive(e.target.value)}
+                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
+                    >
+                      <option value="">All Status</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
                   {/* School Terms Table */}
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={termQuery}
-                          onChange={(e) => setTermQuery(e.target.value)}
-                          placeholder="Search school year or semester"
-                          className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                        />
-                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
-                      </div>
-                      <select
-                        value={termSemester}
-                        onChange={(e) => setTermSemester(e.target.value)}
-                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                      >
-                        <option value="">All Semesters</option>
-                        <option value="1st">1st Semester</option>
-                        <option value="2nd">2nd Semester</option>
-                        <option value="Summer">Summer</option>
-                      </select>
-                      <select
-                        value={termActive}
-                        onChange={(e) => setTermActive(e.target.value)}
-                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                      >
-                        <option value="">All Status</option>
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                      </select>
-                    </div>
                     {filteredTerms.length > 0 ? (
                       <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -745,7 +778,7 @@ const SchoolConfiguration = () => {
                                 End Date
                               </th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Active
+                                Status
                               </th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
@@ -755,23 +788,23 @@ const SchoolConfiguration = () => {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredTerms.map((term) => (
                               <tr key={term.term_id} className="hover:bg-gray-50">
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">{term.school_year}</div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">{formatSemesterForDisplay(term.semester)}</div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">
                                     {new Date(term.start_date).toLocaleDateString()}
                                   </div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">
                                     {new Date(term.end_date).toLocaleDateString()}
                                   </div>
                                 </td>
-                                <td className="px-8 py-6">
+                                <td className="px-8 py-3">
                                   <span
                                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                       term.is_active
@@ -782,19 +815,19 @@ const SchoolConfiguration = () => {
                                     {term.is_active ? 'Active' : 'Inactive'}
                                   </span>
                                 </td>
-                                <td className="px-8 py-6 text-sm font-medium">
+                                <td className="px-8 py-3 text-sm font-medium">
                                   <div className="flex space-x-3">
                                     <button
                                       onClick={() => handleEditTerm(term)}
                                       className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-gray-100"
                                     >
-                                      <Edit className="h-5 w-5" />
+                                      <PencilSquareIcon className="h-5 w-5" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteTerm(term.term_id)}
                                       className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-gray-100"
                                     >
-                                      <Trash2 className="h-5 w-5" />
+                                      <TrashIcon className="h-5 w-5" />
                                     </button>
                                   </div>
                                 </td>
@@ -806,7 +839,7 @@ const SchoolConfiguration = () => {
                     ) : (
                       <div className="flex-1 flex items-center justify-center py-12">
                         <div className="text-center">
-                          <GraduationCap className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">No terms found</h3>
                           <p className="text-gray-500">Adjust your search or filters.</p>
                         </div>
@@ -837,9 +870,7 @@ const SchoolConfiguration = () => {
                               setTermErrors({ ...termErrors, schoolYear: '' });
                             }
                           }}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
-                            termErrors.schoolYear ? 'border-red-300' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
                           placeholder="e.g., 2024-2025"
                         />
                         {termErrors.schoolYear && (
@@ -859,9 +890,7 @@ const SchoolConfiguration = () => {
                               setTermErrors({ ...termErrors, semester: '' });
                             }
                           }}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 ${
-                            termErrors.semester ? 'border-red-300' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
                         >
                           <option value="">Select semester</option>
                           <option value="1st">1st Semester</option>
@@ -882,9 +911,7 @@ const SchoolConfiguration = () => {
                             type="text"
                             value={newTerm.start_date}
                             onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10 ${
-                              termErrors.startDate ? 'border-red-300' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 pr-10`}
                             placeholder="Select start date"
                             readOnly
                           />
@@ -893,7 +920,7 @@ const SchoolConfiguration = () => {
                             onClick={() => setShowTermStartCalendar(!showTermStartCalendar)}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center"
                           >
-                            <Calendar className="h-5 w-5 text-gray-400" />
+                            <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
                           </button>
                           {newTerm.start_date && (
                             <button
@@ -919,9 +946,7 @@ const SchoolConfiguration = () => {
                             type="text"
                             value={newTerm.end_date}
                             onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 pr-10 ${
-                              termErrors.endDate ? 'border-red-300' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 pr-10`}
                             placeholder="Select end date"
                             readOnly
                           />
@@ -930,7 +955,7 @@ const SchoolConfiguration = () => {
                             onClick={() => setShowTermEndCalendar(!showTermEndCalendar)}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center"
                           >
-                            <Calendar className="h-5 w-5 text-gray-500" />
+                            <CalendarDaysIcon className="h-5 w-5 text-gray-500" />
                           </button>
                           {newTerm.end_date && (
                             <button
@@ -954,7 +979,7 @@ const SchoolConfiguration = () => {
                         <select
                           value={newTerm.is_active ? 'true' : 'false'}
                           onChange={(e) => setNewTerm({ ...newTerm, is_active: e.target.value === 'true' })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
                         >
                           <option value="false">Inactive</option>
                           <option value="true">Active</option>

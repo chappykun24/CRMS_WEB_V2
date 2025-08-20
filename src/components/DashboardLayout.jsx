@@ -7,7 +7,7 @@ const DashboardLayout = ({ children }) => {
   const { sidebarExpanded, toggleSidebar } = useSidebar()
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header - Fixed at top */}
       <Header 
         onSidebarToggle={toggleSidebar}
@@ -30,7 +30,7 @@ const DashboardLayout = ({ children }) => {
           sidebarExpanded ? 'ml-64' : 'ml-20'
         }`}>
           {/* Main Content */}
-          <main className="flex-1 overflow-auto p-3 md:p-5 bg-white rounded-tl-lg">
+          <main className="flex-1 overflow-auto p-3 md:p-5 bg-gray-50 rounded-tl-3xl">
             {children}
           </main>
         </div>

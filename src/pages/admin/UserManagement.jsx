@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Users, UserCheck, Search, ShieldCheck, Ban } from 'lucide-react'
+import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
 import { useSidebar } from '../../contexts/SidebarContext'
 import api, { enhancedApi, endpoints } from '../../utils/api'
 
@@ -7,7 +7,7 @@ const TabButton = ({ isActive, onClick, children }) => (
   <button
     onClick={onClick}
     className={`tab-button py-4 px-4 font-medium text-sm ${
-      isActive ? 'active text-primary-600' : 'text-gray-500 hover:text-gray-700'
+      isActive ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'
     }`}
   >
     {children}
@@ -29,6 +29,16 @@ const UserManagement = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [sortOption, setSortOption] = useState('created_desc')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    role_id: '',
+    password: '',
+    confirmPassword: ''
+  })
+  const [isCreating, setIsCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   const formatDateTime = (value) => {
     if (!value) return '—'
@@ -107,7 +117,7 @@ const UserManagement = () => {
     const q = query.trim().toLowerCase()
     let list = users
     // When on Faculty Approval tab, always show only Faculty users
-    if (activeTab === 'pending') {
+    if (activeTab === 'faculty') {
       list = list.filter(u => {
         const roleName = (u.role_name || '').toString().toUpperCase()
         const isFacultyByName = roleName === 'FACULTY'
@@ -123,19 +133,40 @@ const UserManagement = () => {
         const isFacultyByName = roleName === 'FACULTY'
         const facultyId = facultyRoleId ?? 2
         const isFacultyById = Number(u.role_id) === Number(facultyId)
-        return !(isFacultyByName || isFacultyById)
+        
+        // If it's a faculty user, only show if approved
+        if (isFacultyByName || isFacultyById) {
+          return !!u.is_approved
+        }
+        
+        // Show all non-faculty users
+        return true
       })
     }
-    // Status filter
-    if (statusFilter === 'approved') {
-      list = list.filter(u => !!u.is_approved)
-    } else if (statusFilter === 'pending') {
-      list = list.filter(u => !u.is_approved)
+    // Status filter (only on Faculty Approval tab)
+    if (activeTab === 'faculty' && statusFilter) {
+      if (statusFilter === 'approved') {
+        list = list.filter(u => !!u.is_approved)
+      } else if (statusFilter === 'pending') {
+        list = list.filter(u => !u.is_approved)
+      }
     }
     // Role filter (only on All Users tab)
     if (activeTab === 'all' && roleFilter) {
-      const roleId = parseInt(roleFilter, 10)
-      list = list.filter(u => Number(u.role_id) === roleId)
+      if (roleFilter === 'faculty') {
+        // Filter for Faculty users only
+        list = list.filter(u => {
+          const roleName = (u.role_name || '').toString().toUpperCase()
+          const isFacultyByName = roleName === 'FACULTY'
+          const facultyId = facultyRoleId ?? 2
+          const isFacultyById = Number(u.role_id) === Number(facultyId)
+          return (isFacultyByName || isFacultyById) && !!u.is_approved
+        })
+      } else {
+        // Filter by specific role ID
+        const roleId = parseInt(roleFilter, 10)
+        list = list.filter(u => Number(u.role_id) === roleId)
+      }
     }
     // Text query
     if (q) {
@@ -187,6 +218,65 @@ const UserManagement = () => {
     }
   }
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault()
+    
+    // Validation
+    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.role_id || !createForm.password) {
+      setCreateError('All fields are required')
+      return
+    }
+    
+    if (createForm.password !== createForm.confirmPassword) {
+      setCreateError('Passwords do not match')
+      return
+    }
+    
+    if (createForm.password.length < 6) {
+      setCreateError('Password must be at least 6 characters long')
+      return
+    }
+
+    try {
+      setIsCreating(true)
+      setCreateError('')
+      
+      const userData = {
+        name: createForm.name.trim(),
+        email: createForm.email.trim().toLowerCase(),
+        role_id: parseInt(createForm.role_id),
+        password: createForm.password
+      }
+      
+      // Call API to create user
+      const response = await api.post(endpoints.users, userData)
+      
+      // Add new user to the list
+      if (response.data) {
+        setUsers(prev => [response.data, ...prev])
+        setSuccessMessage('User created successfully')
+        setShowSuccessModal(true)
+        setShowCreateModal(false)
+        resetCreateForm()
+      }
+    } catch (e) {
+      setCreateError(e.message || 'Failed to create user')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      name: '',
+      email: '',
+      role_id: '',
+      password: '',
+      confirmPassword: ''
+    })
+    setCreateError('')
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -204,27 +294,71 @@ const UserManagement = () => {
 
   return (
     <>
-      <style>
-        {`
-          .tab-button { transition: all 0.2s ease-in-out !important; border-bottom: 2px solid transparent !important; }
-          .tab-button.active { border-bottom: 2px solid #dc2626 !important; }
-          .tab-button:focus { outline: none !important; box-shadow: none !important; }
-          .tab-button:focus-visible { outline: none !important; box-shadow: none !important; }
-        `}
-      </style>
-      <div className={`absolute top-16 bottom-0 bg-white rounded-tl-lg overflow-hidden transition-all duration-500 ease-in-out ${
-          sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-        }`} style={{ marginTop: '0px' }}>
+      <style jsx>{`
+          .tab-button {
+            transition: all 0.2s ease-in-out !important;
+            border: none !important;
+            border-bottom: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          /* Remove any red styling from search inputs */
+          input[type="text"], input[type="search"], select {
+            border-color: #d1d5db !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          input[type="text"]:focus, input[type="search"]:focus, select:focus {
+            border-color: #9ca3af !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          /* Clean dropdown styling */
+          select {
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+            background-position: right 8px center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px !important;
+            padding-right: 40px !important;
+            cursor: pointer !important;
+          }
+          
+          select option {
+            background-color: white !important;
+            color: #374151 !important;
+            padding: 12px 16px !important;
+            border: none !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+          }
+          
+          select option:hover {
+            background-color: #f3f4f6 !important;
+          }
+          
+          select option:checked {
+            background-color: #e5e7eb !important;
+            color: #111827 !important;
+            font-weight: 500 !important;
+          }
+        `}</style>
+      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
+        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+      }`} style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
           {/* Tabs */}
-          <div className="absolute top-0 right-0 z-40 bg-transparent transition-all duration-500 ease-in-out left-0">
-            <div className="px-8 bg-transparent">
-              <nav className="flex space-x-8 bg-transparent border-b border-gray-200">
+          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
+            <div className="px-8 bg-gray-50">
+              <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
                 <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
                   All Users
                 </TabButton>
-                <TabButton isActive={activeTab === 'pending'} onClick={() => setActiveTab('pending')}>
+                <TabButton isActive={activeTab === 'faculty'} onClick={() => setActiveTab('faculty')}>
                   Faculty Approval
                 </TabButton>
               </nav>
@@ -235,33 +369,38 @@ const UserManagement = () => {
           <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
             <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full`}>
               {/* List */}
-              <div className={`lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full`}>
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                  <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search name or email"
-                        className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                      />
-                      <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
-                    </div>
-                    {activeTab === 'all' && (
-                      <select
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                      >
-                        <option value="">All Users</option>
-                        {roles
-                          .filter(r => String(r.name).toUpperCase() !== 'FACULTY')
-                          .map(r => (
-                            <option key={r.role_id} value={r.role_id}>{formatRoleName(r.name)}</option>
-                          ))}
-                      </select>
-                    )}
+              <div className={`lg:col-span-3 h-full`}>
+                {/* Controls outside the table */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search name or email"
+                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    />
+                    <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                  </div>
+                  {activeTab === 'all' && (
+                    <select
+                      value={roleFilter}
+                      onChange={(e) => setRoleFilter(e.target.value)}
+                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    >
+                      <option value="">All Users</option>
+                      {roles
+                        .filter(role => role.name !== 'FACULTY') // Exclude Faculty from role filter since it has its own tab
+                        .map(role => (
+                          <option key={role.role_id} value={role.role_id}>
+                            {formatRoleName(role.name)}
+                          </option>
+                        ))}
+                      <option value="faculty">Faculty</option>
+                    </select>
+                  )}
+                  
+                  {activeTab === 'faculty' && (
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
@@ -271,30 +410,53 @@ const UserManagement = () => {
                       <option value="approved">Approved</option>
                       <option value="pending">Pending</option>
                     </select>
-                    <select
-                      value={sortOption}
-                      onChange={(e) => setSortOption(e.target.value)}
-                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                    >
-                      <option value="created_desc">Newest</option>
-                      <option value="created_asc">Oldest</option>
-                      <option value="name_asc">Name A–Z</option>
-                      <option value="name_desc">Name Z–A</option>
-                      <option value="approved_first">Approved First</option>
-                      <option value="pending_first">Pending First</option>
-                    </select>
-                  </div>
+                  )}
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                  >
+                    <option value="created_desc">Newest</option>
+                    <option value="created_asc">Oldest</option>
+                    <option value="name_asc">Name A–Z</option>
+                    <option value="name_desc">Name Z–A</option>
+                    <option value="approved_first">Approved First</option>
+                    <option value="pending_first">Pending First</option>
+                  </select>
+                  
+                  {/* Plus Button for creating users */}
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add User
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
                   {filteredUsers.length > 0 ? (
                     <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</th>
-                          </tr>
-                        </thead>
+                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Profile
+                              </th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Name
+                              </th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Email
+                              </th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Role
+                              </th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                              </th>
+                            </tr>
+                          </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {filteredUsers.map(u => (
                             <tr
@@ -320,6 +482,9 @@ const UserManagement = () => {
                                 <div className="text-sm text-gray-700">{u.email}</div>
                               </td>
                               <td className="px-8 py-3">
+                                <div className="text-sm text-gray-700">{formatRoleName(u.role_name) || u.role_id || '—'}</div>
+                              </td>
+                              <td className="px-8 py-3">
                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                   {u.is_approved ? 'Approved' : 'Pending'}
                                 </span>
@@ -333,9 +498,9 @@ const UserManagement = () => {
                     <div className="flex-1 flex items-center justify-center py-16">
                       <div className="text-center">
                         {activeTab === 'pending' ? (
-                          <UserCheck className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <UserPlusIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                         ) : (
-                          <Users className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <UsersIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                         )}
                         <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
                         <p className="text-gray-500">Try adjusting your filters.</p>
@@ -410,7 +575,7 @@ const UserManagement = () => {
                     </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-10">
-                      <Users className="h-12 w-12 text-gray-300 mb-3" />
+                      <UsersIcon className="h-12 w-12 text-gray-300 mb-3" />
                       <p className="text-sm">Select a user from the list to view details here.</p>
                     </div>
                   )}
@@ -445,6 +610,131 @@ const UserManagement = () => {
                 Continue
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Create New User</h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false)
+                  resetCreateForm()
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter full name"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                  Role *
+                </label>
+                <select
+                  id="role"
+                  value={createForm.role_id}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, role_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Select a role</option>
+                  {roles.map(role => (
+                    <option key={role.role_id} value={role.role_id}>
+                      {formatRoleName(role.name)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter password"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm Password *
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  value={createForm.confirmPassword}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Confirm password"
+                />
+              </div>
+
+              {createError && (
+                <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                  {createError}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    resetCreateForm()
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                >
+                  {isCreating ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

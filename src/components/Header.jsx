@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { 
-  Bell, 
-  User, 
-  LogOut, 
-  Settings,
-  ChevronDown,
-  Menu
-} from 'lucide-react'
+import {
+  BellIcon,
+  UserIcon,
+  Cog6ToothIcon,
+  Bars3Icon,
+  XMarkIcon
+} from '@heroicons/react/24/solid'
 import logo from '../images/logo.png'
 
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
@@ -88,7 +87,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       }
     } else if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
       // Show which tab is active: All Users or Faculty Approval
-      const subtitle = userMgmtActiveTab === 'pending' ? 'Faculty Approval' : 'All Users'
+      const subtitle = userMgmtActiveTab === 'faculty' ? 'Faculty Approval' : 'All Users'
       return {
         title: 'User Management',
         subtitle,
@@ -171,7 +170,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   }
 
   return (
-    <header className="fixed-header bg-gray-50">
+    <header className="fixed-header bg-white">
       <div className="flex justify-between items-center h-16 px-4 md:px-6">
         {/* Left side - Hamburger and Logo */}
         <div className="flex items-center space-x-2 md:px-4">
@@ -181,7 +180,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
             className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0 -ml-5"
             title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            <Menu className="h-5 w-5 text-gray-600" />
+            <Bars3Icon className="h-5 w-5 text-gray-600" />
           </button>
 
           <div className="flex-shrink-0 flex items-center space-x-2">
@@ -221,7 +220,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
           {/* Notification Bell */}
           <div className="relative">
             <button className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:border-0">
-              <Bell className="h-5 w-5 text-gray-600" />
+              <BellIcon className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           
@@ -242,7 +241,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   />
                 ) : (
                   <div className="w-full h-full bg-primary-600 flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
+                    <UserIcon className="h-5 w-5 text-white" />
                   </div>
                 )}
               </div>
@@ -261,9 +260,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                     onClick={() => setShowProfileMenu(false)}
                     className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-200"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
 
@@ -279,7 +276,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                       />
                     ) : (
                       <div className="w-full h-full bg-primary-600 flex items-center justify-center">
-                        <User className="h-6 w-6 text-white" />
+                        <UserIcon className="h-6 w-6 text-white" />
                       </div>
                     )}
                   </div>

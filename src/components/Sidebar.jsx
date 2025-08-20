@@ -1,20 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { 
-  Home,
-  Users,
-  BookOpen,
-  Calendar,
-  BarChart3,
-  FileText,
-  Settings,
-  ClipboardList,
-  Award,
-  UserCheck,
-  Database,
-  Building
-} from 'lucide-react'
+import {
+  HomeIcon,
+  UserGroupIcon,
+  BookOpenIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
+  Cog6ToothIcon,
+  ClipboardDocumentListIcon,
+  TrophyIcon,
+  UserPlusIcon,
+  CircleStackIcon,
+  BuildingOffice2Icon
+} from '@heroicons/react/24/solid'
 
 const Sidebar = ({ isExpanded, onToggle }) => {
   const { user } = useUser()
@@ -28,52 +28,52 @@ const Sidebar = ({ isExpanded, onToggle }) => {
     switch (userRole) {
       case 'ADMIN':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' },
-          { name: 'User Management', icon: Users, href: '/dashboard/users' },
-          { name: 'School Configuration', icon: Building, href: '/dashboard/school-config' },
-          { name: 'System Settings', icon: Settings, href: '/dashboard/settings' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
+          { name: 'User Management', icon: UserGroupIcon, href: '/dashboard/users' },
+          { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/dashboard/school-config' },
+          { name: 'System Settings', icon: Cog6ToothIcon, href: '/dashboard/settings' }
         ]
       
       case 'FACULTY':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' },
-          { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
-          { name: 'Attendance', icon: Calendar, href: '/dashboard/attendance' },
-          { name: 'Assessments', icon: ClipboardList, href: '/dashboard/assessments' },
-          { name: 'Grades', icon: Award, href: '/dashboard/grades' },
-          { name: 'Syllabi', icon: FileText, href: '/dashboard/syllabi' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
+          { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
+          { name: 'Attendance', icon: CalendarDaysIcon, href: '/dashboard/attendance' },
+          { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/dashboard/assessments' },
+          { name: 'Grades', icon: TrophyIcon, href: '/dashboard/grades' },
+          { name: 'Syllabi', icon: DocumentTextIcon, href: '/dashboard/syllabi' }
         ]
       
       case 'DEAN':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' },
-          { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-          { name: 'My Classes', icon: BookOpen, href: '/dashboard/classes' },
-          { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
-          { name: 'Syllabus Approval', icon: FileText, href: '/dashboard/syllabus-approval' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
+          { name: 'Analytics', icon: ChartBarIcon, href: '/dashboard/analytics' },
+          { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
+          { name: 'Reports', icon: DocumentTextIcon, href: '/dashboard/reports' },
+          { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dashboard/syllabus-approval' }
         ]
       
       case 'STAFF':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' },
-          { name: 'Student Management', icon: Users, href: '/dashboard/students' },
-          { name: 'Academic Records', icon: Database, href: '/dashboard/records' },
-          { name: 'Assign Faculty', icon: UserCheck, href: '/dashboard/assign-faculty' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
+          { name: 'Student Management', icon: UserGroupIcon, href: '/dashboard/students' },
+          { name: 'Academic Records', icon: CircleStackIcon, href: '/dashboard/records' },
+          { name: 'Assign Faculty', icon: UserPlusIcon, href: '/dashboard/assign-faculty' }
         ]
       
       case 'PROGRAM_CHAIR':
       case 'PROGRAM CHAIR':
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' },
-          { name: 'Course Management', icon: BookOpen, href: '/dashboard/courses' },
-          { name: 'Analytics', icon: BarChart3, href: '/dashboard/analytics' },
-          { name: 'Reports', icon: FileText, href: '/dashboard/reports' },
-          { name: 'Submissions', icon: ClipboardList, href: '/dashboard/submissions' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
+          { name: 'Course Management', icon: BookOpenIcon, href: '/dashboard/courses' },
+          { name: 'Analytics', icon: ChartBarIcon, href: '/dashboard/analytics' },
+          { name: 'Reports', icon: DocumentTextIcon, href: '/dashboard/reports' },
+          { name: 'Submissions', icon: ClipboardDocumentListIcon, href: '/dashboard/submissions' }
         ]
       
       default:
         return [
-          { name: 'Home', icon: Home, href: '/dashboard' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' }
         ]
     }
   }
@@ -117,7 +117,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
 
   return (
     <div 
-      className={`sidebar-fixed bg-gray-50 transition-all duration-500 ease-in-out flex flex-col h-full pr-4 ${
+      className={`sidebar-fixed bg-white transition-all duration-500 ease-in-out flex flex-col h-full pr-4 ${
         isExpanded ? 'w-64' : 'w-20'
       }`}
       onMouseEnter={handleMouseEnter}
