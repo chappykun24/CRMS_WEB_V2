@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon, AcademicCapIcon, ClockIcon, UserGroupIcon } from '@heroicons/react/24/solid'
+import React, { useEffect, useMemo, useState } from 'react'
+import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { useSidebar } from '../../contexts/SidebarContext'
+import { enhancedApi } from '../../utils/api'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -15,14 +16,143 @@ const TabButton = ({ isActive, onClick, children }) => (
 
 const CourseManagement = () => {
   const { sidebarExpanded } = useSidebar()
-  const [activeTab, setActiveTab] = useState('active')
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('courseMgmtActiveTab') || 'programs') // programs | specializations | courses
   const [query, setQuery] = useState('')
+
+  // Selections
+  const [selectedProgramId, setSelectedProgramId] = useState('')
+  const [selectedSpecializationId, setSelectedSpecializationId] = useState('')
+  const [selectedTermId, setSelectedTermId] = useState('')
+
+  // Data
+  const [programs, setPrograms] = useState([])
+  const [specializations, setSpecializations] = useState([])
+  const [terms, setTerms] = useState([])
+  const [courses, setCourses] = useState([])
+
+  // UI state
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-
-  // Sample course data structure (no mock data as requested)
-  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Handle tab changes and communicate with header
+  useEffect(() => {
+    localStorage.setItem('courseMgmtActiveTab', activeTab)
+    updateHeaderInfo()
+  }, [activeTab])
+
+  // Handle program/specialization/term selection changes and communicate with header
+  useEffect(() => {
+    updateHeaderInfo()
+  }, [selectedProgramId, selectedSpecializationId, selectedTermId, programs])
+
+  // Function to update header information
+  const updateHeaderInfo = () => {
+    // Get the selected program name for display
+    const selectedProgram = programs.find(p => String(p.program_id) === String(selectedProgramId))
+    const programName = selectedProgram?.name || selectedProgram?.program_abbreviation || ''
+    
+    const event = new CustomEvent('courseMgmtTabChanged', { 
+      detail: { 
+        activeTab,
+        selectedProgramId,
+        programName,
+        selectedSpecializationId,
+        selectedTermId
+      } 
+    })
+    window.dispatchEvent(event)
+  }
+
+  // Load base data
+  useEffect(() => {
+    const loadBase = async () => {
+      try {
+        setLoading(true)
+        const [prog, term] = await Promise.all([
+          enhancedApi.getPrograms(),
+          enhancedApi.getTerms()
+        ])
+        setPrograms(Array.isArray(prog) ? prog : [])
+        setTerms(Array.isArray(term) ? term : [])
+      } catch (e) {
+        setError(e.message || 'Failed to load base data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadBase()
+  }, [])
+
+  // Load specializations when program changes
+  useEffect(() => {
+    const loadSpecs = async () => {
+      try {
+        setLoading(true)
+        const list = await enhancedApi.getSpecializations(
+          selectedProgramId ? Number(selectedProgramId) : undefined
+        )
+        setSpecializations(Array.isArray(list) ? list : [])
+      } catch (e) {
+        setError(e.message || 'Failed to load specializations')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSpecs()
+    // Reset specialization and courses when program changes
+    setSelectedSpecializationId('')
+    setSelectedCourse(null)
+  }, [selectedProgramId])
+
+  // Load courses when any filter changes
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true)
+        const list = await enhancedApi.getCourses({
+          programId: selectedProgramId ? Number(selectedProgramId) : undefined,
+          specializationId: selectedSpecializationId ? Number(selectedSpecializationId) : undefined,
+          termId: selectedTermId ? Number(selectedTermId) : undefined
+        })
+        setCourses(Array.isArray(list) ? list : [])
+      } catch (e) {
+        setError(e.message || 'Failed to load courses')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadCourses()
+    setSelectedCourse(null)
+  }, [selectedProgramId, selectedSpecializationId, selectedTermId])
+
+  // Filtered views for current tab and search
+  const filteredPrograms = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return programs.filter(p =>
+      !q || (p.name || '').toLowerCase().includes(q) || (p.program_abbreviation || '').toLowerCase().includes(q)
+    )
+  }, [programs, query])
+
+  const filteredSpecializations = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return specializations
+      .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
+      .filter(s => !q || (s.name || '').toLowerCase().includes(q) || (s.abbreviation || '').toLowerCase().includes(q))
+  }, [specializations, selectedProgramId, query])
+
+  const formatDate = (value) => {
+    if (!value) return '—'
+    try { return new Date(value).toLocaleString() } catch { return String(value) }
+  }
+
+  const filteredCourses = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return courses.filter(c =>
+      !q || (c.title || '').toLowerCase().includes(q) || (c.course_code || '').toLowerCase().includes(q)
+    )
+  }, [courses, query])
 
   const handleCreateCourse = (e) => {
     e.preventDefault()
@@ -88,14 +218,14 @@ const CourseManagement = () => {
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-gray-50">
               <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
-                <TabButton isActive={activeTab === 'active'} onClick={() => setActiveTab('active')}>
-                  Active Courses
+                <TabButton isActive={activeTab === 'programs'} onClick={() => setActiveTab('programs')}>
+                  Programs
                 </TabButton>
-                <TabButton isActive={activeTab === 'draft'} onClick={() => setActiveTab('draft')}>
-                  Draft Courses
+                <TabButton isActive={activeTab === 'specializations'} onClick={() => setActiveTab('specializations')}>
+                  Specializations
                 </TabButton>
-                <TabButton isActive={activeTab === 'archived'} onClick={() => setActiveTab('archived')}>
-                  Archived
+                <TabButton isActive={activeTab === 'courses'} onClick={() => setActiveTab('courses')}>
+                  Courses
                 </TabButton>
               </nav>
             </div>
@@ -113,17 +243,53 @@ const CourseManagement = () => {
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search course code or title"
+                      placeholder={activeTab === 'programs' ? 'Search program' : activeTab === 'specializations' ? 'Search specialization' : 'Search course code or title'}
                       className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
                     />
                     <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                   </div>
-                  
-                  <select className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300">
+                  {/* Program filter */}
+                  <select
+                    value={selectedProgramId}
+                    onChange={(e) => setSelectedProgramId(e.target.value)}
+                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                  >
                     <option value="">All Programs</option>
-                    <option value="bsit">BS Information Technology</option>
-                    <option value="bscs">BS Computer Science</option>
-                    <option value="bsis">BS Information Systems</option>
+                    {programs.map(p => (
+                      <option key={p.program_id} value={p.program_id}>
+                        {p.program_abbreviation || ''} {p.name ? `— ${p.name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Specialization filter */}
+                  <select
+                    value={selectedSpecializationId}
+                    onChange={(e) => setSelectedSpecializationId(e.target.value)}
+                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                  >
+                    <option value="">All Specializations</option>
+                    {specializations
+                      .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
+                      .map(s => (
+                        <option key={s.specialization_id} value={s.specialization_id}>
+                          {s.abbreviation || ''} {s.name ? `— ${s.name}` : ''}
+                        </option>
+                      ))}
+                  </select>
+
+                  {/* Term filter */}
+                  <select
+                    value={selectedTermId}
+                    onChange={(e) => setSelectedTermId(e.target.value)}
+                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                  >
+                    <option value="">All Terms</option>
+                    {terms.map(t => (
+                      <option key={t.term_id} value={t.term_id}>
+                        {t.school_year} {t.semester ? `— ${t.semester}` : ''}
+                      </option>
+                    ))}
                   </select>
                   
                   <button
@@ -135,72 +301,109 @@ const CourseManagement = () => {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                  {courses.length > 0 ? (
-                    <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Course Code
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Title
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Units
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Last Updated
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {courses.map(course => (
-                            <tr
-                              key={course.id}
-                              onClick={() => setSelectedCourse(course)}
-                              className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.id === course.id ? 'bg-red-50' : ''}`}
-                            >
-                              <td className="px-8 py-3">
-                                <div className="text-sm font-medium text-gray-900">{course.code}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">{course.title}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">{course.units}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  course.status === 'active' ? 'bg-green-100 text-green-700' : 
-                                  course.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : 
-                                  'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {course.status}
-                                </span>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">{course.updatedAt}</div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center py-16">
-                      <div className="text-center">
-                        <BookOpenIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-                        <p className="text-gray-500">Get started by adding your first course.</p>
+                {/* Tab contents */}
+                {activeTab === 'programs' && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    {filteredPrograms.length > 0 ? (
+                      <div className="divide-y divide-gray-200">
+                        {filteredPrograms.map(p => (
+                          <div key={p.program_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                               onClick={() => { setSelectedProgramId(String(p.program_id)); setActiveTab('specializations') }}>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{p.name}</div>
+                              <div className="text-xs text-gray-500">{p.program_abbreviation}</div>
+                            </div>
+                            <div className="text-xs text-gray-400">Program ID: {p.program_id}</div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-16 text-gray-500">No programs found</div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'specializations' && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    {filteredSpecializations.length > 0 ? (
+                      <div className="divide-y divide-gray-200">
+                        {filteredSpecializations.map(s => (
+                          <div key={s.specialization_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                               onClick={() => { setSelectedSpecializationId(String(s.specialization_id)); setActiveTab('courses') }}>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{s.name}</div>
+                              <div className="text-xs text-gray-500">{s.abbreviation}</div>
+                            </div>
+                            <div className="text-xs text-gray-400">Spec ID: {s.specialization_id}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-16 text-gray-500">{selectedProgramId ? 'No specializations found' : 'Select a program to view specializations'}</div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'courses' && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    {filteredCourses.length > 0 ? (
+                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredCourses.map(course => (
+                              <tr
+                                key={course.course_id}
+                                onClick={() => setSelectedCourse(course)}
+                                className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50' : ''}`}
+                              >
+                                <td className="px-8 py-3">
+                                  <div className="text-sm font-medium text-gray-900">{course.course_code}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{course.title}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{course.program_abbreviation || course.program_name || '—'}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{course.specialization_name || course.abbreviation || '—'}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{course.term_id || '—'}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{formatDate(course.created_at)}</div>
+                                </td>
+                                <td className="px-8 py-3">
+                                  <div className="text-sm text-gray-700">{formatDate(course.updated_at)}</div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center py-16">
+                        <div className="text-center">
+                          <BookOpenIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+                          <p className="text-gray-500">Try adjusting filters above.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Side actions / Course details */}
@@ -213,30 +416,36 @@ const CourseManagement = () => {
                           <BookOpenIcon className="h-8 w-8 text-blue-600" />
                         </div>
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900">{selectedCourse.code}</h4>
+                          <h4 className="text-lg font-semibold text-gray-900">{selectedCourse.course_code}</h4>
                           <p className="text-sm text-gray-600">{selectedCourse.title}</p>
-                          <p className="text-xs text-gray-500">{selectedCourse.units} units</p>
+                          <p className="text-xs text-gray-500">{selectedCourse.program_abbreviation || selectedCourse.program_name} {selectedCourse.abbreviation ? `• ${selectedCourse.abbreviation}` : ''}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-500">Status</span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            selectedCourse.status === 'active' ? 'bg-green-100 text-green-700' : 
-                            selectedCourse.status === 'draft' ? 'bg-yellow-100 text-yellow-700' : 
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {selectedCourse.status}
-                          </span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700`}>—</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Program</span>
-                          <span className="text-gray-800">{selectedCourse.program}</span>
+                          <span className="text-gray-800">{selectedCourse.program_name || selectedCourse.program_abbreviation || '—'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Last Updated</span>
-                          <span className="text-gray-800">{selectedCourse.updatedAt}</span>
+                          <span className="text-gray-500">Specialization</span>
+                          <span className="text-gray-800">{selectedCourse.specialization_name || selectedCourse.abbreviation || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Term</span>
+                          <span className="text-gray-800">{selectedCourse.term_id || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Created</span>
+                          <span className="text-gray-800">{formatDate(selectedCourse.created_at)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Updated</span>
+                          <span className="text-gray-800">{formatDate(selectedCourse.updated_at)}</span>
                         </div>
                       </div>
 

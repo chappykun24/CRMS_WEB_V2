@@ -17,6 +17,13 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const navigate = useNavigate()
   const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
   const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
+  const [courseMgmtActiveTab, setCourseMgmtActiveTab] = useState('programs')
+  const [courseMgmtDetails, setCourseMgmtDetails] = useState({
+    selectedProgramId: '',
+    programName: '',
+    selectedSpecializationId: '',
+    selectedTermId: ''
+  })
 
   const handleLogout = () => {
     logout()
@@ -53,6 +60,25 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     setUserMgmtActiveTab(initialUserTab)
     return () => {
       window.removeEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
+    }
+  }, [])
+
+  // Listen for Course Management tab changes
+  useEffect(() => {
+    const handleCourseMgmtTabChange = (event) => {
+      setCourseMgmtActiveTab(event.detail.activeTab)
+      setCourseMgmtDetails({
+        selectedProgramId: event.detail.selectedProgramId || '',
+        programName: event.detail.programName || '',
+        selectedSpecializationId: event.detail.selectedSpecializationId || '',
+        selectedTermId: event.detail.selectedTermId || ''
+      })
+    }
+    window.addEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
+    const initialCourseTab = localStorage.getItem('courseMgmtActiveTab') || 'programs'
+    setCourseMgmtActiveTab(initialCourseTab)
+    return () => {
+      window.removeEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
     }
   }, [])
 
@@ -146,6 +172,44 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         path: '/dashboard/staff'
       }
     } else if (path.startsWith('/dashboard/program-chair/')) {
+      if (path === '/dashboard/program-chair/courses') {
+        // Show dynamic breadcrumb based on selected program and tab
+        if (courseMgmtActiveTab === 'programs') {
+          return {
+            title: 'Course Management',
+            subtitle: 'Manage programs',
+            path: '/dashboard/program-chair/courses'
+          }
+        } else if (courseMgmtActiveTab === 'specializations') {
+          if (courseMgmtDetails.programName) {
+            return {
+              title: 'Course Management',
+              subtitle: `${courseMgmtDetails.programName} specializations`,
+              path: '/dashboard/program-chair/courses'
+            }
+          } else {
+            return {
+              title: 'Course Management',
+              subtitle: 'Manage specializations',
+              path: '/dashboard/program-chair/courses'
+            }
+          }
+        } else if (courseMgmtActiveTab === 'courses') {
+          if (courseMgmtDetails.programName) {
+            return {
+              title: 'Course Management',
+              subtitle: `${courseMgmtDetails.programName} courses`,
+              path: '/dashboard/program-chair/courses'
+            }
+          } else {
+            return {
+              title: 'Course Management',
+              subtitle: 'Manage courses',
+              path: '/dashboard/program-chair/courses'
+            }
+          }
+        }
+      }
       return { 
         title: 'Program Chair Dashboard', 
         subtitle: 'Program management',
