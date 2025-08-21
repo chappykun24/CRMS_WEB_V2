@@ -370,6 +370,60 @@ catalog.get('/programs', async (req, res) => {
   }
 });
 
+// Create program
+catalog.post('/programs', async (req, res) => {
+  try {
+    const { name, description, program_abbreviation, department_id } = req.body;
+    if (!name || !program_abbreviation) {
+      return res.status(400).json({ error: 'name and program_abbreviation are required' });
+    }
+    const result = await pool.query(
+      `INSERT INTO programs (name, description, program_abbreviation, department_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING program_id, department_id, name, description, program_abbreviation`,
+      [name, description || null, program_abbreviation, department_id || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update program
+catalog.put('/programs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, program_abbreviation, department_id } = req.body;
+    const result = await pool.query(
+      `UPDATE programs
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           program_abbreviation = COALESCE($3, program_abbreviation),
+           department_id = COALESCE($4, department_id),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE program_id = $5
+       RETURNING program_id, department_id, name, description, program_abbreviation`,
+      [name || null, description || null, program_abbreviation || null, department_id || null, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Program not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete program
+catalog.delete('/programs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM programs WHERE program_id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Program not found' });
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 catalog.get('/program-specializations', async (req, res) => {
   try {
     const { programId } = req.query;
@@ -382,6 +436,59 @@ catalog.get('/program-specializations', async (req, res) => {
     const params = programId ? [programId] : [];
     const result = await pool.query(sql, params);
     res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create specialization
+catalog.post('/program-specializations', async (req, res) => {
+  try {
+    const { name, description, abbreviation, program_id } = req.body;
+    if (!name || !abbreviation || !program_id) {
+      return res.status(400).json({ error: 'name, abbreviation and program_id are required' });
+    }
+    const result = await pool.query(
+      `INSERT INTO program_specializations (name, description, abbreviation, program_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING specialization_id, program_id, name, description, abbreviation`,
+      [name, description || null, abbreviation, program_id]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update specialization
+catalog.put('/program-specializations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, abbreviation } = req.body;
+    const result = await pool.query(
+      `UPDATE program_specializations
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           abbreviation = COALESCE($3, abbreviation),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE specialization_id = $4
+       RETURNING specialization_id, program_id, name, description, abbreviation`,
+      [name || null, description || null, abbreviation || null, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Specialization not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete specialization
+catalog.delete('/program-specializations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM program_specializations WHERE specialization_id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Specialization not found' });
+    res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -432,6 +539,61 @@ catalog.get('/courses', async (req, res) => {
     `;
     const result = await pool.query(sql, params);
     res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create course
+catalog.post('/courses', async (req, res) => {
+  try {
+    const { title, course_code, description, term_id, specialization_id } = req.body;
+    if (!title || !course_code) {
+      return res.status(400).json({ error: 'title and course_code are required' });
+    }
+    const result = await pool.query(
+      `INSERT INTO courses (title, course_code, description, term_id, specialization_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING course_id, title, course_code, description, term_id, specialization_id`,
+      [title, course_code, description || null, term_id || null, specialization_id || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update course
+catalog.put('/courses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, course_code, description, term_id, specialization_id } = req.body;
+    const result = await pool.query(
+      `UPDATE courses
+       SET title = COALESCE($1, title),
+           course_code = COALESCE($2, course_code),
+           description = COALESCE($3, description),
+           term_id = COALESCE($4, term_id),
+           specialization_id = COALESCE($5, specialization_id),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE course_id = $6
+       RETURNING course_id, title, course_code, description, term_id, specialization_id`,
+      [title || null, course_code || null, description || null, term_id || null, specialization_id || null, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Course not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete course
+catalog.delete('/courses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM courses WHERE course_id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Course not found' });
+    res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

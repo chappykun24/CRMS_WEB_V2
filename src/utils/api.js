@@ -237,8 +237,8 @@ export const enhancedApi = {
       const response = await api.get(endpoints.programs);
       return response.data;
     } catch (error) {
-      const { catalogService } = await import('../services/databaseService.js');
-      return await catalogService.getPrograms();
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to fetch programs: ${error.message}`);
     }
   },
 
@@ -248,8 +248,8 @@ export const enhancedApi = {
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      const { catalogService } = await import('../services/databaseService.js');
-      return await catalogService.getSpecializations({ programId });
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to fetch specializations: ${error.message}`);
     }
   },
 
@@ -258,8 +258,8 @@ export const enhancedApi = {
       const response = await api.get(endpoints.terms);
       return response.data;
     } catch (error) {
-      const { catalogService } = await import('../services/databaseService.js');
-      return await catalogService.getTerms();
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to fetch terms: ${error.message}`);
     }
   },
 
@@ -272,8 +272,101 @@ export const enhancedApi = {
       const response = await api.get(`${endpoints.catalogCourses}?${params.toString()}`);
       return response.data;
     } catch (error) {
-      const { catalogService } = await import('../services/databaseService.js');
-      return await catalogService.getCourses(filters);
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to fetch courses: ${error.message}`);
+    }
+  },
+
+  // Create operations
+  async createProgram(programData) {
+    try {
+      const response = await api.post(endpoints.programs, programData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to create program: ${error.message}`);
+    }
+  },
+
+  async createSpecialization(specializationData) {
+    try {
+      const response = await api.post(endpoints.specializations, specializationData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to create specialization: ${error.message}`);
+    }
+  },
+
+  async createCourse(courseData) {
+    try {
+      const response = await api.post(endpoints.catalogCourses, courseData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to create course: ${error.message}`);
+    }
+  },
+
+  // Update operations
+  async updateProgram(programId, programData) {
+    try {
+      const response = await api.put(`${endpoints.programs}/${programId}`, programData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to update program: ${error.message}`);
+    }
+  },
+
+  async updateSpecialization(specializationId, specializationData) {
+    try {
+      const response = await api.put(`${endpoints.specializations}/${specializationId}`, specializationData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to update specialization: ${error.message}`);
+    }
+  },
+
+  async updateCourse(courseId, courseData) {
+    try {
+      const response = await api.put(`${endpoints.catalogCourses}/${courseId}`, courseData);
+      return response.data;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to update course: ${error.message}`);
+    }
+  },
+
+  // Delete operations
+  async deleteProgram(programId) {
+    try {
+      await api.delete(`${endpoints.programs}/${programId}`);
+      return true;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to delete program: ${error.message}`);
+    }
+  },
+
+  async deleteSpecialization(specializationId) {
+    try {
+      await api.delete(`${endpoints.specializations}/${specializationId}`);
+      return true;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to delete specialization: ${error.message}`);
+    }
+  },
+
+  async deleteCourse(courseId) {
+    try {
+      await api.delete(`${endpoints.catalogCourses}/${courseId}`);
+      return true;
+    } catch (error) {
+      console.error('API failed:', error.message);
+      throw new Error(`Failed to delete course: ${error.message}`);
     }
   }
 }

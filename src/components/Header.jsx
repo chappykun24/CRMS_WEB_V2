@@ -332,9 +332,15 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   return (
                     <button
                       onClick={() => {
-                        // Dispatch event to reset program selection in CourseManagement
-                        const event = new CustomEvent('resetProgramSelection')
-                        window.dispatchEvent(event)
+                        if (courseMgmtDetails.specializationName) {
+                          // If on courses page, go back to specializations
+                          const event = new CustomEvent('goBackToSpecializations')
+                          window.dispatchEvent(event)
+                        } else {
+                          // If on specializations page, go back to programs
+                          const event = new CustomEvent('resetProgramSelection')
+                          window.dispatchEvent(event)
+                        }
                       }}
                       className="text-primary-600 hover:text-primary-700 underline cursor-pointer"
                     >

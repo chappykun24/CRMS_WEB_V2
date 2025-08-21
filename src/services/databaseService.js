@@ -335,6 +335,46 @@ export const catalogService = {
     }
   },
 
+  async createProgram(programData) {
+    try {
+      const { name, description, program_abbreviation, department_id } = programData;
+      const result = await query(`
+        INSERT INTO programs (name, description, program_abbreviation, department_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING program_id, name, description, program_abbreviation, department_id
+      `, [name, description || null, program_abbreviation, department_id || null]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to create program: ${error.message}`);
+    }
+  },
+  async updateProgram(programId, programData) {
+    try {
+      const { name, description, program_abbreviation, department_id } = programData;
+      const result = await query(`
+        UPDATE programs
+        SET name = COALESCE($1, name),
+            description = COALESCE($2, description),
+            program_abbreviation = COALESCE($3, program_abbreviation),
+            department_id = COALESCE($4, department_id),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE program_id = $5
+        RETURNING program_id, name, description, program_abbreviation, department_id
+      `, [name || null, description || null, program_abbreviation || null, department_id || null, programId]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to update program: ${error.message}`);
+    }
+  },
+  async deleteProgram(programId) {
+    try {
+      await query('DELETE FROM programs WHERE program_id = $1', [programId]);
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to delete program: ${error.message}`);
+    }
+  },
+
   async getSpecializations({ programId } = {}) {
     try {
       const sql = `
@@ -348,6 +388,45 @@ export const catalogService = {
       return result.rows;
     } catch (error) {
       throw new Error(`Failed to fetch specializations: ${error.message}`);
+    }
+  },
+
+  async createSpecialization(specializationData) {
+    try {
+      const { name, description, abbreviation, program_id } = specializationData;
+      const result = await query(`
+        INSERT INTO program_specializations (name, description, abbreviation, program_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING specialization_id, name, description, abbreviation, program_id
+      `, [name, description || null, abbreviation, program_id]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to create specialization: ${error.message}`);
+    }
+  },
+  async updateSpecialization(specializationId, specializationData) {
+    try {
+      const { name, description, abbreviation } = specializationData;
+      const result = await query(`
+        UPDATE program_specializations
+        SET name = COALESCE($1, name),
+            description = COALESCE($2, description),
+            abbreviation = COALESCE($3, abbreviation),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE specialization_id = $4
+        RETURNING specialization_id, name, description, abbreviation, program_id
+      `, [name || null, description || null, abbreviation || null, specializationId]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to update specialization: ${error.message}`);
+    }
+  },
+  async deleteSpecialization(specializationId) {
+    try {
+      await query('DELETE FROM program_specializations WHERE specialization_id = $1', [specializationId]);
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to delete specialization: ${error.message}`);
     }
   },
 
@@ -396,6 +475,47 @@ export const catalogService = {
       return result.rows;
     } catch (error) {
       throw new Error(`Failed to fetch courses: ${error.message}`);
+    }
+  },
+
+  async createCourse(courseData) {
+    try {
+      const { title, course_code, description, term_id, specialization_id } = courseData;
+      const result = await query(`
+        INSERT INTO courses (title, course_code, description, term_id, specialization_id)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING course_id, title, course_code, description, term_id, specialization_id
+      `, [title, course_code, description || null, term_id || null, specialization_id || null]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to create course: ${error.message}`);
+    }
+  },
+  async updateCourse(courseId, courseData) {
+    try {
+      const { title, course_code, description, term_id, specialization_id } = courseData;
+      const result = await query(`
+        UPDATE courses
+        SET title = COALESCE($1, title),
+            course_code = COALESCE($2, course_code),
+            description = COALESCE($3, description),
+            term_id = COALESCE($4, term_id),
+            specialization_id = COALESCE($5, specialization_id),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE course_id = $6
+        RETURNING course_id, title, course_code, description, term_id, specialization_id
+      `, [title || null, course_code || null, description || null, term_id || null, specialization_id || null, courseId]);
+      return result.rows[0];
+    } catch (error) {
+      throw new Error(`Failed to update course: ${error.message}`);
+    }
+  },
+  async deleteCourse(courseId) {
+    try {
+      await query('DELETE FROM courses WHERE course_id = $1', [courseId]);
+      return true;
+    } catch (error) {
+      throw new Error(`Failed to delete course: ${error.message}`);
     }
   }
 };
