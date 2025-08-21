@@ -16,7 +16,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 
 const CourseManagement = () => {
   const { sidebarExpanded } = useSidebar()
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('courseMgmtActiveTab') || 'programs') // programs | specializations | courses
+  const [activeTab, setActiveTab] = useState('programs') // Only programs tab now
   const [query, setQuery] = useState('')
 
   // Selections
@@ -36,16 +36,15 @@ const CourseManagement = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Handle tab changes and communicate with header
-  useEffect(() => {
-    localStorage.setItem('courseMgmtActiveTab', activeTab)
-    updateHeaderInfo()
-  }, [activeTab])
-
   // Handle program/specialization/term selection changes and communicate with header
   useEffect(() => {
     updateHeaderInfo()
-  }, [selectedProgramId, selectedSpecializationId, selectedTermId, programs])
+  }, [selectedProgramId, selectedSpecializationId, programs, specializations])
+
+  // Update header when specialization selection changes
+  useEffect(() => {
+    updateHeaderInfo()
+  }, [selectedSpecializationId])
 
   // Function to update header information
   const updateHeaderInfo = () => {
@@ -53,13 +52,17 @@ const CourseManagement = () => {
     const selectedProgram = programs.find(p => String(p.program_id) === String(selectedProgramId))
     const programName = selectedProgram?.name || selectedProgram?.program_abbreviation || ''
     
+    // Get the selected specialization name for display
+    const selectedSpecialization = specializations.find(s => String(s.specialization_id) === String(selectedSpecializationId))
+    const specializationName = selectedSpecialization?.name || selectedSpecialization?.abbreviation || ''
+    
     const event = new CustomEvent('courseMgmtTabChanged', { 
       detail: { 
-        activeTab,
+        activeTab, // Send the current active tab
         selectedProgramId,
         programName,
         selectedSpecializationId,
-        selectedTermId
+        specializationName
       } 
     })
     window.dispatchEvent(event)
@@ -83,6 +86,23 @@ const CourseManagement = () => {
       }
     }
     loadBase()
+    
+    // Update header when component mounts
+    updateHeaderInfo()
+  }, [])
+
+  // Listen for reset program selection event from header
+  useEffect(() => {
+    const handleResetProgram = () => {
+      setSelectedProgramId('')
+      setSelectedSpecializationId('')
+      setSelectedCourse(null)
+    }
+    
+    window.addEventListener('resetProgramSelection', handleResetProgram)
+    return () => {
+      window.removeEventListener('resetProgramSelection', handleResetProgram)
+    }
   }, [])
 
   // Load specializations when program changes
@@ -218,14 +238,8 @@ const CourseManagement = () => {
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-gray-50">
               <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
-                <TabButton isActive={activeTab === 'programs'} onClick={() => setActiveTab('programs')}>
-                  Programs
-                </TabButton>
-                <TabButton isActive={activeTab === 'specializations'} onClick={() => setActiveTab('specializations')}>
-                  Specializations
-                </TabButton>
-                <TabButton isActive={activeTab === 'courses'} onClick={() => setActiveTab('courses')}>
-                  Courses
+                <TabButton isActive={true}>
+                  {selectedSpecializationId ? 'Courses' : selectedProgramId ? 'Specializations' : 'Programs'}
                 </TabButton>
               </nav>
             </div>
@@ -243,167 +257,174 @@ const CourseManagement = () => {
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder={activeTab === 'programs' ? 'Search program' : activeTab === 'specializations' ? 'Search specialization' : 'Search course code or title'}
+                      placeholder={selectedSpecializationId ? 'Search course code or title' : selectedProgramId ? 'Search specialization' : 'Search program'}
                       className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
                     />
                     <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                   </div>
-                  {/* Program filter */}
-                  <select
-                    value={selectedProgramId}
-                    onChange={(e) => setSelectedProgramId(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                  >
-                    <option value="">All Programs</option>
-                    {programs.map(p => (
-                      <option key={p.program_id} value={p.program_id}>
-                        {p.program_abbreviation || ''} {p.name ? `— ${p.name}` : ''}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Specialization filter */}
-                  <select
-                    value={selectedSpecializationId}
-                    onChange={(e) => setSelectedSpecializationId(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                  >
-                    <option value="">All Specializations</option>
-                    {specializations
-                      .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
-                      .map(s => (
-                        <option key={s.specialization_id} value={s.specialization_id}>
-                          {s.abbreviation || ''} {s.name ? `— ${s.name}` : ''}
+                  
+                  {/* Hidden filters - functionality preserved for future use */}
+                  <div className="hidden">
+                    {/* Program filter */}
+                    <select
+                      value={selectedProgramId}
+                      onChange={(e) => setSelectedProgramId(e.target.value)}
+                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    >
+                      <option value="">All Programs</option>
+                      {programs.map(p => (
+                        <option key={p.program_id} value={p.program_id}>
+                          {p.program_abbreviation || ''} {p.name ? `— ${p.name}` : ''}
                         </option>
                       ))}
-                  </select>
+                    </select>
 
-                  {/* Term filter */}
-                  <select
-                    value={selectedTermId}
-                    onChange={(e) => setSelectedTermId(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                  >
-                    <option value="">All Terms</option>
-                    {terms.map(t => (
-                      <option key={t.term_id} value={t.term_id}>
-                        {t.school_year} {t.semester ? `— ${t.semester}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    {/* Specialization filter */}
+                    <select
+                      value={selectedSpecializationId}
+                      onChange={(e) => setSelectedSpecializationId(e.target.value)}
+                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    >
+                      <option value="">All Specializations</option>
+                      {specializations
+                        .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
+                        .map(s => (
+                          <option key={s.specialization_id} value={s.specialization_id}>
+                            {s.abbreviation || ''} {s.name ? `— ${s.name}` : ''}
+                          </option>
+                        ))}
+                    </select>
+
+                    {/* Term filter */}
+                    <select
+                      value={selectedTermId}
+                      onChange={(e) => setSelectedTermId(e.target.value)}
+                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    >
+                      <option value="">All Terms</option>
+                      {terms.map(t => (
+                        <option key={t.term_id} value={t.term_id}>
+                          {t.school_year} {t.semester ? `— ${t.semester}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   
                   <button
                     onClick={() => setShowCreateModal(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Add Course
+                    {selectedSpecializationId ? 'Add Course' : selectedProgramId ? 'Add Specialization' : 'Add Program'}
                   </button>
                 </div>
 
-                {/* Tab contents */}
-                {activeTab === 'programs' && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    {filteredPrograms.length > 0 ? (
-                      <div className="divide-y divide-gray-200">
-                        {filteredPrograms.map(p => (
-                          <div key={p.program_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
-                               onClick={() => { setSelectedProgramId(String(p.program_id)); setActiveTab('specializations') }}>
-                            <div>
-                              <div className="text-sm font-semibold text-gray-900">{p.name}</div>
-                              <div className="text-xs text-gray-500">{p.program_abbreviation}</div>
+                {/* Programs content */}
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  {!selectedProgramId ? (
+                    // Show programs list when no program is selected
+                    <>
+                      {filteredPrograms.length > 0 ? (
+                        <div className="divide-y divide-gray-200">
+                          {filteredPrograms.map(p => (
+                            <div key={p.program_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                                 onClick={() => { setSelectedProgramId(String(p.program_id)) }}>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">{p.name}</div>
+                                <div className="text-xs text-gray-500">{p.program_abbreviation}</div>
+                              </div>
+                              <div className="text-xs text-gray-400">Program ID: {p.program_id}</div>
                             </div>
-                            <div className="text-xs text-gray-400">Program ID: {p.program_id}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center py-16 text-gray-500">No programs found</div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'specializations' && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    {filteredSpecializations.length > 0 ? (
-                      <div className="divide-y divide-gray-200">
-                        {filteredSpecializations.map(s => (
-                          <div key={s.specialization_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
-                               onClick={() => { setSelectedSpecializationId(String(s.specialization_id)); setActiveTab('courses') }}>
-                            <div>
-                              <div className="text-sm font-semibold text-gray-900">{s.name}</div>
-                              <div className="text-xs text-gray-500">{s.abbreviation}</div>
-                            </div>
-                            <div className="text-xs text-gray-400">Spec ID: {s.specialization_id}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center py-16 text-gray-500">{selectedProgramId ? 'No specializations found' : 'Select a program to view specializations'}</div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'courses' && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    {filteredCourses.length > 0 ? (
-                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredCourses.map(course => (
-                              <tr
-                                key={course.course_id}
-                                onClick={() => setSelectedCourse(course)}
-                                className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50' : ''}`}
-                              >
-                                <td className="px-8 py-3">
-                                  <div className="text-sm font-medium text-gray-900">{course.course_code}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{course.title}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{course.program_abbreviation || course.program_name || '—'}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{course.specialization_name || course.abbreviation || '—'}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{course.term_id || '—'}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{formatDate(course.created_at)}</div>
-                                </td>
-                                <td className="px-8 py-3">
-                                  <div className="text-sm text-gray-700">{formatDate(course.updated_at)}</div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center py-16">
-                        <div className="text-center">
-                          <BookOpenIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
-                          <p className="text-gray-500">Try adjusting filters above.</p>
+                          ))}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <div className="flex items-center justify-center py-16 text-gray-500">No programs found</div>
+                      )}
+                    </>
+                  ) : !selectedSpecializationId ? (
+                    // Show specializations when a program is selected but no specialization is selected
+                    <>
+                      {filteredSpecializations.length > 0 ? (
+                        <div className="divide-y divide-gray-200">
+                          {filteredSpecializations.map(s => (
+                            <div key={s.specialization_id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                                 onClick={() => { setSelectedSpecializationId(String(s.specialization_id)) }}>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900">{s.name}</div>
+                                <div className="text-xs text-gray-500">{s.abbreviation}</div>
+                              </div>
+                              <div className="text-xs text-gray-400">Spec ID: {s.specialization_id}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-16 text-gray-500">
+                          {selectedProgramId ? 'No specializations found for this program' : 'Select a program to view specializations'}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Show courses when a specialization is selected
+                    <>
+                      {filteredCourses.length > 0 ? (
+                        <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50 sticky top-0 z-10">
+                              <tr>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {filteredCourses.map(course => (
+                                <tr
+                                  key={course.course_id}
+                                  onClick={() => setSelectedCourse(course)}
+                                  className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50' : ''}`}
+                                >
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm font-medium text-gray-900">{course.course_code}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{course.title}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{course.program_abbreviation || course.program_name || '—'}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{course.specialization_name || course.abbreviation || '—'}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{course.term_id || '—'}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{formatDate(course.created_at)}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{formatDate(course.updated_at)}</div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center py-16">
+                          <div className="text-center">
+                            <BookOpenIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+                            <p className="text-gray-500">Try adjusting filters above.</p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Side actions / Course details */}

@@ -15,15 +15,17 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
-  const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
-  const [courseMgmtActiveTab, setCourseMgmtActiveTab] = useState('programs')
+  
   const [courseMgmtDetails, setCourseMgmtDetails] = useState({
     selectedProgramId: '',
     programName: '',
     selectedSpecializationId: '',
-    selectedTermId: ''
+    specializationName: '',
+    activeTab: 'programs' // Add active tab state
   })
+
+  const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
+  const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
 
   const handleLogout = () => {
     logout()
@@ -33,52 +35,42 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     onSidebarToggle()
   }
 
-  // Listen for School Configuration tab changes
+  // Listen for Course Management tab changes
   useEffect(() => {
-    const handleTabChange = (event) => {
-      setSchoolConfigActiveTab(event.detail.activeTab)
+    const handleCourseMgmtTabChange = (event) => {
+      setCourseMgmtDetails({
+        selectedProgramId: event.detail.selectedProgramId || '',
+        programName: event.detail.programName || '',
+        selectedSpecializationId: event.detail.selectedSpecializationId || '',
+        specializationName: event.detail.specializationName || '',
+        activeTab: event.detail.activeTab || 'programs' // Update activeTab
+      })
     }
-
-    window.addEventListener('schoolConfigTabChanged', handleTabChange)
-    
-    // Get initial value from localStorage
-    const initialTab = localStorage.getItem('schoolConfigActiveTab') || 'departments'
-    setSchoolConfigActiveTab(initialTab)
-
+    window.addEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
     return () => {
-      window.removeEventListener('schoolConfigTabChanged', handleTabChange)
+      window.removeEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
     }
   }, [])
 
-  // Listen for User Management tab changes (All Users / Faculty Approval)
+  // Listen for User Management tab changes
   useEffect(() => {
     const handleUserMgmtTabChange = (event) => {
-      setUserMgmtActiveTab(event.detail.activeTab)
+      setUserMgmtActiveTab(event.detail.activeTab || 'all')
     }
     window.addEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
-    const initialUserTab = localStorage.getItem('userMgmtActiveTab') || 'all'
-    setUserMgmtActiveTab(initialUserTab)
     return () => {
       window.removeEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
     }
   }, [])
 
-  // Listen for Course Management tab changes
+  // Listen for School Configuration tab changes
   useEffect(() => {
-    const handleCourseMgmtTabChange = (event) => {
-      setCourseMgmtActiveTab(event.detail.activeTab)
-      setCourseMgmtDetails({
-        selectedProgramId: event.detail.selectedProgramId || '',
-        programName: event.detail.programName || '',
-        selectedSpecializationId: event.detail.selectedSpecializationId || '',
-        selectedTermId: event.detail.selectedTermId || ''
-      })
+    const handleSchoolConfigTabChange = (event) => {
+      setSchoolConfigActiveTab(event.detail.activeTab || 'departments')
     }
-    window.addEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
-    const initialCourseTab = localStorage.getItem('courseMgmtActiveTab') || 'programs'
-    setCourseMgmtActiveTab(initialCourseTab)
+    window.addEventListener('schoolConfigTabChanged', handleSchoolConfigTabChange)
     return () => {
-      window.removeEventListener('courseMgmtTabChanged', handleCourseMgmtTabChange)
+      window.removeEventListener('schoolConfigTabChanged', handleSchoolConfigTabChange)
     }
   }, [])
 
@@ -99,6 +91,87 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       'program chair': 'Program Chair'
     }
     return roleNames[role] || role
+  }
+
+  // Function to get current sidebar item name
+  const getCurrentSidebarItem = () => {
+    const path = location.pathname
+    let userRole = ''
+    
+    if (user?.role) {
+      // Handle different role formats
+      const rawRole = String(user.role).toLowerCase()
+      if (rawRole.includes('program') && rawRole.includes('chair')) {
+        userRole = 'PROGRAMCHAIR'
+      } else if (rawRole.includes('program_chair')) {
+        userRole = 'PROGRAMCHAIR'
+      } else {
+        userRole = rawRole.replace(/\s|_/g, '').toUpperCase()
+      }
+    }
+    
+    if (path === '/dashboard') {
+      return 'Home'
+    }
+    
+    switch (userRole) {
+      case 'ADMIN':
+        if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
+          // Show the current tab for User Management
+          if (userMgmtActiveTab === 'faculty') {
+            return 'Faculty Approval'
+          }
+          return 'User Management'
+        }
+        if (path === '/dashboard/school-config') {
+          // Show the current tab for School Configuration
+          if (schoolConfigActiveTab === 'terms') {
+            return 'School Terms'
+          }
+          return 'School Configuration'
+        }
+        if (path === '/dashboard/settings') {
+          return 'System Settings'
+        }
+        break
+      case 'FACULTY':
+        if (path === '/dashboard/classes') return 'My Classes'
+        if (path === '/dashboard/attendance') return 'Attendance'
+        if (path === '/dashboard/assessments') return 'Assessments'
+        if (path === '/dashboard/grades') return 'Grades'
+        if (path === '/dashboard/syllabi') return 'Syllabi'
+        break
+      case 'DEAN':
+        if (path === '/dashboard/analytics') return 'Analytics'
+        if (path === '/dashboard/classes') return 'My Classes'
+        if (path === '/dashboard/reports') return 'Reports'
+        if (path === '/dashboard/syllabus-approval') return 'Syllabus Approval'
+        break
+      case 'STAFF':
+        if (path === '/dashboard/students') return 'Student Management'
+        if (path === '/dashboard/records') return 'Academic Records'
+        if (path === '/dashboard/assign-faculty') return 'Assign Faculty'
+        break
+      case 'PROGRAMCHAIR':
+        if (path === '/dashboard/courses' || path === '/dashboard/program-chair/courses') {
+          // Return "Course Management" as the main section
+          return 'Course Management'
+        }
+        if (path === '/dashboard/analytics' || path === '/dashboard/program-chair/analytics') return 'Analytics'
+        if (path === '/dashboard/reports' || path === '/dashboard/program-chair/reports') return 'Reports'
+        if (path === '/dashboard/submissions' || path === '/dashboard/program-chair/submissions') return 'Submissions'
+        break
+      default:
+        break
+    }
+    
+    // Fallback: Check path directly if role detection failed
+    if (path === '/dashboard/courses' || path.startsWith('/dashboard/program-chair/courses')) {
+      // Return "Course Management" as the main section
+      return 'Course Management'
+    }
+    
+    return 'Dashboard'
   }
 
   // Function to get breadcrumb data based on current location
@@ -128,23 +201,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       }
     } else if (path === '/dashboard/school-config') {
       // Use the state value instead of reading from localStorage
-      if (schoolConfigActiveTab === 'departments') {
-        return { 
-          title: 'School Configuration', 
-          subtitle: 'Manage departments',
-          path: '/dashboard/school-config'
-        }
-      } else if (schoolConfigActiveTab === 'terms') {
-        return { 
-          title: 'School Configuration', 
-          subtitle: 'Manage school terms',
-          path: '/dashboard/school-config'
-        }
-      }
-      
+      const subtitle = schoolConfigActiveTab === 'terms' ? 'Manage school terms' : 'Manage departments'
       return { 
         title: 'School Configuration', 
-        subtitle: 'Manage departments and terms',
+        subtitle,
         path: '/dashboard/school-config'
       }
     } else if (path === '/dashboard/settings') {
@@ -173,47 +233,48 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       }
     } else if (path.startsWith('/dashboard/program-chair/')) {
       if (path === '/dashboard/program-chair/courses') {
-        // Show dynamic breadcrumb based on selected program and tab
-        if (courseMgmtActiveTab === 'programs') {
-          return {
-            title: 'Course Management',
-            subtitle: 'Manage programs',
-            path: '/dashboard/program-chair/courses'
-          }
-        } else if (courseMgmtActiveTab === 'specializations') {
-          if (courseMgmtDetails.programName) {
-            return {
-              title: 'Course Management',
-              subtitle: `${courseMgmtDetails.programName} specializations`,
-              path: '/dashboard/program-chair/courses'
-            }
+        // Enhanced dynamic breadcrumb for Course Management
+        let subtitle = ''
+        
+        // Only show subtitle if there's selected parent content
+        if (courseMgmtDetails.programName) {
+          if (courseMgmtDetails.specializationName) {
+            subtitle = courseMgmtDetails.specializationName
           } else {
-            return {
-              title: 'Course Management',
-              subtitle: 'Manage specializations',
-              path: '/dashboard/program-chair/courses'
-            }
+            subtitle = courseMgmtDetails.programName
           }
-        } else if (courseMgmtActiveTab === 'courses') {
-          if (courseMgmtDetails.programName) {
-            return {
-              title: 'Course Management',
-              subtitle: `${courseMgmtDetails.programName} courses`,
-              path: '/dashboard/program-chair/courses'
-            }
-          } else {
-            return {
-              title: 'Course Management',
-              subtitle: 'Manage courses',
-              path: '/dashboard/program-chair/courses'
-            }
-          }
+        }
+        // If no program is selected, don't show any subtitle
+        
+        return {
+          title: 'Course Management',
+          subtitle,
+          path: '/dashboard/program-chair/courses'
         }
       }
       return { 
         title: 'Program Chair Dashboard', 
         subtitle: 'Program management',
         path: '/dashboard/program-chair'
+      }
+    } else if (path === '/dashboard/courses') {
+      // Handle the direct /dashboard/courses path
+      let subtitle = ''
+      
+      // Only show subtitle if there's selected parent content
+      if (courseMgmtDetails.programName) {
+        if (courseMgmtDetails.specializationName) {
+          subtitle = courseMgmtDetails.specializationName
+        } else {
+          subtitle = courseMgmtDetails.programName
+        }
+      }
+      // If no program is selected, don't show any subtitle
+      
+      return {
+        title: 'Course Management',
+        subtitle,
+        path: '/dashboard/courses'
       }
     }
     
@@ -235,19 +296,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
   return (
     <header className="fixed-header bg-white">
+      
       <div className="flex justify-between items-center h-16 px-4 md:px-6">
-        {/* Left side - Hamburger and Logo */}
-        <div className="flex items-center space-x-2 md:px-4">
+        {/* Left side - Hamburger, Logo, and Breadcrumbs */}
+        <div className="flex items-center space-x-4">
           {/* Hamburger Menu */}
           <button
             onClick={handleSidebarToggle}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0 -ml-5"
+            className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-0"
             title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             <Bars3Icon className="h-5 w-5 text-gray-600" />
           </button>
 
-          <div className="flex-shrink-0 flex items-center space-x-2">
+          {/* Logo and CRMS Text */}
+          <div className="flex items-center space-x-2">
             <img 
               src={logo} 
               alt="CRMS Logo" 
@@ -256,24 +319,40 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
             <h1 className="text-lg md:text-xl font-bold text-primary-600">CRMS</h1>
           </div>
 
-          {/* Breadcrumb Navigation - Inline with logo */}
-          <div className="flex items-center text-sm text-gray-600 ml-4">
-            {breadcrumbData.path !== '/dashboard' && (
+          {/* Breadcrumb Navigation - Following the exact design from the screenshot */}
+          <div className="flex items-center text-sm text-gray-600">
+            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            <span className="font-medium ml-2 text-gray-900">
+              {(() => {
+                const sidebarItem = getCurrentSidebarItem()
+                // Make Course Management clickable when a program is selected
+                if (sidebarItem === 'Course Management' && courseMgmtDetails.programName) {
+                  return (
+                    <button
+                      onClick={() => {
+                        // Dispatch event to reset program selection in CourseManagement
+                        const event = new CustomEvent('resetProgramSelection')
+                        window.dispatchEvent(event)
+                      }}
+                      className="text-primary-600 hover:text-primary-700 underline cursor-pointer"
+                    >
+                      {courseMgmtDetails.specializationName ? 'Specializations' : 'Programs'}
+                    </button>
+                  )
+                }
+                return sidebarItem
+              })()}
+            </span>
+            
+            {/* Show subtitle as second breadcrumb level */}
+            {breadcrumbData.subtitle && (
               <>
-                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4 text-gray-400 ml-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
-                <span className="font-medium ml-2 text-gray-900">
-                  {breadcrumbData.title}
-                </span>
-                {breadcrumbData.subtitle && (
-                  <>
-                    <svg className="w-4 h-4 text-gray-400 ml-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-500 ml-2">{breadcrumbData.subtitle}</span>
-                  </>
-                )}
+                <span className="text-gray-500 ml-2">{breadcrumbData.subtitle}</span>
               </>
             )}
           </div>
