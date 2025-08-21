@@ -83,6 +83,12 @@ export const endpoints = {
   attendanceStats: '/analytics/attendance',
   gradeStats: '/analytics/grades',
   performanceStats: '/analytics/performance',
+  
+  // Catalog endpoints
+  programs: '/programs',
+  specializations: '/program-specializations',
+  terms: '/terms',
+  catalogCourses: '/courses',
 };
 
 // Database service integration
@@ -222,6 +228,52 @@ export const enhancedApi = {
       } catch (dbError) {
         throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
       }
+    }
+  },
+
+  // Catalog operations backed by database
+  async getPrograms() {
+    try {
+      const response = await api.get(endpoints.programs);
+      return response.data;
+    } catch (error) {
+      const { catalogService } = await import('../services/databaseService.js');
+      return await catalogService.getPrograms();
+    }
+  },
+
+  async getSpecializations(programId) {
+    try {
+      const url = programId ? `${endpoints.specializations}?programId=${programId}` : endpoints.specializations;
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      const { catalogService } = await import('../services/databaseService.js');
+      return await catalogService.getSpecializations({ programId });
+    }
+  },
+
+  async getTerms() {
+    try {
+      const response = await api.get(endpoints.terms);
+      return response.data;
+    } catch (error) {
+      const { catalogService } = await import('../services/databaseService.js');
+      return await catalogService.getTerms();
+    }
+  },
+
+  async getCourses(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (filters.programId) params.append('programId', filters.programId);
+      if (filters.specializationId) params.append('specializationId', filters.specializationId);
+      if (filters.termId) params.append('termId', filters.termId);
+      const response = await api.get(`${endpoints.catalogCourses}?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      const { catalogService } = await import('../services/databaseService.js');
+      return await catalogService.getCourses(filters);
     }
   }
 }

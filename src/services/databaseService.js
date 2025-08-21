@@ -320,6 +320,86 @@ export const analyticsService = {
   }
 };
 
+// Catalog Service: programs, specializations, courses
+export const catalogService = {
+  async getPrograms() {
+    try {
+      const result = await query(`
+        SELECT program_id, name, description, program_abbreviation, department_id
+        FROM programs
+        ORDER BY name
+      `);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Failed to fetch programs: ${error.message}`);
+    }
+  },
+
+  async getSpecializations({ programId } = {}) {
+    try {
+      const sql = `
+        SELECT specialization_id, program_id, name, description, abbreviation
+        FROM program_specializations
+        ${programId ? 'WHERE program_id = $1' : ''}
+        ORDER BY name
+      `;
+      const params = programId ? [programId] : [];
+      const result = await query(sql, params);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Failed to fetch specializations: ${error.message}`);
+    }
+  },
+
+  async getTerms() {
+    try {
+      const result = await query(`
+        SELECT term_id, school_year, semester, is_active
+        FROM school_terms
+        ORDER BY term_id
+      `);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Failed to fetch terms: ${error.message}`);
+    }
+  },
+
+  async getCourses({ programId, specializationId, termId } = {}) {
+    try {
+      const conditions = [];
+      const params = [];
+      if (programId) {
+        params.push(programId);
+        conditions.push(`p.program_id = $${params.length}`);
+      }
+      if (specializationId) {
+        params.push(specializationId);
+        conditions.push(`ps.specialization_id = $${params.length}`);
+      }
+      if (termId) {
+        params.push(termId);
+        conditions.push(`c.term_id = $${params.length}`);
+      }
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const sql = `
+        SELECT 
+          c.course_id, c.title, c.course_code, c.description, c.term_id, c.specialization_id,
+          ps.name AS specialization_name, ps.abbreviation,
+          p.program_id, p.name AS program_name, p.program_abbreviation
+        FROM courses c
+        LEFT JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
+        LEFT JOIN programs p ON ps.program_id = p.program_id
+        ${where}
+        ORDER BY c.course_code, c.title
+      `;
+      const result = await query(sql, params);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Failed to fetch courses: ${error.message}`);
+    }
+  }
+};
+
 export default {
   userService,
   studentService,
@@ -327,5 +407,6 @@ export default {
   attendanceService,
   assessmentService,
   gradeService,
-  analyticsService
+  analyticsService,
+  catalogService
 };

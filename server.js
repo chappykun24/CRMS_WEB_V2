@@ -344,6 +344,7 @@ app.get('/api/classes', async (req, res) => {
 // Import API routes
 import departmentsRouter from './api/departments/index.js';
 import schoolTermsRouter from './api/school-terms/index.js';
+import { Router } from 'express';
 
 // Use API routes
 app.use('/api/departments', departmentsRouter);
@@ -352,6 +353,91 @@ app.use('/api/school-terms', schoolTermsRouter);
 console.log('🚀 [SERVER] School Configuration API routes loaded:');
 console.log('   📍 /api/departments');
 console.log('   📍 /api/school-terms');
+
+// Catalog API (programs, specializations, terms, courses)
+const catalog = Router();
+
+catalog.get('/programs', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT program_id, department_id, name, description, program_abbreviation
+      FROM programs
+      ORDER BY name
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+catalog.get('/program-specializations', async (req, res) => {
+  try {
+    const { programId } = req.query;
+    const sql = `
+      SELECT specialization_id, program_id, name, description, abbreviation
+      FROM program_specializations
+      ${programId ? 'WHERE program_id = $1' : ''}
+      ORDER BY name
+    `;
+    const params = programId ? [programId] : [];
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+catalog.get('/terms', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT term_id, school_year, semester, is_active
+      FROM school_terms
+      ORDER BY term_id
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+catalog.get('/courses', async (req, res) => {
+  try {
+    const { programId, specializationId, termId } = req.query;
+    const conditions = [];
+    const params = [];
+    if (programId) {
+      params.push(programId);
+      conditions.push(`p.program_id = $${params.length}`);
+    }
+    if (specializationId) {
+      params.push(specializationId);
+      conditions.push(`ps.specialization_id = $${params.length}`);
+    }
+    if (termId) {
+      params.push(termId);
+      conditions.push(`c.term_id = $${params.length}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const sql = `
+      SELECT 
+        c.course_id, c.title, c.course_code, c.description, c.term_id, c.specialization_id,
+        c.created_at, c.updated_at,
+        ps.name AS specialization_name, ps.abbreviation,
+        p.program_id, p.name AS program_name, p.program_abbreviation
+      FROM courses c
+      LEFT JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
+      LEFT JOIN programs p ON ps.program_id = p.program_id
+      ${where}
+      ORDER BY c.course_code, c.title
+    `;
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.use('/api', catalog);
 
 // Start server
 app.listen(PORT, () => {

@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "db:setup": "node scripts/setup-database.js",
+    "db:import:csv": "node scripts/import-csv-to-neon.js",
     "db:migrate": "node scripts/migrate-database.js",
     "db:setup:neon": "node db/setup-neon-database.js",
     "db:test": "node test-neon-connection.js",
