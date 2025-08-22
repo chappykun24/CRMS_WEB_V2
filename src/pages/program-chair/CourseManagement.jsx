@@ -37,9 +37,13 @@ const CourseManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editIds, setEditIds] = useState({ programId: null, specializationId: null, courseId: null })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [showGeneralSubjects, setShowGeneralSubjects] = useState(false)
+  
+  // Messages
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
   
   // Form states
   const [formData, setFormData] = useState({
@@ -104,8 +108,8 @@ const CourseManagement = () => {
     setCreateModalType('')
     setIsEditMode(false)
     setEditIds({ programId: null, specializationId: null, courseId: null })
-    setError('')
-    setSuccess('')
+    setErrorMessage('')
+    setSuccessMessage('')
     setFormData({
       program: { name: '', abbreviation: '' },
       specialization: { name: '', abbreviation: '', program_id: '' },
@@ -118,8 +122,8 @@ const CourseManagement = () => {
     e.preventDefault()
     try {
       setLoading(true)
-      setError('')
-      setSuccess('')
+      setErrorMessage('')
+      setSuccessMessage('')
       
       if (isEditMode && editIds.programId) {
         await enhancedApi.updateProgram(editIds.programId, {
@@ -141,10 +145,12 @@ const CourseManagement = () => {
       // Refresh programs list
       const updatedPrograms = await enhancedApi.getPrograms()
       setPrograms(Array.isArray(updatedPrograms) ? updatedPrograms : [])
-      setSuccess(isEditMode ? 'Program updated successfully!' : 'Program created successfully!')
-      setTimeout(() => closeCreateModal(), 1500)
+      setSuccessMessage(isEditMode ? 'Program updated successfully!' : 'Program created successfully!')
+      setShowSuccessModal(true)
+      closeCreateModal()
     } catch (error) {
-      setError(error.message || (isEditMode ? 'Failed to update program' : 'Failed to create program'))
+      setErrorMessage(error.message || (isEditMode ? 'Failed to update program' : 'Failed to create program'))
+      setShowErrorModal(true)
     } finally {
       setLoading(false)
     }
@@ -154,8 +160,8 @@ const CourseManagement = () => {
     e.preventDefault()
     try {
       setLoading(true)
-      setError('')
-      setSuccess('')
+      setErrorMessage('')
+      setSuccessMessage('')
       
       // Create or update specialization using API
       if (isEditMode && editIds.specializationId) {
@@ -176,10 +182,12 @@ const CourseManagement = () => {
       // Refresh specializations list
       const updatedSpecializations = await enhancedApi.getSpecializations(selectedProgramId)
       setSpecializations(Array.isArray(updatedSpecializations) ? updatedSpecializations : [])
-      setSuccess(isEditMode ? 'Specialization updated successfully!' : 'Specialization created successfully!')
-      setTimeout(() => closeCreateModal(), 1500)
+      setSuccessMessage(isEditMode ? 'Specialization updated successfully!' : 'Specialization created successfully!')
+      setShowSuccessModal(true)
+      closeCreateModal()
     } catch (error) {
-      setError(error.message || (isEditMode ? 'Failed to update specialization' : 'Failed to create specialization'))
+      setErrorMessage(error.message || (isEditMode ? 'Failed to update specialization' : 'Failed to create specialization'))
+      setShowErrorModal(true)
     } finally {
       setLoading(false)
     }
@@ -189,8 +197,8 @@ const CourseManagement = () => {
     e.preventDefault()
     try {
       setLoading(true)
-      setError('')
-      setSuccess('')
+      setErrorMessage('')
+      setSuccessMessage('')
       
       // Create or update course using API
       if (isEditMode && editIds.courseId) {
@@ -213,10 +221,12 @@ const CourseManagement = () => {
       
       // Refresh courses list
       await loadCourses()
-      setSuccess(isEditMode ? 'Course updated successfully!' : 'Course created successfully!')
-      setTimeout(() => closeCreateModal(), 1500)
+      setSuccessMessage(isEditMode ? 'Course updated successfully!' : 'Course created successfully!')
+      setShowSuccessModal(true)
+      closeCreateModal()
     } catch (error) {
-      setError(error.message || (isEditMode ? 'Failed to update course' : 'Failed to create course'))
+      setErrorMessage(error.message || (isEditMode ? 'Failed to update course' : 'Failed to create course'))
+      setShowErrorModal(true)
     } finally {
       setLoading(false)
     }
@@ -266,7 +276,8 @@ const CourseManagement = () => {
         setPrograms(Array.isArray(prog) ? prog : [])
         setTerms(Array.isArray(term) ? term : [])
       } catch (e) {
-        setError(e.message || 'Failed to load base data')
+        setErrorMessage(e.message || 'Failed to load base data')
+        setShowErrorModal(true)
       } finally {
         setLoading(false)
       }
@@ -315,7 +326,8 @@ const CourseManagement = () => {
           programId: selectedProgramId
         })
       } catch (e) {
-        setError(e.message || 'Failed to load specializations')
+        setErrorMessage(e.message || 'Failed to load specializations')
+        setShowErrorModal(true)
       } finally {
         setLoading(false)
       }
@@ -347,7 +359,8 @@ const CourseManagement = () => {
         note: 'Loaded ALL courses for program (filtering on frontend)'
       })
       } catch (e) {
-        setError(e.message || 'Failed to load courses')
+        setErrorMessage(e.message || 'Failed to load courses')
+        setShowErrorModal(true)
       } finally {
         setLoading(false)
       }
@@ -625,7 +638,8 @@ const CourseManagement = () => {
                                       const updatedPrograms = await enhancedApi.getPrograms();
                                       setPrograms(Array.isArray(updatedPrograms) ? updatedPrograms : []);
                                     } catch (err) {
-                                      setError(err.message || 'Failed to delete program');
+                                      setErrorMessage(err.message || 'Failed to delete program');
+                                      setShowErrorModal(true);
                                     } finally {
                                       setLoading(false);
                                     }
@@ -692,7 +706,8 @@ const CourseManagement = () => {
                                       const updatedSpecializations = await enhancedApi.getSpecializations(selectedProgramId);
                                       setSpecializations(Array.isArray(updatedSpecializations) ? updatedSpecializations : []);
                                     } catch (err) {
-                                      setError(err.message || 'Failed to delete specialization');
+                                      setErrorMessage(err.message || 'Failed to delete specialization');
+                                      setShowErrorModal(true);
                                     } finally {
                                       setLoading(false);
                                     }
@@ -771,7 +786,8 @@ const CourseManagement = () => {
                                             await enhancedApi.deleteCourse(course.course_id);
                                             await loadCourses();
                                           } catch (err) {
-                                            setError(err.message || 'Failed to delete course');
+                                            setErrorMessage(err.message || 'Failed to delete course');
+                                            setShowErrorModal(true);
                                           } finally {
                                             setLoading(false);
                                           }
@@ -889,19 +905,7 @@ const CourseManagement = () => {
               </button>
             </div>
 
-            {/* Error Display */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
 
-            {/* Success Display */}
-            {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-600">{success}</p>
-              </div>
-            )}
 
             {/* Program Creation Form */}
             {createModalType === 'program' && (
@@ -1082,6 +1086,78 @@ const CourseManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Success!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+                  {showErrorModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                      <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Cannot Delete</h3>
+                    <p className="text-sm text-gray-700 mb-4 leading-relaxed">{errorMessage}</p>
+                    
+                    {/* Show additional error details if available */}
+                    {errorMessage.includes('contains') && (
+                      <div className="bg-gray-50 rounded-lg p-3 mb-4 text-left">
+                        <p className="text-xs text-gray-600 font-medium mb-2">📋 What needs to be removed first:</p>
+                        <p className="text-xs text-gray-700 leading-relaxed">
+                          {errorMessage.includes('specialization') && errorMessage.includes('courses') 
+                            ? '• Delete all courses under this specialization first\n• Then return to delete the specialization'
+                            : errorMessage.includes('program') && errorMessage.includes('specialization')
+                            ? '• Delete all specializations under this program first\n• Then return to delete the program'
+                            : '• Remove all child records before deleting this item'
+                          }
+                        </p>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={() => {
+                        setShowErrorModal(false);
+                        setErrorMessage('');
+                      }}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Got it
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
     </>
   )
 }

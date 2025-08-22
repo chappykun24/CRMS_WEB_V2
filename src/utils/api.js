@@ -284,6 +284,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to create program: ${error.message}`);
     }
   },
@@ -294,6 +304,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to create specialization: ${error.message}`);
     }
   },
@@ -304,6 +324,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to create course: ${error.message}`);
     }
   },
@@ -315,6 +345,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to update program: ${error.message}`);
     }
   },
@@ -325,6 +365,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to update specialization: ${error.message}`);
     }
   },
@@ -335,6 +385,16 @@ export const enhancedApi = {
       return response.data;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to update course: ${error.message}`);
     }
   },
@@ -346,6 +406,16 @@ export const enhancedApi = {
       return true;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to delete program: ${error.message}`);
     }
   },
@@ -356,6 +426,16 @@ export const enhancedApi = {
       return true;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to delete specialization: ${error.message}`);
     }
   },
@@ -366,6 +446,16 @@ export const enhancedApi = {
       return true;
     } catch (error) {
       console.error('API failed:', error.message);
+      
+      // Check if we have a detailed error response from the backend
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error && errorData.message) {
+          // Use the detailed backend error message
+          throw new Error(`${errorData.error}: ${errorData.message}`);
+        }
+      }
+      
       throw new Error(`Failed to delete course: ${error.message}`);
     }
   }

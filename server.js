@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import cors from 'cors';
 import pg from 'pg';
 import dotenv from 'dotenv';
@@ -344,7 +344,6 @@ app.get('/api/classes', async (req, res) => {
 // Import API routes
 import departmentsRouter from './api/departments/index.js';
 import schoolTermsRouter from './api/school-terms/index.js';
-import { Router } from 'express';
 
 // Use API routes
 app.use('/api/departments', departmentsRouter);
@@ -366,6 +365,27 @@ catalog.get('/programs', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get individual program by ID
+catalog.get('/programs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT program_id, department_id, name, description, program_abbreviation
+      FROM programs
+      WHERE program_id = $1
+    `, [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Program not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching program:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -399,8 +419,7 @@ catalog.put('/programs/:id', async (req, res) => {
        SET name = COALESCE($1, name),
            description = COALESCE($2, description),
            program_abbreviation = COALESCE($3, program_abbreviation),
-           department_id = COALESCE($4, department_id),
-           updated_at = CURRENT_TIMESTAMP
+           department_id = COALESCE($4, department_id)
        WHERE program_id = $5
        RETURNING program_id, department_id, name, description, program_abbreviation`,
       [name || null, description || null, program_abbreviation || null, department_id || null, id]
@@ -416,10 +435,119 @@ catalog.put('/programs/:id', async (req, res) => {
 catalog.delete('/programs/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM programs WHERE program_id = $1', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Program not found' });
+    
+    // Check if program exists
+    const programCheck = await pool.query('SELECT name FROM programs WHERE program_id = $1', [id]);
+    if (programCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Program not found' });
+    }
+    
+    // Check for child specializations
+    const specializationsCheck = await pool.query(
+      'SELECT COUNT(*) as count FROM program_specializations WHERE program_id = $1', 
+      [id]
+    );
+    
+    if (parseInt(specializationsCheck.rows[0].count) > 0) {
+      const specializationCount = parseInt(specializationsCheck.rows[0].count);
+      
+      // Get the actual specialization names for better user experience
+      const specializationNames = await pool.query(`
+        SELECT name, abbreviation 
+        FROM program_specializations 
+        WHERE program_id = $1 
+        ORDER BY name
+        LIMIT 5
+      `, [id]);
+      
+      const specializationList = specializationNames.rows.map(s => `${s.name} (${s.abbreviation})`).join(', ');
+      const remainingText = specializationCount > 5 ? ` and ${specializationCount - 5} more` : '';
+      
+      return res.status(400).json({ 
+        error: `Cannot delete program "${programCheck.rows[0].name}"`,
+        message: `This program contains ${specializationCount} specialization${specializationCount > 1 ? 's' : ''}:`,
+        reminder: `You must remove all specializations first before deleting this program.`,
+        existingData: {
+          type: 'specializations',
+          count: specializationCount,
+          examples: specializationList + remainingText
+        },
+        details: {
+          type: 'program_has_specializations',
+          count: specializationCount,
+          programName: programCheck.rows[0].name,
+          action: 'delete_specializations_first'
+        },
+        nextSteps: [
+          "Go to the Specializations tab",
+          "Delete all specializations under this program",
+          "Return to Programs tab and try deleting again"
+        ],
+        hierarchy: {
+          level: "Program",
+          children: "Specializations",
+          grandchildren: "Courses"
+        }
+      });
+    }
+    
+    // Check for child courses (through specializations)
+    const coursesCheck = await pool.query(`
+      SELECT COUNT(*) as count 
+      FROM courses c
+      JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
+      WHERE ps.program_id = $1
+    `, [id]);
+    
+    if (parseInt(coursesCheck.rows[0].count) > 0) {
+      const courseCount = parseInt(coursesCheck.rows[0].count);
+      
+      // Get the actual course names for better user experience
+      const courseNames = await pool.query(`
+        SELECT c.course_code, c.title, ps.name as specialization_name
+        FROM courses c
+        JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
+        WHERE ps.program_id = $1 
+        ORDER BY c.course_code
+        LIMIT 5
+      `, [id]);
+      
+      const courseList = courseNames.rows.map(c => `${c.course_code} - ${c.title} (${c.specialization_name})`).join(', ');
+      const remainingText = courseCount > 5 ? ` and ${courseCount - 5} more` : '';
+      
+      return res.status(400).json({ 
+        error: `Cannot delete program "${programCheck.rows[0].name}"`,
+        message: `This program contains ${courseCount} course${courseCount > 1 ? 's' : ''}:`,
+        reminder: `You must remove all courses first before deleting this program.`,
+        existingData: {
+          type: 'courses',
+          count: courseCount,
+          examples: courseList + remainingText
+        },
+        details: {
+          type: 'program_has_courses',
+          count: courseCount,
+          programName: programCheck.rows[0].name,
+          action: 'delete_courses_first'
+        },
+        nextSteps: [
+          "Go to the Courses tab",
+          "Delete all courses under this program",
+          "Return to Programs tab and try deleting again"
+        ],
+        hierarchy: {
+          level: "Program",
+          children: "Specializations",
+          grandchildren: "Courses"
+        }
+      });
+    }
+    
+    // If no child records, proceed with deletion
+    await pool.query('DELETE FROM programs WHERE program_id = $1', [id]);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting program:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -437,6 +565,27 @@ catalog.get('/program-specializations', async (req, res) => {
     const result = await pool.query(sql, params);
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get individual specialization by ID
+catalog.get('/program-specializations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT specialization_id, program_id, name, description, abbreviation
+      FROM program_specializations
+      WHERE specialization_id = $1
+    `, [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Specialization not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching specialization:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -469,8 +618,7 @@ catalog.put('/program-specializations/:id', async (req, res) => {
       `UPDATE program_specializations
        SET name = COALESCE($1, name),
            description = COALESCE($2, description),
-           abbreviation = COALESCE($3, abbreviation),
-           updated_at = CURRENT_TIMESTAMP
+           abbreviation = COALESCE($3, abbreviation)
        WHERE specialization_id = $4
        RETURNING specialization_id, program_id, name, description, abbreviation`,
       [name || null, description || null, abbreviation || null, id]
@@ -486,10 +634,69 @@ catalog.put('/program-specializations/:id', async (req, res) => {
 catalog.delete('/program-specializations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM program_specializations WHERE specialization_id = $1', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Specialization not found' });
+    
+    // Check if specialization exists
+    const specializationCheck = await pool.query(
+      'SELECT name FROM program_specializations WHERE specialization_id = $1', 
+      [id]
+    );
+    if (specializationCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Specialization not found' });
+    }
+    
+    // Check for child courses
+    const coursesCheck = await pool.query(
+      'SELECT COUNT(*) as count FROM courses WHERE specialization_id = $1', 
+      [id]
+    );
+    
+    if (parseInt(coursesCheck.rows[0].count) > 0) {
+      const courseCount = parseInt(coursesCheck.rows[0].count);
+      
+      // Get the actual course names for better user experience
+      const courseNames = await pool.query(`
+        SELECT course_code, title 
+        FROM courses 
+        WHERE specialization_id = $1 
+        ORDER BY course_code
+        LIMIT 5
+      `, [id]);
+      
+      const courseList = courseNames.rows.map(c => `${c.course_code} - ${c.title}`).join(', ');
+      const remainingText = courseCount > 5 ? ` and ${courseCount - 5} more` : '';
+      
+      return res.status(400).json({ 
+        error: `Cannot delete specialization "${specializationCheck.rows[0].name}"`,
+        message: `This specialization contains ${courseCount} course${courseCount > 1 ? 's' : ''}:`,
+        reminder: `You must remove all courses first before deleting this specialization.`,
+        existingData: {
+          type: 'courses',
+          count: courseCount,
+          examples: courseList + remainingText
+        },
+        details: {
+          type: 'specialization_has_courses',
+          count: courseCount,
+          specializationName: specializationCheck.rows[0].name,
+          action: 'delete_courses_first'
+        },
+        nextSteps: [
+          "Go to the Courses tab",
+          "Delete all courses under this specialization",
+          "Return to Specializations tab and try deleting again"
+        ],
+        hierarchy: {
+          level: "Specialization",
+          children: "Courses"
+        }
+      });
+    }
+    
+    // If no child records, proceed with deletion
+    await pool.query('DELETE FROM program_specializations WHERE specialization_id = $1', [id]);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting specialization:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -544,6 +751,34 @@ catalog.get('/courses', async (req, res) => {
   }
 });
 
+// Get individual course by ID
+catalog.get('/courses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sql = `
+      SELECT 
+        c.course_id, c.title, c.course_code, c.description, c.term_id, c.specialization_id,
+        c.created_at, c.updated_at,
+        ps.name AS specialization_name, ps.abbreviation,
+        p.program_id, p.name AS program_name, p.program_abbreviation
+      FROM courses c
+      LEFT JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
+      LEFT JOIN programs p ON ps.program_id = p.program_id
+      WHERE c.course_id = $1
+    `;
+    const result = await pool.query(sql, [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching course:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create course
 catalog.post('/courses', async (req, res) => {
   try {
@@ -574,8 +809,7 @@ catalog.put('/courses/:id', async (req, res) => {
            course_code = COALESCE($2, course_code),
            description = COALESCE($3, description),
            term_id = COALESCE($4, term_id),
-           specialization_id = COALESCE($5, specialization_id),
-           updated_at = CURRENT_TIMESTAMP
+           specialization_id = COALESCE($5, specialization_id)
        WHERE course_id = $6
        RETURNING course_id, title, course_code, description, term_id, specialization_id`,
       [title || null, course_code || null, description || null, term_id || null, specialization_id || null, id]
@@ -591,10 +825,35 @@ catalog.put('/courses/:id', async (req, res) => {
 catalog.delete('/courses/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM courses WHERE course_id = $1', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Course not found' });
+    
+    // Check if course exists
+    const courseCheck = await pool.query(
+      'SELECT title, course_code FROM courses WHERE course_id = $1', 
+      [id]
+    );
+    if (courseCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    // Check for child records - you can add more checks here as your system grows
+    // For example: class enrollments, grades, attendance records, etc.
+    
+    // Example check for class enrollments (uncomment when you have this table):
+    // const enrollmentsCheck = await pool.query(
+    //   'SELECT COUNT(*) as count FROM class_enrollments WHERE course_id = $1', 
+    //   [id]
+    // );
+    // if (parseInt(enrollmentsCheck.rows[0].count) > 0) {
+    //   return res.status(400).json({ 
+    //     error: 'Cannot delete course. It has enrolled students. Please remove all enrollments first.' 
+    //   });
+    // }
+    
+    // If no child records, proceed with deletion
+    await pool.query('DELETE FROM courses WHERE course_id = $1', [id]);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting course:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -608,5 +867,6 @@ app.listen(PORT, () => {
   console.log(`🔐 [SERVER] Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`📊 [SERVER] Departments API: http://localhost:${PORT}/api/departments`);
   console.log(`📅 [SERVER] School Terms API: http://localhost:${PORT}/api/school-terms`);
+  console.log(`📚 [SERVER] Catalog API: http://localhost:${PORT}/api/programs, /api/program-specializations, /api/courses`);
   console.log(`📸 [SERVER] File uploads: Enabled (5MB max, base64 storage)`);
 });
