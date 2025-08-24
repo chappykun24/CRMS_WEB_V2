@@ -20,10 +20,11 @@ class MockAuthService {
       return {
         success: true,
         user: {
-          id: Math.random().toString(36).substr(2, 9),
+          id: 1, // Use consistent ID for development
           email: email,
           role: mockUsers[email].role,
-          name: mockUsers[email].name
+          name: mockUsers[email].name,
+          profilePic: null // Initialize with no profile picture
         },
         message: 'Login successful'
       };
@@ -42,7 +43,8 @@ class MockAuthService {
     return {
       success: true,
       user: {
-        id: Math.random().toString(36).substr(2, 9),
+        id: 1, // Use consistent ID for development
+        profilePic: null, // Initialize with no profile picture
         ...userData
       },
       message: 'User created successfully'
@@ -59,7 +61,8 @@ class MockAuthService {
         id: userId,
         email: 'user@example.com',
         role: 'user',
-        name: 'Example User'
+        name: 'Example User',
+        profilePic: null // Initialize with no profile picture
       }
     };
   }

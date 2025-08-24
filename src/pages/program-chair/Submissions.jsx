@@ -52,7 +52,7 @@ const Submissions = () => {
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         .tab-button {
           transition: all 0.2s ease-in-out !important;
           border: none !important;

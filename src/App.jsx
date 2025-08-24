@@ -8,6 +8,7 @@ import SignUpPage from './pages/SignUpPage'
 import Dashboard from './pages/Dashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import ManageAccount from './components/ManageAccount'
 import './App.css'
 
 class ErrorBoundary extends React.Component {
@@ -51,6 +52,18 @@ function App() {
               <Route path="/" element={<WelcomeScreen />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
+              <Route 
+                path="/manage-account" 
+                element={
+                  <ProtectedRoute>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <ManageAccount />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/dashboard/*" 
                 element={

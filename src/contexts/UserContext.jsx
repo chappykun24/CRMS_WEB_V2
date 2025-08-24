@@ -37,6 +37,11 @@ const userReducer = (state, action) => {
         isLoading: false,
         error: null 
       }
+    case 'UPDATE_USER':
+      return { 
+        ...state, 
+        user: action.payload.user 
+      }
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload }
     case 'CLEAR_ERROR':
@@ -148,12 +153,24 @@ export const UserProvider = ({ children }) => {
     }
   }
 
+  const updateUser = (updatedUserData) => {
+    // Update local storage
+    localStorage.setItem('userData', JSON.stringify(updatedUserData))
+    
+    // Update state
+    dispatch({ 
+      type: 'UPDATE_USER', 
+      payload: { user: updatedUserData } 
+    })
+  }
+
   const value = {
     ...state,
     login,
     logout,
     clearError,
-    refreshUser
+    refreshUser,
+    updateUser
   }
 
   return (

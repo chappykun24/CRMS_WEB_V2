@@ -436,7 +436,13 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   </h3>
                   
                   {/* Manage Account Button */}
-                  <button className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 px-5 rounded-full transition-all duration-200 mb-2 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 hover:shadow-md">
+                  <button 
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate('/manage-account');
+                    }}
+                    className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 px-5 rounded-full transition-all duration-200 mb-2 focus:outline-none focus:ring-2 focus:ring-primary-300 focus:ring-offset-2 hover:shadow-md"
+                  >
                     Manage your CRMS Account
                   </button>
                 </div>

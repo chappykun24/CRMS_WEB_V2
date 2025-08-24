@@ -321,6 +321,260 @@ app.patch('/api/users/:id/approve', async (req, res) => {
   }
 });
 
+// Get user profile endpoint
+app.get('/api/users/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate that id is a valid integer
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID. Must be a valid integer.' 
+      });
+    }
+    const result = await pool.query(`
+      SELECT u.*, r.name AS role_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      WHERE u.user_id = $1
+    `, [userId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ [USER PROFILE] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Update user profile endpoint
+app.put('/api/users/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate that id is a valid integer
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID. Must be a valid integer.' 
+      });
+    }
+    
+    const { name, email, profilePic } = req.body;
+
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    // Update user profile
+    const updateQuery = `
+      UPDATE users 
+      SET 
+        name = $1, 
+        email = $2, 
+        profile_pic = $3, 
+        updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = $4 
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, [
+      name, 
+      email, 
+      profilePic || null, 
+      userId
+    ]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedUser = result.rows[0];
+    console.log('✅ [USER PROFILE] Profile updated successfully for user:', id);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('❌ [USER PROFILE] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Change password endpoint
+app.put('/api/users/:id/change-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate that id is a valid integer
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID. Must be a valid integer.' 
+      });
+    }
+    
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Current password and new password are required' 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'New password must be at least 6 characters long' 
+      });
+    }
+
+    // Get user's current password hash
+    const userResult = await pool.query(
+      'SELECT password_hash FROM users WHERE user_id = $1',
+      [userId]
+    );
+
+    if (userResult.rowCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    
+    if (!isValidPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Current password is incorrect' 
+      });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING user_id',
+      [newPasswordHash, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('✅ [USER PASSWORD] Password changed successfully for user:', id);
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('❌ [USER PASSWORD] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Upload profile photo endpoint
+app.post('/api/users/:id/upload-photo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate that id is a valid integer
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID. Must be a valid integer.' 
+      });
+    }
+    
+    const { photoData } = req.body;
+
+    if (!photoData) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No photo data provided' 
+      });
+    }
+
+    // Validate base64 data format
+    if (!photoData.startsWith('data:image/')) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid photo data format. Expected base64 image data.' 
+      });
+    }
+
+    // Check base64 data size (approximately 1.33x larger than original file)
+    // 5MB file = ~6.7MB base64 string
+    const base64Size = Buffer.byteLength(photoData, 'utf8');
+    const maxSize = 7 * 1024 * 1024; // 7MB limit for base64
+    
+    if (base64Size > maxSize) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Photo data too large. Please select a smaller image (max 5MB original file).' 
+      });
+    }
+
+    // Update user profile with base64 photo data
+    const result = await pool.query(`
+      UPDATE users 
+      SET profile_pic = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = $2 
+      RETURNING user_id, profile_pic
+    `, [photoData, userId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('✅ [UPLOAD PHOTO] Photo uploaded successfully for user:', id);
+
+    res.json({
+      success: true,
+      message: 'Photo uploaded successfully',
+      photoUrl: photoData,
+      user: {
+        userId: result.rows[0].user_id,
+        profilePic: result.rows[0].profile_pic
+      }
+    });
+  } catch (error) {
+    console.error('❌ [UPLOAD PHOTO] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Get students endpoint
 app.get('/api/students', async (req, res) => {
   try {
