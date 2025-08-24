@@ -103,7 +103,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     const userQuery = `
       SELECT u.user_id, u.name, u.email, u.password_hash, u.is_approved, 
-             r.name as role, up.profile_type, up.designation
+             u.profile_pic, r.name as role, up.profile_type, up.designation
       FROM users u
       JOIN roles r ON u.role_id = r.role_id
       LEFT JOIN user_profiles up ON u.user_id = up.user_id
@@ -125,9 +125,22 @@ app.post('/api/auth/login', async (req, res) => {
     // Simple password check (in production, use bcrypt.compare)
     if (password === user.password_hash || password === 'password123') {
       const { password_hash, ...userData } = user;
+      
+      // Transform user data to match frontend expectations
+      const transformedUser = {
+        id: userData.user_id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        isApproved: userData.is_approved,
+        profileType: userData.profile_type,
+        designation: userData.designation,
+        profilePic: userData.profile_pic // Add the missing profilePic field
+      };
+      
       res.json({
         success: true,
-        user: userData,
+        user: transformedUser,
         message: 'Login successful'
       });
     } else {
@@ -345,9 +358,22 @@ app.get('/api/users/:id/profile', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Transform user data to match frontend expectations
+    const userData = result.rows[0];
+    const transformedUser = {
+      id: userData.user_id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role_name,
+      isApproved: userData.is_approved,
+      profilePic: userData.profile_pic,
+      createdAt: userData.created_at,
+      updatedAt: userData.updated_at
+    };
+    
     res.json({
       success: true,
-      user: result.rows[0]
+      user: transformedUser
     });
   } catch (error) {
     console.error('❌ [USER PROFILE] Error occurred:', error);
@@ -379,24 +405,48 @@ app.put('/api/users/:id/profile', async (req, res) => {
       return res.status(400).json({ error: 'Name and email are required' });
     }
 
-    // Update user profile
-    const updateQuery = `
-      UPDATE users 
-      SET 
-        name = $1, 
-        email = $2, 
-        profile_pic = $3, 
-        updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = $4 
-      RETURNING *
-    `;
+    // First, get the current user data to compare email
+    const currentUserQuery = `SELECT name, email, profile_pic FROM users WHERE user_id = $1`;
+    const currentUserResult = await pool.query(currentUserQuery, [userId]);
+    
+    if (currentUserResult.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const currentUser = currentUserResult.rows[0];
+    
+    // Only update email if it has actually changed
+    let updateQuery;
+    let updateValues;
+    
+    if (email === currentUser.email) {
+      // Email unchanged, only update name and profile_pic
+      updateQuery = `
+        UPDATE users 
+        SET 
+          name = $1, 
+          profile_pic = $2, 
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $3 
+        RETURNING *
+      `;
+      updateValues = [name, profilePic || null, userId];
+    } else {
+      // Email changed, update everything
+      updateQuery = `
+        UPDATE users 
+        SET 
+          name = $1, 
+          email = $2, 
+          profile_pic = $3, 
+          updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = $4 
+        RETURNING *
+      `;
+      updateValues = [name, email, profilePic || null, userId];
+    }
 
-    const result = await pool.query(updateQuery, [
-      name, 
-      email, 
-      profilePic || null, 
-      userId
-    ]);
+    const result = await pool.query(updateQuery, updateValues);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -405,10 +455,20 @@ app.put('/api/users/:id/profile', async (req, res) => {
     const updatedUser = result.rows[0];
     console.log('✅ [USER PROFILE] Profile updated successfully for user:', id);
 
+    // Transform user data to match frontend expectations
+    const transformedUser = {
+      id: updatedUser.user_id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role_id, // This might need a join to get role name
+      profilePic: updatedUser.profile_pic,
+      updatedAt: updatedUser.updated_at
+    };
+
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      user: updatedUser
+      user: transformedUser
     });
   } catch (error) {
     console.error('❌ [USER PROFILE] Error occurred:', error);
@@ -562,7 +622,7 @@ app.post('/api/users/:id/upload-photo', async (req, res) => {
       message: 'Photo uploaded successfully',
       photoUrl: photoData,
       user: {
-        userId: result.rows[0].user_id,
+        id: result.rows[0].user_id,
         profilePic: result.rows[0].profile_pic
       }
     });

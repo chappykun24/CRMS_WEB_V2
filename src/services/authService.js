@@ -61,7 +61,7 @@ class AuthService {
   // Get user by ID via backend API
   async getUserById(userId) {
     try {
-      const response = await fetch(`/api/users/${userId}`);
+      const response = await fetch(`/api/users/${userId}/profile`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch user');
@@ -71,7 +71,7 @@ class AuthService {
       
       return {
         success: true,
-        user: data
+        user: data.user
       };
       
     } catch (error) {

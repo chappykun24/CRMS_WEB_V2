@@ -58,28 +58,53 @@ export default async function handler(req, res) {
         connectionTimeoutMillis: 10000 
       });
 
-      // Update user profile
-      const updateQuery = `
-        UPDATE users 
-        SET 
-          name = $1, 
-          email = $2, 
-          phone = $3, 
-          profile_pic = $4, 
-          bio = $5,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = $6 
-        RETURNING *
-      `;
+      // First, get the current user data to compare email
+      const currentUserQuery = `SELECT name, email, phone, profile_pic, bio FROM users WHERE user_id = $1`;
+      const currentUserResult = await pool.query(currentUserQuery, [userId]);
+      
+      if (currentUserResult.rowCount === 0) {
+        await pool.end();
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      const currentUser = currentUserResult.rows[0];
+      
+      // Simple approach: only update if email actually changed, otherwise skip email update
+      let updateQuery;
+      let updateValues;
+      
+      if (email === currentUser.email) {
+        // Email unchanged, only update name and other fields
+        updateQuery = `
+          UPDATE users 
+          SET 
+            name = $1, 
+            phone = $2, 
+            profile_pic = $3, 
+            bio = $4,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $5 
+          RETURNING *
+        `;
+        updateValues = [name, phone || null, profilePic || null, bio || null, userId];
+      } else {
+        // Email changed, update everything
+        updateQuery = `
+          UPDATE users 
+          SET 
+            name = $1, 
+            email = $2, 
+            phone = $3, 
+            profile_pic = $4, 
+            bio = $5,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $6 
+          RETURNING *
+        `;
+        updateValues = [name, email, phone || null, profilePic || null, bio || null, userId];
+      }
 
-      const result = await pool.query(updateQuery, [
-        name, 
-        email, 
-        phone || null, 
-        profilePic || null, 
-        bio || null, 
-        userId
-      ]);
+      const result = await pool.query(updateQuery, updateValues);
 
       if (result.rowCount === 0) {
         await pool.end();

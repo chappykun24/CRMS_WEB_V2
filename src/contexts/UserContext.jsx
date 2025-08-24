@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
-import mockAuthService from '../services/mockAuthService'
+import authService from '../services/authService'
 
 const UserContext = createContext()
 
@@ -85,7 +85,7 @@ export const UserProvider = ({ children }) => {
     
     try {
       // Attempt authentication with our auth service
-      const result = await mockAuthService.login(email, password)
+      const result = await authService.login(email, password)
       
       if (result.success) {
         // Store user data in localStorage

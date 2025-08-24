@@ -13,6 +13,14 @@ import logo from '../images/logo.png'
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useUser()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  
+  // Debug: Log user data to see what's available
+  useEffect(() => {
+    console.log('🔍 [HEADER] User data received:', user);
+    console.log('🔍 [HEADER] User profilePic:', user?.profilePic);
+    console.log('🔍 [HEADER] User ID:', user?.id);
+    console.log('🔍 [HEADER] User name:', user?.name);
+  }, [user]);
   const location = useLocation()
   const navigate = useNavigate()
   

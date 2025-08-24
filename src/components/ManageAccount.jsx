@@ -3,9 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import {
   UserIcon,
-  CameraIcon,
-  CheckIcon,
-  ExclamationTriangleIcon
+  CameraIcon
 } from '@heroicons/react/24/solid';
 
 const ManageAccount = () => {
@@ -28,10 +26,15 @@ const ManageAccount = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
   const [photoFile, setPhotoFile] = useState(null); // This will store base64 data
   const [photoPreview, setPhotoPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Modal states for consistent notifications
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Initialize form data with user data
   useEffect(() => {
@@ -48,6 +51,14 @@ const ManageAccount = () => {
     name: formData.name || '',
     email: formData.email || ''
   };
+
+  // Check if there are any changes to enable/disable the update button
+  const hasChanges = () => {
+    if (!user) return false;
+    return formData.name !== user.name || formData.email !== user.email;
+  };
+
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -69,7 +80,7 @@ const ManageAccount = () => {
       
       // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
-        setMessage({ type: 'error', text: 'File size must be less than 5MB' });
+        setMessage({ type: 'error', text: 'File size must be less than 5MB. Large images will be converted to base64 and may exceed database limits.' });
         return;
       }
 
@@ -83,7 +94,7 @@ const ManageAccount = () => {
       };
       
       reader.onerror = (error) => {
-        console.error('FileReader error:', error);
+        console.error('Photo selection error:', error);
         setMessage({ type: 'error', text: 'Failed to read file. Please try again.' });
       };
       
@@ -91,52 +102,76 @@ const ManageAccount = () => {
     }
   };
 
+  const handlePhotoUpload = async () => {
+    if (!photoFile || !user?.id) return;
 
+    setIsUploading(true);
+
+    try {
+      const response = await fetch(`/api/users/${user.id}/upload-photo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          photoData: photoFile
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update user context with new photo
+        if (updateUser) {
+          updateUser({ ...user, profilePic: data.user.profilePic });
+        }
+        
+        setSuccessMessage('Profile photo updated successfully!');
+        setShowSuccessModal(true);
+        setPhotoFile(null);
+        setPhotoPreview(null);
+        
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } else {
+        const errorMsg = data.error === 'User not found' 
+          ? 'User not found. Please try logging in again.' 
+          : data.error || 'Failed to upload photo';
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      setErrorMessage('Failed to upload photo. Please try again.');
+      setShowErrorModal(true);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user?.id) return;
     
     setIsLoading(true);
-    setMessage({ type: '', text: '' });
 
     try {
-      // First, upload photo if one is selected
-      if (photoFile) {
-        const photoResponse = await fetch(`/api/users/${user.id}/upload-photo`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            photoData: photoFile
-          }),
-        });
-
-        const photoData = await photoResponse.json();
-        if (photoData.success) {
-          // Update user context with new photo
-          if (updateUser) {
-            updateUser({ ...user, profilePic: photoData.user.profilePic });
-          }
-          setMessage({ type: 'success', text: 'Profile photo updated successfully!' });
-        } else {
-          const errorMessage = photoData.error === 'User not found' 
-            ? 'User not found. Please try logging in again.' 
-            : photoData.error || 'Failed to upload photo';
-          setMessage({ type: 'error', text: errorMessage });
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Then update profile information
+      // Create payload that ensures email doesn't change if not modified
+      const payload = {
+        name: formData.name,
+        email: formData.email
+      };
+      
+      console.log('📤 [FRONTEND] Sending payload:', payload);
+      
       const response = await fetch(`/api/users/${user.id}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -147,25 +182,19 @@ const ManageAccount = () => {
           updateUser({ ...user, ...formData });
         }
         
-        // Clear photo state after successful update
-        if (photoFile) {
-          setPhotoFile(null);
-          setPhotoPreview(null);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-        }
-        
-        setMessage({ type: 'success', text: 'Profile and photo updated successfully!' });
+        setSuccessMessage('Profile updated successfully!');
+        setShowSuccessModal(true);
       } else {
-        const errorMessage = data.error === 'User not found' 
+        const errorMsg = data.error === 'User not found' 
           ? 'User not found. Please try logging in again.' 
           : data.error || 'Failed to update profile';
-        setMessage({ type: 'error', text: errorMessage });
+        setErrorMessage(errorMsg);
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
+      setErrorMessage('Failed to update profile. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setIsLoading(false);
     }
@@ -185,12 +214,14 @@ const ManageAccount = () => {
 
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: 'error', text: 'New passwords do not match' });
+      setErrorMessage('New passwords do not match');
+      setShowErrorModal(true);
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'New password must be at least 6 characters long' });
+      setErrorMessage('New password must be at least 6 characters long');
+      setShowErrorModal(true);
       return;
     }
 
@@ -209,7 +240,8 @@ const ManageAccount = () => {
 
       if (response.ok) {
         const result = await response.json();
-        setMessage({ type: 'success', text: 'Password changed successfully!' });
+        setSuccessMessage('Password changed successfully!');
+        setShowSuccessModal(true);
         // Clear password form
         setPasswordData({
           currentPassword: '',
@@ -219,11 +251,13 @@ const ManageAccount = () => {
         setShowPasswordForm(false);
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to change password' });
+        setErrorMessage(error.error || 'Failed to change password');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Password change error:', error);
-      setMessage({ type: 'error', text: 'An error occurred while changing password' });
+      setErrorMessage('An error occurred while changing password');
+      setShowErrorModal(true);
     } finally {
       setIsChangingPassword(false);
     }
@@ -274,98 +308,93 @@ const ManageAccount = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="space-y-6">
           {/* Profile Photo Section */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
-              {/* Profile Photo */}
-              <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
-                {photoPreview ? (
-                  <img 
-                    src={photoPreview} 
-                    alt="Preview" 
-                    className="w-full h-full object-cover"
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-4">Profile Photo</h3>
+              <div className="flex items-center space-x-4">
+                {/* Profile Photo */}
+                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0 relative">
+                  {photoPreview ? (
+                    <img 
+                      src={photoPreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : user.profilePic ? (
+                    <img 
+                      src={user.profilePic} 
+                      alt={user.name || 'User'} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary-600 flex items-center justify-center">
+                      <UserIcon className="h-10 w-10 text-white" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Photo Upload */}
+                <div className="flex-1">
+                  {!photoPreview ? (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center px-3 py-2 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <CameraIcon className="w-4 h-4 mr-2" />
+                      Change Photo
+                    </button>
+                  ) : (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handlePhotoUpload}
+                        disabled={isUploading}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isUploading ? 'Uploading...' : 'Upload Photo'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPhotoPreview(null);
+                          setPhotoFile(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                        className="inline-flex items-center px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
                   />
-                ) : user.profilePic ? (
-                  <img 
-                    src={user.profilePic} 
-                    alt={user.name || 'User'} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-primary-600 flex items-center justify-center">
-                    <UserIcon className="h-10 w-10 text-white" />
-                  </div>
-                )}
-              </div>
-              
-              {/* Photo Upload */}
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Profile Photo</h3>
-                
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center px-3 py-2 text-sm text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
-                >
-                  <CameraIcon className="w-4 h-4 mr-2" />
-                  {photoPreview ? 'Change Photo' : 'Select Photo'}
-                </button>
-                
-                {photoPreview && (
-                  <button
-                    onClick={() => {
-                      setPhotoPreview(null);
-                      setPhotoFile(null);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-                    }}
-                    className="inline-flex items-center px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mt-2"
-                  >
-                    Remove Photo
-                  </button>
-                )}
-                
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                />
-                <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WebP • Max 5MB</p>
+                  <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WebP • Max 5MB</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Profile Form */}
-          <div className="p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Profile Information</h3>
-            
-            {/* Message Display */}
-            {message.text && (
-              <div className={`mb-4 p-3 rounded-md text-sm flex items-center ${
-                message.type === 'success' 
-                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
-                {message.type === 'success' ? (
-                  <CheckIcon className="w-4 h-4 mr-2 text-green-600" />
-                ) : (
-                  <ExclamationTriangleIcon className="w-4 h-4 mr-2 text-red-600" />
-                )}
-                {message.text}
-              </div>
-            )}
+          {/* Profile Information Section */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-4">Profile Information</h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Name and Email */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
-                  </label>
-                                      <input
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Name and Email */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name *
+                    </label>
+                    <input
                       type="text"
                       id="name"
                       name="name"
@@ -374,13 +403,13 @@ const ManageAccount = () => {
                       required
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
-                </div>
-                
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
-                  </label>
-                                      <input
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address *
+                    </label>
+                    <input
                       type="email"
                       id="email"
                       name="email"
@@ -389,25 +418,25 @@ const ManageAccount = () => {
                       required
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
+                  </div>
                 </div>
-              </div>
 
-
-
-
-
-
-              {/* Submit Button */}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isLoading ? 'Updating...' : photoFile ? 'Update Profile & Photo' : 'Update Profile'}
-                </button>
-              </div>
-            </form>
+                {/* Submit Button */}
+                <div className="flex flex-col items-end pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading || !hasChanges()}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => console.log('🔘 [BUTTON] Button clicked, hasChanges():', hasChanges())}
+                  >
+                    {isLoading ? 'Updating...' : 'Update Profile'}
+                  </button>
+                  {!hasChanges() && (
+                    <p className="text-xs text-gray-500">No changes to save</p>
+                  )}
+                </div>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -488,6 +517,61 @@ const ManageAccount = () => {
         </div>
       </div>
 
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Success!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Error</h3>
+              <p className="text-sm text-gray-500 mb-6">{errorMessage}</p>
+              <button
+                onClick={() => {
+                  setShowErrorModal(false);
+                  setErrorMessage('');
+                }}
+                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
