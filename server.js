@@ -323,6 +323,75 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// Create user endpoint
+app.post('/api/users', async (req, res) => {
+  try {
+    console.log('👥 [CREATE USER] Creating new user...');
+    const { name, email, role_id, password } = req.body;
+    
+    // Validate required fields
+    if (!name || !email || !role_id || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Name, email, role_id, and password are required' 
+      });
+    }
+
+    // Check if email already exists
+    const existingUserQuery = 'SELECT user_id FROM users WHERE email = $1';
+    const existingUserResult = await pool.query(existingUserQuery, [email]);
+    
+    if (existingUserResult.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email address is already registered' 
+      });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Insert new user
+    const insertUserQuery = `
+      INSERT INTO users (name, email, password_hash, role_id, is_approved, created_at, updated_at) 
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+      RETURNING user_id, name, email, role_id, is_approved, created_at
+    `;
+    
+    const insertUserResult = await pool.query(insertUserQuery, [
+      name.trim(),
+      email.trim().toLowerCase(),
+      passwordHash,
+      parseInt(role_id),
+      true // is_approved = true for admin-created users
+    ]);
+
+    const newUser = insertUserResult.rows[0];
+
+    // Get role name for the response
+    const roleQuery = 'SELECT name FROM roles WHERE role_id = $1';
+    const roleResult = await pool.query(roleQuery, [role_id]);
+    const roleName = roleResult.rows[0]?.name || 'Unknown';
+
+    // Return the created user with role name
+    const responseUser = {
+      ...newUser,
+      role_name: roleName
+    };
+
+    console.log('✅ [CREATE USER] User created successfully:', responseUser.user_id);
+    res.status(201).json(responseUser);
+
+  } catch (error) {
+    console.error('❌ [CREATE USER] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Get roles endpoint
 app.get('/api/roles', async (req, res) => {
   try {
