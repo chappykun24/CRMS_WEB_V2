@@ -23,8 +23,10 @@ const UserManagement = () => {
   const [query, setQuery] = useState('')
   const [isApproving, setIsApproving] = useState({})
   const [roles, setRoles] = useState([])
+  const [departments, setDepartments] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('') // '', 'approved', 'pending'
+  const [departmentFilter, setDepartmentFilter] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -34,11 +36,13 @@ const UserManagement = () => {
     name: '',
     email: '',
     role_id: '',
+    department_id: '',
     password: '',
     confirmPassword: ''
   })
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [isUpdatingDepartment, setIsUpdatingDepartment] = useState({})
 
   const formatDateTime = (value) => {
     if (!value) return '—'
@@ -68,6 +72,10 @@ const UserManagement = () => {
     // Ensure default status is All when switching tabs
     if (statusFilter !== '') {
       setStatusFilter('')
+    }
+    // Clear department filter when switching tabs
+    if (departmentFilter !== '') {
+      setDepartmentFilter('')
     }
   }, [activeTab])
 
@@ -102,6 +110,18 @@ const UserManagement = () => {
       }
     }
     loadRoles()
+  }, [])
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const res = await api.get(endpoints.departments)
+        setDepartments(Array.isArray(res.data) ? res.data : [])
+      } catch (_) {
+        // silently ignore
+      }
+    }
+    loadDepartments()
   }, [])
 
   // If currently selected role is FACULTY, clear it from filter
@@ -168,6 +188,12 @@ const UserManagement = () => {
         list = list.filter(u => Number(u.role_id) === roleId)
       }
     }
+    
+    // Department filter (only on All Users tab)
+    if (activeTab === 'all' && departmentFilter) {
+      const deptId = parseInt(departmentFilter, 10)
+      list = list.filter(u => Number(u.department_id) === deptId)
+    }
     // Text query
     if (q) {
       list = list.filter(u => (
@@ -199,7 +225,7 @@ const UserManagement = () => {
         break
     }
     return sorted
-  }, [users, query, activeTab, roleFilter, statusFilter, facultyRoleId, sortOption])
+  }, [users, query, activeTab, roleFilter, statusFilter, departmentFilter, facultyRoleId, sortOption])
 
   const handleApprove = async (userId) => {
     try {
@@ -215,6 +241,43 @@ const UserManagement = () => {
       setError(e.message || 'Failed to approve user')
     } finally {
       setIsApproving(prev => ({ ...prev, [userId]: false }))
+    }
+  }
+
+  const handleDepartmentChange = async (userId, departmentId) => {
+    try {
+      setIsUpdatingDepartment(prev => ({ ...prev, [userId]: true }))
+      const newDepartmentId = departmentId === '' ? null : parseInt(departmentId)
+      
+      // Update the user's department access
+      const response = await api.patch(endpoints.user(userId), {
+        department_id: newDepartmentId
+      })
+      
+      if (response.data) {
+        // Update local state
+        setUsers(prev => prev.map(u => 
+          u.user_id === userId 
+            ? { ...u, department_id: newDepartmentId, department_name: response.data.department_name }
+            : u
+        ))
+        
+        // Update selected user if it's the current one
+        if (selectedUser && selectedUser.user_id === userId) {
+          setSelectedUser(prev => ({ 
+            ...prev, 
+            department_id: newDepartmentId, 
+            department_name: response.data.department_name 
+          }))
+        }
+        
+        setSuccessMessage('Department access updated successfully')
+        setShowSuccessModal(true)
+      }
+    } catch (e) {
+      setError(e.message || 'Failed to update department access')
+    } finally {
+      setIsUpdatingDepartment(prev => ({ ...prev, [userId]: false }))
     }
   }
 
@@ -245,6 +308,7 @@ const UserManagement = () => {
         name: createForm.name.trim(),
         email: createForm.email.trim().toLowerCase(),
         role_id: parseInt(createForm.role_id),
+        department_id: createForm.department_id ? parseInt(createForm.department_id) : null,
         password: createForm.password
       }
       
@@ -271,6 +335,7 @@ const UserManagement = () => {
       name: '',
       email: '',
       role_id: '',
+      department_id: '',
       password: '',
       confirmPassword: ''
     })
@@ -383,21 +448,36 @@ const UserManagement = () => {
                     <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                   </div>
                   {activeTab === 'all' && (
-                    <select
-                      value={roleFilter}
-                      onChange={(e) => setRoleFilter(e.target.value)}
-                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                    >
-                      <option value="">All Users</option>
-                      {roles
-                        .filter(role => role.name !== 'FACULTY') // Exclude Faculty from role filter since it has its own tab
-                        .map(role => (
-                          <option key={role.role_id} value={role.role_id}>
-                            {formatRoleName(role.name)}
+                    <>
+                      <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      >
+                        <option value="">All Users</option>
+                        {roles
+                          .filter(role => role.name !== 'FACULTY') // Exclude Faculty from role filter since it has its own tab
+                          .map(role => (
+                            <option key={role.role_id} value={role.role_id}>
+                              {formatRoleName(role.name)}
+                            </option>
+                          ))}
+                        <option value="faculty">Faculty</option>
+                      </select>
+                      
+                      <select
+                        value={departmentFilter}
+                        onChange={(e) => setDepartmentFilter(e.target.value)}
+                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      >
+                        <option value="">All Departments</option>
+                        {departments.map(dept => (
+                          <option key={dept.department_id} value={dept.department_id}>
+                            {dept.name}
                           </option>
                         ))}
-                      <option value="faculty">Faculty</option>
-                    </select>
+                      </select>
+                    </>
                   )}
                   
                   {activeTab === 'faculty' && (
@@ -453,6 +533,9 @@ const UserManagement = () => {
                                 Role
                               </th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Department
+                              </th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
                               </th>
                             </tr>
@@ -485,6 +568,18 @@ const UserManagement = () => {
                                 <div className="text-sm text-gray-700">{formatRoleName(u.role_name) || u.role_id || '—'}</div>
                               </td>
                               <td className="px-8 py-3">
+                                <div className="text-sm text-gray-700">
+                                  {u.department_name ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                      {u.department_name}
+                                    </span>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-8 py-3">
                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                   {u.is_approved ? 'Approved' : 'Pending'}
                                 </span>
@@ -512,7 +607,7 @@ const UserManagement = () => {
 
               {/* Side actions / User details */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300">
+                <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300 max-h-[70vh] overflow-y-auto">
                   {selectedUser ? (
                     <div className="space-y-4">
                       <div className="flex items-center gap-4">
@@ -529,49 +624,123 @@ const UserManagement = () => {
                           <h4 className="text-lg font-semibold text-gray-900">{selectedUser.name || 'Unnamed User'}</h4>
                           <p className="text-sm text-gray-600">{selectedUser.email}</p>
                           <p className="text-xs text-gray-500">Role: {formatRoleName(selectedUser.role_name) || selectedUser.role_id || '—'}</p>
+                          {selectedUser.department_name ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">Department:</span>
+                              <span className="text-xs text-gray-700 font-medium">
+                                {selectedUser.department_name}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No department assigned</p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Status</span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${selectedUser.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-600">Status</span>
+                          <span className={`text-sm font-medium ${selectedUser.is_approved ? 'text-gray-700' : 'text-gray-600'}`}>
                             {selectedUser.is_approved ? 'Approved' : 'Pending'}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">User ID</span>
-                          <span className="text-gray-800">{selectedUser.user_id}</span>
+                        <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-600">User ID</span>
+                          <span className="text-sm font-semibold text-gray-800">{selectedUser.user_id}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Created</span>
-                          <span className="text-gray-800">{formatDateTime(selectedUser.created_at)}</span>
+                        <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-600">Created</span>
+                          <span className="text-sm text-gray-800">{formatDateTime(selectedUser.created_at)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Updated</span>
-                          <span className="text-gray-800">{formatDateTime(selectedUser.updated_at)}</span>
+                        <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-600">Updated</span>
+                          <span className="text-sm text-gray-800">{formatDateTime(selectedUser.updated_at)}</span>
+                        </div>
+                      </div>
+
+                                            {/* Department Access Control */}
+                      <div className="border-t border-gray-200 pt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <h5 className="text-sm font-semibold text-gray-800">Department Access Control</h5>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Accessible Department
+                            </label>
+                            <div className="relative">
+                              <select
+                                value={selectedUser.department_id || ''}
+                                onChange={(e) => handleDepartmentChange(selectedUser.user_id, e.target.value)}
+                                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                disabled={!selectedUser.is_approved || isUpdatingDepartment[selectedUser.user_id]}
+                              >
+                                <option value="">Select Department (Optional)</option>
+                                {departments.map(dept => (
+                                  <option key={dept.department_id} value={dept.department_id}>
+                                    {dept.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {isUpdatingDepartment[selectedUser.user_id] && (
+                                <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-lg">
+                                                   <div className="flex items-center gap-2 text-sm text-red-600">
+                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                   <span>Updating...</span>
+                 </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                                         <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+               <div className="flex items-start gap-2">
+                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                 <div className="text-xs text-red-700 leading-relaxed">
+                   <span className="font-medium">Data Access Restriction:</span> Users can only view and manage data from their assigned department. This ensures data security and proper access control.
+                 </div>
+               </div>
+             </div>
+                          </div>
                         </div>
                       </div>
 
                       {!selectedUser.is_approved && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => handleApprove(selectedUser.user_id)}
-                            disabled={!!isApproving[selectedUser.user_id]}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
-                          >
-                            {isApproving[selectedUser.user_id] ? 'Approving…' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => alert('Reject handler not implemented yet')}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-white text-red-600 border border-red-300 hover:bg-red-50"
-                          >
-                            Reject
-                          </button>
+                        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <h6 className="text-sm font-semibold text-gray-800">Pending Approval</h6>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => handleApprove(selectedUser.user_id)}
+                              disabled={!!isApproving[selectedUser.user_id]}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                            >
+                              {isApproving[selectedUser.user_id] ? 'Approving…' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={() => alert('Reject handler not implemented yet')}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
                       )}
 
-                      {error && <div className="text-red-600 text-sm">{error}</div>}
+                      {error && (
+                        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <h6 className="text-sm font-semibold text-gray-800 mb-1">Error</h6>
+                              <p className="text-sm text-gray-700 leading-relaxed">{error}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-10">
@@ -676,6 +845,25 @@ const UserManagement = () => {
                   {roles.map(role => (
                     <option key={role.role_id} value={role.role_id}>
                       {formatRoleName(role.name)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                  Department
+                </label>
+                <select
+                  id="department"
+                  value={createForm.department_id}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, department_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Select a department (optional)</option>
+                  {departments.map(dept => (
+                    <option key={dept.department_id} value={dept.department_id}>
+                      {dept.name}
                     </option>
                   ))}
                 </select>

@@ -127,7 +127,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
           // Show the current tab for User Management
           if (userMgmtActiveTab === 'faculty') {
-            return 'Faculty Approval'
+            return 'User Management'
           }
           return 'User Management'
         }
@@ -196,7 +196,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       // Show which tab is active: All Users or Faculty Approval
       const subtitle = userMgmtActiveTab === 'faculty' ? 'Faculty Approval' : 'All Users'
       return {
-        title: 'User Management',
+        title: userMgmtActiveTab === 'faculty' ? 'UserManagement' : 'User Management',
         subtitle,
         path: '/dashboard/users'
       }

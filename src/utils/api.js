@@ -23,6 +23,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Add user ID to headers for department access control
+    const user = JSON.parse(localStorage.getItem('userData') || '{}');
+    if (user.id) {
+      config.headers['user-id'] = user.id;
+    }
+    
     return config;
   },
   (error) => {
@@ -60,6 +67,10 @@ export const endpoints = {
   // Role endpoints
   roles: '/roles',
   role: (id) => `/roles/${id}`,
+  
+  // Department endpoints
+  departments: '/departments',
+  department: (id) => `/departments/${id}`,
   
   // Student endpoints
   students: '/students',

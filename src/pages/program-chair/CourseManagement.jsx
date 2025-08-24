@@ -269,6 +269,7 @@ const CourseManagement = () => {
     const loadBase = async () => {
       try {
         setLoading(true)
+        
         const [prog, term] = await Promise.all([
           enhancedApi.getPrograms(),
           enhancedApi.getTerms()

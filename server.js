@@ -62,6 +62,61 @@ app.use((req, res, next) => {
   next();
 });
 
+// Department access control middleware
+const checkDepartmentAccess = async (req, res, next) => {
+  try {
+    // Skip department check for auth endpoints and admin operations
+    if (req.path.startsWith('/api/auth') || req.path.includes('/approve') || req.method === 'POST') {
+      return next();
+    }
+
+    // Get user ID from request (you may need to adjust this based on your auth implementation)
+    const userId = req.headers['user-id'] || req.query.userId || req.body.userId;
+    
+    if (!userId) {
+      // If no user ID, allow the request (for public endpoints)
+      return next();
+    }
+
+    // Get user's department access
+    const userDeptQuery = `
+      SELECT up.department_id, d.name AS department_name
+      FROM user_profiles up
+      LEFT JOIN departments d ON up.department_id = d.department_id
+      WHERE up.user_id = $1
+    `;
+    
+    const userDeptResult = await pool.query(userDeptQuery, [userId]);
+    
+    if (userDeptResult.rows.length > 0 && userDeptResult.rows[0].department_id) {
+      // User has department access, add it to request for filtering
+      req.userDepartment = {
+        id: userDeptResult.rows[0].department_id,
+        name: userDeptResult.rows[0].department_name
+      };
+      console.log(`🔒 [AUTH] User ${userId} restricted to department: ${req.userDepartment.name}`);
+    } else {
+      // User has no department access, they should see NO data
+      req.userDepartment = {
+        id: null,
+        name: null,
+        noAccess: true
+      };
+      console.log(`🚫 [AUTH] User ${userId} has no department access - NO DATA ACCESS ALLOWED`);
+    }
+    
+    next();
+  } catch (error) {
+    console.error('❌ [AUTH] Department access check failed:', error);
+    // Continue without department restriction if check fails
+    req.userDepartment = null;
+    next();
+  }
+};
+
+// Apply department access middleware to all API routes
+app.use('/api', checkDepartmentAccess);
+
 // Database connection
 const connectionString = `postgresql://${process.env.VITE_NEON_USER || process.env.NEON_USER}:${process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD}@${process.env.VITE_NEON_HOST || process.env.NEON_HOST}:${process.env.VITE_NEON_PORT || process.env.NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE || process.env.NEON_DATABASE}?sslmode=require`;
 
@@ -312,9 +367,11 @@ app.post('/api/auth/register', upload.single('profilePic'), async (req, res) => 
 app.get('/api/users', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.*, r.name AS role_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN user_profiles up ON u.user_id = up.user_id
+      LEFT JOIN departments d ON up.department_id = d.department_id
       ORDER BY u.created_at DESC
     `);
     res.json(result.rows);
@@ -327,7 +384,7 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
   try {
     console.log('👥 [CREATE USER] Creating new user...');
-    const { name, email, role_id, password } = req.body;
+    const { name, email, role_id, password, department_id } = req.body;
     
     // Validate required fields
     if (!name || !email || !role_id || !password) {
@@ -369,15 +426,33 @@ app.post('/api/users', async (req, res) => {
 
     const newUser = insertUserResult.rows[0];
 
-    // Get role name for the response
+    // Create user profile with department if provided
+    if (department_id) {
+      const insertProfileQuery = `
+        INSERT INTO user_profiles (user_id, department_id, profile_type, created_at, updated_at) 
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `;
+      await pool.query(insertProfileQuery, [newUser.user_id, department_id, 'STAFF']);
+    }
+
+    // Get role name and department name for the response
     const roleQuery = 'SELECT name FROM roles WHERE role_id = $1';
     const roleResult = await pool.query(roleQuery, [role_id]);
     const roleName = roleResult.rows[0]?.name || 'Unknown';
 
-    // Return the created user with role name
+    let departmentName = null;
+    if (department_id) {
+      const deptQuery = 'SELECT name FROM departments WHERE department_id = $1';
+      const deptResult = await pool.query(deptQuery, [department_id]);
+      departmentName = deptResult.rows[0]?.name || 'Unknown';
+    }
+
+    // Return the created user with role name and department
     const responseUser = {
       ...newUser,
-      role_name: roleName
+      role_name: roleName,
+      department_id: department_id,
+      department_name: departmentName
     };
 
     console.log('✅ [CREATE USER] User created successfully:', responseUser.user_id);
@@ -420,6 +495,90 @@ app.patch('/api/users/:id/approve', async (req, res) => {
   }
 });
 
+// Update user department access endpoint
+app.patch('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { department_id } = req.body;
+    
+    // Validate that id is a valid integer
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID. Must be a valid integer.' 
+      });
+    }
+
+    // Check if user exists
+    const userExists = await pool.query('SELECT user_id FROM users WHERE user_id = $1', [userId]);
+    if (userExists.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If department_id is provided, validate it exists
+    if (department_id !== null && department_id !== undefined) {
+      const deptExists = await pool.query('SELECT department_id FROM departments WHERE department_id = $1', [department_id]);
+      if (deptExists.rowCount === 0) {
+        return res.status(400).json({ error: 'Department not found' });
+      }
+    }
+
+    // Update or create user profile with department access
+    if (department_id !== null && department_id !== undefined) {
+      // Check if user profile exists
+      const profileExists = await pool.query('SELECT user_profile_id FROM user_profiles WHERE user_id = $1', [userId]);
+      
+      if (profileExists.rowCount > 0) {
+        // Update existing profile
+        await pool.query(
+          'UPDATE user_profiles SET department_id = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+          [department_id, userId]
+        );
+      } else {
+        // Create new profile
+        await pool.query(
+          'INSERT INTO user_profiles (user_id, department_id, profile_type, created_at, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          [userId, department_id, 'STAFF']
+        );
+      }
+    } else {
+      // Remove department access
+      await pool.query(
+        'UPDATE user_profiles SET department_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+        [userId]
+      );
+    }
+
+    // Get updated user data with department name
+    const result = await pool.query(`
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN user_profiles up ON u.user_id = up.user_id
+      LEFT JOIN departments d ON up.department_id = d.department_id
+      WHERE u.user_id = $1
+    `, [userId]);
+
+    const updatedUser = result.rows[0];
+    
+    res.json({
+      success: true,
+      message: 'Department access updated successfully',
+      user: updatedUser,
+      department_id: updatedUser.department_id,
+      department_name: updatedUser.department_name
+    });
+
+  } catch (error) {
+    console.error('❌ [UPDATE USER] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Get user profile endpoint
 app.get('/api/users/:id/profile', async (req, res) => {
   try {
@@ -434,9 +593,11 @@ app.get('/api/users/:id/profile', async (req, res) => {
       });
     }
     const result = await pool.query(`
-      SELECT u.*, r.name AS role_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN user_profiles up ON u.user_id = up.user_id
+      LEFT JOIN departments d ON up.department_id = d.department_id
       WHERE u.user_id = $1
     `, [userId]);
 
@@ -454,7 +615,9 @@ app.get('/api/users/:id/profile', async (req, res) => {
       isApproved: userData.is_approved,
       profilePic: userData.profile_pic,
       createdAt: userData.created_at,
-      updatedAt: userData.updated_at
+      updatedAt: userData.updated_at,
+      departmentId: userData.department_id,
+      departmentName: userData.department_name
     };
     
     res.json({
@@ -758,11 +921,37 @@ const catalog = Router();
 
 catalog.get('/programs', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT program_id, department_id, name, description, program_abbreviation
-      FROM programs
-      ORDER BY name
-    `);
+    let sql = `
+      SELECT p.program_id, p.department_id, p.name, p.description, p.program_abbreviation,
+             d.name AS department_name
+      FROM programs p
+      LEFT JOIN departments d ON p.department_id = d.department_id
+    `;
+    const params = [];
+    
+    // Check if user has no department access
+    if (req.userDepartment && req.userDepartment.noAccess) {
+      console.log(`🚫 [PROGRAMS] User has no department access - returning empty result`);
+      return res.json([]);
+    }
+    
+    // Add department filtering if user has department access
+    if (req.userDepartment && req.userDepartment.id) {
+      sql += ` WHERE p.department_id = $1`;
+      params.push(req.userDepartment.id);
+      console.log(`🔒 [PROGRAMS] Filtering by department: ${req.userDepartment.name} (ID: ${req.userDepartment.id})`);
+    }
+    
+    sql += ` ORDER BY p.name`;
+    
+    const result = await pool.query(sql, params);
+    
+    if (req.userDepartment && req.userDepartment.id) {
+      console.log(`🔒 [PROGRAMS] User restricted to department ${req.userDepartment.name}: showing ${result.rows.length} programs`);
+    } else {
+      console.log(`🔓 [PROGRAMS] No department restriction: showing ${result.rows.length} programs`);
+    }
+    
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -774,13 +963,25 @@ catalog.get('/programs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT program_id, department_id, name, description, program_abbreviation
-      FROM programs
-      WHERE program_id = $1
+      SELECT p.program_id, p.department_id, p.name, p.description, p.program_abbreviation,
+             d.name AS department_name
+      FROM programs p
+      LEFT JOIN departments d ON p.department_id = d.department_id
+      WHERE p.program_id = $1
     `, [id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Program not found' });
+    }
+    
+    // Check if user has access to this program's department
+    if (req.userDepartment && req.userDepartment.id) {
+      const program = result.rows[0];
+      if (program.department_id !== req.userDepartment.id) {
+        console.log(`🚫 [PROGRAM] User denied access to program ${id} from department ${program.department_name}`);
+        return res.status(403).json({ error: 'Access denied: Program not in your department' });
+      }
+      console.log(`✅ [PROGRAM] User granted access to program ${id} from department ${program.department_name}`);
     }
     
     res.json(result.rows[0]);
@@ -955,14 +1156,49 @@ catalog.delete('/programs/:id', async (req, res) => {
 catalog.get('/program-specializations', async (req, res) => {
   try {
     const { programId } = req.query;
-    const sql = `
-      SELECT specialization_id, program_id, name, description, abbreviation
-      FROM program_specializations
-      ${programId ? 'WHERE program_id = $1' : ''}
-      ORDER BY name
+    let sql = `
+      SELECT ps.specialization_id, ps.program_id, ps.name, ps.description, ps.abbreviation,
+             p.department_id, d.name AS department_name
+      FROM program_specializations ps
+      JOIN programs p ON ps.program_id = p.program_id
+      LEFT JOIN departments d ON p.department_id = d.department_id
     `;
-    const params = programId ? [programId] : [];
+    const conditions = [];
+    const params = [];
+    
+    // Check if user has no department access
+    if (req.userDepartment && req.userDepartment.noAccess) {
+      console.log(`🚫 [SPECIALIZATIONS] User has no department access - returning empty result`);
+      return res.json([]);
+    }
+    
+    // Add department filtering if user has department access
+    if (req.userDepartment && req.userDepartment.id) {
+      params.push(req.userDepartment.id);
+      conditions.push(`p.department_id = $${params.length}`);
+      console.log(`🔒 [SPECIALIZATIONS] Filtering by department: ${req.userDepartment.name} (ID: ${req.userDepartment.id})`);
+    }
+    
+    // Add program filtering if specified
+    if (programId) {
+      params.push(programId);
+      conditions.push(`ps.program_id = $${params.length}`);
+    }
+    
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`;
+    }
+    
+    sql += ` ORDER BY ps.name`;
+    
     const result = await pool.query(sql, params);
+    
+    if (req.userDepartment && req.userDepartment.id) {
+      console.log(`🔒 [SPECIALIZATIONS] User restricted to department ${req.userDepartment.name}: showing ${result.rows.length} specializations`);
+    } else {
+      console.log(`🔓 [SPECIALIZATIONS] No department restriction: showing ${result.rows.length} specializations`);
+    }
+    
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -974,13 +1210,26 @@ catalog.get('/program-specializations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT specialization_id, program_id, name, description, abbreviation
-      FROM program_specializations
-      WHERE specialization_id = $1
+      SELECT ps.specialization_id, ps.program_id, ps.name, ps.description, ps.abbreviation,
+             p.department_id, d.name AS department_name
+      FROM program_specializations ps
+      JOIN programs p ON ps.program_id = p.program_id
+      LEFT JOIN departments d ON p.department_id = d.department_id
+      WHERE ps.specialization_id = $1
     `, [id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Specialization not found' });
+    }
+    
+    // Check if user has access to this specialization's department
+    if (req.userDepartment && req.userDepartment.id) {
+      const specialization = result.rows[0];
+      if (specialization.department_id !== req.userDepartment.id) {
+        console.log(`🚫 [SPECIALIZATION] User denied access to specialization ${id} from department ${specialization.department_name}`);
+        return res.status(403).json({ error: 'Access denied: Specialization not in your department' });
+      }
+      console.log(`✅ [SPECIALIZATION] User granted access to specialization ${id} from department ${specialization.department_name}`);
     }
     
     res.json(result.rows[0]);
@@ -1119,6 +1368,20 @@ catalog.get('/courses', async (req, res) => {
     const { programId, specializationId, termId } = req.query;
     const conditions = [];
     const params = [];
+    
+    // Check if user has no department access
+    if (req.userDepartment && req.userDepartment.noAccess) {
+      console.log(`🚫 [COURSES] User has no department access - returning empty result`);
+      return res.json([]);
+    }
+    
+    // Add department filtering if user has department access
+    if (req.userDepartment && req.userDepartment.id) {
+      params.push(req.userDepartment.id);
+      conditions.push(`p.department_id = $${params.length}`);
+      console.log(`🔒 [COURSES] Filtering by department: ${req.userDepartment.name} (ID: ${req.userDepartment.id})`);
+    }
+    
     if (programId) {
       params.push(programId);
       conditions.push(`p.program_id = $${params.length}`);
@@ -1131,20 +1394,31 @@ catalog.get('/courses', async (req, res) => {
       params.push(termId);
       conditions.push(`c.term_id = $${params.length}`);
     }
+    
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `
       SELECT 
         c.course_id, c.title, c.course_code, c.description, c.term_id, c.specialization_id,
         c.created_at, c.updated_at,
         ps.name AS specialization_name, ps.abbreviation,
-        p.program_id, p.name AS program_name, p.program_abbreviation
+        p.program_id, p.name AS program_name, p.program_abbreviation,
+        p.department_id, d.name AS department_name
       FROM courses c
       LEFT JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
       LEFT JOIN programs p ON ps.program_id = p.program_id
+      LEFT JOIN departments d ON p.department_id = d.department_id
       ${where}
       ORDER BY c.course_code, c.title
     `;
+    
     const result = await pool.query(sql, params);
+    
+    if (req.userDepartment && req.userDepartment.id) {
+      console.log(`🔒 [COURSES] User restricted to department ${req.userDepartment.name}: showing ${result.rows.length} courses`);
+    } else {
+      console.log(`🔓 [COURSES] No department restriction: showing ${result.rows.length} courses`);
+    }
+    
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1155,21 +1429,45 @@ catalog.get('/courses', async (req, res) => {
 catalog.get('/courses/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const conditions = ['c.course_id = $1'];
+    const params = [id];
+    
+    // Add department filtering if user has department access
+    if (req.userDepartment && req.userDepartment.id) {
+      params.push(req.userDepartment.id);
+      conditions.push(`p.department_id = $${params.length}`);
+      console.log(`🔒 [COURSE] Filtering by department: ${req.userDepartment.name} (ID: ${req.userDepartment.id})`);
+    }
+    
+    const where = conditions.join(' AND ');
     const sql = `
       SELECT 
         c.course_id, c.title, c.course_code, c.description, c.term_id, c.specialization_id,
         c.created_at, c.updated_at,
         ps.name AS specialization_name, ps.abbreviation,
-        p.program_id, p.name AS program_name, p.program_abbreviation
+        p.program_id, p.name AS program_name, p.program_abbreviation,
+        p.department_id, d.name AS department_name
       FROM courses c
       LEFT JOIN program_specializations ps ON c.specialization_id = ps.specialization_id
       LEFT JOIN programs p ON ps.program_id = p.program_id
-      WHERE c.course_id = $1
+      LEFT JOIN departments d ON p.department_id = d.department_id
+      WHERE ${where}
     `;
-    const result = await pool.query(sql, [id]);
+    
+    const result = await pool.query(sql, params);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    // Check if user has access to this course's department
+    if (req.userDepartment && req.userDepartment.id) {
+      const course = result.rows[0];
+      if (course.department_id !== req.userDepartment.id) {
+        console.log(`🚫 [COURSE] User denied access to course ${id} from department ${course.department_name}`);
+        return res.status(403).json({ error: 'Access denied: Course not in your department' });
+      }
+      console.log(`✅ [COURSE] User granted access to course ${id} from department ${course.department_name}`);
     }
     
     res.json(result.rows[0]);
