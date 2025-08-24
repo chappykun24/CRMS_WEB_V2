@@ -105,6 +105,9 @@ const ManageAccount = () => {
   const handlePhotoUpload = async () => {
     if (!photoFile || !user?.id) return;
 
+    console.log('📸 [PHOTO UPLOAD] Starting upload for user:', user.id);
+    console.log('📸 [PHOTO UPLOAD] Photo file data length:', photoFile?.length);
+
     setIsUploading(true);
 
     try {
@@ -118,7 +121,9 @@ const ManageAccount = () => {
         }),
       });
 
+      console.log('📸 [PHOTO UPLOAD] Response status:', response.status);
       const data = await response.json();
+      console.log('📸 [PHOTO UPLOAD] Response data:', data);
 
       if (data.success) {
         // Update user context with new photo
@@ -161,10 +166,12 @@ const ManageAccount = () => {
       // Create payload that ensures email doesn't change if not modified
       const payload = {
         name: formData.name,
-        email: formData.email
+        email: formData.email,
+        profilePic: user.profilePic // Include current profile picture
       };
       
       console.log('📤 [FRONTEND] Sending payload:', payload);
+      console.log('📤 [FRONTEND] User ID:', user.id);
       
       const response = await fetch(`/api/users/${user.id}/profile`, {
         method: 'PUT',
@@ -174,7 +181,9 @@ const ManageAccount = () => {
         body: JSON.stringify(payload),
       });
 
+      console.log('📤 [FRONTEND] Response status:', response.status);
       const data = await response.json();
+      console.log('📤 [FRONTEND] Response data:', data);
 
       if (data.success) {
         // Update user context

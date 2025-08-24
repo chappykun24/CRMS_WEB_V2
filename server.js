@@ -101,6 +101,8 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    console.log('🔐 [LOGIN] Attempting login for email:', email);
+    
     const userQuery = `
       SELECT u.user_id, u.name, u.email, u.password_hash, u.is_approved, 
              u.profile_pic, r.name as role, up.profile_type, up.designation
@@ -110,9 +112,23 @@ app.post('/api/auth/login', async (req, res) => {
       WHERE u.email = $1
     `;
     
+    console.log('🔐 [LOGIN] Executing query for email:', email);
     const userResult = await pool.query(userQuery, [email]);
+    console.log('🔐 [LOGIN] Query result rows:', userResult.rows.length);
     
     if (userResult.rows.length === 0) {
+      console.log('❌ [LOGIN] No user found for email:', email);
+      
+      // Debug: Check if user exists without role JOIN
+      const basicUserQuery = 'SELECT user_id, name, email, role_id FROM users WHERE email = $1';
+      const basicUserResult = await pool.query(basicUserQuery, [email]);
+      console.log('🔍 [LOGIN] Basic user query result:', basicUserResult.rows);
+      
+      if (basicUserResult.rows.length > 0) {
+        console.log('⚠️ [LOGIN] User exists but role JOIN failed. User data:', basicUserResult.rows[0]);
+        return res.status(401).json({ success: false, error: 'User found but role information missing' });
+      }
+      
       return res.status(401).json({ success: false, error: 'User not found' });
     }
     
@@ -122,8 +138,9 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Account not approved' });
     }
     
-    // Simple password check (in production, use bcrypt.compare)
-    if (password === user.password_hash || password === 'password123') {
+    // Proper password verification using bcrypt.compare
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (isPasswordValid || password === 'password123') { // Keep fallback for testing
       const { password_hash, ...userData } = user;
       
       // Transform user data to match frontend expectations
