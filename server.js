@@ -1,4 +1,6 @@
 import express, { Router } from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import pg from 'pg';
 import dotenv from 'dotenv';
@@ -21,6 +23,10 @@ if (process.env.VITE_NEON_HOST) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Resolve __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Enhanced CORS configuration for both development and production
 const corsOptions = {
@@ -1000,6 +1006,69 @@ app.delete('/api/students/:id', async (req, res) => {
   }
 });
 
+// Upload student photo (base64)
+app.post('/api/students/upload-photo', async (req, res) => {
+  try {
+    const { photoBase64, studentId } = req.body;
+
+    if (!photoBase64 || !studentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Photo and student ID are required'
+      });
+    }
+
+    // Validate base64 string
+    if (typeof photoBase64 !== 'string' || !photoBase64.startsWith('data:image/')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid image format'
+      });
+    }
+
+    // Check base64 size (approximately 5MB limit)
+    const base64Size = Math.ceil((photoBase64.length * 3) / 4);
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (base64Size > maxSize) {
+      return res.status(400).json({
+        success: false,
+        error: 'Image size must be less than 5MB'
+      });
+    }
+
+    // Update database with base64 photo data
+    const result = await pool.query(`
+      UPDATE students 
+      SET student_photo = $1, 
+          updated_at = NOW()
+      WHERE student_id = $2
+      RETURNING student_id, student_photo
+    `, [photoBase64, studentId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Student not found'
+      });
+    }
+
+    console.log(`✅ [STUDENT PHOTO] Photo uploaded for student ${studentId}`);
+
+    res.json({
+      success: true,
+      photoUrl: photoBase64,
+      message: 'Photo uploaded successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ [STUDENT PHOTO] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload photo'
+    });
+  }
+});
+
 // Get classes endpoint
 app.get('/api/classes', async (req, res) => {
   try {
@@ -1663,6 +1732,15 @@ catalog.delete('/courses/:id', async (req, res) => {
 });
 
 app.use('/api', catalog);
+
+// Serve built frontend (Vite) and enable SPA fallback
+const distDir = path.join(__dirname, 'dist');
+app.use(express.static(distDir));
+
+// SPA fallback for client-side routes (exclude /api/*)
+app.get(/^\/(?!api\/).*/, (req, res) => {
+  res.sendFile(path.join(distDir, 'index.html'));
+});
 
 // Start server
 app.listen(PORT, () => {

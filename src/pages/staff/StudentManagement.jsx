@@ -48,6 +48,18 @@ const StudentManagement = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   
+  // Lock page scroll while this page is mounted
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow
+    const prevHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevBodyOverflow
+      document.documentElement.style.overflow = prevHtmlOverflow
+    }
+  }, [])
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -72,9 +84,69 @@ const StudentManagement = () => {
     profilePic: null
   })
 
+  // Random data generation function
+  const fillRandomData = () => {
+    const firstNames = [
+      'Juan', 'Maria', 'Jose', 'Ana', 'Pedro', 'Carmen', 'Antonio', 'Isabel', 'Manuel', 'Rosa',
+      'Carlos', 'Elena', 'Miguel', 'Sofia', 'Luis', 'Carmen', 'Francisco', 'Lucia', 'Diego', 'Valentina',
+      'Alejandro', 'Camila', 'Daniel', 'Gabriela', 'Roberto', 'Adriana', 'Fernando', 'Patricia', 'Ricardo', 'Monica'
+    ]
+    
+    const lastNames = [
+      'Santos', 'Cruz', 'Reyes', 'Gonzalez', 'Lopez', 'Martinez', 'Rodriguez', 'Hernandez', 'Garcia', 'Perez',
+      'Torres', 'Flores', 'Rivera', 'Morales', 'Ortiz', 'Silva', 'Jimenez', 'Moreno', 'Romero', 'Diaz',
+      'Vargas', 'Castillo', 'Ramos', 'Ruiz', 'Alvarez', 'Mendoza', 'Herrera', 'Medina', 'Castro', 'Guerrero'
+    ]
+    
+    const middleInitials = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    const suffixes = ['Jr.', 'Sr.', 'II', 'III', 'IV']
+    const genders = ['male', 'female', 'other']
+    
+    // Generate random SR code with format 2X-XXXXX
+    const year = Math.floor(Math.random() * 10) + 20 // 20-29
+    const randomNum = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
+    const studentNumber = `${year}-${randomNum}`
+    
+    // Generate random birth date (18-25 years old) in HTML date format (YYYY-MM-DD)
+    const currentYear = new Date().getFullYear()
+    const birthYear = currentYear - (Math.floor(Math.random() * 8) + 18)
+    const birthMonth = Math.floor(Math.random() * 12) + 1
+    const birthDay = Math.floor(Math.random() * 28) + 1
+    const birthDate = `${birthYear}-${birthMonth.toString().padStart(2, '0')}-${birthDay.toString().padStart(2, '0')}`
+    
+    // Generate random email using SR code format
+    const email = `${studentNumber}@g.batstate-u.edu.ph`
+    
+    // Select random names
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)]
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)]
+    
+    // Select random department if available
+    const randomDepartment = departments.length > 0 ? departments[Math.floor(Math.random() * departments.length)].department_id : ''
+    
+    setFormData(prev => ({
+      ...prev,
+      studentNumber: studentNumber,
+      firstName: randomFirstName,
+      lastName: randomLastName,
+      middleInitial: middleInitials[Math.floor(Math.random() * middleInitials.length)],
+      suffix: Math.random() > 0.7 ? suffixes[Math.floor(Math.random() * suffixes.length)] : '',
+      email: email,
+      gender: genders[Math.floor(Math.random() * genders.length)],
+      birthDate: birthDate,
+      department: randomDepartment
+    }))
+  }
+
   // Modal states for consistent notifications
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Sidebar photo upload states
+  const [sidebarEditMode, setSidebarEditMode] = useState(false)
+  const [sidebarPhotoFile, setSidebarPhotoFile] = useState(null)
+  const [sidebarPhotoPreview, setSidebarPhotoPreview] = useState(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -136,6 +208,15 @@ const StudentManagement = () => {
     loadTerms()
   }, [])
 
+  // Reset sidebar photo states when selected student changes
+  useEffect(() => {
+    if (selectedStudent) {
+      setSidebarEditMode(false)
+      setSidebarPhotoFile(null)
+      setSidebarPhotoPreview(null)
+    }
+  }, [selectedStudent])
+
 
 
   const handleInputChange = (e) => {
@@ -158,6 +239,82 @@ const StudentManagement = () => {
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  // Sidebar photo upload handlers
+  const handleSidebarPhotoChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setSidebarPhotoFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setSidebarPhotoPreview(e.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSidebarPhotoUpload = async () => {
+    if (!sidebarPhotoFile || !selectedStudent) return
+
+    setIsUploadingPhoto(true)
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const photoBase64 = e.target.result
+
+        const response = await fetch('http://localhost:3001/api/students/upload-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            photoBase64,
+            studentId: selectedStudent.student_id
+          })
+        })
+
+        if (!response.ok) throw new Error('Failed to upload photo')
+        const result = await response.json()
+        if (!result.success) throw new Error(result.error || 'Failed to upload photo')
+
+        // Update UI with new photo
+        setSelectedStudent(prev => ({ ...prev, student_photo: result.photoUrl }))
+        setStudents(prev => prev.map(student => (
+          student.student_id === selectedStudent.student_id
+            ? { ...student, student_photo: result.photoUrl }
+            : student
+        )))
+
+        // Reset sidebar photo states
+        setSidebarPhotoFile(null)
+        setSidebarPhotoPreview(null)
+        setSidebarEditMode(false)
+
+        // Success toast
+        setShowSuccessModal(true)
+        setTimeout(() => setShowSuccessModal(false), 3000)
+      } catch (error) {
+        console.error('Photo upload error:', error)
+        setErrorMessage(error.message || 'Failed to upload photo')
+        setShowErrorModal(true)
+      } finally {
+        setIsUploadingPhoto(false)
+      }
+    }
+
+    reader.onerror = () => {
+      setIsUploadingPhoto(false)
+      setErrorMessage('Failed to read photo file')
+      setShowErrorModal(true)
+    }
+
+    reader.readAsDataURL(sidebarPhotoFile)
+  }
+
+  const cancelSidebarPhotoEdit = () => {
+    setSidebarPhotoFile(null)
+    setSidebarPhotoPreview(null)
+    setSidebarEditMode(false)
   }
 
   const resetForm = () => {
@@ -373,261 +530,324 @@ const StudentManagement = () => {
 
   return (
     <>
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Navigation Bar with Add Student Button */}
-          <div className="bg-gray-50 border-b border-gray-200 mb-6">
-            <div className="flex items-center justify-between px-8 py-4">
-              <nav className="flex space-x-8">
-                <div className="py-4 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
-                  All Students
-                </div>
-              </nav>
-              
-              {/* Add Student Button aligned with navigation */}
-              <button
-                onClick={openCreateModal}
-                className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-              >
-                <PlusIcon className="h-5 w-5 stroke-[3]" />
-            </button>
-          </div>
-        </div>
-
-          {/* Filters and Search */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <div className="flex items-center gap-3">
-              {/* Search */}
-              <div className="relative flex-1">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-
-              {/* Department Filter */}
-              <select
-                value={departmentFilter}
-                onChange={(e) => {
-                  setDepartmentFilter(e.target.value)
-                  resetPagination()
-                }}
-                className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-32"
-              >
-                <option value="">All Departments</option>
-                {departments.map(dept => (
-                  <option key={dept.department_id} value={dept.department_id}>
-                    {dept.department_abbreviation || dept.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Sort */}
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-                className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
-              >
-                <option value="created_desc">Newest</option>
-                <option value="created_asc">Oldest</option>
-                <option value="name_asc">Name A-Z</option>
-                <option value="name_desc">Name Z-A</option>
-              </select>
-
-              {/* Pagination and student count on the right side of filters */}
-              <div className="flex items-center space-x-3 ml-4">
-                {/* Student count display */}
-                {filteredStudents.length > 0 && (
-                  <div className="text-sm text-red-600 font-medium">
-                    {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length}
+      <div className="pt-0 pb-4 overflow-hidden">
+        <div className="w-full">
+                    {/* Tabs and Add Student Button */}
+          <div className="bg-gray-50 border-b border-gray-200 mb-2">
+            <div className="px-0">
+              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                <nav className="flex space-x-8">
+                  <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+                    All Students
                   </div>
-                )}
+                </nav>
                 
-                {/* Pagination controls */}
-                {filteredStudents.length > 0 && totalPages > 1 && (
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`px-2 py-1 text-xs rounded ${
-                          page === currentPage
-                            ? 'bg-red-600 text-white'
-                            : 'text-gray-500 hover:text-red-600'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                    
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
-                    >
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                {/* Add Student Button aligned with navigation */}
+                <button
+                  onClick={openCreateModal}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                >
+                  <PlusIcon className="h-5 w-5 stroke-[3]" />
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Students Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-260px)] min-h-[360px] overflow-hidden">
-            <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
-              <div className="overflow-x-auto overflow-y-auto h-full">
-                <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR-Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentStudents.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        {query ? 'No students match your search' : 'No students found'}
-                      </td>
-                    </tr>
-                  ) : (
-                    currentStudents.map((student) => (
-                      <tr
-                        key={student.student_id}
-                        className={`hover:bg-gray-50 cursor-pointer h-16 ${selectedStudent?.student_id === student.student_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
-                        onClick={() => setSelectedStudent(student)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              {student.student_photo ? (
-                                <img className="h-10 w-10 rounded-full object-cover" src={student.student_photo} alt={student.full_name} />
-                              ) : (
-                                <div className="h-10 w-10 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
-                                  <span className="text-red-700 text-sm font-semibold">{(student.full_name || 'S').charAt(0)}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.full_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.contact_email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.student_number}</td>
+          {/* Main Content Area - Filters, Search, Table, and Sidebar */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-150px)]">
+            {/* Left Section - Filters, Search, and Table */}
+            <div className="lg:col-span-3 flex flex-col h-full min-h-0">
+              {/* Filters and Search Bar */}
+              <div className="mb-6 shrink-0">
+                <div className="flex items-center gap-3">
+                  {/* Search */}
+                  <div className="relative flex-1">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+
+                  {/* Department Filter */}
+                  <select
+                    value={departmentFilter}
+                    onChange={(e) => {
+                      setDepartmentFilter(e.target.value)
+                      resetPagination()
+                    }}
+                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-32"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept.department_id} value={dept.department_id}>
+                        {dept.department_abbreviation || dept.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Sort */}
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
+                  >
+                    <option value="created_desc">Newest</option>
+                    <option value="created_asc">Oldest</option>
+                    <option value="name_asc">Name A-Z</option>
+                    <option value="name_desc">Name Z-A</option>
+                  </select>
+
+                  {/* Pagination and student count on the right side of filters */}
+                  <div className="flex items-center space-x-3 ml-4">
+                    {/* Student count display */}
+                    {filteredStudents.length > 0 && (
+                      <div className="text-sm text-red-600 font-medium">
+                        {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length}
+                      </div>
+                    )}
+                    
+                    {/* Pagination controls */}
+                    {filteredStudents.length > 0 && totalPages > 1 && (
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
                         
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateTime(student.created_at || student.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditModal(student) }}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 rounded p-1 transition-colors"
-                              title="Edit"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.student_id) }}
-                              className="text-red-600 hover:text-red-900 transition-colors"
-                              title="Delete"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`px-2 py-1 text-xs rounded ${
+                              page === currentPage
+                                ? 'bg-red-600 text-white'
+                                : 'text-gray-500 hover:text-red-600'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Students Table */}
+              <div className="flex-1 min-h-0 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto overflow-y-auto h-full">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROFILE</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NAME</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EMAIL</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR-CODE</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DEPARTMENT</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {currentStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                            {query ? 'No students match your search' : 'No students found'}
+                          </td>
+                        </tr>
+                      ) : (
+                        currentStudents.map((student) => (
+                          <tr
+                            key={student.student_id}
+                            className={`hover:bg-gray-50 cursor-pointer h-16 ${selectedStudent?.student_id === student.student_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
+                            onClick={() => setSelectedStudent(student)}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 h-10 w-10">
+                                  {student.student_photo ? (
+                                    <img className="h-10 w-10 rounded-full object-cover" src={student.student_photo} alt={student.full_name} />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
+                                      <span className="text-red-700 text-sm font-semibold">{(student.full_name || 'S').charAt(0)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.full_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.contact_email}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.student_number}</td>
+                            
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                {getDepartmentName(student.department_id) || '—'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="text-green-600 font-semibold">Active</span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full min-h-[320px] overflow-auto">
+
+                        {/* Right Section - Sidebar */}
+            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-auto">
               {!selectedStudent ? (
-                <div className="h-full flex items-center justify-center text-center text-gray-500">
+                <div className="h-full flex items-center justify-center text-center text-gray-500 py-10">
                   <div>
                     <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                      <UserPlusIcon className="h-6 w-6 text-gray-400" />
+                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                      </svg>
                     </div>
                     <p className="text-sm">Select a student from the list to view details here.</p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <h3 className="text-base font-semibold text-gray-900">Student Details</h3>
-                  <div className="flex items-center">
-                    {selectedStudent.student_photo ? (
-                      <img className="h-14 w-14 rounded-full object-cover" src={selectedStudent.student_photo} alt={selectedStudent.full_name} />
-                    ) : (
-                      <div className="h-14 w-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
-                        <span className="text-red-700 text-base font-semibold">{(selectedStudent.full_name || 'S').charAt(0)}</span>
+                <div className="space-y-4">
+                  {/* Header with Edit Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {selectedStudent.student_photo ? (
+                        <img className="h-14 w-14 rounded-full object-cover" src={selectedStudent.student_photo} alt={selectedStudent.full_name} />
+                      ) : (
+                        <div className="h-14 w-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
+                          <span className="text-red-700 text-base font-semibold">{(selectedStudent.full_name || 'S').charAt(0)}</span>
+                        </div>
+                      )}
+                      <div className="ml-4">
+                        <div className="text-base font-semibold text-gray-900">{selectedStudent.full_name}</div>
+                        <div className="text-sm text-gray-500">{selectedStudent.student_number}</div>
                       </div>
-                    )}
-                    <div className="ml-4">
-                      <div className="text-base font-semibold text-gray-900">{selectedStudent.full_name}</div>
-                      <div className="text-sm text-gray-500">{selectedStudent.student_number}</div>
                     </div>
+                    <button
+                      onClick={() => setSidebarEditMode(!sidebarEditMode)}
+                      className="p-2 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                      title={sidebarEditMode ? "Cancel Edit" : "Edit Photo"}
+                    >
+                      {sidebarEditMode ? (
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
-                  <div className="border-t border-gray-200 pt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <div className="text-gray-500">Email</div>
-                      <div className="text-gray-900 break-all">{selectedStudent.contact_email}</div>
+                  
+                  {/* Photo Upload Section - Edit Mode */}
+                  {sidebarEditMode && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <div className="space-y-3">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Update Profile Photo
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+                            {sidebarPhotoPreview ? (
+                              <img 
+                                src={sidebarPhotoPreview} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleSidebarPhotoChange}
+                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF • Max 5MB</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={handleSidebarPhotoUpload}
+                            disabled={!sidebarPhotoFile || isUploadingPhoto}
+                            className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+                          >
+                            {isUploadingPhoto && (
+                              <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                              </svg>
+                            )}
+                            <span>{isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}</span>
+                          </button>
+                          {sidebarPhotoFile && (
+                            <button
+                              onClick={cancelSidebarPhotoEdit}
+                              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-gray-500">SR-Code</div>
-                      <div className="text-gray-900">{selectedStudent.student_number}</div>
+                  )}
+                  
+                  {/* Student Details */}
+                  <div className="border-t border-gray-200 pt-4 space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Email</span>
+                      <span className="text-gray-800 text-sm">{selectedStudent.contact_email}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">SR-Code</span>
+                      <span className="text-gray-800 text-sm">{selectedStudent.student_number}</span>
                     </div>
                     {selectedStudent.gender && (
-                      <div>
-                        <div className="text-gray-500">Gender</div>
-                        <div className="text-gray-900 capitalize">{selectedStudent.gender}</div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Gender</span>
+                        <span className="text-gray-800 text-sm capitalize">{selectedStudent.gender}</span>
                       </div>
                     )}
                     {selectedStudent.birth_date && (
-                      <div>
-                        <div className="text-gray-500">Birth Date</div>
-                        <div className="text-gray-900">{selectedStudent.birth_date}</div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Birth Date</span>
+                        <span className="text-gray-800 text-sm">{formatDateTime(selectedStudent.birth_date)}</span>
                       </div>
                     )}
-                    <div>
-                      <div className="text-gray-500">Created</div>
-                      <div className="text-gray-900">{formatDateTime(selectedStudent.created_at || selectedStudent.createdAt)}</div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Created</span>
+                      <span className="text-gray-800 text-sm">{formatDateTime(selectedStudent.created_at || selectedStudent.createdAt)}</span>
                     </div>
-                  </div>
-                  <div className="pt-2 flex gap-2">
-                    <button
-                      onClick={() => openEditModal(selectedStudent)}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md"
-                    >
-                      <PencilIcon className="h-4 w-4 mr-1" /> Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteStudent(selectedStudent.student_id)}
-                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md"
-                    >
-                      <TrashIcon className="h-4 w-4 mr-1" /> Delete
-                    </button>
                   </div>
                 </div>
               )}
@@ -644,14 +864,24 @@ const StudentManagement = () => {
               <h3 className="text-lg font-medium text-gray-900">
                 {isEditMode ? 'Edit Student' : 'Register New Student'}
               </h3>
-              <button
-                onClick={closeCreateModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={fillRandomData}
+                  className="text-xs font-medium text-red-600 hover:underline"
+                  title="Fill random student data"
+                >
+                  Fill Random Data
+                </button>
+                <button
+                  onClick={closeCreateModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">

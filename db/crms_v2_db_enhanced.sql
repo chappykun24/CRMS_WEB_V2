@@ -586,4 +586,11 @@ CREATE INDEX idx_uploads_user_id ON uploads(user_id);
 CREATE INDEX idx_uploads_related_type ON uploads(related_type);
 CREATE INDEX idx_uploads_related_id ON uploads(related_id);
 
+-- Students indexes
+CREATE INDEX idx_students_full_name_lower ON students (LOWER(full_name));
+CREATE INDEX idx_students_contact_email ON students(contact_email);
+CREATE INDEX idx_students_created_at ON students(created_at);
+CREATE INDEX idx_students_gender ON students(gender);
+CREATE INDEX idx_students_birth_date ON students(birth_date);
+
 --

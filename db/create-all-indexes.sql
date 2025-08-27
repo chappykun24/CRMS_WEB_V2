@@ -3,6 +3,13 @@
 
 SET search_path TO public;
 
+-- Students indexes (commonly queried fields)
+CREATE INDEX IF NOT EXISTS idx_students_full_name_lower ON students (LOWER(full_name));
+CREATE INDEX IF NOT EXISTS idx_students_contact_email ON students(contact_email);
+CREATE INDEX IF NOT EXISTS idx_students_created_at ON students(created_at);
+CREATE INDEX IF NOT EXISTS idx_students_gender ON students(gender);
+CREATE INDEX IF NOT EXISTS idx_students_birth_date ON students(birth_date);
+
 -- Syllabi indexes
 CREATE INDEX IF NOT EXISTS idx_syllabi_course_id ON syllabi(course_id);
 CREATE INDEX IF NOT EXISTS idx_syllabi_section_course_id ON syllabi(section_course_id);
