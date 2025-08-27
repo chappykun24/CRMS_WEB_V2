@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { useSidebar } from '../../contexts/SidebarContext'
 import studentService from '../../services/studentService'
+import { validateStudentRegistration, buildStudentRegistrationPayload, buildStudentUpdatePayload } from '../../services/studentSpec'
 import api, { endpoints } from '../../utils/api'
 
 const TabButton = ({ isActive, onClick, children }) => (
@@ -46,6 +47,10 @@ const StudentManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -90,6 +95,11 @@ const StudentManagement = () => {
     loadStudents()
   }, [])
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    resetPagination()
+  }, [query, departmentFilter, sortOption])
+
   useEffect(() => {
     const loadDepartments = async () => {
       try {
@@ -126,40 +136,7 @@ const StudentManagement = () => {
     loadTerms()
   }, [])
 
-  const filteredStudents = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    let list = students
 
-    // Apply filters
-    if (departmentFilter) {
-      list = list.filter(s => String(s.department_id) === String(departmentFilter))
-    }
-    if (programFilter) {
-      list = list.filter(s => String(s.program_id) === String(programFilter))
-    }
-
-    // Apply search query
-    if (q) {
-      list = list.filter(s => 
-        s.student_number?.toLowerCase().includes(q) ||
-        s.full_name?.toLowerCase().includes(q) ||
-        s.contact_email?.toLowerCase().includes(q)
-      )
-    }
-
-    // Apply sorting
-    if (sortOption === 'created_desc') {
-      list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    } else if (sortOption === 'created_asc') {
-      list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    } else if (sortOption === 'name_asc') {
-      list.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
-    } else if (sortOption === 'name_desc') {
-      list.sort((a, b) => (b.full_name || '').localeCompare(a.full_name || ''))
-    }
-
-    return list
-  }, [students, query, departmentFilter, programFilter, sortOption])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -245,16 +222,11 @@ const StudentManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setCreateError('Passwords do not match')
-      return
-    }
-
-    // Validate required fields
-    if (!formData.studentNumber || !formData.firstName || !formData.lastName || 
-        !formData.email || !formData.password || !formData.department || !formData.program) {
-      setCreateError('Please fill in all required fields')
+    // Students-only validation
+    const { valid, errors } = validateStudentRegistration(formData)
+    if (!valid) {
+      const firstError = Object.values(errors)[0]
+      setCreateError(firstError || 'Please check the form and try again')
       return
     }
 
@@ -262,23 +234,9 @@ const StudentManagement = () => {
       setIsCreating(true)
       setCreateError('')
 
-      const studentData = {
-        studentNumber: formData.studentNumber,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        middleInitial: formData.middleInitial,
-        suffix: formData.suffix,
-        email: formData.email,
-        password: formData.password,
-        gender: formData.gender,
-        birthDate: formData.birthDate,
-        department: formData.department,
-        program: formData.program,
-        specialization: formData.specialization,
-        termStart: formData.termStart,
-        termEnd: formData.termEnd,
-        profilePic: formData.profilePic
-      }
+      const studentData = isEditMode
+        ? buildStudentUpdatePayload(formData)
+        : buildStudentRegistrationPayload(formData)
 
       let result
       if (isEditMode && selectedStudent) {
@@ -352,12 +310,61 @@ const StudentManagement = () => {
     return prog ? prog.name : programId
   }
 
+  // Filtered students with search and department filter
+  const filteredStudents = useMemo(() => {
+    let filtered = students.filter(student => {
+      const matchesQuery = !query || 
+        (student.full_name || '').toLowerCase().includes(query.toLowerCase()) ||
+        (student.contact_email || '').toLowerCase().includes(query.toLowerCase()) ||
+        (student.student_number || '').toLowerCase().includes(query.toLowerCase())
+      
+      const matchesDepartment = !departmentFilter || 
+        String(student.department_id) === String(departmentFilter)
+      
+      return matchesQuery && matchesDepartment
+    })
+
+    // Apply sorting
+    switch (sortOption) {
+      case 'created_desc':
+        filtered.sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
+        break
+      case 'created_asc':
+        filtered.sort((a, b) => new Date(a.created_at || a.createdAt) - new Date(b.created_at || b.createdAt))
+        break
+      case 'name_asc':
+        filtered.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+        break
+      case 'name_desc':
+        filtered.sort((a, b) => (b.full_name || '').localeCompare(a.full_name || ''))
+        break
+      default:
+        break
+    }
+
+    return filtered
+  }, [students, query, departmentFilter, sortOption])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentStudents = filteredStudents.slice(startIndex, endIndex)
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
+  const resetPagination = () => {
+    setCurrentPage(1)
+  }
+
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto min-h-0">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
           </div>
         </div>
       </div>
@@ -368,86 +375,53 @@ const StudentManagement = () => {
     <>
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Student Management</h1>
-                <p className="text-gray-600">Register and manage student records</p>
-              </div>
+          {/* Navigation Bar with Add Student Button */}
+          <div className="bg-gray-50 border-b border-gray-200 mb-6">
+            <div className="flex items-center justify-between px-8 py-4">
+              <nav className="flex space-x-8">
+                <div className="py-4 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+                  All Students
+                </div>
+              </nav>
+              
+              {/* Add Student Button aligned with navigation */}
               <button
                 onClick={openCreateModal}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
               >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Register Student
-              </button>
-            </div>
+                <PlusIcon className="h-5 w-5 stroke-[3]" />
+            </button>
           </div>
-
-          {/* Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8">
-              <TabButton
-                isActive={activeTab === 'all'}
-                onClick={() => setActiveTab('all')}
-              >
-                All Students
-              </TabButton>
-              <TabButton
-                isActive={activeTab === 'pending'}
-                onClick={() => setActiveTab('pending')}
-              >
-                Pending Approval
-              </TabButton>
-              <TabButton
-                isActive={activeTab === 'active'}
-                onClick={() => setActiveTab('active')}
-              >
-                Active Students
-              </TabButton>
-            </nav>
-          </div>
+        </div>
 
           {/* Filters and Search */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-3">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search students..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
 
               {/* Department Filter */}
               <select
                 value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                onChange={(e) => {
+                  setDepartmentFilter(e.target.value)
+                  resetPagination()
+                }}
+                className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-32"
               >
                 <option value="">All Departments</option>
                 {departments.map(dept => (
                   <option key={dept.department_id} value={dept.department_id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Program Filter */}
-              <select
-                value={programFilter}
-                onChange={(e) => setProgramFilter(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">All Programs</option>
-                {programs.map(prog => (
-                  <option key={prog.program_id} value={prog.program_id}>
-                    {prog.name}
+                    {dept.department_abbreviation || dept.name}
                   </option>
                 ))}
               </select>
@@ -456,109 +430,125 @@ const StudentManagement = () => {
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
               >
-                <option value="created_desc">Newest First</option>
-                <option value="created_asc">Oldest First</option>
+                <option value="created_desc">Newest</option>
+                <option value="created_asc">Oldest</option>
                 <option value="name_asc">Name A-Z</option>
                 <option value="name_desc">Name Z-A</option>
               </select>
+
+              {/* Pagination and student count on the right side of filters */}
+              <div className="flex items-center space-x-3 ml-4">
+                {/* Student count display */}
+                {filteredStudents.length > 0 && (
+                  <div className="text-sm text-red-600 font-medium">
+                    {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length}
+                  </div>
+                )}
+                
+                {/* Pagination controls */}
+                {filteredStudents.length > 0 && totalPages > 1 && (
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-2 py-1 text-xs rounded ${
+                          page === currentPage
+                            ? 'bg-red-600 text-white'
+                            : 'text-gray-500 hover:text-red-600'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Students Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-260px)] min-h-[360px] overflow-hidden">
+            <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
+              <div className="overflow-x-auto overflow-y-auto h-full">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Program
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR-Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredStudents.length === 0 ? (
+                  {currentStudents.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        {query || departmentFilter || programFilter ? 'No students match your filters' : 'No students found'}
+                        {query ? 'No students match your search' : 'No students found'}
                       </td>
                     </tr>
                   ) : (
-                    filteredStudents.map((student) => (
-                      <tr key={student.student_id} className="hover:bg-gray-50">
+                    currentStudents.map((student) => (
+                      <tr
+                        key={student.student_id}
+                        className={`hover:bg-gray-50 cursor-pointer h-16 ${selectedStudent?.student_id === student.student_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
+                        onClick={() => setSelectedStudent(student)}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
                               {student.student_photo ? (
-                                <img
-                                  className="h-10 w-10 rounded-full object-cover"
-                                  src={student.student_photo}
-                                  alt={student.full_name}
-                                />
+                                <img className="h-10 w-10 rounded-full object-cover" src={student.student_photo} alt={student.full_name} />
                               ) : (
-                                <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
-                                  <UserPlusIcon className="h-6 w-6 text-white" />
+                                <div className="h-10 w-10 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
+                                  <span className="text-red-700 text-sm font-semibold">{(student.full_name || 'S').charAt(0)}</span>
                                 </div>
                               )}
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {student.full_name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {student.student_number}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {student.contact_email}
-                              </div>
-                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {getDepartmentName(student.department_id)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {getProgramName(student.program_id)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            student.is_approved 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {student.is_approved ? 'Approved' : 'Pending'}
-                          </span>
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.full_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.contact_email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.student_number}</td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateTime(student.created_at)}
+                          {formatDateTime(student.created_at || student.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              onClick={() => openEditModal(student)}
-                              className="text-primary-600 hover:text-primary-900 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); openEditModal(student) }}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 rounded p-1 transition-colors"
                               title="Edit"
                             >
                               <PencilIcon className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteStudent(student.student_id)}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student.student_id) }}
                               className="text-red-600 hover:text-red-900 transition-colors"
                               title="Delete"
                             >
@@ -570,7 +560,77 @@ const StudentManagement = () => {
                     ))
                   )}
                 </tbody>
-              </table>
+                </table>
+              </div>
+            </div>
+            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-6 h-full min-h-[320px] overflow-auto">
+              {!selectedStudent ? (
+                <div className="h-full flex items-center justify-center text-center text-gray-500">
+                  <div>
+                    <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <UserPlusIcon className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm">Select a student from the list to view details here.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <h3 className="text-base font-semibold text-gray-900">Student Details</h3>
+                  <div className="flex items-center">
+                    {selectedStudent.student_photo ? (
+                      <img className="h-14 w-14 rounded-full object-cover" src={selectedStudent.student_photo} alt={selectedStudent.full_name} />
+                    ) : (
+                      <div className="h-14 w-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
+                        <span className="text-red-700 text-base font-semibold">{(selectedStudent.full_name || 'S').charAt(0)}</span>
+                      </div>
+                    )}
+                    <div className="ml-4">
+                      <div className="text-base font-semibold text-gray-900">{selectedStudent.full_name}</div>
+                      <div className="text-sm text-gray-500">{selectedStudent.student_number}</div>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 pt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500">Email</div>
+                      <div className="text-gray-900 break-all">{selectedStudent.contact_email}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">SR-Code</div>
+                      <div className="text-gray-900">{selectedStudent.student_number}</div>
+                    </div>
+                    {selectedStudent.gender && (
+                      <div>
+                        <div className="text-gray-500">Gender</div>
+                        <div className="text-gray-900 capitalize">{selectedStudent.gender}</div>
+                      </div>
+                    )}
+                    {selectedStudent.birth_date && (
+                      <div>
+                        <div className="text-gray-500">Birth Date</div>
+                        <div className="text-gray-900">{selectedStudent.birth_date}</div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-gray-500">Created</div>
+                      <div className="text-gray-900">{formatDateTime(selectedStudent.created_at || selectedStudent.createdAt)}</div>
+                    </div>
+                  </div>
+                  <div className="pt-2 flex gap-2">
+                    <button
+                      onClick={() => openEditModal(selectedStudent)}
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md"
+                    >
+                      <PencilIcon className="h-4 w-4 mr-1" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteStudent(selectedStudent.student_id)}
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md"
+                    >
+                      <TrashIcon className="h-4 w-4 mr-1" /> Delete
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -687,155 +747,52 @@ const StudentManagement = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password *
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required={!isEditMode}
-                    minLength={6}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password *
-                  </label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required={!isEditMode}
-                    minLength={6}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                </div>
+                {/* Password fields removed for students-only */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Gender
                   </label>
-                  <select
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      className="w-full appearance-none pr-10 pl-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Birth Date
                   </label>
-                  <input
-                    type="date"
-                    name="birthDate"
-                    value={formData.birthDate}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      name="birthDate"
+                      value={formData.birthDate}
+                      onChange={handleInputChange}
+                      className="w-full pr-10 pl-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                      <CalendarIcon className="h-4 w-4" />
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Academic Information */}
-              <div className="border-t border-gray-200 pt-6">
-                <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
-                  <AcademicCapIcon className="h-5 w-5 mr-2 text-primary-600" />
-                  Academic Information
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Department *
-                    </label>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="">Select Department</option>
-                      {departments.map(dept => (
-                        <option key={dept.department_id} value={dept.department_id}>
-                          {dept.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Program *
-                    </label>
-                    <select
-                      name="program"
-                      value={formData.program}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="">Select Program</option>
-                      {programs.map(prog => (
-                        <option key={prog.program_id} value={prog.program_id}>
-                          {prog.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Specialization
-                    </label>
-                    <input
-                      type="text"
-                      name="specialization"
-                      value={formData.specialization}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term Start
-                    </label>
-                    <input
-                      type="date"
-                      name="termStart"
-                      value={formData.termStart}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Term End
-                    </label>
-                    <input
-                      type="date"
-                      name="termEnd"
-                      value={formData.termEnd}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* Academic Information removed for students-only */}
 
               {/* Profile Photo */}
               <div className="border-t border-gray-200 pt-6">

@@ -449,7 +449,7 @@ const SchoolConfiguration = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading school configuration...</p>
             </div>
           </div>
@@ -496,9 +496,9 @@ const SchoolConfiguration = () => {
           }
           
           input[type="text"]:focus, input[type="search"]:focus, select:focus {
-            border-color: #9ca3af !important;
+            border-color: #ef4444 !important;
             outline: none !important;
-            box-shadow: none !important;
+            box-shadow: 0 0 0 1px #ef4444 !important;
           }
           
           /* Clean dropdown styling */
@@ -576,7 +576,7 @@ const SchoolConfiguration = () => {
                         value={departmentQuery}
                         onChange={(e) => setDepartmentQuery(e.target.value)}
                         placeholder="Search departments or abbreviations"
-                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 bg-white"
+                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 bg-white focus:ring-1 focus:ring-red-500 focus:border-red-500"
                       />
                       <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                     </div>
@@ -663,7 +663,7 @@ const SchoolConfiguration = () => {
                                   setDepartmentErrors({ ...departmentErrors, name: '' });
                                 }
                               }}
-                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
+                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500`}
                               placeholder="Enter department name"
                             />
                             {departmentErrors.name && (
@@ -684,7 +684,7 @@ const SchoolConfiguration = () => {
                                   setDepartmentErrors({ ...departmentErrors, abbreviation: '' });
                                 }
                               }}
-                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
+                              className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500`}
                               placeholder="Enter abbreviation"
                               maxLength="10"
                             />
@@ -705,7 +705,7 @@ const SchoolConfiguration = () => {
                       <button
                         onClick={editingDepartment ? handleUpdateDepartment : handleAddDepartment}
                         disabled={isAddingDepartment || isUpdatingDepartment}
-                        className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       >
                         {isAddingDepartment || isUpdatingDepartment ? (
                           <>
@@ -734,14 +734,14 @@ const SchoolConfiguration = () => {
                         value={termQuery}
                         onChange={(e) => setTermQuery(e.target.value)}
                         placeholder="Search school year or semester"
-                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 bg-white"
+                        className="w-full px-3 py-2 pl-9 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white"
                       />
                       <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                     </div>
                     <select
                       value={termSemester}
                       onChange={(e) => setTermSemester(e.target.value)}
-                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
+                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     >
                       <option value="">All Semesters</option>
                       <option value="1st">1st Semester</option>
@@ -751,7 +751,7 @@ const SchoolConfiguration = () => {
                     <select
                       value={termActive}
                       onChange={(e) => setTermActive(e.target.value)}
-                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
+                      className="px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     >
                       <option value="">All Status</option>
                       <option value="true">Active</option>
@@ -870,7 +870,7 @@ const SchoolConfiguration = () => {
                               setTermErrors({ ...termErrors, schoolYear: '' });
                             }
                           }}
-                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
+                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500`}
                           placeholder="e.g., 2024-2025"
                         />
                         {termErrors.schoolYear && (
@@ -890,7 +890,7 @@ const SchoolConfiguration = () => {
                               setTermErrors({ ...termErrors, semester: '' });
                             }
                           }}
-                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400`}
+                          className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500`}
                         >
                           <option value="">Select semester</option>
                           <option value="1st">1st Semester</option>
@@ -911,7 +911,7 @@ const SchoolConfiguration = () => {
                             type="text"
                             value={newTerm.start_date}
                             onChange={(e) => setNewTerm({ ...newTerm, start_date: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 pr-10`}
+                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 pr-10`}
                             placeholder="Select start date"
                             readOnly
                           />
@@ -926,7 +926,7 @@ const SchoolConfiguration = () => {
                             <button
                               type="button"
                               onClick={() => clearDate('start')}
-                              className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                              className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-red-600"
                             >
                               ×
                             </button>
@@ -946,7 +946,7 @@ const SchoolConfiguration = () => {
                             type="text"
                             value={newTerm.end_date}
                             onChange={(e) => setNewTerm({ ...newTerm, end_date: e.target.value })}
-                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-gray-300 focus:border-gray-400 pr-10`}
+                            className={`w-full px-3 py-2 border rounded-lg border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 pr-10`}
                             placeholder="Select end date"
                             readOnly
                           />
@@ -961,7 +961,7 @@ const SchoolConfiguration = () => {
                             <button
                               type="button"
                               onClick={() => clearDate('end')}
-                              className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-gray-600"
+                              className="absolute inset-y-0 right-8 pr-2 flex items-center text-gray-400 hover:text-red-600"
                             >
                               ×
                             </button>
@@ -979,7 +979,7 @@ const SchoolConfiguration = () => {
                         <select
                           value={newTerm.is_active ? 'true' : 'false'}
                           onChange={(e) => setNewTerm({ ...newTerm, is_active: e.target.value === 'true' })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-gray-300 focus:border-gray-400"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                         >
                           <option value="false">Inactive</option>
                           <option value="true">Active</option>
@@ -998,7 +998,7 @@ const SchoolConfiguration = () => {
                       <button
                         onClick={editingTerm ? handleUpdateTerm : handleAddTerm}
                         disabled={isAddingTerm || isUpdatingTerm}
-                        className="flex-1 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       >
                         {isAddingTerm || isUpdatingTerm ? (
                           <>

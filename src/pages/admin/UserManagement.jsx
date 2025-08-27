@@ -43,6 +43,8 @@ const UserManagement = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [isUpdatingDepartment, setIsUpdatingDepartment] = useState({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   const formatDateTime = (value) => {
     if (!value) return '—'
@@ -77,7 +79,14 @@ const UserManagement = () => {
     if (departmentFilter !== '') {
       setDepartmentFilter('')
     }
+    // Reset pagination when switching tabs
+    resetPagination()
   }, [activeTab])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    resetPagination()
+  }, [query, roleFilter, statusFilter, departmentFilter, sortOption])
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -226,6 +235,30 @@ const UserManagement = () => {
     }
     return sorted
   }, [users, query, activeTab, roleFilter, statusFilter, departmentFilter, facultyRoleId, sortOption])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentUsers = filteredUsers.slice(startIndex, endIndex)
+  
+  // Debug pagination values
+  console.log('Pagination Debug:', {
+    filteredUsersLength: filteredUsers.length,
+    totalPages,
+    currentPage,
+    startIndex,
+    endIndex,
+    currentUsersLength: currentUsers.length
+  })
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
+
+  const resetPagination = () => {
+    setCurrentPage(1)
+  }
 
   const handleApprove = async (userId) => {
     try {
@@ -416,17 +449,28 @@ const UserManagement = () => {
       }`} style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
-          {/* Tabs */}
+          {/* Tabs and Add User Button */}
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-gray-50">
-              <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
-                <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-                  All Users
-                </TabButton>
-                <TabButton isActive={activeTab === 'faculty'} onClick={() => setActiveTab('faculty')}>
-                  Faculty Approval
-                </TabButton>
-              </nav>
+              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                <nav className="flex space-x-8">
+                  <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+                    All Users
+                  </TabButton>
+                  <TabButton isActive={activeTab === 'faculty'} onClick={() => setActiveTab('faculty')}>
+                    Faculty Approval
+                  </TabButton>
+                </nav>
+                
+                {/* Add User Button aligned with navigation */}
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  title="Add User"
+                >
+                  <PlusIcon className="h-5 w-5 stroke-[3]" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -443,7 +487,7 @@ const UserManagement = () => {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search name or email"
-                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300"
                     />
                     <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                   </div>
@@ -452,7 +496,7 @@ const UserManagement = () => {
                       <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                        className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-32"
                       >
                         <option value="">All Users</option>
                         {roles
@@ -468,12 +512,12 @@ const UserManagement = () => {
                       <select
                         value={departmentFilter}
                         onChange={(e) => setDepartmentFilter(e.target.value)}
-                        className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                        className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
                       >
                         <option value="">All Departments</option>
                         {departments.map(dept => (
                           <option key={dept.department_id} value={dept.department_id}>
-                            {dept.name}
+                            {dept.department_abbreviation || dept.name}
                           </option>
                         ))}
                       </select>
@@ -484,7 +528,7 @@ const UserManagement = () => {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
                     >
                       <option value="">All Status</option>
                       <option value="approved">Approved</option>
@@ -494,7 +538,7 @@ const UserManagement = () => {
                   <select
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
                   >
                     <option value="created_desc">Newest</option>
                     <option value="created_asc">Oldest</option>
@@ -504,18 +548,54 @@ const UserManagement = () => {
                     <option value="pending_first">Pending First</option>
                   </select>
                   
-                  {/* Plus Button for creating users */}
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    Add User
-                  </button>
+                  {/* Pagination and user count on the right side of filters */}
+                  <div className="flex items-center space-x-3 ml-4">
+                    {/* User count display */}
+                    {filteredUsers.length > 0 && (
+                      <div className="text-sm text-red-600 font-medium">
+                        {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length}
+                      </div>
+                    )}
+                    
+                    {/* Pagination controls */}
+                    {filteredUsers.length > 0 && totalPages > 1 && (
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="px-2 py-1 text-sm text-gray-500 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                        >
+                          ‹
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`px-2 py-1 text-sm rounded ${
+                              page === currentPage
+                                ? 'bg-red-600 text-white'
+                                : 'text-gray-500 hover:text-red-600'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="px-2 py-1 text-sm text-gray-500 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                  {filteredUsers.length > 0 ? (
+                  {currentUsers.length > 0 ? (
                     <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0 z-10">
@@ -541,7 +621,7 @@ const UserManagement = () => {
                             </tr>
                           </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredUsers.map(u => (
+                          {currentUsers.map(u => (
                             <tr
                               key={u.user_id}
                               onClick={() => setSelectedUser(u)}
@@ -571,8 +651,8 @@ const UserManagement = () => {
                                 <div className="text-sm text-gray-700">
                                   {u.department_name ? (
                                     <span className="inline-flex items-center gap-1">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                      {u.department_name}
+                                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                      {u.department_abbreviation || u.department_name}
                                     </span>
                                   ) : (
                                     '—'
@@ -580,7 +660,7 @@ const UserManagement = () => {
                                 </div>
                               </td>
                               <td className="px-8 py-3">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u.is_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                <span className={`text-xs font-semibold ${u.is_approved ? 'text-green-600' : 'text-yellow-600'}`}>
                                   {u.is_approved ? 'Approved' : 'Pending'}
                                 </span>
                               </td>
@@ -602,14 +682,16 @@ const UserManagement = () => {
                       </div>
                     </div>
                   )}
+                  
+
                 </div>
               </div>
 
               {/* Side actions / User details */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300 max-h-[70vh] overflow-y-auto">
+                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300 h-[calc(100vh-200px)] overflow-y-auto">
                   {selectedUser ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pb-8">
                       <div className="flex items-center gap-4">
                         <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
                           {selectedUser.profile_pic ? (
@@ -628,7 +710,7 @@ const UserManagement = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-500">Department:</span>
                               <span className="text-xs text-gray-700 font-medium">
-                                {selectedUser.department_name}
+                                {selectedUser.department_abbreviation || selectedUser.department_name}
                               </span>
                             </div>
                           ) : (
@@ -637,17 +719,14 @@ const UserManagement = () => {
                         </div>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                           <span className="text-sm font-medium text-gray-600">Status</span>
-                          <span className={`text-sm font-medium ${selectedUser.is_approved ? 'text-gray-700' : 'text-gray-600'}`}>
+                          <span className={`text-sm font-semibold ${selectedUser.is_approved ? 'text-green-600' : 'text-yellow-600'}`}>
                             {selectedUser.is_approved ? 'Approved' : 'Pending'}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                          <span className="text-sm font-medium text-gray-600">User ID</span>
-                          <span className="text-sm font-semibold text-gray-800">{selectedUser.user_id}</span>
-                        </div>
+
                         <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                           <span className="text-sm font-medium text-gray-600">Created</span>
                           <span className="text-sm text-gray-800">{formatDateTime(selectedUser.created_at)}</span>
@@ -674,13 +753,13 @@ const UserManagement = () => {
                               <select
                                 value={selectedUser.department_id || ''}
                                 onChange={(e) => handleDepartmentChange(selectedUser.user_id, e.target.value)}
-                                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
                                 disabled={!selectedUser.is_approved || isUpdatingDepartment[selectedUser.user_id]}
                               >
                                 <option value="">Select Department (Optional)</option>
                                 {departments.map(dept => (
                                   <option key={dept.department_id} value={dept.department_id}>
-                                    {dept.name}
+                                    {dept.department_abbreviation || dept.name}
                                   </option>
                                 ))}
                               </select>
@@ -693,36 +772,27 @@ const UserManagement = () => {
                                 </div>
                               )}
                             </div>
-                            
-                                         <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-               <div className="flex items-start gap-2">
-                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
-                 <div className="text-xs text-red-700 leading-relaxed">
-                   <span className="font-medium">Data Access Restriction:</span> Users can only view and manage data from their assigned department. This ensures data security and proper access control.
-                 </div>
-               </div>
-             </div>
                           </div>
                         </div>
                       </div>
 
                       {!selectedUser.is_approved && (
-                        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="mt-4">
                           <div className="flex items-center gap-2 mb-3">
-                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                             <h6 className="text-sm font-semibold text-gray-800">Pending Approval</h6>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="flex gap-3">
                             <button
                               onClick={() => handleApprove(selectedUser.user_id)}
                               disabled={!!isApproving[selectedUser.user_id]}
-                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
                             >
                               {isApproving[selectedUser.user_id] ? 'Approving…' : 'Approve'}
                             </button>
                             <button
                               onClick={() => alert('Reject handler not implemented yet')}
-                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                             >
                               Reject
                             </button>
@@ -863,7 +933,7 @@ const UserManagement = () => {
                   <option value="">Select a department (optional)</option>
                   {departments.map(dept => (
                     <option key={dept.department_id} value={dept.department_id}>
-                      {dept.name}
+                      {dept.department_abbreviation || dept.name}
                     </option>
                   ))}
                 </select>

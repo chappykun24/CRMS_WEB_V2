@@ -111,9 +111,11 @@ export default async function handler(req, res) {
       const connectionString = `postgresql://${process.env.VITE_NEON_USER}:${process.env.VITE_NEON_PASSWORD}@${process.env.VITE_NEON_HOST}:${process.env.VITE_NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE}?sslmode=require`;
       const pool = new Pool({ connectionString, ssl: true, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 });
       const result = await pool.query(`
-        SELECT u.*, r.name AS role_name
+        SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.role_id
+        LEFT JOIN user_profiles up ON u.user_id = up.user_id
+        LEFT JOIN departments d ON up.department_id = d.department_id
         ORDER BY u.created_at DESC
       `);
       await pool.end();

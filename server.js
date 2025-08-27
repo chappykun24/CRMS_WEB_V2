@@ -71,7 +71,7 @@ const checkDepartmentAccess = async (req, res, next) => {
     }
 
     // Get user ID from request (you may need to adjust this based on your auth implementation)
-    const userId = req.headers['user-id'] || req.query.userId || req.body.userId;
+    const userId = req.headers['user-id'] || req.query?.userId || (req.body ? req.body.userId : undefined);
     
     if (!userId) {
       // If no user ID, allow the request (for public endpoints)
@@ -367,7 +367,7 @@ app.post('/api/auth/register', upload.single('profilePic'), async (req, res) => 
 app.get('/api/users', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       LEFT JOIN user_profiles up ON u.user_id = up.user_id
@@ -552,7 +552,7 @@ app.patch('/api/users/:id', async (req, res) => {
 
     // Get updated user data with department name
     const result = await pool.query(`
-      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       LEFT JOIN user_profiles up ON u.user_id = up.user_id
@@ -567,7 +567,8 @@ app.patch('/api/users/:id', async (req, res) => {
       message: 'Department access updated successfully',
       user: updatedUser,
       department_id: updatedUser.department_id,
-      department_name: updatedUser.department_name
+      department_name: updatedUser.department_name,
+      department_abbreviation: updatedUser.department_abbreviation
     });
 
   } catch (error) {
@@ -593,7 +594,7 @@ app.get('/api/users/:id/profile', async (req, res) => {
       });
     }
     const result = await pool.query(`
-      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       LEFT JOIN user_profiles up ON u.user_id = up.user_id
@@ -617,7 +618,8 @@ app.get('/api/users/:id/profile', async (req, res) => {
       createdAt: userData.created_at,
       updatedAt: userData.updated_at,
       departmentId: userData.department_id,
-      departmentName: userData.department_name
+      departmentName: userData.department_name,
+      departmentAbbreviation: userData.department_abbreviation
     };
     
     res.json({
@@ -891,6 +893,110 @@ app.get('/api/students', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Register new student (students-only model)
+app.post('/api/students/register', async (req, res) => {
+  try {
+    const { 
+      studentNumber,
+      firstName,
+      lastName,
+      middleInitial,
+      suffix,
+      email,
+      gender,
+      birthDate,
+      profilePic
+    } = req.body;
+
+    if (!studentNumber || !firstName || !lastName || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Student number, first name, last name, and email are required'
+      });
+    }
+
+    // Unique checks
+    const existingStudent = await pool.query('SELECT 1 FROM students WHERE student_number = $1', [studentNumber]);
+    if (existingStudent.rowCount > 0) {
+      return res.status(400).json({ success: false, error: 'Student number is already registered' });
+    }
+
+    const existingEmail = await pool.query('SELECT 1 FROM students WHERE contact_email = $1', [email]);
+    if (existingEmail.rowCount > 0) {
+      return res.status(400).json({ success: false, error: 'Email address is already used by another student' });
+    }
+
+    const fullName = [firstName, middleInitial, lastName, suffix].filter(Boolean).join(' ');
+
+    const insert = await pool.query(
+      `INSERT INTO students (student_number, full_name, gender, birth_date, contact_email, student_photo)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING student_id`,
+      [studentNumber, fullName, gender || null, birthDate || null, email, profilePic || null]
+    );
+
+    return res.status(201).json({ success: true, studentId: insert.rows[0].student_id, message: 'Student registration successful!' });
+  } catch (error) {
+    console.error('❌ [STUDENTS REGISTER] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update student
+app.put('/api/students/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      studentNumber,
+      firstName,
+      lastName,
+      middleInitial,
+      suffix,
+      email,
+      gender,
+      birthDate,
+      profilePic
+    } = req.body;
+
+    if (!studentNumber || !firstName || !lastName || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Student number, first name, last name, and email are required'
+      });
+    }
+
+    const fullName = [firstName, middleInitial, lastName, suffix].filter(Boolean).join(' ');
+
+    const result = await pool.query(
+      `UPDATE students
+       SET student_number = $1, full_name = $2, gender = $3, birth_date = $4,
+           contact_email = $5, student_photo = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE student_id = $7`,
+      [studentNumber, fullName, gender || null, birthDate || null, email, profilePic || null, id]
+    );
+
+    if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    res.json({ success: true, message: 'Student updated successfully' });
+  } catch (error) {
+    console.error('❌ [STUDENTS UPDATE] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete student
+app.delete('/api/students/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM students WHERE student_id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Student not found' });
+    res.json({ success: true, message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('❌ [STUDENTS DELETE] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

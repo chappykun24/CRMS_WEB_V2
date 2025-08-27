@@ -40,10 +40,12 @@ class StudentService {
       }
       
       const data = await response.json();
+      // Server returns an array of students; support both array and { students: [] }
+      const students = Array.isArray(data) ? data : (data.students || []);
       
       return {
         success: true,
-        students: data.students || []
+        students
       };
       
     } catch (error) {
@@ -83,7 +85,7 @@ class StudentService {
   // Update student profile via backend API
   async updateStudentProfile(studentId, profileData) {
     try {
-      const response = await fetch(`/api/students/${studentId}/profile`, {
+      const response = await fetch(`/api/students/${studentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -479,7 +479,7 @@ const CourseManagement = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading courses...</p>
             </div>
           </div>
@@ -506,9 +506,9 @@ const CourseManagement = () => {
         }
         
         input[type="text"]:focus, input[type="search"]:focus, select:focus {
-          border-color: #9ca3af !important;
+          border-color: #ef4444 !important;
           outline: none !important;
-          box-shadow: none !important;
+          box-shadow: 0 0 0 1px #ef4444 !important;
         }
         
         select {
@@ -527,14 +527,24 @@ const CourseManagement = () => {
       }`} style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
-          {/* Tabs */}
+          {/* Tabs and Add Button */}
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-gray-50">
-              <nav className="flex space-x-8 bg-gray-50 border-b border-gray-200">
-                <TabButton isActive={true}>
-                  {selectedSpecializationId ? 'Courses' : selectedProgramId ? 'Specializations' : 'Programs'}
-                </TabButton>
-              </nav>
+              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                <nav className="flex space-x-8">
+                  <TabButton isActive={true}>
+                    {selectedSpecializationId ? 'Courses' : selectedProgramId ? 'Specializations' : 'Programs'}
+                  </TabButton>
+                </nav>
+                
+                {/* Add Button aligned with navigation */}
+                <button
+                  onClick={() => openCreateModal(selectedSpecializationId ? 'course' : selectedProgramId ? 'specialization' : 'program')}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                >
+                  <PlusIcon className="h-5 w-5 stroke-[3]" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -551,7 +561,7 @@ const CourseManagement = () => {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder={selectedSpecializationId ? 'Search course code or title' : selectedProgramId ? 'Search specialization' : 'Search program'}
-                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300"
                     />
                     <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                   </div>
@@ -573,25 +583,19 @@ const CourseManagement = () => {
                             checked={showGeneralSubjects}
                             onChange={(e) => setShowGeneralSubjects(e.target.checked)}
                           />
-                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all duration-200 ease-in-out peer-checked:bg-blue-600"></div>
+                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all duration-200 ease-in-out peer-checked:bg-red-600"></div>
                         </label>
                         <span className="text-xs text-gray-500">
                           {showGeneralSubjects ? 'ON' : 'OFF'}
                         </span>
-                        <span className="text-xs text-gray-400 ml-2">
+                        <span className="text-xs text-red-600 font-medium ml-2">
                           ({filteredCourses.length} courses)
                         </span>
                       </div>
                     )
                   })()}
                   
-                  <button
-                    onClick={() => openCreateModal(selectedSpecializationId ? 'course' : selectedProgramId ? 'specialization' : 'program')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    {selectedSpecializationId ? 'Add Course' : selectedProgramId ? 'Add Specialization' : 'Add Program'}
-                  </button>
+
                 </div>
 
                 {/* Programs content */}
@@ -622,7 +626,7 @@ const CourseManagement = () => {
                                     e.stopPropagation();
                                     openEditModal('program', p)
                                   }}
-                                  className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                  className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                                   title="Edit Program"
                                 >
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -690,7 +694,7 @@ const CourseManagement = () => {
                                     e.stopPropagation();
                                     openEditModal('specialization', s)
                                   }}
-                                  className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                  className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                                   title="Edit Specialization"
                                 >
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -750,7 +754,7 @@ const CourseManagement = () => {
                                 <tr
                                   key={course.course_id}
                                   onClick={() => setSelectedCourse(course)}
-                                  className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50' : ''}`}
+                                  className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
                                 >
                                   <td className="px-4 py-2">
                                     <div className="text-sm font-medium text-gray-900">{course.course_code}</div>
@@ -771,7 +775,7 @@ const CourseManagement = () => {
                                           e.stopPropagation();
                                           openEditModal('course', course)
                                         }}
-                                        className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                                         title="Edit Course"
                                       >
                                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -826,26 +830,19 @@ const CourseManagement = () => {
                 <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300">
                   {selectedCourse ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center ring-1 ring-blue-300">
-                          <BookOpenIcon className="h-8 w-8 text-blue-600" />
+                                              <div className="flex items-center gap-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">{selectedCourse.course_code}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{selectedCourse.title}</p>
+                            <p className="text-xs text-gray-500 mt-2">{selectedCourse.program_abbreviation || selectedCourse.program_name} {selectedCourse.abbreviation ? `• ${selectedCourse.abbreviation}` : ''}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-lg font-semibold text-gray-900">{selectedCourse.course_code}</h4>
-                          <p className="text-sm text-gray-600">{selectedCourse.title}</p>
-                          <p className="text-xs text-gray-500">{selectedCourse.program_abbreviation || selectedCourse.program_name} {selectedCourse.abbreviation ? `• ${selectedCourse.abbreviation}` : ''}</p>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 gap-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Status</span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700`}>—</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Program</span>
-                          <span className="text-gray-800">{selectedCourse.program_name || selectedCourse.program_abbreviation || '—'}</span>
-                        </div>
+                                              <div className="grid grid-cols-1 gap-3 text-sm">
+                          <div className="space-y-1">
+                            <span className="text-gray-500">Program</span>
+                            <div className="text-gray-800">{selectedCourse.program_name || selectedCourse.program_abbreviation || '—'}</div>
+                          </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Specialization</span>
                           <span className="text-gray-800">{selectedCourse.specialization_name || selectedCourse.abbreviation || '—'}</span>
@@ -864,18 +861,20 @@ const CourseManagement = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <button className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary-600 text-white hover:bg-primary-700">
+                      <div className="flex gap-3">
+                        <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
                           Edit
                         </button>
-                        <button className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-white text-red-600 border border-red-300 hover:bg-red-50">
+                        <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
                           Archive
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-10">
-                      <BookOpenIcon className="h-12 w-12 text-gray-300 mb-3" />
+                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                        <BookOpenIcon className="h-6 w-6 text-gray-400" />
+                      </div>
                       <p className="text-sm">Select a course from the list to view details here.</p>
                     </div>
                   )}
@@ -920,7 +919,7 @@ const CourseManagement = () => {
                     id="programName"
                     value={formData.program.name}
                     onChange={(e) => setFormData({...formData, program: {...formData.program, name: e.target.value}})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Bachelor of Science in Information Technology"
                     required
                   />
@@ -935,7 +934,7 @@ const CourseManagement = () => {
                     id="programAbbr"
                     value={formData.program.abbreviation}
                     onChange={(e) => setFormData({...formData, program: {...formData.program, abbreviation: e.target.value}})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., BSIT"
                     required
                   />
@@ -952,7 +951,7 @@ const CourseManagement = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
                     {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Program' : 'Create Program')}
                   </button>
@@ -972,7 +971,7 @@ const CourseManagement = () => {
                     id="specName"
                     value={formData.specialization.name}
                     onChange={(e) => setFormData({...formData, specialization: {...formData.specialization, name: e.target.value}})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Software Engineering"
                     required
                   />
@@ -987,7 +986,7 @@ const CourseManagement = () => {
                     id="specAbbr"
                     value={formData.specialization.abbreviation}
                     onChange={(e) => setFormData({...formData, specialization: {...formData.specialization, abbreviation: e.target.value}})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., SE"
                     required
                   />
@@ -1004,7 +1003,7 @@ const CourseManagement = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
                     {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Specialization' : 'Create Specialization')}
                   </button>
@@ -1024,7 +1023,7 @@ const CourseManagement = () => {
                   id="courseCode"
                     value={formData.course.course_code}
                     onChange={(e) => setFormData({...formData, course: {...formData.course, course_code: e.target.value}})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., CS101"
                     required
                 />
@@ -1039,7 +1038,7 @@ const CourseManagement = () => {
                   id="courseTitle"
                     value={formData.course.title}
                     onChange={(e) => setFormData({...formData, course: {...formData.course, title: e.target.value}})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Introduction to Computer Science"
                     required
                 />
@@ -1055,7 +1054,7 @@ const CourseManagement = () => {
                     id="term"
                     value={formData.course.term_id}
                     onChange={(e) => setFormData({...formData, course: {...formData.course, term_id: e.target.value}})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                 >
                     <option value="">Select a term</option>
                     {terms.map(t => (
@@ -1077,7 +1076,7 @@ const CourseManagement = () => {
                 <button
                   type="submit"
                     disabled={loading}
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
                     {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Course' : 'Create Course')}
                 </button>

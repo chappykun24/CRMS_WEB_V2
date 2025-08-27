@@ -55,28 +55,20 @@ export default async function handler(req, res) {
     try {
       console.log('📝 [STUDENTS-LIST] Pool created, fetching students...');
 
-      // Fetch students with user information and profiles
+      // Fetch students only (no users linkage)
       const studentsQuery = `
         SELECT 
-          s.student_id,
-          s.student_number,
-          s.full_name,
-          s.gender,
-          s.birth_date,
-          s.contact_email,
-          s.student_photo,
-          s.created_at,
-          s.updated_at,
-          u.is_approved,
-          up.department_id,
-          up.program_id,
-          up.specialization,
-          up.term_start,
-          up.term_end
-        FROM students s
-        LEFT JOIN users u ON s.student_id = u.user_id
-        LEFT JOIN user_profiles up ON s.student_id = up.user_id
-        ORDER BY s.created_at DESC
+          student_id,
+          student_number,
+          full_name,
+          gender,
+          birth_date,
+          contact_email,
+          student_photo,
+          created_at,
+          updated_at
+        FROM students
+        ORDER BY created_at DESC
       `;
       
       const studentsResult = await pool.query(studentsQuery);

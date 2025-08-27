@@ -57,29 +57,21 @@ export default async function handler(req, res) {
       console.log('📝 [STUDENT-MANAGEMENT] Student ID:', id);
 
       if (req.method === 'GET') {
-        // Get student by ID
+        // Get student by ID (students table only)
         console.log('📝 [STUDENT-MANAGEMENT] Fetching student...');
         const studentQuery = `
           SELECT 
-            s.student_id,
-            s.student_number,
-            s.full_name,
-            s.gender,
-            s.birth_date,
-            s.contact_email,
-            s.student_photo,
-            s.created_at,
-            s.updated_at,
-            u.is_approved,
-            up.department_id,
-            up.program_id,
-            up.specialization,
-            up.term_start,
-            up.term_end
-          FROM students s
-          LEFT JOIN users u ON s.student_id = u.user_id
-          LEFT JOIN user_profiles up ON s.student_id = up.user_id
-          WHERE s.student_id = $1
+            student_id,
+            student_number,
+            full_name,
+            gender,
+            birth_date,
+            contact_email,
+            student_photo,
+            created_at,
+            updated_at
+          FROM students
+          WHERE student_id = $1
         `;
         
         const studentResult = await pool.query(studentQuery, [id]);
@@ -96,20 +88,19 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true, student });
 
       } else if (req.method === 'PUT') {
-        // Update student
+        // Update student (students table only)
         console.log('📝 [STUDENT-MANAGEMENT] Updating student...');
         const { 
           studentNumber, firstName, lastName, middleInitial, suffix, 
-          email, gender, birthDate, department, program, 
-          specialization, termStart, termEnd, profilePic 
+          email, gender, birthDate, profilePic 
         } = req.body;
 
-        // Validate required fields
-        if (!studentNumber || !firstName || !lastName || !email || !department || !program) {
+        // Validate minimal required fields for an update
+        if (!studentNumber || !firstName || !lastName || !email) {
           await pool.end();
           return res.status(400).json({ 
             success: false, 
-            error: 'Student number, first name, last name, email, department, and program are required' 
+            error: 'Student number, first name, last name, and email are required' 
           });
         }
 
@@ -129,36 +120,14 @@ export default async function handler(req, res) {
           email, profilePic || null, id
         ]);
 
-        // Update user profile
-        const updateProfileQuery = `
-          UPDATE user_profiles 
-          SET department_id = $1, program_id = $2, specialization = $3, 
-              term_start = $4, term_end = $5, contact_email = $6, updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = $7
-        `;
-        
-        await pool.query(updateProfileQuery, [
-          department, program, specialization || null, 
-          termStart || null, termEnd || null, email, id
-        ]);
-
         console.log('✅ [STUDENT-MANAGEMENT] Student updated successfully');
         await pool.end();
         res.status(200).json({ success: true, message: 'Student updated successfully' });
 
       } else if (req.method === 'DELETE') {
-        // Delete student
+        // Delete student (students table only)
         console.log('📝 [STUDENT-MANAGEMENT] Deleting student...');
-        
-        // Delete user profile first (due to foreign key constraint)
-        await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [id]);
-        
-        // Delete student record
         await pool.query('DELETE FROM students WHERE student_id = $1', [id]);
-        
-        // Delete user record
-        await pool.query('DELETE FROM users WHERE user_id = $1', [id]);
-
         console.log('✅ [STUDENT-MANAGEMENT] Student deleted successfully');
         await pool.end();
         res.status(200).json({ success: true, message: 'Student deleted successfully' });

@@ -1,5 +1,4 @@
 import { Pool } from 'pg';
-import bcrypt from 'bcrypt';
 
 export default async function handler(req, res) {
   console.log('📝 [STUDENT-REGISTER] Request received:', {
@@ -25,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('📝 [STUDENT-REGISTER] Processing student registration request...');
+    console.log('📝 [STUDENT-REGISTER] Processing student registration request (students only)...');
     
     // Check if environment variables are set
     const requiredEnvVars = ['NEON_HOST', 'NEON_DATABASE', 'NEON_USER', 'NEON_PASSWORD'];
@@ -74,14 +73,8 @@ export default async function handler(req, res) {
         middleInitial, 
         suffix, 
         email, 
-        password, 
         gender,
         birthDate,
-        department,
-        program,
-        specialization,
-        termStart,
-        termEnd,
         profilePic 
       } = req.body;
 
@@ -92,24 +85,18 @@ export default async function handler(req, res) {
         middleInitial,
         suffix,
         email,
-        hasPassword: !!password,
         gender,
         birthDate,
-        department,
-        program,
-        specialization,
-        termStart,
-        termEnd,
         hasProfilePic: !!profilePic
       });
       
-      // Validate required fields
-      if (!studentNumber || !firstName || !lastName || !email || !password || !department || !program) {
+      // Validate required fields (students table only)
+      if (!studentNumber || !firstName || !lastName || !email) {
         console.log('❌ [STUDENT-REGISTER] Missing required fields');
         await pool.end();
         return res.status(400).json({ 
           success: false, 
-          error: 'Student number, first name, last name, email, password, department, and program are required' 
+          error: 'Student number, first name, last name, and email are required' 
         });
       }
 
@@ -127,61 +114,32 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check if email already exists
-      console.log('📝 [STUDENT-REGISTER] Checking if email already exists...');
-      const existingUserQuery = 'SELECT user_id FROM users WHERE email = $1';
-      const existingUserResult = await pool.query(existingUserQuery, [email]);
-      
-      if (existingUserResult.rows.length > 0) {
-        console.log('❌ [STUDENT-REGISTER] Email already exists:', email);
+      // Optionally check if email already exists in students table
+      console.log('📝 [STUDENT-REGISTER] Checking if contact email already exists in students...');
+      const existingEmailQuery = 'SELECT student_id FROM students WHERE contact_email = $1';
+      const existingEmailResult = await pool.query(existingEmailQuery, [email]);
+      if (existingEmailResult.rows.length > 0) {
+        console.log('❌ [STUDENT-REGISTER] Contact email already exists in students:', email);
         await pool.end();
         return res.status(400).json({ 
           success: false, 
-          error: 'Email address is already registered' 
+          error: 'Email address is already used by another student' 
         });
       }
-
-      // Use fixed role ID 1 for STUDENT members (assuming role ID 1 is STUDENT)
-      const roleId = 1;
-      console.log('✅ [STUDENT-REGISTER] Using fixed STUDENT role ID:', roleId);
-
-      // Hash password
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
 
       // Combine name fields
       const fullName = [firstName, middleInitial, lastName, suffix].filter(Boolean).join(' ');
 
-      // Insert user with pending approval
-      console.log('📝 [STUDENT-REGISTER] Inserting user into database...');
-      const insertUserQuery = `
-        INSERT INTO users (name, email, password_hash, role_id, profile_pic, is_approved) 
-        VALUES ($1, $2, $3, $4, $5, $6) 
-        RETURNING user_id
-      `;
-      
-      const insertUserResult = await pool.query(insertUserQuery, [
-        fullName, 
-        email, 
-        passwordHash, 
-        roleId, 
-        profilePic || null, 
-        false // is_approved = false (pending approval)
-      ]);
-
-      const userId = insertUserResult.rows[0].user_id;
-      console.log('✅ [STUDENT-REGISTER] User inserted successfully with ID:', userId);
-
-      // Insert student record
+      // Insert student record only
       console.log('📝 [STUDENT-REGISTER] Inserting student record...');
       const insertStudentQuery = `
         INSERT INTO students (
-          student_id, student_number, full_name, gender, birth_date, contact_email, student_photo
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          student_number, full_name, gender, birth_date, contact_email, student_photo
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING student_id
       `;
       
-      await pool.query(insertStudentQuery, [
-        userId,
+      const insertStudentResult = await pool.query(insertStudentQuery, [
         studentNumber,
         fullName,
         gender || null,
@@ -189,50 +147,16 @@ export default async function handler(req, res) {
         email,
         profilePic || null
       ]);
-      console.log('✅ [STUDENT-REGISTER] Student record inserted successfully');
-
-      // Insert user profile
-      console.log('📝 [STUDENT-REGISTER] Inserting user profile...');
-      const insertProfileQuery = `
-        INSERT INTO user_profiles (
-          user_id, profile_type, department_id, program_id, specialization, term_start, term_end, contact_email
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `;
-      
-      await pool.query(insertProfileQuery, [
-        userId,
-        'STUDENT',
-        department,
-        program,
-        specialization || null,
-        termStart || null,
-        termEnd || null,
-        email
-      ]);
-      console.log('✅ [STUDENT-REGISTER] User profile inserted successfully');
-
-      // Insert user approval record
-      console.log('📝 [STUDENT-REGISTER] Inserting user approval record...');
-      const insertApprovalQuery = `
-        INSERT INTO user_approvals (user_id, approval_note) 
-        VALUES ($1, $2)
-      `;
-      
-      await pool.query(insertApprovalQuery, [
-        userId,
-        'Student registration pending admin approval'
-      ]);
-      console.log('✅ [STUDENT-REGISTER] User approval record inserted successfully');
+      const studentId = insertStudentResult.rows[0].student_id;
+      console.log('✅ [STUDENT-REGISTER] Student record inserted successfully with ID:', studentId);
 
       await pool.end();
       console.log('✅ [STUDENT-REGISTER] Database pool closed successfully');
 
       const response = {
         success: true,
-        message: 'Student registration successful! Your account is pending approval.',
-        userId: userId,
-        studentId: userId,
-        status: 'pending_approval'
+        message: 'Student registration successful!',
+        studentId: studentId
       };
 
       console.log('✅ [STUDENT-REGISTER] Sending success response:', response);
