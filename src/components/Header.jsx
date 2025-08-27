@@ -288,7 +288,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     
     return { 
       title: 'Dashboard', 
-      subtitle: 'Welcome',
+      subtitle: 'Student Registration',
       path: '/dashboard'
     }
   }
