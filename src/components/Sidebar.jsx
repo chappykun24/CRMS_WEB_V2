@@ -58,7 +58,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Home', icon: HomeIcon, href: '/dashboard' },
           { name: 'Student Management', icon: UserGroupIcon, href: '/dashboard/students' },
           { name: 'Academic Records', icon: CircleStackIcon, href: '/dashboard/records' },
-          { name: 'Assign Faculty', icon: UserPlusIcon, href: '/dashboard/assign-faculty' }
+          { name: 'Class Management', icon: UserPlusIcon, href: '/dashboard/assign-faculty' }
         ]
       
       case 'PROGRAMCHAIR':

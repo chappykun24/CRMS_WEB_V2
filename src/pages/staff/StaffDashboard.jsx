@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import StudentManagement from './StudentManagement'
+import AssignFaculty from './AssignFaculty'
 
 const StaffDashboard = ({ user }) => {
   const location = useLocation()
@@ -14,6 +15,7 @@ const StaffDashboard = ({ user }) => {
   return (
     <Routes>
       <Route path="/students" element={<StudentManagement />} />
+      <Route path="/assign-faculty" element={<AssignFaculty />} />
     </Routes>
   )
 }

@@ -1733,6 +1733,178 @@ catalog.delete('/courses/:id', async (req, res) => {
 
 app.use('/api', catalog);
 
+// Section-courses helper endpoints for staff assignment
+app.get('/api/section-courses/sections', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT section_id, section_code, term_id FROM sections ORDER BY section_code');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/section-courses/school-terms', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT term_id, school_year, semester FROM school_terms ORDER BY term_id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/section-courses/faculty', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.user_id, u.name
+      FROM users u
+      JOIN roles r ON u.role_id = r.role_id
+      WHERE LOWER(r.name) = 'faculty'
+      ORDER BY u.name
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/section-courses/assigned', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT sc.section_course_id,
+             sc.section_id,
+             s.section_code,
+             sc.course_id,
+             c.title AS course_title,
+             sc.instructor_id,
+             u.name AS faculty_name,
+             st.term_id,
+             st.semester,
+             st.school_year
+      FROM section_courses sc
+      LEFT JOIN sections s ON sc.section_id = s.section_id
+      LEFT JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN users u ON sc.instructor_id = u.user_id
+      LEFT JOIN school_terms st ON sc.term_id = st.term_id
+      ORDER BY st.term_id DESC, s.section_code, c.title
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/section-courses/assign-instructor', async (req, res) => {
+  try {
+    const { section_course_id, instructor_id } = req.body;
+    if (!section_course_id) return res.status(400).json({ error: 'section_course_id is required' });
+    await pool.query(
+      'UPDATE section_courses SET instructor_id = $1, updated_at = CURRENT_TIMESTAMP WHERE section_course_id = $2',
+      [instructor_id || null, section_course_id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create draft syllabus and section_course
+app.post('/api/syllabus/draft', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { course_id, term_id, section_id, created_by } = req.body;
+    if (!course_id || !term_id || !section_id || !created_by) {
+      return res.status(400).json({ error: 'course_id, term_id, section_id, created_by are required' });
+    }
+    await client.query('BEGIN');
+    const syllabusRes = await client.query(
+      `INSERT INTO syllabi (course_id, term_id, title, description, review_status, approval_status, created_by, created_at, updated_at)
+       VALUES ($1, $2, 'Draft Syllabus', NULL, 'pending', 'pending', $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       RETURNING syllabus_id`,
+      [course_id, term_id, created_by]
+    );
+    const syllabus_id = syllabusRes.rows[0].syllabus_id;
+    const scRes = await client.query(
+      `INSERT INTO section_courses (section_id, course_id, instructor_id, term_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING section_course_id`,
+      [section_id, course_id, created_by, term_id]
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, syllabus: { syllabus_id }, section_course_id: scRes.rows[0].section_course_id });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Students in a section_course
+app.get('/api/section-courses/:id/students', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT ce.enrollment_id, ce.enrollment_date, ce.status,
+              s.student_id, s.full_name, s.student_number, s.student_photo
+       FROM course_final_grades cfg RIGHT JOIN course_enrollments ce ON false
+       FULL JOIN students s ON ce.student_id = s.student_id
+       WHERE ce.section_course_id = $1
+       ORDER BY s.full_name`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Available students for a section (not enrolled)
+app.get('/api/students/available-for-section/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const search = (req.query.search || '').toString().toLowerCase();
+    const result = await pool.query(
+      `SELECT s.student_id, s.full_name, s.student_number, s.student_photo
+       FROM students s
+       WHERE NOT EXISTS (
+         SELECT 1 FROM course_enrollments ce
+         WHERE ce.section_course_id = $1 AND ce.student_id = s.student_id
+       )
+       AND (
+         $2 = '' OR LOWER(s.full_name) LIKE '%'||$2||'%' OR LOWER(s.student_number) LIKE '%'||$2||'%'
+       )
+       ORDER BY s.full_name
+      `,
+      [id, search]
+    );
+    res.json({ students: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enroll student to a section
+app.post('/api/students/enroll', async (req, res) => {
+  try {
+    const { section_course_id, student_id } = req.body;
+    if (!section_course_id || !student_id) return res.status(400).json({ error: 'section_course_id and student_id are required' });
+    // check existing
+    const exists = await pool.query(
+      'SELECT 1 FROM course_enrollments WHERE section_course_id=$1 AND student_id=$2',
+      [section_course_id, student_id]
+    );
+    if (exists.rowCount > 0) return res.status(409).json({ error: 'Already enrolled' });
+    await pool.query(
+      `INSERT INTO course_enrollments (section_course_id, student_id, enrollment_date, status)
+       VALUES ($1, $2, CURRENT_TIMESTAMP, 'enrolled')`,
+      [section_course_id, student_id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve built frontend (Vite) and enable SPA fallback
 const distDir = path.join(__dirname, 'dist');
 app.use(express.static(distDir));
