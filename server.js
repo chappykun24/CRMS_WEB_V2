@@ -1736,9 +1736,88 @@ app.use('/api', catalog);
 // Section-courses helper endpoints for staff assignment
 app.get('/api/section-courses/sections', async (req, res) => {
   try {
-    const result = await pool.query('SELECT section_id, section_code, term_id FROM sections ORDER BY section_code');
+    const result = await pool.query('SELECT section_id, section_code, term_id, program_id, year_level, specialization_id FROM sections ORDER BY section_code');
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new section
+app.post('/api/sections', async (req, res) => {
+  try {
+    const { section_code, term_id, program_id, year_level, specialization_id } = req.body || {};
+    if (!section_code) return res.status(400).json({ error: 'section_code is required' });
+
+    const result = await pool.query(
+      `INSERT INTO sections (section_code, term_id, program_id, year_level, specialization_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING section_id, section_code, term_id, program_id, year_level, specialization_id`,
+      [section_code, term_id || null, program_id || null, year_level || null, specialization_id || null]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a section
+app.put('/api/sections/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { section_code, term_id, program_id, year_level, specialization_id } = req.body || {};
+    if (!section_code) return res.status(400).json({ error: 'section_code is required' });
+
+    const result = await pool.query(
+      `UPDATE sections 
+       SET section_code = $1, term_id = $2, program_id = $3, year_level = $4, specialization_id = $5
+       WHERE section_id = $6
+       RETURNING section_id, section_code, term_id, program_id, year_level, specialization_id`,
+      [section_code, term_id || null, program_id || null, year_level || null, specialization_id || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Section not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a section
+app.delete('/api/sections/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if section has dependencies
+    const dependencyCheck = await pool.query(
+      'SELECT COUNT(*) FROM section_courses WHERE section_id = $1',
+      [id]
+    );
+    
+    if (parseInt(dependencyCheck.rows[0].count) > 0) {
+      return res.status(409).json({ 
+        error: 'Cannot delete section. It has associated courses or students.' 
+      });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM sections WHERE section_id = $1 RETURNING section_id',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Section not found' });
+    }
+
+    res.json({ success: true, message: 'Section deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting section:', error);
     res.status(500).json({ error: error.message });
   }
 });
