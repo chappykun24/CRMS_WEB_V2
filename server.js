@@ -1846,6 +1846,47 @@ app.get('/api/section-courses/faculty', async (req, res) => {
   }
 });
 
+// Get classes assigned to a specific faculty member
+app.get('/api/section-courses/faculty/:facultyId', async (req, res) => {
+  try {
+    const { facultyId } = req.params;
+    console.log(`🔍 [FACULTY CLASSES] Fetching classes for faculty ID: ${facultyId}`);
+    
+    const result = await pool.query(`
+      SELECT 
+        sc.section_course_id,
+        sc.section_id,
+        s.section_code,
+        sc.course_id,
+        c.course_code,
+        c.title AS course_title,
+        sc.instructor_id,
+        u.name AS faculty_name,
+        '' AS faculty_avatar,
+        st.term_id,
+        st.semester,
+        st.school_year,
+        COALESCE(sc.banner_type, 'color') AS banner_type,
+        COALESCE(sc.banner_color, '#3B82F6') AS banner_color,
+        '' AS banner_image
+      FROM section_courses sc
+      INNER JOIN sections s ON sc.section_id = s.section_id
+      INNER JOIN courses c ON sc.course_id = c.course_id
+      INNER JOIN users u ON sc.instructor_id = u.user_id
+      INNER JOIN school_terms st ON sc.term_id = st.term_id
+      WHERE sc.instructor_id = $1
+      ORDER BY st.term_id DESC, s.section_code, c.title
+      LIMIT 20
+    `, [facultyId]);
+    
+    console.log(`✅ [FACULTY CLASSES] Found ${result.rows.length} classes for faculty ${facultyId}`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ [FACULTY CLASSES] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/section-courses/assigned', async (req, res) => {
   try {
     const result = await pool.query(`

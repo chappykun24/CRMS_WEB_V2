@@ -1,18 +1,21 @@
 import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import MyClasses from './MyClasses'
+import Attendance from './Attendance'
+import Assessments from './Assessments'
+import Grades from './Grades'
+import Syllabi from './Syllabi'
 
 const FacultyDashboard = ({ user }) => {
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Faculty Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back, {user?.name}</p>
-        </div>
-        
-        {/* Main content removed */}
-      </div>
-    </div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard/classes" replace />} />
+      <Route path="/classes" element={<MyClasses />} />
+      <Route path="/attendance" element={<Attendance />} />
+      <Route path="/assessments" element={<Assessments />} />
+      <Route path="/grades" element={<Grades />} />
+      <Route path="/syllabi" element={<Syllabi />} />
+    </Routes>
   )
 }
 
