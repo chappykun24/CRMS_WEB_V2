@@ -13,6 +13,7 @@ import logo from '../images/logo.png'
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useUser()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [selectedClass, setSelectedClass] = useState(null)
   
   // Debug: Log user data to see what's available
   useEffect(() => {
@@ -21,8 +22,39 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     console.log('🔍 [HEADER] User ID:', user?.id);
     console.log('🔍 [HEADER] User name:', user?.name);
   }, [user]);
+  
   const location = useLocation()
   const navigate = useNavigate()
+  
+  // Listen for localStorage changes to update selected class
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const classData = localStorage.getItem('selectedClass')
+      if (classData) {
+        try {
+          setSelectedClass(JSON.parse(classData))
+        } catch (e) {
+          setSelectedClass(null)
+        }
+      } else {
+        setSelectedClass(null)
+      }
+    }
+    
+    // Check initial value
+    handleStorageChange()
+    
+    // Listen for storage events
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also listen for custom events (for same-tab updates)
+    window.addEventListener('selectedClassChanged', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('selectedClassChanged', handleStorageChange)
+    }
+  }, [])
   
   const [courseMgmtDetails, setCourseMgmtDetails] = useState({
     selectedProgramId: '',
@@ -222,6 +254,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         path: '/dashboard/settings'
       }
     } else if (path.startsWith('/dashboard/faculty/')) {
+      // Check if we're in MyClasses and have a selected class
+      if (path === '/dashboard/faculty/my-classes') {
+        if (selectedClass) {
+          return {
+            title: 'My Classes',
+            subtitle: `${selectedClass.course_title} - ${selectedClass.section_code}`,
+            path: '/dashboard/faculty/my-classes'
+          }
+        }
+        return {
+          title: 'My Classes',
+          subtitle: 'Select a class to view details',
+          path: '/dashboard/faculty/my-classes'
+        }
+      }
       return { 
         title: 'Faculty Dashboard', 
         subtitle: 'Faculty management',
@@ -288,7 +335,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     
     return { 
       title: 'Dashboard', 
-      subtitle: 'Student Registration',
+      subtitle: 'Overview',
       path: '/dashboard'
     }
   }

@@ -30,12 +30,42 @@ const MyClasses = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
+  // Attendance mode state
+  const [isAttendanceMode, setIsAttendanceMode] = useState(false)
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
+  const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
+
   // Helpers: extract surname (last word) for alphabetical sorting
   const extractSurname = (fullName) => {
     if (!fullName || typeof fullName !== 'string') return ''
     const tokens = fullName.trim().split(/\s+/)
     if (tokens.length === 0) return ''
     return tokens[tokens.length - 1].toLowerCase()
+  }
+
+  // Attendance functions
+  const markAttendance = (studentId, status, remarks = '') => {
+    setAttendanceRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [attendanceDate]: { status, remarks }
+      }
+    }))
+  }
+
+  const markAllPresent = () => {
+    students.forEach(student => {
+      markAttendance(student.student_id, 'present')
+    })
+  }
+
+  const getAttendanceStatus = (studentId) => {
+    return attendanceRecords[studentId]?.[attendanceDate]?.status || null
+  }
+
+  const getAttendanceRemarks = (studentId) => {
+    return attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
   }
 
   // Edit modal handlers
@@ -111,6 +141,16 @@ const MyClasses = () => {
     })
   }
 
+  // Clear selected class from localStorage when component unmounts or no class selected
+  useEffect(() => {
+    return () => {
+      if (!selectedClass) {
+        localStorage.removeItem('selectedClass')
+        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+      }
+    }
+  }, [selectedClass])
+
   
 
   // Fetch faculty's assigned classes
@@ -147,6 +187,14 @@ const MyClasses = () => {
   // Handle class selection
   const handleClassSelect = async (classItem) => {
     setSelectedClass(classItem)
+    setIsAttendanceMode(false) // Reset attendance mode when selecting different class
+    
+    // Save selected class to localStorage for Header breadcrumb
+    localStorage.setItem('selectedClass', JSON.stringify(classItem))
+    
+    // Dispatch custom event to notify Header of change
+    window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+    
     setLoadingStudents(true)
     try {
       const response = await fetch(`/api/section-courses/${classItem.section_course_id}/students`)
@@ -190,7 +238,7 @@ const MyClasses = () => {
   return (
     <div className="h-full flex overflow-hidden">
       {/* Main Content - Classes List */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : 'flex-1'}`}>
 
         {/* Classes Grid */}
         <div className="flex-1 p-6">
@@ -215,7 +263,11 @@ const MyClasses = () => {
                   bannerType={cls.banner_type}
                   isSelected={selectedClass?.section_course_id === cls.section_course_id}
                   onClick={() => handleClassSelect(cls)}
-                  onAttendance={() => console.log('Attendance clicked')}
+                  onAttendance={() => {
+                    if (selectedClass?.section_course_id === cls.section_course_id) {
+                      setIsAttendanceMode(!isAttendanceMode)
+                    }
+                  }}
                   onAssessments={() => console.log('Assessments clicked')}
                   onMore={() => console.log('More clicked')}
                   onEdit={() => handleEditClass(cls)}
@@ -242,16 +294,39 @@ const MyClasses = () => {
       </div>
 
       {/* Right Sidebar - Class Details and Students */}
-      <div className="w-80 bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0">
+      <div className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 transition-all duration-300 ${
+        isAttendanceMode ? 'w-full' : 'w-80'
+      }`}>
         {selectedClass ? (
           <div className="h-full flex flex-col">
             {/* Class Header */}
             <div className="mb-3 pb-3 border-b border-gray-200">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
-                    {selectedClass.course_title}
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
+                      {selectedClass.course_title}
+                    </h2>
+                    {isAttendanceMode && (
+                      <div className="flex items-center space-x-3 ml-4">
+                        <div className="flex items-center space-x-2">
+                          <label className="text-xs text-gray-600">Date:</label>
+                          <input
+                            type="date"
+                            value={attendanceDate}
+                            onChange={(e) => setAttendanceDate(e.target.value)}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        <button
+                          onClick={markAllPresent}
+                          className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                        >
+                          Mark All Present
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <div className="mt-1 text-xs text-gray-600 space-y-0.5">
                     <p className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</p>
                     <div className="flex items-center justify-between">
@@ -262,12 +337,31 @@ const MyClasses = () => {
                     </div>
                   </div>
                 </div>
+                {isAttendanceMode && (
+                  <button
+                    onClick={() => setIsAttendanceMode(false)}
+                    className="ml-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
-              
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-gray-900">
+                  {isAttendanceMode ? 'Mark Attendance' : 'Enrolled Students'}
+                </h3>
+                {isAttendanceMode && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Click Present, Absent, Late, or Excuse for each student
+                  </p>
+                )}
+              </div>
 
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
@@ -277,7 +371,7 @@ const MyClasses = () => {
                     <span className="ml-2 text-sm text-gray-600">Loading students...</span>
                   </div>
                 ) : students.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "space-y-3"}>
                     {students.map((student, index) => (
                       <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="flex-shrink-0">
@@ -303,11 +397,66 @@ const MyClasses = () => {
                             {student.student_number}
                           </p>
                         </div>
-                        <div className="flex-shrink-0">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            enrolled
-                          </span>
-                        </div>
+                        {isAttendanceMode && (
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center space-x-1">
+                              <button 
+                                onClick={() => markAttendance(student.student_id, 'present')}
+                                className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
+                                  getAttendanceStatus(student.student_id) === 'present' 
+                                    ? 'bg-green-200 text-green-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-800'
+                                }`}
+                                style={{ border: 'none', outline: 'none' }}
+                              >
+                                Present
+                              </button>
+                              <button 
+                                onClick={() => markAttendance(student.student_id, 'absent')}
+                                className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
+                                  getAttendanceStatus(student.student_id) === 'absent' 
+                                    ? 'bg-red-200 text-red-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-800'
+                                }`}
+                                style={{ border: 'none', outline: 'none' }}
+                              >
+                                Absent
+                              </button>
+                              <button 
+                                onClick={() => markAttendance(student.student_id, 'late')}
+                                className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
+                                  getAttendanceStatus(student.student_id) === 'late' 
+                                    ? 'bg-yellow-200 text-yellow-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-800'
+                                }`}
+                                style={{ border: 'none', outline: 'none' }}
+                              >
+                                Late
+                              </button>
+                              <button 
+                                onClick={() => markAttendance(student.student_id, 'excuse')}
+                                className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
+                                  getAttendanceStatus(student.student_id) === 'excuse' 
+                                    ? 'bg-blue-200 text-blue-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-800'
+                                }`}
+                                style={{ border: 'none', outline: 'none' }}
+                              >
+                                Excuse
+                              </button>
+                              <input 
+                                type="text" 
+                                placeholder="Remarks" 
+                                value={getAttendanceRemarks(student.student_id)}
+                                onChange={(e) => {
+                                  const currentStatus = getAttendanceStatus(student.student_id)
+                                  markAttendance(student.student_id, currentStatus || 'present', e.target.value)
+                                }}
+                                className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-20"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

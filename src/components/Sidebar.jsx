@@ -10,7 +10,7 @@ import {
   DocumentTextIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
-  TrophyIcon,
+  AcademicCapIcon,
   UserPlusIcon,
   CircleStackIcon,
   BuildingOffice2Icon
@@ -39,7 +39,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
           { name: 'Attendance', icon: CalendarDaysIcon, href: '/dashboard/attendance' },
           { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/dashboard/assessments' },
-          { name: 'Grades', icon: TrophyIcon, href: '/dashboard/grades' },
+          { name: 'Grades', icon: AcademicCapIcon, href: '/dashboard/grades' },
           { name: 'Syllabi', icon: DocumentTextIcon, href: '/dashboard/syllabi' }
         ]
       

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { CameraIcon as AttendanceIcon, ClipboardDocumentListIcon as AssessmentsIcon, EllipsisVerticalIcon } from '@heroicons/react/24/solid'
+import { UserGroupIcon as AttendanceIcon, ClipboardDocumentListIcon as AssessmentsIcon, EllipsisVerticalIcon } from '@heroicons/react/24/solid'
 
 const ClassCard = ({
   title,
