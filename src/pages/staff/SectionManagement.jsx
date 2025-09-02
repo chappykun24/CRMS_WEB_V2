@@ -456,7 +456,7 @@ const SectionManagement = () => {
     if (!termId) return 'Not assigned'
     const term = terms.find(t => String(t.term_id) === String(termId))
     if (!term) return 'Not assigned'
-    return `${term.school_year} - ${term.semester}`
+    return `${term.school_year} - ${term.semester} semester`
   }
 
   const getSpecializationName = (specializationId, programId) => {
@@ -534,21 +534,21 @@ const SectionManagement = () => {
                     <p className="text-gray-500 text-sm">No sections yet. Click the + to create one.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
                     {filtered.map(s => (
                       <div
                         key={s.id}
-                        className={`bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition-all hover:shadow-md hover:border-gray-300 ${
-                          selectedSection?.id === s.id ? 'ring-2 ring-red-500 border-red-300 shadow-lg' : ''
+                        className={`bg-white border border-gray-200 rounded-lg px-4 py-3 cursor-pointer transition-all hover:bg-gray-50 ${
+                          selectedSection?.id === s.id ? 'bg-gray-50 border-gray-300' : ''
                         }`}
                         onClick={() => handleSectionClick(s)}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-lg mb-1">{s.sectionCode}</h3>
-                            <p className="text-sm text-gray-600">
-                              {s.programId ? programs.find(p => p.program_id == s.programId)?.name || 'Unknown Program' : 'No Program'}
-                            </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <h3 className="font-semibold text-gray-900 text-base">{s.sectionCode}</h3>
+                            <div className="text-sm text-gray-600">
+                              {getTermLabel(s.termId)}
+                            </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
@@ -556,7 +556,7 @@ const SectionManagement = () => {
                                 e.stopPropagation()
                                 handleEditSection(s)
                               }}
-                              className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                              className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                               title="Edit section"
                             >
                               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -583,21 +583,6 @@ const SectionManagement = () => {
                                 </svg>
                               )}
                             </button>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500">📅</span>
-                            <span className="text-gray-700">{getTermLabel(s.termId)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500">🎓</span>
-                            <span className="text-gray-700">{getYearLevelLabel(s.yearLevel)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500">📚</span>
-                            <span className="text-gray-700">{getSpecializationName(s.specializationId, s.programId)}</span>
                           </div>
                         </div>
                       </div>

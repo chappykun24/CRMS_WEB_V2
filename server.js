@@ -1834,10 +1834,10 @@ app.get('/api/section-courses/school-terms', async (req, res) => {
 app.get('/api/section-courses/faculty', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.user_id, u.name
+      SELECT u.user_id, u.name, u.profile_pic
       FROM users u
       JOIN roles r ON u.role_id = r.role_id
-      WHERE LOWER(r.name) = 'faculty'
+      WHERE LOWER(r.name) = 'faculty' AND u.is_approved = true
       ORDER BY u.name
     `);
     res.json(result.rows);
@@ -1853,12 +1853,17 @@ app.get('/api/section-courses/assigned', async (req, res) => {
              sc.section_id,
              s.section_code,
              sc.course_id,
+             c.course_code,
              c.title AS course_title,
              sc.instructor_id,
              u.name AS faculty_name,
+             u.profile_pic AS faculty_avatar,
              st.term_id,
              st.semester,
-             st.school_year
+             st.school_year,
+             sc.banner_type,
+             sc.banner_color,
+             sc.banner_image
       FROM section_courses sc
       LEFT JOIN sections s ON sc.section_id = s.section_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
@@ -1868,6 +1873,46 @@ app.get('/api/section-courses/assigned', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new section course
+app.post('/api/section-courses', async (req, res) => {
+  try {
+    const { section_id, course_id, instructor_id, term_id, banner_type, banner_color, banner_image } = req.body;
+    
+    // Validate required fields
+    if (!section_id || !course_id || !instructor_id || !term_id) {
+      return res.status(400).json({ 
+        error: 'section_id, course_id, instructor_id, and term_id are required' 
+      });
+    }
+
+    // Check if section-course combination already exists
+    const existingCheck = await pool.query(
+      'SELECT section_course_id FROM section_courses WHERE section_id = $1 AND course_id = $2 AND term_id = $3',
+      [section_id, course_id, term_id]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'A class with this course, section, and semester combination already exists. Please choose different values or update the existing class.' 
+      });
+    }
+
+    // Insert new section course
+    const result = await pool.query(`
+      INSERT INTO section_courses (section_id, course_id, instructor_id, term_id, banner_type, banner_color, banner_image, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING section_course_id, section_id, course_id, instructor_id, term_id, banner_type, banner_color, banner_image, created_at
+    `, [section_id, course_id, instructor_id, term_id, banner_type || 'color', banner_color || '#3B82F6', banner_image]);
+
+    console.log('✅ [SECTION COURSE] Created successfully:', result.rows[0]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ [SECTION COURSE] Error creating section course:', error);
     res.status(500).json({ error: error.message });
   }
 });

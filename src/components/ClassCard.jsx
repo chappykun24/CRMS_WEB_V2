@@ -6,21 +6,32 @@ const ClassCard = ({
   code,
   section,
   instructor,
-  bannerUrl,
+  bannerType,
+  bannerColor,
+  bannerImage,
   avatarUrl,
+  isSelected = false,
+  onClick,
   onAttendance,
   onAssessments,
   onMore
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+    <div 
+      className={`bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col cursor-pointer transition-all duration-200 ${
+        isSelected 
+          ? 'border-red-500 ring-2 ring-red-200 shadow-md' 
+          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+      }`}
+      onClick={onClick}
+    >
       {/* Banner */}
-      <div className="relative h-24 bg-gray-200">
-        {bannerUrl ? (
-          <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-r from-slate-500 to-slate-700" />
-        )}
+      <div className="relative h-24" style={{ 
+        backgroundColor: bannerType === 'color' ? bannerColor : 'transparent',
+        backgroundImage: bannerType === 'image' && bannerImage ? `url(${bannerImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}>
         {/* Text overlay */}
         <div className="absolute inset-x-0 top-0 p-4">
           <div className="text-white text-xl font-semibold drop-shadow-sm truncate max-w-[75%]">
@@ -51,21 +62,30 @@ const ClassCard = ({
       {/* Actions */}
       <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
         <button
-          onClick={onAttendance}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAttendance()
+          }}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
           title="Attendance"
         >
           <AttendanceIcon className="h-5 w-5" />
         </button>
         <button
-          onClick={onAssessments}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAssessments()
+          }}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
           title="Assessments"
         >
           <AssessmentsIcon className="h-5 w-5" />
         </button>
         <button
-          onClick={onMore}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMore()
+          }}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
           title="More"
         >

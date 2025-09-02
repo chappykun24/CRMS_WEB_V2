@@ -39,6 +39,15 @@ const CourseManagement = () => {
   const [loading, setLoading] = useState(false)
   const [showGeneralSubjects, setShowGeneralSubjects] = useState(false)
   
+  // Student-related state
+  const [students, setStudents] = useState([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
+  const [showStudentsModal, setShowStudentsModal] = useState(false)
+  const [availableStudents, setAvailableStudents] = useState([])
+  const [loadingAvailableStudents, setLoadingAvailableStudents] = useState(false)
+  const [studentSearchQuery, setStudentSearchQuery] = useState('')
+  const [enrollingStudents, setEnrollingStudents] = useState(new Set())
+  
   // Messages
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -115,6 +124,101 @@ const CourseManagement = () => {
       specialization: { name: '', abbreviation: '', program_id: '' },
       course: { course_code: '', title: '', specialization_id: '', term_id: '' }
     })
+  }
+
+  // Handle course selection and load students
+  const handleCourseSelect = async (course) => {
+    setSelectedCourse(course)
+    setLoadingStudents(true)
+    
+    try {
+      // For now, we'll use a placeholder since we need section_course_id
+      // In a real implementation, you'd need to get the section_course_id for this course
+      const response = await fetch(`/api/section-courses/${course.course_id}/students`)
+      if (!response.ok) throw new Error(`Failed to fetch students: ${response.status}`)
+      const studentData = await response.json()
+      setStudents(Array.isArray(studentData) ? studentData : [])
+    } catch (error) {
+      console.error('Error loading students:', error)
+      setStudents([])
+    } finally {
+      setLoadingStudents(false)
+    }
+  }
+
+  // Handle opening students modal - fetch available students
+  const handleOpenStudentsModal = async () => {
+    if (!selectedCourse) return
+    
+    setShowStudentsModal(true)
+    setLoadingAvailableStudents(true)
+    setStudentSearchQuery('')
+    
+    try {
+      const response = await fetch(`/api/students/available-for-section/${selectedCourse.course_id}`)
+      if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
+      const data = await response.json()
+      setAvailableStudents(Array.isArray(data.students) ? data.students : [])
+    } catch (error) {
+      console.error('Error loading available students:', error)
+      setAvailableStudents([])
+    } finally {
+      setLoadingAvailableStudents(false)
+    }
+  }
+
+  // Handle enrolling a student
+  const handleEnrollStudent = async (studentId) => {
+    if (!selectedCourse) return
+    
+    // Add to loading set
+    setEnrollingStudents(prev => new Set(prev).add(studentId))
+    
+    try {
+      const response = await fetch('/api/students/enroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          section_course_id: selectedCourse.course_id,
+          student_id: studentId
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        if (response.status === 409) {
+          alert('Student is already enrolled in this course.')
+        } else {
+          throw new Error(data.error || `Failed to enroll student: ${response.status}`)
+        }
+        return
+      }
+      
+      if (data.success) {
+        // Remove the enrolled student from available list
+        setAvailableStudents(prev => prev.filter(s => s.student_id !== studentId))
+        
+        // Refresh the enrolled students list
+        await handleCourseSelect(selectedCourse)
+        
+        // Show success message
+        console.log('Student enrolled successfully!')
+      }
+      
+    } catch (error) {
+      console.error('Error enrolling student:', error)
+      alert(`Failed to enroll student: ${error.message}`)
+    } finally {
+      // Remove from loading set
+      setEnrollingStudents(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(studentId)
+        return newSet
+      })
+    }
   }
 
   // Form submission handlers
@@ -471,6 +575,17 @@ const CourseManagement = () => {
     return filtered
   }, [courses, query, selectedProgramId, selectedSpecializationId, selectedTermId, showGeneralSubjects, specializations])
 
+  // Filter available students based on search query
+  const filteredAvailableStudents = useMemo(() => {
+    if (!studentSearchQuery.trim()) return availableStudents
+    
+    const query = studentSearchQuery.toLowerCase()
+    return availableStudents.filter(student =>
+      (student.full_name || '').toLowerCase().includes(query) ||
+      (student.student_number || '').toLowerCase().includes(query)
+    )
+  }, [availableStudents, studentSearchQuery])
+
 
 
   if (loading) {
@@ -753,7 +868,7 @@ const CourseManagement = () => {
                               {filteredCourses.map(course => (
                                 <tr
                                   key={course.course_id}
-                                  onClick={() => setSelectedCourse(course)}
+                                  onClick={() => handleCourseSelect(course)}
                                   className={`hover:bg-gray-50 cursor-pointer ${selectedCourse?.course_id === course.course_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
                                 >
                                   <td className="px-4 py-2">
@@ -825,49 +940,98 @@ const CourseManagement = () => {
                 </div>
               </div>
 
-              {/* Side actions / Course details */}
+              {/* Side actions / Course details and Students */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm p-4 sticky top-4 border border-gray-300">
                   {selectedCourse ? (
-                    <div className="space-y-4">
-                                              <div className="flex items-center gap-4">
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-900">{selectedCourse.course_code}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{selectedCourse.title}</p>
-                            <p className="text-xs text-gray-500 mt-2">{selectedCourse.program_abbreviation || selectedCourse.program_name} {selectedCourse.abbreviation ? `• ${selectedCourse.abbreviation}` : ''}</p>
-                          </div>
-                        </div>
-
-                                              <div className="grid grid-cols-1 gap-3 text-sm">
-                          <div className="space-y-1">
-                            <span className="text-gray-500">Program</span>
-                            <div className="text-gray-800">{selectedCourse.program_name || selectedCourse.program_abbreviation || '—'}</div>
-                          </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Specialization</span>
-                          <span className="text-gray-800">{selectedCourse.specialization_name || selectedCourse.abbreviation || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Term</span>
-                          <span className="text-gray-800">{formatTermDisplay(selectedCourse.term_id)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Created</span>
-                          <span className="text-gray-800">{formatDate(selectedCourse.created_at)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Updated</span>
-                          <span className="text-gray-800">{formatDate(selectedCourse.updated_at)}</span>
+                    <div className="h-full flex flex-col">
+                      {/* Course Header */}
+                      <div className="mb-4 pb-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedCourse.course_code}</h3>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div><span className="font-medium">Title:</span> {selectedCourse.title}</div>
+                          <div><span className="font-medium">Program:</span> {selectedCourse.program_name || selectedCourse.program_abbreviation || '—'}</div>
+                          <div><span className="font-medium">Specialization:</span> {selectedCourse.specialization_name || selectedCourse.abbreviation || '—'}</div>
+                          <div><span className="font-medium">Term:</span> {formatTermDisplay(selectedCourse.term_id)}</div>
                         </div>
                       </div>
 
-                      <div className="flex gap-3">
-                        <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">
-                          Edit
-                        </button>
-                        <button className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
-                          Archive
-                        </button>
+                      {/* Students Section */}
+                      <div className="flex-1 min-h-0">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-md font-medium text-gray-900">Enrolled Students</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                              {students.length} student{students.length !== 1 ? 's' : ''}
+                            </span>
+                            <button
+                              onClick={handleOpenStudentsModal}
+                              className="inline-flex items-center justify-center w-6 h-6 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                              title="Add students to course"
+                            >
+                              <PlusIcon className="h-3 w-3 stroke-[3]" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {loadingStudents ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                            <span className="ml-2 text-sm text-gray-600">Loading students...</span>
+                          </div>
+                        ) : students.length > 0 ? (
+                          <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+                            {students.map((student) => (
+                              <div key={student.student_id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div className="flex-shrink-0">
+                                  {student.student_photo ? (
+                                    <img 
+                                      src={student.student_photo} 
+                                      alt={student.full_name}
+                                      className="h-8 w-8 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                                      <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-900 truncate">
+                                    {student.full_name}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {student.student_number}
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    student.status === 'enrolled' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : student.status === 'dropped'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {student.status || 'enrolled'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center py-8 text-center">
+                            <div>
+                              <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                </svg>
+                              </div>
+                              <p className="text-xs text-gray-500">No students enrolled</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -875,7 +1039,7 @@ const CourseManagement = () => {
                       <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                         <BookOpenIcon className="h-6 w-6 text-gray-400" />
                       </div>
-                      <p className="text-sm">Select a course from the list to view details here.</p>
+                      <p className="text-sm">Select a course from the list to view students here.</p>
                     </div>
                   )}
                 </div>
@@ -1158,6 +1322,145 @@ const CourseManagement = () => {
                 </div>
               </div>
             )}
+
+      {/* Students Modal */}
+      {showStudentsModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Add Students to {selectedCourse.course_code}</h3>
+                <p className="text-sm text-gray-600">
+                  {selectedCourse.title} • {selectedCourse.specialization_name || selectedCourse.abbreviation || '—'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowStudentsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Search Bar and Students Count */}
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1 relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search students by name or student code..."
+                      value={studentSearchQuery}
+                      onChange={(e) => setStudentSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm font-medium text-gray-900">Available Students</h4>
+                    <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
+                      {filteredAvailableStudents.length} student{filteredAvailableStudents.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Students List */}
+              <div className="flex-1 overflow-y-auto p-3">
+                {loadingAvailableStudents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
+                    <span className="ml-2 text-sm text-gray-600">Loading...</span>
+                  </div>
+                ) : filteredAvailableStudents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {filteredAvailableStudents.map((student, index) => (
+                      <div key={student.student_id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center justify-center w-6 h-6 bg-gray-200 rounded-full text-xs font-medium text-gray-600">
+                            {index + 1}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {student.student_photo ? (
+                            <img 
+                              src={student.student_photo} 
+                              alt={student.full_name}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                              <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-900 truncate">
+                            {student.full_name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {student.student_number}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => handleEnrollStudent(student.student_id)}
+                            disabled={enrollingStudents.has(student.student_id)}
+                            className="inline-flex items-center px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {enrollingStudents.has(student.student_id) ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                Enrolling...
+                              </>
+                            ) : (
+                              <>
+                                <PlusIcon className="h-3 w-3 mr-1" />
+                                Enroll
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-12 text-center">
+                    <div>
+                      <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {studentSearchQuery ? 'No students found matching your search' : 'No available students to enroll'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowStudentsModal(false)}
+                  className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
