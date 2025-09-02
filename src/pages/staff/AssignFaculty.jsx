@@ -26,6 +26,10 @@ const AssignFaculty = () => {
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [enrollingStudents, setEnrollingStudents] = useState(new Set())
 
+  // Success message state
+  const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
   const [formData, setFormData] = useState({
     title: '',
     code: '',
@@ -122,7 +126,8 @@ const AssignFaculty = () => {
         await handleClassSelect(selectedClass)
         
         // Show success message
-        console.log('Student enrolled successfully!')
+        setSuccessMessage('Student enrolled successfully!')
+        setShowSuccessModal(true)
       }
       
     } catch (error) {
@@ -218,7 +223,8 @@ const AssignFaculty = () => {
       closeCreateModal()
       
       // Show success message
-      alert('Class created successfully!')
+      setSuccessMessage('Class created successfully!')
+      setShowSuccessModal(true)
     } catch (error) {
       console.error('Error creating class:', error)
       alert(`Failed to create class: ${error.message}`)
@@ -922,6 +928,34 @@ const AssignFaculty = () => {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Success!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>

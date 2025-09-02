@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useUser } from '../../contexts/UserContext'
-import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/solid'
+ 
 import ClassCard from '../../components/ClassCard'
 
 const MyClasses = () => {
@@ -9,18 +9,117 @@ const MyClasses = () => {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   
+  // Normalize faculty ID from user context
+  const facultyId = user?.user_id ?? user?.id
+  
   // Selected class and students
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
 
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingClass, setEditingClass] = useState(null)
+  const [editFormData, setEditFormData] = useState({
+    bannerType: 'color',
+    bannerColor: '#3B82F6',
+    bannerImage: ''
+  })
+
+  // Success message state
+  const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+
+  // Helpers: extract surname (last word) for alphabetical sorting
+  const extractSurname = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }
+
+  // Edit modal handlers
+  const handleEditClass = (classItem) => {
+    setEditingClass(classItem)
+    setEditFormData({
+      bannerType: classItem.banner_type || 'color',
+      bannerColor: classItem.banner_color || '#3B82F6',
+      bannerImage: classItem.banner_image || ''
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingClass) return
+
+    try {
+      const response = await fetch(`/api/section-courses/${editingClass.section_course_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          banner_type: editFormData.bannerType,
+          banner_color: editFormData.bannerType === 'color' ? editFormData.bannerColor : null,
+          banner_image: editFormData.bannerType === 'image' ? editFormData.bannerImage : null
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to update class: ${response.status}`)
+      }
+
+      // Update local state
+      setClasses(prev => prev.map(cls => 
+        cls.section_course_id === editingClass.section_course_id
+          ? {
+              ...cls,
+              banner_type: editFormData.bannerType,
+              banner_color: editFormData.bannerColor,
+              banner_image: editFormData.bannerImage
+            }
+          : cls
+      ))
+
+      // Update selected class if it's the one being edited
+      if (selectedClass?.section_course_id === editingClass.section_course_id) {
+        setSelectedClass(prev => ({
+          ...prev,
+          banner_type: editFormData.bannerType,
+          banner_color: editFormData.bannerColor,
+          banner_image: editFormData.bannerImage
+        }))
+      }
+
+      setShowEditModal(false)
+      setEditingClass(null)
+      setSuccessMessage('Class banner updated successfully!')
+      setShowSuccessModal(true)
+    } catch (error) {
+      console.error('Error updating class:', error)
+      alert(`Failed to update class: ${error.message}`)
+    }
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setEditingClass(null)
+    setEditFormData({
+      bannerType: 'color',
+      bannerColor: '#3B82F6',
+      bannerImage: ''
+    })
+  }
+
+  
+
   // Fetch faculty's assigned classes
   const fetchClasses = async () => {
     try {
       setLoading(true)
-      console.log(`🔍 [FACULTY] Fetching classes for user ID: ${user.user_id}`)
+      console.log(`🔍 [FACULTY] Fetching classes for user ID: ${facultyId}`)
       
-      const response = await fetch(`/api/section-courses/faculty/${user.user_id}`, {
+      const response = await fetch(`/api/section-courses/faculty/${facultyId}`, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -53,7 +152,16 @@ const MyClasses = () => {
       const response = await fetch(`/api/section-courses/${classItem.section_course_id}/students`)
       if (!response.ok) throw new Error('Failed to fetch students')
       const data = await response.json()
-      setStudents(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      list.sort((a, b) => {
+        const aLast = extractSurname(a.full_name)
+        const bLast = extractSurname(b.full_name)
+        if (aLast === bLast) {
+          return (a.full_name || '').localeCompare(b.full_name || '')
+        }
+        return aLast.localeCompare(bLast)
+      })
+      setStudents(list)
     } catch (error) {
       console.error('Error fetching students:', error)
       setStudents([])
@@ -74,31 +182,18 @@ const MyClasses = () => {
   }, [classes, searchQuery])
 
   useEffect(() => {
-    if (user?.user_id) {
+    if (facultyId) {
       fetchClasses()
     }
-  }, [user?.user_id])
+  }, [facultyId])
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       {/* Main Content - Classes List */}
       <div className="flex-1 flex flex-col">
-        {/* Search Bar */}
-        <div className="p-6 bg-gray-50 border-b border-gray-200">
-          <div className="relative max-w-md">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search classes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-        </div>
 
         {/* Classes Grid */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
@@ -114,7 +209,7 @@ const MyClasses = () => {
                   code={cls.course_code}
                   section={cls.section_code}
                   instructor={cls.faculty_name}
-                  instructorAvatar={cls.faculty_avatar}
+                  avatarUrl={cls.faculty_avatar}
                   bannerColor={cls.banner_color}
                   bannerImage={cls.banner_image}
                   bannerType={cls.banner_type}
@@ -123,6 +218,8 @@ const MyClasses = () => {
                   onAttendance={() => console.log('Attendance clicked')}
                   onAssessments={() => console.log('Assessments clicked')}
                   onMore={() => console.log('More clicked')}
+                  onEdit={() => handleEditClass(cls)}
+                  onArchive={() => console.log('Archive clicked')}
                 />
               ))}
             </div>
@@ -145,41 +242,35 @@ const MyClasses = () => {
       </div>
 
       {/* Right Sidebar - Class Details and Students */}
-      <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
+      <div className="w-80 bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0">
         {selectedClass ? (
           <div className="h-full flex flex-col">
             {/* Class Header */}
-            <div className="p-6 border-b border-gray-200">
+            <div className="mb-3 pb-3 border-b border-gray-200">
               <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
                     {selectedClass.course_title}
                   </h2>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p><span className="font-medium">Code:</span> {selectedClass.course_code}</p>
-                    <p><span className="font-medium">Section:</span> {selectedClass.section_code}</p>
-                    <p><span className="font-medium">Instructor:</span> {selectedClass.faculty_name}</p>
-                    <p><span className="font-medium">Term:</span> {selectedClass.semester} {selectedClass.school_year}</p>
+                  <div className="mt-1 text-xs text-gray-600 space-y-0.5">
+                    <p className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="truncate">{selectedClass.semester} {selectedClass.school_year}</p>
+                      <span className="ml-2 text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
+                        {students.length} student{students.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Enrolled Students Section */}
-            <div className="flex-1 flex flex-col">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-900">Enrolled Students</h3>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
-                      {students.length} student{students.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="flex-1 flex flex-col min-h-0">
+              
 
               {/* Students List */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-auto min-h-0">
                 {loadingStudents ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
@@ -250,6 +341,166 @@ const MyClasses = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && editingClass && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Edit Class Banner</h3>
+              <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Form */}
+              <div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Banner</label>
+                    
+                    {/* Banner Type Selection */}
+                    <div className="flex gap-4 mb-3">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="bannerType"
+                          value="color"
+                          checked={editFormData.bannerType === 'color'}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, bannerType: e.target.value }))}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Color</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="bannerType"
+                          value="image"
+                          checked={editFormData.bannerType === 'image'}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, bannerType: e.target.value }))}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Image</span>
+                      </label>
+                    </div>
+
+                    {/* Color Palette */}
+                    {editFormData.bannerType === 'color' && (
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899',
+                          '#06B6D4', '#84CC16', '#F97316', '#6366F1', '#14B8A6', '#F43F5E'
+                        ].map(color => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setEditFormData(prev => ({ ...prev, bannerColor: color }))}
+                            className={`w-6 h-6 rounded border ${
+                              editFormData.bannerColor === color 
+                                ? 'border-gray-800' 
+                                : 'border-gray-300'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Image Upload */}
+                    {editFormData.bannerType === 'image' && (
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                setEditFormData(prev => ({ 
+                                  ...prev, 
+                                  bannerImage: event.target.result 
+                                }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                        {editFormData.bannerImage && (
+                          <div className="mt-2">
+                            <img 
+                              src={editFormData.bannerImage} 
+                              alt="Banner preview" 
+                              className="w-full h-20 object-cover rounded-md"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview */}
+              <div>
+                <div className="text-sm text-gray-500 mb-2">Preview</div>
+                <ClassCard
+                  title={editingClass.course_title}
+                  code={editingClass.course_code}
+                  section={editingClass.section_code}
+                  instructor={editingClass.faculty_name}
+                  bannerType={editFormData.bannerType}
+                  bannerColor={editFormData.bannerColor}
+                  bannerImage={editFormData.bannerImage}
+                  avatarUrl={editingClass.faculty_avatar}
+                  onAttendance={() => {}}
+                  onAssessments={() => {}}
+                  onMore={() => {}}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={closeEditModal} className="px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
+              <button onClick={handleSaveEdit} className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Success!</h3>
+              <p className="text-sm text-gray-500 mb-6">{successMessage}</p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setSuccessMessage('');
+                }}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

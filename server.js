@@ -1862,13 +1862,13 @@ app.get('/api/section-courses/faculty/:facultyId', async (req, res) => {
         c.title AS course_title,
         sc.instructor_id,
         u.name AS faculty_name,
-        '' AS faculty_avatar,
+        u.profile_pic AS faculty_avatar,
         st.term_id,
         st.semester,
         st.school_year,
         COALESCE(sc.banner_type, 'color') AS banner_type,
         COALESCE(sc.banner_color, '#3B82F6') AS banner_color,
-        '' AS banner_image
+        sc.banner_image AS banner_image
       FROM section_courses sc
       INNER JOIN sections s ON sc.section_id = s.section_id
       INNER JOIN courses c ON sc.course_id = c.course_id
@@ -1955,6 +1955,62 @@ app.post('/api/section-courses', async (req, res) => {
   } catch (error) {
     console.error('❌ [SECTION COURSE] Error creating section course:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Update section course (e.g., banner settings)
+app.put('/api/section-courses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sectionCourseId = parseInt(id);
+    if (isNaN(sectionCourseId)) {
+      return res.status(400).json({ error: 'Invalid section_course_id' });
+    }
+
+    const { banner_type, banner_color, banner_image } = req.body || {};
+
+    // Build dynamic update for provided fields only
+    const setClauses = [];
+    const values = [];
+
+    if (banner_type !== undefined) {
+      setClauses.push(`banner_type = $${setClauses.length + 1}`);
+      values.push(banner_type);
+    }
+    if (banner_color !== undefined) {
+      setClauses.push(`banner_color = $${setClauses.length + 1}`);
+      values.push(banner_color);
+    }
+    if (banner_image !== undefined) {
+      setClauses.push(`banner_image = $${setClauses.length + 1}`);
+      values.push(banner_image);
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ error: 'No fields provided to update' });
+    }
+
+    // Always update updated_at
+    setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    const updateSql = `
+      UPDATE section_courses
+      SET ${setClauses.join(', ')}
+      WHERE section_course_id = $${values.length + 1}
+      RETURNING section_course_id, section_id, course_id, instructor_id, term_id, banner_type, banner_color, banner_image, updated_at
+    `;
+
+    values.push(sectionCourseId);
+
+    const result = await pool.query(updateSql, values);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Section course not found' });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ [SECTION COURSE] Error updating section course:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 
