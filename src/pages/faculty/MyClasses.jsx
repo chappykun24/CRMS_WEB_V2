@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useUser } from '../../contexts/UserContext'
  
 import ClassCard from '../../components/ClassCard'
@@ -8,9 +8,19 @@ const MyClasses = () => {
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [error, setError] = useState(null)
+  const [initialLoad, setInitialLoad] = useState(true)
+  
+  // Force loading to be visible for testing
+  const [forceLoading, setForceLoading] = useState(true)
   
   // Normalize faculty ID from user context
   const facultyId = user?.user_id ?? user?.id
+  
+  // Refs for cleanup and optimization
+  const abortControllerRef = useRef(null)
+  const classesCacheRef = useRef(new Map())
+  const sidebarRef = useRef(null)
   
   // Selected class and students
   const [selectedClass, setSelectedClass] = useState(null)
@@ -25,6 +35,7 @@ const MyClasses = () => {
     bannerColor: '#3B82F6',
     bannerImage: ''
   })
+  const [savingEdit, setSavingEdit] = useState(false)
 
   // Success message state
   const [successMessage, setSuccessMessage] = useState('')
@@ -34,6 +45,8 @@ const MyClasses = () => {
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
+  const [togglingAttendance, setTogglingAttendance] = useState(false)
+  const [submittingAttendance, setSubmittingAttendance] = useState(false)
 
   // Helpers: extract surname (last word) for alphabetical sorting
   const extractSurname = (fullName) => {
@@ -43,8 +56,8 @@ const MyClasses = () => {
     return tokens[tokens.length - 1].toLowerCase()
   }
 
-  // Attendance functions
-  const markAttendance = (studentId, status, remarks = '') => {
+  // Attendance functions with memoization
+  const markAttendance = useCallback((studentId, status, remarks = '') => {
     setAttendanceRecords(prev => ({
       ...prev,
       [studentId]: {
@@ -52,21 +65,67 @@ const MyClasses = () => {
         [attendanceDate]: { status, remarks }
       }
     }))
-  }
+  }, [attendanceDate])
 
-  const markAllPresent = () => {
+  const markAllPresent = useCallback(() => {
     students.forEach(student => {
       markAttendance(student.student_id, 'present')
     })
-  }
+  }, [students, markAttendance])
 
-  const getAttendanceStatus = (studentId) => {
+  const getAttendanceStatus = useCallback((studentId) => {
     return attendanceRecords[studentId]?.[attendanceDate]?.status || null
-  }
+  }, [attendanceRecords, attendanceDate])
 
-  const getAttendanceRemarks = (studentId) => {
+  const getAttendanceRemarks = useCallback((studentId) => {
     return attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
-  }
+  }, [attendanceRecords, attendanceDate])
+
+  // Submit attendance data
+  const submitAttendance = useCallback(async () => {
+    if (!selectedClass) return
+
+    setSubmittingAttendance(true)
+    try {
+      // Prepare attendance data for submission
+      const attendanceData = {
+        section_course_id: selectedClass.section_course_id,
+        date: attendanceDate,
+        records: Object.keys(attendanceRecords).map(studentId => ({
+          student_id: studentId,
+          status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
+          remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
+        }))
+      }
+
+      console.log('📤 [ATTENDANCE] Submitting attendance data:', attendanceData)
+
+      const response = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(attendanceData)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to submit attendance: ${response.status}`)
+      }
+
+      // Show success message
+      setSuccessMessage('Attendance submitted successfully!')
+      setShowSuccessModal(true)
+
+      // Exit attendance mode
+      setIsAttendanceMode(false)
+
+    } catch (error) {
+      console.error('❌ [ATTENDANCE] Error submitting attendance:', error)
+      alert(`Failed to submit attendance: ${error.message}`)
+    } finally {
+      setSubmittingAttendance(false)
+    }
+  }, [selectedClass, attendanceDate, attendanceRecords])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
@@ -82,6 +141,7 @@ const MyClasses = () => {
   const handleSaveEdit = async () => {
     if (!editingClass) return
 
+    setSavingEdit(true)
     try {
       const response = await fetch(`/api/section-courses/${editingClass.section_course_id}`, {
         method: 'PUT',
@@ -128,6 +188,8 @@ const MyClasses = () => {
     } catch (error) {
       console.error('Error updating class:', error)
       alert(`Failed to update class: ${error.message}`)
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -151,19 +213,91 @@ const MyClasses = () => {
     }
   }, [selectedClass])
 
+  // Handle clicks outside sidebar to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target) && selectedClass) {
+        // Check if the click is not on a class card
+        const isClassCard = event.target.closest('[data-class-card]')
+        if (!isClassCard) {
+          setSelectedClass(null)
+          setIsAttendanceMode(false)
+          localStorage.removeItem('selectedClass')
+          window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [selectedClass])
+
+  // Ensure loading state is shown immediately on mount/reload
+  useEffect(() => {
+    console.log('🔍 [FACULTY] Component mounted, setting initial loading state')
+    setLoading(true)
+    setError(null)
+    setInitialLoad(true)
+    setForceLoading(true)
+    
+    // Force loading to show for at least 2 seconds
+    const timer = setTimeout(() => {
+      console.log('🔍 [FACULTY] Initial load timer completed')
+      setInitialLoad(false)
+      setForceLoading(false)
+    }, 2000)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
   
 
-  // Fetch faculty's assigned classes
-  const fetchClasses = async () => {
+  // Fetch faculty's assigned classes with caching and abort support
+  const fetchClasses = useCallback(async () => {
+    if (!facultyId) {
+      console.log('🔍 [FACULTY] fetchClasses called but no facultyId')
+      return
+    }
+    
+    console.log('🔍 [FACULTY] fetchClasses starting - facultyId:', facultyId)
+    // Always show loading initially
+    setLoading(true)
+    setError(null)
+    setInitialLoad(false) // Stop initial load when we start fetching
+    
+    // Check cache first
+    const cacheKey = `classes_${facultyId}`
+    const cachedData = classesCacheRef.current.get(cacheKey)
+    if (cachedData && Date.now() - cachedData.timestamp < 30000) { // 30 second cache
+      console.log('📦 [FACULTY] Using cached classes data')
+      // Add a small delay to show loading state briefly
+      setTimeout(() => {
+        setClasses(cachedData.data)
+        setLoading(false)
+        setInitialLoad(false)
+      }, 500) // Increased delay to ensure loading is visible
+      return
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController()
+    
     try {
-      setLoading(true)
       console.log(`🔍 [FACULTY] Fetching classes for user ID: ${facultyId}`)
       
       const response = await fetch(`/api/section-courses/faculty/${facultyId}`, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        signal: abortControllerRef.current.signal
       })
       
       console.log(`📡 [FACULTY] Response status: ${response.status}`)
@@ -175,17 +309,31 @@ const MyClasses = () => {
       const data = await response.json()
       console.log(`✅ [FACULTY] Received ${Array.isArray(data) ? data.length : 0} classes`)
       
-      setClasses(Array.isArray(data) ? data : [])
+      const classesData = Array.isArray(data) ? data : []
+      setClasses(classesData)
+      
+      // Cache the data
+      classesCacheRef.current.set(cacheKey, {
+        data: classesData,
+        timestamp: Date.now()
+      })
+      
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [FACULTY] Request was aborted')
+        return
+      }
       console.error('❌ [FACULTY] Error fetching classes:', error)
+      setError(error.message)
       setClasses([])
     } finally {
       setLoading(false)
+      setInitialLoad(false)
     }
-  }
+  }, [facultyId])
 
-  // Handle class selection
-  const handleClassSelect = async (classItem) => {
+  // Handle class selection with lazy loading and caching
+  const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
     
@@ -195,13 +343,25 @@ const MyClasses = () => {
     // Dispatch custom event to notify Header of change
     window.dispatchEvent(new CustomEvent('selectedClassChanged'))
     
+    // Check if students are already cached for this class
+    const studentsCacheKey = `students_${classItem.section_course_id}`
+    const cachedStudents = classesCacheRef.current.get(studentsCacheKey)
+    
+    if (cachedStudents && Date.now() - cachedStudents.timestamp < 60000) { // 1 minute cache
+      console.log('📦 [FACULTY] Using cached students data')
+      setStudents(cachedStudents.data)
+      return
+    }
+    
     setLoadingStudents(true)
     try {
       const response = await fetch(`/api/section-courses/${classItem.section_course_id}/students`)
       if (!response.ok) throw new Error('Failed to fetch students')
       const data = await response.json()
       const list = Array.isArray(data) ? data : []
-      list.sort((a, b) => {
+      
+      // Sort students alphabetically by surname
+      const sortedStudents = list.sort((a, b) => {
         const aLast = extractSurname(a.full_name)
         const bLast = extractSurname(b.full_name)
         if (aLast === bLast) {
@@ -209,14 +369,22 @@ const MyClasses = () => {
         }
         return aLast.localeCompare(bLast)
       })
-      setStudents(list)
+      
+      setStudents(sortedStudents)
+      
+      // Cache the students data
+      classesCacheRef.current.set(studentsCacheKey, {
+        data: sortedStudents,
+        timestamp: Date.now()
+      })
+      
     } catch (error) {
       console.error('Error fetching students:', error)
       setStudents([])
     } finally {
       setLoadingStudents(false)
     }
-  }
+  }, [])
 
   // Filter classes based on search query
   const filteredClasses = useMemo(() => {
@@ -230,28 +398,70 @@ const MyClasses = () => {
   }, [classes, searchQuery])
 
   useEffect(() => {
+    console.log('🔍 [FACULTY] useEffect triggered - facultyId:', facultyId, 'loading:', loading, 'initialLoad:', initialLoad)
     if (facultyId) {
       fetchClasses()
+    } else {
+      // If no facultyId, stop loading after a delay
+      console.log('🔍 [FACULTY] No facultyId, stopping loading after delay')
+      setTimeout(() => {
+        setLoading(false)
+        setInitialLoad(false)
+      }, 1000) // Give time for user context to load
     }
-  }, [facultyId])
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [facultyId, fetchClasses])
 
   return (
     <div className="h-full flex overflow-hidden">
       {/* Main Content - Classes List */}
-      <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : 'flex-1'}`}>
+      <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
 
         {/* Classes Grid */}
         <div className="flex-1 p-6">
-          {loading ? (
+          {console.log('🔍 [FACULTY] Render - loading:', loading, 'initialLoad:', initialLoad, 'error:', error, 'classes.length:', classes.length, 'filteredClasses.length:', filteredClasses.length)}
+          {(loading || initialLoad || forceLoading) ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden animate-pulse">
+                  <div className="h-24 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+                  <div className="p-4">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : error ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-              <span className="ml-3 text-sm text-gray-600">Loading classes...</span>
+              <div className="text-center">
+                <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Classes</h3>
+                <p className="text-gray-500 mb-4">{error}</p>
+                <button
+                  onClick={fetchClasses}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
             </div>
           ) : filteredClasses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredClasses.map((cls) => (
+                <div key={cls.section_course_id} data-class-card>
                 <ClassCard
-                  key={cls.section_course_id}
                   id={cls.section_course_id}
                   title={cls.course_title}
                   code={cls.course_code}
@@ -263,50 +473,48 @@ const MyClasses = () => {
                   bannerType={cls.banner_type}
                   isSelected={selectedClass?.section_course_id === cls.section_course_id}
                   onClick={() => handleClassSelect(cls)}
-                  onAttendance={() => {
-                    if (selectedClass?.section_course_id === cls.section_course_id) {
-                      setIsAttendanceMode(!isAttendanceMode)
-                    }
-                  }}
+                    onAttendance={async () => {
+                      setTogglingAttendance(true)
+                      try {
+                        // Select the class first if it's not already selected
+                        if (selectedClass?.section_course_id !== cls.section_course_id) {
+                          await handleClassSelect(cls)
+                        }
+                        // Then toggle attendance mode
+                        setIsAttendanceMode(!isAttendanceMode)
+                      } finally {
+                        setTogglingAttendance(false)
+                      }
+                    }}
                   onAssessments={() => console.log('Assessments clicked')}
                   onMore={() => console.log('More clicked')}
                   onEdit={() => handleEditClass(cls)}
                   onArchive={() => console.log('Archive clicked')}
                 />
+                </div>
               ))}
             </div>
-          ) : (
-            <div className="flex items-center justify-center py-12 text-center">
-              <div>
-                <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No classes found</h3>
-                <p className="text-gray-500">
-                  {searchQuery ? 'No classes match your search criteria.' : 'You have no assigned classes yet.'}
-                </p>
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Right Sidebar - Class Details and Students */}
-      <div className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 transition-all duration-300 ${
-        isAttendanceMode ? 'w-full' : 'w-80'
-      }`}>
-        {selectedClass ? (
+      {/* Right Sidebar - Class Details and Students - Only show when class is selected */}
+      {selectedClass && (
+        <div 
+          ref={sidebarRef}
+          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 transition-all duration-300 ${
+            isAttendanceMode ? 'w-full' : 'w-80'
+          }`}
+        >
           <div className="h-full flex flex-col">
             {/* Class Header */}
             <div className="mb-3 pb-3 border-b border-gray-200">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
-                      {selectedClass.course_title}
-                    </h2>
+                  <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
+                    {selectedClass.course_title}
+                  </h2>
                     {isAttendanceMode && (
                       <div className="flex items-center space-x-3 ml-4">
                         <div className="flex items-center space-x-2">
@@ -320,9 +528,21 @@ const MyClasses = () => {
                         </div>
                         <button
                           onClick={markAllPresent}
-                          className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                          className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
+                          style={{ border: 'none', outline: 'none' }}
                         >
                           Mark All Present
+                        </button>
+                        <button
+                          onClick={submitAttendance}
+                          disabled={submittingAttendance}
+                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
+                          style={{ border: 'none', outline: 'none' }}
+                        >
+                          {submittingAttendance && (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                          )}
+                          {submittingAttendance ? 'Submitting...' : 'Submit'}
                         </button>
                       </div>
                     )}
@@ -366,14 +586,26 @@ const MyClasses = () => {
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
                 {loadingStudents ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
-                    <span className="ml-2 text-sm text-gray-600">Loading students...</span>
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, index) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 animate-pulse">
+                        <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : students.length > 0 ? (
                   <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "space-y-3"}>
                     {students.map((student, index) => (
                       <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-shrink-0 w-6 text-center">
+                          <span className="text-xs font-medium text-gray-500">
+                            {index + 1}
+                          </span>
+                        </div>
                         <div className="flex-shrink-0">
                           {student.student_photo ? (
                             <img 
@@ -398,7 +630,7 @@ const MyClasses = () => {
                           </p>
                         </div>
                         {isAttendanceMode && (
-                          <div className="flex-shrink-0">
+                        <div className="flex-shrink-0">
                             <div className="flex items-center space-x-1">
                               <button 
                                 onClick={() => markAttendance(student.student_id, 'present')}
@@ -455,7 +687,7 @@ const MyClasses = () => {
                                 className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-20"
                               />
                             </div>
-                          </div>
+                        </div>
                         )}
                       </div>
                     ))}
@@ -475,21 +707,9 @@ const MyClasses = () => {
                 )}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">Select a class</h3>
-              <p className="text-xs text-gray-500">Choose a class from the list to view enrolled students</p>
             </div>
           </div>
         )}
-      </div>
 
       {/* Edit Modal */}
       {showEditModal && editingClass && (
@@ -616,8 +836,23 @@ const MyClasses = () => {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={closeEditModal} className="px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
-              <button onClick={handleSaveEdit} className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">Save</button>
+              <button 
+                onClick={closeEditModal} 
+                disabled={savingEdit}
+                className="px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveEdit} 
+                disabled={savingEdit}
+                className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {savingEdit && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                )}
+                {savingEdit ? 'Saving...' : 'Save'}
+              </button>
             </div>
           </div>
         </div>
