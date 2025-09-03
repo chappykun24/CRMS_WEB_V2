@@ -47,6 +47,7 @@ const MyClasses = () => {
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
+  const [attendanceSessionId, setAttendanceSessionId] = useState(null)
 
   // Helpers: extract surname (last word) for alphabetical sorting
   const extractSurname = (fullName) => {
@@ -81,31 +82,68 @@ const MyClasses = () => {
     return attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
   }, [attendanceRecords, attendanceDate])
 
+  // Ensure session exists and hydrate records
+  const ensureAttendanceSession = useCallback(async () => {
+    if (!selectedClass || !attendanceDate) return null
+    try {
+      const qs = new URLSearchParams({ section_course_id: selectedClass.section_course_id, date: attendanceDate })
+      const res = await fetch(`/api/attendance/sessions?${qs.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.session?.session_id) {
+          setAttendanceSessionId(data.session.session_id)
+          if (Array.isArray(data.records)) {
+            const merged = {}
+            for (const r of data.records) {
+              if (!merged[r.student_id]) merged[r.student_id] = {}
+              merged[r.student_id][attendanceDate] = { status: r.status, remarks: r.remarks || '' }
+            }
+            if (Object.keys(merged).length > 0) {
+              setAttendanceRecords(prev => ({ ...prev, ...merged }))
+            }
+          }
+          return data.session.session_id
+        }
+      }
+      // Create session if not existing
+      const create = await fetch('/api/attendance/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section_course_id: selectedClass.section_course_id, date: attendanceDate })
+      })
+      const created = await create.json()
+      setAttendanceSessionId(created.session_id)
+      return created.session_id
+    } catch (e) {
+      console.error('ensureAttendanceSession error', e)
+      return null
+    }
+  }, [selectedClass, attendanceDate])
+
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
     if (!selectedClass) return
 
     setSubmittingAttendance(true)
     try {
-      // Prepare attendance data for submission
-      const attendanceData = {
-        section_course_id: selectedClass.section_course_id,
-        date: attendanceDate,
+      const sessionId = attendanceSessionId || (await ensureAttendanceSession())
+      if (!sessionId) throw new Error('Unable to create/load attendance session')
+
+      const payload = {
+        session_id: sessionId,
         records: Object.keys(attendanceRecords).map(studentId => ({
-          student_id: studentId,
+          student_id: parseInt(studentId, 10),
           status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
           remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
         }))
       }
 
-      console.log('📤 [ATTENDANCE] Submitting attendance data:', attendanceData)
-
-      const response = await fetch('/api/attendance', {
+      const response = await fetch('/api/attendance/records/bulk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(attendanceData)
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -125,7 +163,16 @@ const MyClasses = () => {
     } finally {
       setSubmittingAttendance(false)
     }
-  }, [selectedClass, attendanceDate, attendanceRecords])
+  }, [selectedClass, attendanceDate, attendanceRecords, attendanceSessionId, ensureAttendanceSession])
+
+  // Load session when class/date changes
+  useEffect(() => {
+    (async () => {
+      if (isAttendanceMode && selectedClass) {
+        await ensureAttendanceSession()
+      }
+    })()
+  }, [isAttendanceMode, selectedClass, attendanceDate, ensureAttendanceSession])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
@@ -572,16 +619,7 @@ const MyClasses = () => {
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="mb-3">
-                <h3 className="text-sm font-medium text-gray-900">
-                  {isAttendanceMode ? 'Mark Attendance' : 'Enrolled Students'}
-                </h3>
-                {isAttendanceMode && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Click Present, Absent, Late, or Excuse for each student
-                  </p>
-                )}
-              </div>
+              
 
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
@@ -599,11 +637,15 @@ const MyClasses = () => {
                   </div>
                 ) : students.length > 0 ? (
                   <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "space-y-3"}>
-                    {students.map((student, index) => (
+                    {students.map((student, index) => {
+                      // Calculate sequential number for grid layout
+                      const sequentialNumber = index + 1
+                      
+                      return (
                       <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                         <div className="flex-shrink-0 w-6 text-center">
                           <span className="text-xs font-medium text-gray-500">
-                            {index + 1}
+                            {sequentialNumber}
                           </span>
                         </div>
                         <div className="flex-shrink-0">
@@ -647,8 +689,8 @@ const MyClasses = () => {
                                 onClick={() => markAttendance(student.student_id, 'absent')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
                                   getAttendanceStatus(student.student_id) === 'absent' 
-                                    ? 'bg-red-200 text-red-900' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-800'
+                                    ? 'bg-gray-300 text-gray-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
                                 }`}
                                 style={{ border: 'none', outline: 'none' }}
                               >
@@ -690,7 +732,8 @@ const MyClasses = () => {
                         </div>
                         )}
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8 text-center">

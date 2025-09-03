@@ -515,7 +515,7 @@ const SignUpPage = () => {
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Enter last name"
                         required
                       />
@@ -535,7 +535,7 @@ const SignUpPage = () => {
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Enter first name"
                         required
                       />
@@ -555,7 +555,7 @@ const SignUpPage = () => {
                         name="middleInitial"
                         value={formData.middleInitial}
                         onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Enter middle initial"
                         maxLength={1}
                       />
@@ -575,7 +575,7 @@ const SignUpPage = () => {
                         name="suffix"
                         value={formData.suffix}
                         onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300 text-gray-900 font-medium"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300 text-gray-900 font-medium"
                         placeholder="Enter suffix (e.g., Jr., Sr.)"
                       />
                     </div>
@@ -597,7 +597,7 @@ const SignUpPage = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                         placeholder="Enter email address"
                         required
                       />
@@ -624,7 +624,7 @@ const SignUpPage = () => {
                         <button
                           type="button"
                           onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-                          className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                          className="w-full flex items-center justify-between px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                         >
                           <span className={formData.department ? 'text-gray-900' : 'text-gray-500'}>
                             {formData.department 
@@ -673,7 +673,7 @@ const SignUpPage = () => {
                               }));
                             }
                           }}
-                          className="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                          className="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                           disabled={schoolTerms.filter(term => term.is_active).length === 0}
                         >
                           <option value="">{schoolTerms.filter(term => term.is_active).length === 0 ? 'No active school terms available' : 'Select school term'}</option>
@@ -737,7 +737,7 @@ const SignUpPage = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                         placeholder="Create a password"
                         required
                       />
@@ -771,7 +771,7 @@ const SignUpPage = () => {
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                        className="block w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                         placeholder="Confirm your password"
                         required
                       />
@@ -850,14 +850,14 @@ const SignUpPage = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="flex-1 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                  className="flex-1 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:outline-none focus:ring-0 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:outline-none focus:ring-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center">

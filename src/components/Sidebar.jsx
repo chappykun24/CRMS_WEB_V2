@@ -37,7 +37,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       case 'FACULTY':
         return [
           { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
-          { name: 'Attendance', icon: CalendarDaysIcon, href: '/dashboard/attendance' },
           { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/dashboard/assessments' },
           { name: 'Grades', icon: AcademicCapIcon, href: '/dashboard/grades' },
           { name: 'Syllabi', icon: DocumentTextIcon, href: '/dashboard/syllabi' }

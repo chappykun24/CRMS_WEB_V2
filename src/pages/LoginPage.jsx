@@ -124,7 +124,7 @@ const LoginPage = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                     placeholder="Email"
                     disabled={isLoading}
                   />
@@ -144,7 +144,7 @@ const LoginPage = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all duration-300"
+                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
                     placeholder="Password"
                     disabled={isLoading}
                   />
@@ -169,7 +169,7 @@ const LoginPage = () => {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-600 focus:ring-0 border-gray-300 rounded"
                     disabled={isLoading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
@@ -187,7 +187,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:outline-none focus:ring-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>
@@ -215,7 +215,7 @@ const LoginPage = () => {
                 <div className="mt-6">
                   <Link
                     to="/signup"
-                    className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                    className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:outline-none focus:ring-0 transition-colors"
                   >
                     Create new account
                   </Link>
@@ -228,7 +228,8 @@ const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => setShowDemoAccounts(!showDemoAccounts)}
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors underline"
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors underline focus:outline-none focus:ring-0"
+                style={{ outline: 'none' }}
               >
                 {showDemoAccounts ? 'Hide demo accounts' : 'Show demo accounts'}
               </button>
@@ -246,7 +247,8 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: 'admin@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
                     <span className="font-mono text-gray-700">admin@university.edu</span>
                     <span className="text-gray-400 ml-2">(Admin)</span>
@@ -255,7 +257,8 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: 'dean@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
                     <span className="font-mono text-gray-700">dean@university.edu</span>
                     <span className="text-gray-400 ml-2">(Dean)</span>
@@ -264,7 +267,8 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: 'faculty@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
                     <span className="font-mono text-gray-700">faculty@university.edu</span>
                     <span className="text-gray-400 ml-2">(Faculty)</span>
@@ -273,7 +277,8 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
                     <span className="font-mono text-gray-700">staff@university.edu</span>
                     <span className="text-gray-400 ml-2">(Staff)</span>
@@ -282,7 +287,8 @@ const LoginPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: 'programchair@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs"
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
                     <span className="font-mono text-gray-700">programchair@university.edu</span>
                     <span className="text-gray-400 ml-2">(Program Chair)</span>
