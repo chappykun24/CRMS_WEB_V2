@@ -1,0 +1,30 @@
+# Render Deployment Configuration for CRMS Backend
+services:
+  - type: web
+    name: crms-backend-api
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: NEON_HOST
+        sync: false
+      - key: NEON_DATABASE
+        sync: false
+      - key: NEON_USER
+        sync: false
+      - key: NEON_PASSWORD
+        sync: false
+      - key: NEON_PORT
+        value: 5432
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
