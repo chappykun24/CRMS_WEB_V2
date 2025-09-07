@@ -47,7 +47,40 @@ const MyClasses = () => {
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
-  const [attendanceSessionId, setAttendanceSessionId] = useState(null)
+
+  // Session details state
+  const [sessionDetails, setSessionDetails] = useState({
+    sessionNumber: '',
+    topic: '',
+    description: '',
+    startTime: '',
+    endTime: ''
+  })
+  const [sessionDetailsValid, setSessionDetailsValid] = useState(false)
+
+  // Validate session details
+  const validateSessionDetails = useCallback(() => {
+    const { sessionNumber, topic, startTime, endTime } = sessionDetails
+    const isValid = sessionNumber.trim() !== '' && 
+                   topic.trim() !== '' && 
+                   startTime !== '' && 
+                   endTime !== ''
+    setSessionDetailsValid(isValid)
+    return isValid
+  }, [sessionDetails])
+
+  // Update session details and validate
+  const updateSessionDetails = useCallback((field, value) => {
+    setSessionDetails(prev => {
+      const updated = { ...prev, [field]: value }
+      return updated
+    })
+  }, [])
+
+  // Validate session details when they change
+  useEffect(() => {
+    validateSessionDetails()
+  }, [sessionDetails, validateSessionDetails])
 
   // Helpers: extract surname (last word) for alphabetical sorting
   const extractSurname = (fullName) => {
@@ -82,68 +115,38 @@ const MyClasses = () => {
     return attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
   }, [attendanceRecords, attendanceDate])
 
-  // Ensure session exists and hydrate records
-  const ensureAttendanceSession = useCallback(async () => {
-    if (!selectedClass || !attendanceDate) return null
-    try {
-      const qs = new URLSearchParams({ section_course_id: selectedClass.section_course_id, date: attendanceDate })
-      const res = await fetch(`/api/attendance/sessions?${qs.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data?.session?.session_id) {
-          setAttendanceSessionId(data.session.session_id)
-          if (Array.isArray(data.records)) {
-            const merged = {}
-            for (const r of data.records) {
-              if (!merged[r.student_id]) merged[r.student_id] = {}
-              merged[r.student_id][attendanceDate] = { status: r.status, remarks: r.remarks || '' }
-            }
-            if (Object.keys(merged).length > 0) {
-              setAttendanceRecords(prev => ({ ...prev, ...merged }))
-            }
-          }
-          return data.session.session_id
-        }
-      }
-      // Create session if not existing
-      const create = await fetch('/api/attendance/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section_course_id: selectedClass.section_course_id, date: attendanceDate })
-      })
-      const created = await create.json()
-      setAttendanceSessionId(created.session_id)
-      return created.session_id
-    } catch (e) {
-      console.error('ensureAttendanceSession error', e)
-      return null
-    }
-  }, [selectedClass, attendanceDate])
-
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
     if (!selectedClass) return
 
+    // Validate session details before submitting
+    if (!validateSessionDetails()) {
+      alert('Please fill in all required session details (Session Number, Topic, Start Time, End Time)')
+      return
+    }
+
     setSubmittingAttendance(true)
     try {
-      const sessionId = attendanceSessionId || (await ensureAttendanceSession())
-      if (!sessionId) throw new Error('Unable to create/load attendance session')
-
-      const payload = {
-        session_id: sessionId,
+      // Prepare attendance data for submission
+      const attendanceData = {
+        section_course_id: selectedClass.section_course_id,
+        date: attendanceDate,
+        session_details: sessionDetails,
         records: Object.keys(attendanceRecords).map(studentId => ({
-          student_id: parseInt(studentId, 10),
+          student_id: studentId,
           status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
           remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
         }))
       }
 
-      const response = await fetch('/api/attendance/records/bulk', {
+      console.log('📤 [ATTENDANCE] Submitting attendance data:', attendanceData)
+
+      const response = await fetch('/api/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(attendanceData)
       })
 
       if (!response.ok) {
@@ -163,16 +166,7 @@ const MyClasses = () => {
     } finally {
       setSubmittingAttendance(false)
     }
-  }, [selectedClass, attendanceDate, attendanceRecords, attendanceSessionId, ensureAttendanceSession])
-
-  // Load session when class/date changes
-  useEffect(() => {
-    (async () => {
-      if (isAttendanceMode && selectedClass) {
-        await ensureAttendanceSession()
-      }
-    })()
-  }, [isAttendanceMode, selectedClass, attendanceDate, ensureAttendanceSession])
+  }, [selectedClass, attendanceDate, attendanceRecords])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
@@ -384,6 +378,15 @@ const MyClasses = () => {
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
     
+    // Reset session details when selecting different class
+    setSessionDetails({
+      sessionNumber: '',
+      topic: '',
+      description: '',
+      startTime: '',
+      endTime: ''
+    })
+    
     // Save selected class to localStorage for Header breadcrumb
     localStorage.setItem('selectedClass', JSON.stringify(classItem))
     
@@ -582,7 +585,7 @@ const MyClasses = () => {
                         </button>
                         <button
                           onClick={submitAttendance}
-                          disabled={submittingAttendance}
+                          disabled={submittingAttendance || !sessionDetailsValid}
                           className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
                           style={{ border: 'none', outline: 'none' }}
                         >
@@ -616,6 +619,45 @@ const MyClasses = () => {
                 )}
               </div>
             </div>
+
+            {/* Session Details Section - Only show in attendance mode */}
+            {isAttendanceMode && (
+              <div className="mb-3 p-3 bg-gray-50 rounded border">
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={sessionDetails.sessionNumber}
+                    onChange={(e) => updateSessionDetails('sessionNumber', e.target.value)}
+                    placeholder="Session #"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input
+                    type="text"
+                    value={sessionDetails.topic}
+                    onChange={(e) => updateSessionDetails('topic', e.target.value)}
+                    placeholder="Topic"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="time"
+                    value={sessionDetails.startTime}
+                    onChange={(e) => updateSessionDetails('startTime', e.target.value)}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <input
+                    type="time"
+                    value={sessionDetails.endTime}
+                    onChange={(e) => updateSessionDetails('endTime', e.target.value)}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                {!sessionDetailsValid && (
+                  <div className="mt-1 text-xs text-red-600">Fill required fields</div>
+                )}
+              </div>
+            )}
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
