@@ -8,11 +8,10 @@ import bcrypt from 'bcrypt';
 import multer from 'multer';
 
 const { Pool } = pg;
-// Load environment variables from .env.local first, then .env
-dotenv.config({ path: '.env.local' });
-dotenv.config(); // Fallback to .env if .env.local doesn't exist
+// Load environment variables
+dotenv.config();
 
-// Copy VITE_ environment variables to regular ones for backend use
+// Copy VITE_ environment variables to regular ones for backend use (for compatibility)
 if (process.env.VITE_NEON_HOST) {
   process.env.NEON_HOST = process.env.VITE_NEON_HOST;
   process.env.NEON_DATABASE = process.env.VITE_NEON_DATABASE;
@@ -32,8 +31,9 @@ const __dirname = path.dirname(__filename);
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
-        'https://your-domain.vercel.app', // Replace with your actual Vercel domain
-        'https://your-custom-domain.com'  // Replace with your custom domain if any
+        process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app', // Frontend URL
+        'http://localhost:3000', // Local development
+        'http://127.0.0.1:3000'  // Local development
       ]
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
@@ -2126,22 +2126,14 @@ app.post('/api/students/enroll', async (req, res) => {
   }
 });
 
-// Serve built frontend (Vite) and enable SPA fallback
-const distDir = path.join(__dirname, 'dist');
-app.use(express.static(distDir));
-
-// SPA fallback for client-side routes (exclude /api/*)
-app.get(/^\/(?!api\/).*/, (req, res) => {
-  res.sendFile(path.join(distDir, 'index.html'));
-});
-
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 [SERVER] Server running on port ${PORT}`);
+  console.log(`🚀 [SERVER] Backend API running on port ${PORT}`);
   console.log(`🔍 [SERVER] Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 [SERVER] Auth API: http://localhost:${PORT}/api/auth`);
   console.log(`📊 [SERVER] Departments API: http://localhost:${PORT}/api/departments`);
   console.log(`📅 [SERVER] School Terms API: http://localhost:${PORT}/api/school-terms`);
   console.log(`📚 [SERVER] Catalog API: http://localhost:${PORT}/api/programs, /api/program-specializations, /api/courses`);
   console.log(`📸 [SERVER] File uploads: Enabled (5MB max, base64 storage)`);
+  console.log(`🌍 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
 });

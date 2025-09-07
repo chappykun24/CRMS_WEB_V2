@@ -1,15 +1,38 @@
-# Dependencies
+# ==========================================
+# CRMS V2 - Git Ignore Configuration
+# ==========================================
+
+# ==========================================
+# DEPENDENCIES
+# ==========================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-debug.log*
 
-# Production build
+# ==========================================
+# BUILD OUTPUTS
+# ==========================================
+# Frontend build
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Backend build (if any)
+backend/dist/
+backend/build/
+
+# General build outputs
 dist/
 build/
+out/
 
-# Environment variables and sensitive files
+# ==========================================
+# ENVIRONMENT & CONFIGURATION
+# ==========================================
+# Environment variables
 .env
 .env.local
 .env.development.local
@@ -19,129 +42,195 @@ build/
 !env-example.txt
 !env-template.txt
 
-# Development and testing files
-dev-start.bat
-dev-start.sh
-dev-setup.md
-env-template.txt
-test-*.js
-test-*.html
-debug.html
-*.test.js
-*.spec.js
+# Vercel
+.vercel/
 
-# Database and setup files (keep structure, exclude sensitive)
-setup-neon.js
-setup-passwords.js
-check-db-structure.js
-test-database-structure.js
-test-neon-connection.js
-test-user-login.js
-test-login-simple.js
-
-# Temporary and cache files
-*.tmp
-*.temp
-*.cache
+# ==========================================
+# CACHE & TEMPORARY FILES
+# ==========================================
+# General cache
 .cache/
 .parcel-cache/
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
+.vite/
 
-# IDE and editor files
+# Temporary files
+*.tmp
+*.temp
+*.cache
+tmp/
+temp/
+
+# ==========================================
+# DEVELOPMENT & TESTING
+# ==========================================
+# Test files
+*.test.js
+*.test.ts
+*.test.jsx
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.jsx
+*.spec.tsx
+test-*.js
+test-*.html
+debug.html
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output
+
+# ==========================================
+# IDE & EDITOR FILES
+# ==========================================
+# VS Code
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ/WebStorm
 .idea/
+
+# Vim
 *.swp
 *.swo
 *~
+
+# Visual Studio
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# OS generated files
+# ==========================================
+# OPERATING SYSTEM FILES
+# ==========================================
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
+.AppleDouble
+.LSOverride
 
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ==========================================
+# LOGS & RUNTIME
+# ==========================================
 # Logs
-logs
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
+# ==========================================
+# PACKAGE MANAGERS
+# ==========================================
+# npm
 .npm
+.npmrc
 
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
+# Yarn
 .yarn-integrity
+.yarn/
+.pnp.*
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
+# pnpm
+.pnpm-debug.log*
 
-# Next.js build output
-.next
+# ==========================================
+# FRAMEWORK SPECIFIC
+# ==========================================
+# Next.js
+.next/
+out/
 
-# Nuxt.js build / generate output
-.nuxt
+# Nuxt.js
+.nuxt/
+dist/
 
-# Gatsby files
+# Gatsby
 .cache/
-public
+public/
 
-# Storybook build outputs
-.out
-.storybook-out
+# Storybook
+.out/
+.storybook-out/
 
-# Temporary folders
-tmp/
-temp/
+# ==========================================
+# PROJECT SPECIFIC
+# ==========================================
+# References folder (exclude from version control)
+references/
 
-# Deployment scripts (keep deployment guides, exclude scripts)
-deploy.bat
-deploy.ps1
-deploy.sh
+# Uploads folder (user-generated content)
+uploads/
 
-# Keep important documentation
+# Development scripts (keep documentation)
+dev-start.bat
+dev-start.sh
+
+# Database files (keep schema, exclude sensitive data)
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# KEEP IMPORTANT FILES
+# ==========================================
+# Documentation
 !README.md
 !DEPLOYMENT_*.md
 !SETUP_*.md
 !VERCEL_*.md
-!CONSOLE_LOGGING_GUIDE.md 
+!RENDER_*.md
+!DATABASE_*.md
+!CONSOLE_LOGGING_GUIDE.md
 
-# References folder (exclude from version control)
-references/
+# Configuration templates
+!env-example.txt
+!env-template.txt
 
-.vercel
-.env*.local
+# Database schema
+!db/*.sql
+
+# ==========================================
+# SECURITY & SENSITIVE DATA
+# ==========================================
+# Never commit these
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# ==========================================
+# END OF GITIGNORE
+# ==========================================
