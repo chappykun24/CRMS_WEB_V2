@@ -2,7 +2,7 @@
   "name": "crms-backend",
   "version": "1.0.0",
   "description": "CRMS Backend API Server for Render",
-  "main": "server-render.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node server-render.js",
