@@ -102,190 +102,31 @@ export const endpoints = {
   catalogCourses: '/courses',
 };
 
-// Database service integration
-export const dbService = {
-  // Test database connection
-  async testConnection() {
-    try {
-      const { testConnection } = await import('../config/database.js');
-      return await testConnection();
-    } catch (error) {
-      console.error('Database connection test failed:', error);
-      return false;
-    }
-  },
-
-  // Get database health status
-  async getHealthStatus() {
-    try {
-      const { healthCheck } = await import('../config/database.js');
-      return await healthCheck();
-    } catch (error) {
-      console.error('Health check failed:', error);
-      return { status: 'unhealthy', error: error.message };
-    }
-  }
-}
-
-// Enhanced API methods with database fallback
+// Simple API helper methods (API only)
 export const enhancedApi = {
-  // User operations
-  async getUsers() {
-    try {
-      // Try API first
-      const response = await api.get(endpoints.users);
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { userService } = await import('../services/databaseService.js');
-        return await userService.getAllUsers();
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Student operations
-  async getStudents() {
-    try {
-      const response = await api.get(endpoints.students);
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { studentService } = await import('../services/databaseService.js');
-        return await studentService.getAllStudents();
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Class operations
-  async getClasses() {
-    try {
-      const response = await api.get(endpoints.classes);
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { classService } = await import('../services/databaseService.js');
-        return await classService.getAllClasses();
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Attendance operations
-  async getClassAttendance(classId, date) {
-    try {
-      const response = await api.get(`${endpoints.classAttendance(classId)}?date=${date}`);
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { attendanceService } = await import('../services/databaseService.js');
-        return await attendanceService.getClassAttendance(classId, date);
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Assessment operations
-  async getClassAssessments(classId) {
-    try {
-      const response = await api.get(endpoints.classAssessments(classId));
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { assessmentService } = await import('../services/databaseService.js');
-        return await assessmentService.getClassAssessments(classId);
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Grade operations
-  async getStudentGrades(studentId, classId) {
-    try {
-      const response = await api.get(`${endpoints.studentGrades(studentId)}?classId=${classId}`);
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { gradeService } = await import('../services/databaseService.js');
-        return await gradeService.getStudentGrades(studentId, classId);
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Analytics operations
-  async getClassAnalytics(classId) {
-    try {
-      const response = await api.get(endpoints.classAnalytics(classId));
-      return response.data;
-    } catch (error) {
-      console.log('API failed, trying database...');
-      try {
-        const { analyticsService } = await import('../services/databaseService.js');
-        return await analyticsService.getClassAnalytics(classId);
-      } catch (dbError) {
-        throw new Error(`Both API and database failed: ${error.message}, ${dbError.message}`);
-      }
-    }
-  },
-
-  // Catalog operations backed by database
   async getPrograms() {
-    try {
-      const response = await api.get(endpoints.programs);
-      return response.data;
-    } catch (error) {
-      console.error('API failed:', error.message);
-      throw new Error(`Failed to fetch programs: ${error.message}`);
-    }
+    const response = await api.get(endpoints.programs);
+    return response.data;
   },
 
   async getSpecializations(programId) {
-    try {
-      const url = programId ? `${endpoints.specializations}?programId=${programId}` : endpoints.specializations;
-      const response = await api.get(url);
-      return response.data;
-    } catch (error) {
-      console.error('API failed:', error.message);
-      throw new Error(`Failed to fetch specializations: ${error.message}`);
-    }
+    const url = programId ? `${endpoints.specializations}?programId=${programId}` : endpoints.specializations;
+    const response = await api.get(url);
+    return response.data;
   },
 
   async getTerms() {
-    try {
-      const response = await api.get(endpoints.terms);
-      return response.data;
-    } catch (error) {
-      console.error('API failed:', error.message);
-      throw new Error(`Failed to fetch terms: ${error.message}`);
-    }
+    const response = await api.get(endpoints.terms);
+    return response.data;
   },
 
   async getCourses(filters = {}) {
-    try {
-      const params = new URLSearchParams();
-      if (filters.programId) params.append('programId', filters.programId);
-      if (filters.specializationId) params.append('specializationId', filters.specializationId);
-      if (filters.termId) params.append('termId', filters.termId);
-      const response = await api.get(`${endpoints.catalogCourses}?${params.toString()}`);
-      return response.data;
-    } catch (error) {
-      console.error('API failed:', error.message);
-      throw new Error(`Failed to fetch courses: ${error.message}`);
-    }
+    const params = new URLSearchParams();
+    if (filters.programId) params.append('programId', filters.programId);
+    if (filters.specializationId) params.append('specializationId', filters.specializationId);
+    if (filters.termId) params.append('termId', filters.termId);
+    const response = await api.get(`${endpoints.catalogCourses}?${params.toString()}`);
+    return response.data;
   },
 
   // Create operations
