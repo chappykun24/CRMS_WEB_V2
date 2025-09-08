@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext.jsx'
 import './index.css'
 
 console.log('main.jsx is executing')
@@ -18,7 +20,11 @@ try {
   
   root.render(
     <React.StrictMode>
-      <App />
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
     </React.StrictMode>,
   )
   

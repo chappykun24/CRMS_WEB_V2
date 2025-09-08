@@ -61,7 +61,7 @@ export const UserProvider = ({ children }) => {
       if (userData) {
         try {
           // Verify user data from localStorage
-          const user = JSON.parse(userData)
+          const user = userData ? JSON.parse(userData) : null
           dispatch({ 
             type: 'LOGIN_SUCCESS', 
             payload: { user } 
@@ -137,7 +137,12 @@ export const UserProvider = ({ children }) => {
     try {
       const userData = localStorage.getItem('userData')
       if (userData) {
-        const user = JSON.parse(userData)
+        let user = null
+        try {
+          user = JSON.parse(userData)
+        } catch (e) {
+          user = null
+        }
         dispatch({ 
           type: 'LOGIN_SUCCESS', 
           payload: { user } 
