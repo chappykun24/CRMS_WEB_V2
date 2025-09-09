@@ -17,12 +17,26 @@ const __dirname = path.dirname(__filename);
 
 // Enhanced CORS configuration for Render deployment
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app',
-        process.env.CORS_ORIGIN || 'https://your-frontend-domain.vercel.app'
-      ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: (origin, callback) => {
+    const devWhitelist = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174'
+    ];
+    const prodWhitelist = [
+      process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app',
+      process.env.CORS_ORIGIN || 'https://your-frontend-domain.vercel.app'
+    ];
+    const whitelist = (process.env.NODE_ENV === 'production') ? prodWhitelist : devWhitelist;
+    if (!origin || whitelist.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -49,6 +63,14 @@ app.get('/api/health', (req, res) => {
 
 // Basic auth routes (simplified)
 app.post('/api/auth/login', (req, res) => {
+  console.log('🔐 [/api/auth/login] request received', {
+    headers: {
+      origin: req.headers.origin,
+      'content-type': req.headers['content-type'],
+      authorization: req.headers.authorization
+    },
+    body: req.body
+  });
   res.json({
     success: true,
     message: 'Login endpoint ready',
