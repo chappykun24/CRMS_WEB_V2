@@ -36,21 +36,11 @@ const Dashboard = () => {
   const role = String(user.role || '').toLowerCase()
   console.log('[Dashboard] resolved role', { role, raw: user.role })
 
-  if (role === 'admin') {
-    return <AdminDashboard user={user} />
-  }
-  if (role === 'faculty') {
-    return <FacultyDashboard user={user} />
-  }
-  if (role === 'dean') {
-    return <DeanDashboard user={user} />
-  }
-  if (role === 'staff') {
-    return <StaffDashboard user={user} />
-  }
-  if (role === 'program chair' || role === 'programchair' || role === 'program_chair') {
-    return <ProgramChairDashboard user={user} />
-  }
+  if (role === 'admin') return <AdminDashboard user={user} />
+  if (role === 'faculty') return <FacultyDashboard user={user} />
+  if (role === 'dean') return <DeanDashboard user={user} />
+  if (role === 'staff') return <StaffDashboard user={user} />
+  if (role === 'program chair' || role === 'programchair' || role === 'program_chair') return <ProgramChairDashboard user={user} />
 
   return (
         <div className="min-h-screen bg-gray-50 p-6">

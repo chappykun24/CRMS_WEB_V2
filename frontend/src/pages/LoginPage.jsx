@@ -52,9 +52,18 @@ const LoginPage = () => {
       console.log('[LoginPage] login result', result)
       
       if (result.success) {
-        // Redirect to the main dashboard - role-based routing is handled there
-        console.log('[LoginPage] navigating to /dashboard')
-        navigate('/dashboard')
+        // Redirect to role-specific default route
+        const role = String(result.user?.role || '').toLowerCase().replace(/\s|_/g, '')
+        const roleDefaultPath = (() => {
+          if (role === 'admin') return '/dashboard'
+          if (role === 'faculty') return '/dashboard/classes'
+          if (role === 'dean') return '/dashboard/analytics'
+          if (role === 'staff') return '/dashboard/students'
+          if (role === 'programchair') return '/dashboard/courses'
+          return '/dashboard'
+        })()
+        console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
+        navigate(roleDefaultPath)
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }
