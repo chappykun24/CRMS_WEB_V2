@@ -25,7 +25,16 @@ const allowedOrigins = (
         process.env.FRONTEND_URL,
         process.env.CORS_ORIGIN,
       ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000']
+    : [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        // Vite dev server default
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        // Vite preview default
+        'http://localhost:4173',
+        'http://127.0.0.1:4173',
+      ]
 ).filter(Boolean);
 
 const corsOptions = {

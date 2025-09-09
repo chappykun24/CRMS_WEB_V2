@@ -57,11 +57,11 @@ export const UserProvider = ({ children }) => {
   // Check if user is already logged in on app start
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const userData = localStorage.getItem('userData')
-      if (userData) {
+      const raw = localStorage.getItem('userData')
+      if (raw && raw !== 'undefined' && raw !== 'null') {
         try {
           // Verify user data from localStorage
-          const user = userData ? JSON.parse(userData) : null
+          const user = JSON.parse(raw)
           dispatch({ 
             type: 'LOGIN_SUCCESS', 
             payload: { user } 
@@ -90,6 +90,9 @@ export const UserProvider = ({ children }) => {
       if (result.success) {
         // Store user data in localStorage
         localStorage.setItem('userData', JSON.stringify(result.user))
+        if (result.token) {
+          localStorage.setItem('authToken', result.token)
+        }
         
         // Update user state
         dispatch({ 

@@ -32,7 +32,11 @@ const pool = new Pool(dbConfig);
 // Handle pool errors
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(-1);
+  } else {
+    console.warn('Continuing without exiting due to pool error in development.');
+  }
 });
 
 // Database service class

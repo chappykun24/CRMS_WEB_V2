@@ -6,7 +6,16 @@ class AuthService {
   async login(email, password) {
     try {
       const { data } = await api.post(endpoints.login, { email, password });
-      return data;
+      // Normalize backend response { success, data: { user, token } } to { success, user, token }
+      if (data && data.success && data.data) {
+        const normalized = {
+          success: true,
+          user: data.data.user,
+          token: data.data.token
+        };
+        return normalized;
+      }
+      return { success: false, error: data?.message || 'Unexpected response' };
     } catch (error) {
       console.error('Login error:', error);
       return {
