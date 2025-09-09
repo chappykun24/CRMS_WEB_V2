@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext.jsx';
+import { useUser } from '../contexts/UserContext.jsx';
 
 const ProtectedRoute = ({ 
   children, 
@@ -8,8 +8,21 @@ const ProtectedRoute = ({
   requiredDepartment = null,
   fallbackPath = '/login' 
 }) => {
-  const { isAuthenticated, isLoading, user, hasAnyRole, hasDepartment } = useAuth();
+  const { isAuthenticated, isLoading, user } = useUser();
   console.log('[ProtectedRoute] check', { isAuthenticated, isLoading, user, requiredRoles, requiredDepartment });
+
+  const userHasAnyRole = (roles = []) => {
+    if (!roles || roles.length === 0) return true;
+    const role = String(user?.role || '').toLowerCase().replace(/\s|_/g, '');
+    return roles.some(r => String(r).toLowerCase().replace(/\s|_/g, '') === role);
+  };
+
+  const userHasDepartment = (department) => {
+    if (!department) return true;
+    const userDept = user?.department || user?.department_name || user?.departmentId || user?.department_id;
+    if (!userDept) return false;
+    return String(userDept).toLowerCase() === String(department).toLowerCase();
+  };
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -28,7 +41,7 @@ const ProtectedRoute = ({
   }
 
   // Check role requirements
-  if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
+  if (requiredRoles.length > 0 && !userHasAnyRole(requiredRoles)) {
     console.warn('[ProtectedRoute] missing required roles', { requiredRoles, userRoles: user?.roles || user?.role });
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -46,7 +59,7 @@ const ProtectedRoute = ({
   }
 
   // Check department requirements
-  if (requiredDepartment && !hasDepartment(requiredDepartment)) {
+  if (requiredDepartment && !userHasDepartment(requiredDepartment)) {
     console.warn('[ProtectedRoute] missing required department', { requiredDepartment });
     return (
       <div className="min-h-screen flex items-center justify-center">
