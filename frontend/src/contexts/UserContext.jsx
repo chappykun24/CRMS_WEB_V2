@@ -89,7 +89,7 @@ export const UserProvider = ({ children }) => {
       const result = await authService.login(email, password)
       console.log('[UserContext] authService.login result', result)
       
-      if (result.success) {
+      if (result.success && result.user) {
         // Store user data in localStorage
         localStorage.setItem('userData', JSON.stringify(result.user))
         if (result.token) {
@@ -108,11 +108,11 @@ export const UserProvider = ({ children }) => {
         // Authentication failed
         dispatch({ 
           type: 'LOGIN_FAILURE', 
-          payload: result.error 
+          payload: result.error || 'Invalid response from server' 
         })
         console.warn('[UserContext] LOGIN_FAILURE', { error: result.error })
         
-        return { success: false, error: result.error }
+        return { success: false, error: result.error || 'Invalid response from server' }
       }
     } catch (error) {
       console.error('[UserContext] login() exception', error)

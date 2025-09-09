@@ -8,17 +8,16 @@ class AuthService {
       console.log('[AuthService] login() start', { email });
       const { data } = await api.post(endpoints.login, { email, password });
       console.log('[AuthService] login() response', data);
-      // Normalize backend response { success, data: { user, token } } to { success, user, token }
-      if (data && data.success && data.data) {
-        const normalized = {
+      // Only succeed if a user object is present
+      if (data && data.success && data.data && data.data.user) {
+        return {
           success: true,
           user: data.data.user,
           token: data.data.token
         };
-        return normalized;
       }
       console.warn('[AuthService] login() unexpected payload', data);
-      return { success: false, error: data?.message || 'Unexpected response' };
+      return { success: false, error: data?.message || 'Unexpected response from server' };
     } catch (error) {
       console.error('[AuthService] login() error', {
         message: error.message,
