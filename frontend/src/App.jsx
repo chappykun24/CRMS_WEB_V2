@@ -6,6 +6,11 @@ import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import Dashboard from './pages/Dashboard'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import FacultyDashboard from './pages/faculty/FacultyDashboard'
+import DeanDashboard from './pages/dean/DeanDashboard'
+import StaffDashboard from './pages/staff/StaffDashboard'
+import ProgramChairDashboard from './pages/program-chair/ProgramChairDashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
@@ -63,13 +68,62 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              {/* Role-specific dashboard entry paths (keep for clarity). Your existing local routing already worked; no behavioral change required. */}
               <Route 
-                path="/dashboard/*" 
+                path="/dashboard" 
                 element={
                   <ProtectedRoute>
                     <SidebarProvider>
                       <DashboardLayout>
                         <Dashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/classes" 
+                element={
+                  <ProtectedRoute requiredRoles={["faculty"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <FacultyDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/analytics" 
+                element={
+                  <ProtectedRoute requiredRoles={["dean"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <DeanDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/students" 
+                element={
+                  <ProtectedRoute requiredRoles={["staff"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <StaffDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/courses" 
+                element={
+                  <ProtectedRoute requiredRoles={["program chair", "program_chair", "programchair"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <ProgramChairDashboard />
                       </DashboardLayout>
                     </SidebarProvider>
                   </ProtectedRoute>
