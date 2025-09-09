@@ -58,7 +58,7 @@ export const UserProvider = ({ children }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       const raw = localStorage.getItem('userData')
-      if (raw && raw !== 'undefined' && raw !== 'null') {
+      if (raw && raw !== 'undefined' && raw !== 'null' && raw !== '') {
         try {
           // Verify user data from localStorage
           const user = JSON.parse(raw)

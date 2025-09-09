@@ -6,6 +6,16 @@ const API_BASE_URL = isDevelopment
   ? 'http://localhost:3001/api'
   : (import.meta.env.VITE_API_BASE_URL || 'https://your-backend-url.onrender.com/api');
 
+const safeParseJson = (value, fallback) => {
+  try {
+    if (value === undefined || value === null) return fallback;
+    if (value === 'undefined' || value === 'null' || value === '') return fallback;
+    return JSON.parse(value);
+  } catch (_) {
+    return fallback;
+  }
+};
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -24,7 +34,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    const user = JSON.parse(localStorage.getItem('userData') || '{}');
+    const user = safeParseJson(localStorage.getItem('userData'), {});
     if (user.id) {
       config.headers['user-id'] = user.id;
     }
