@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import db from './config/database.js';
 import { fileURLToPath } from 'url';
 
 // Load environment variables
@@ -71,6 +72,10 @@ app.post('/api/auth/login', (req, res) => {
     },
     body: req.body
   });
+  // Quick DB connectivity probe (non-blocking)
+  db.testConnection()
+    .then((r) => console.log('🗄️  [DB] connectivity', r))
+    .catch((e) => console.warn('🗄️  [DB] connectivity error', e.message));
   // Mock successful login payload expected by frontend
   const { email } = req.body || {};
   res.json({
