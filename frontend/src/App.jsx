@@ -68,7 +68,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              {/* Role-specific dashboard entry paths (keep for clarity). Your existing local routing already worked; no behavioral change required. */}
+              {/* Role-specific dashboard entry paths */}
               <Route 
                 path="/dashboard" 
                 element={

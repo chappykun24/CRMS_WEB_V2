@@ -16,8 +16,8 @@ class AuthService {
           token: data.data.token
         };
       }
-      // Temporary fallback (development only): allow success payloads without user by synthesizing a minimal user
-      if (import.meta.env.DEV && data && data.success && data.data && !data.data.user) {
+      // Temporary fallback: allow success payloads without user by synthesizing a minimal user
+      if (data && data.success && data.data && !data.data.user) {
         console.warn('[AuthService] login() synthesizing user from stub payload');
         const synthesizedUser = {
           id: 0,
