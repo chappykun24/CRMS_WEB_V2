@@ -9,7 +9,7 @@ const API_BASE_URL = isDevelopment
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: isDevelopment ? 10000 : 30000, // Allow longer time for cold-started backends
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,6 +41,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Simple one-time retry on timeout (helps Render cold starts)
+    const isTimeout = error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '');
+    const config = error.config || {};
+    if (isTimeout && !config.__retried) {
+      config.__retried = true;
+      return api.request(config);
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken');
       window.location.href = '/login';
