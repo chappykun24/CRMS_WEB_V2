@@ -81,11 +81,13 @@ export const UserProvider = ({ children }) => {
   }, [])
 
   const login = async (email, password) => {
+    console.log('[UserContext] LOGIN_START', { email })
     dispatch({ type: 'LOGIN_START' })
     
     try {
       // Attempt authentication with our auth service
       const result = await authService.login(email, password)
+      console.log('[UserContext] authService.login result', result)
       
       if (result.success) {
         // Store user data in localStorage
@@ -99,6 +101,7 @@ export const UserProvider = ({ children }) => {
           type: 'LOGIN_SUCCESS', 
           payload: { user: result.user } 
         })
+        console.log('[UserContext] LOGIN_SUCCESS', { user: result.user })
         
         return { success: true, user: result.user }
       } else {
@@ -107,11 +110,12 @@ export const UserProvider = ({ children }) => {
           type: 'LOGIN_FAILURE', 
           payload: result.error 
         })
+        console.warn('[UserContext] LOGIN_FAILURE', { error: result.error })
         
         return { success: false, error: result.error }
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('[UserContext] login() exception', error)
       
       const errorMessage = 'An unexpected error occurred. Please try again.'
       
@@ -119,6 +123,7 @@ export const UserProvider = ({ children }) => {
         type: 'LOGIN_FAILURE', 
         payload: errorMessage 
       })
+      console.warn('[UserContext] LOGIN_FAILURE (exception)', { error: errorMessage })
       
       return { success: false, error: errorMessage }
     }

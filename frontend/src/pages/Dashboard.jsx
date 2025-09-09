@@ -8,6 +8,7 @@ import ProgramChairDashboard from './program-chair/ProgramChairDashboard'
 
 const Dashboard = () => {
   const { user, isLoading } = useUser()
+  console.log('[Dashboard] render', { isLoading, user })
 
   if (isLoading) {
     return (
@@ -33,6 +34,7 @@ const Dashboard = () => {
 
   // Route to role-specific dashboard (normalize role variants)
   const role = String(user.role || '').toLowerCase()
+  console.log('[Dashboard] resolved role', { role, raw: user.role })
 
   if (role === 'admin') {
     return <AdminDashboard user={user} />

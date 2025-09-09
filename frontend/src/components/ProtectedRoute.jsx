@@ -9,6 +9,7 @@ const ProtectedRoute = ({
   fallbackPath = '/login' 
 }) => {
   const { isAuthenticated, isLoading, user, hasAnyRole, hasDepartment } = useAuth();
+  console.log('[ProtectedRoute] check', { isAuthenticated, isLoading, user, requiredRoles, requiredDepartment });
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -22,11 +23,13 @@ const ProtectedRoute = ({
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    console.warn('[ProtectedRoute] not authenticated, redirecting', { to: fallbackPath, from: location.pathname });
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
   // Check role requirements
   if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
+    console.warn('[ProtectedRoute] missing required roles', { requiredRoles, userRoles: user?.roles || user?.role });
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -44,6 +47,7 @@ const ProtectedRoute = ({
 
   // Check department requirements
   if (requiredDepartment && !hasDepartment(requiredDepartment)) {
+    console.warn('[ProtectedRoute] missing required department', { requiredDepartment });
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

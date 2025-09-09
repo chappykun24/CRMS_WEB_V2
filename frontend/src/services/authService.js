@@ -5,7 +5,9 @@ class AuthService {
   // User login via backend API
   async login(email, password) {
     try {
+      console.log('[AuthService] login() start', { email });
       const { data } = await api.post(endpoints.login, { email, password });
+      console.log('[AuthService] login() response', data);
       // Normalize backend response { success, data: { user, token } } to { success, user, token }
       if (data && data.success && data.data) {
         const normalized = {
@@ -15,9 +17,14 @@ class AuthService {
         };
         return normalized;
       }
+      console.warn('[AuthService] login() unexpected payload', data);
       return { success: false, error: data?.message || 'Unexpected response' };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthService] login() error', {
+        message: error.message,
+        status: error.response?.status,
+        body: error.response?.data
+      });
       return {
         success: false,
         error: error.response?.data?.error || error.message

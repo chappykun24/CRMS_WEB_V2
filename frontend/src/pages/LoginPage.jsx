@@ -47,16 +47,19 @@ const LoginPage = () => {
       }
 
       // Use UserContext login function for proper authentication flow
+      console.log('[LoginPage] submitting', { email: formData.email })
       const result = await login(formData.email, formData.password)
+      console.log('[LoginPage] login result', result)
       
       if (result.success) {
         // Redirect to the main dashboard - role-based routing is handled there
+        console.log('[LoginPage] navigating to /dashboard')
         navigate('/dashboard')
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }
     } catch (err) {
-      console.error('Login error:', err)
+      console.error('[LoginPage] login exception', err)
       setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)

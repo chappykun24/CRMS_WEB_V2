@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 // Load environment variables
@@ -95,15 +96,16 @@ app.get('/', (req, res) => {
 });
 
 // Serve frontend build in production and enable SPA fallback
-if (process.env.NODE_ENV === 'production') {
+// Serve SPA if build exists (works in production and development)
+{
   const distPath = path.join(__dirname, '../frontend/dist');
-  app.use(express.static(distPath));
-
-  // Non-API routes should serve index.html for client-side routing
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/')) return next();
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) return next();
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
 }
 
 // 404 handler - fixed syntax
