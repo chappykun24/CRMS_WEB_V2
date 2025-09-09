@@ -9,7 +9,7 @@ const API_BASE_URL = isDevelopment
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: isDevelopment ? 10000 : 30000, // Allow longer time for cold-started backends
+  timeout: isDevelopment ? 15000 : 60000, // Allow longer time for cold-started backends
   headers: {
     'Content-Type': 'application/json',
   },
