@@ -71,10 +71,21 @@ app.post('/api/auth/login', (req, res) => {
     },
     body: req.body
   });
+  // Mock successful login payload expected by frontend
+  const { email } = req.body || {};
   res.json({
     success: true,
-    message: 'Login endpoint ready',
-    data: { message: 'Authentication system ready for implementation' }
+    message: 'Login successful (stubbed)',
+    data: {
+      user: {
+        id: 1,
+        email: email || 'test@example.com',
+        name: 'Test User',
+        role: 'admin',
+        is_active: true
+      },
+      token: 'dev-stub-token'
+    }
   });
 });
 
