@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useUser } from '../contexts/UnifiedAuthContext'
+import { useAuth } from '../contexts/UnifiedAuthContext'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   BellIcon,
@@ -11,7 +11,7 @@ import {
 import logo from '../images/logo.png'
 
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
-  const { user, logout } = useUser()
+  const { user, logout } = useAuth()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [selectedClass, setSelectedClass] = useState(null)
   

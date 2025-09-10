@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useUser } from '../contexts/UnifiedAuthContext'
+import { useAuth } from '../contexts/UnifiedAuthContext'
 import {
   HomeIcon,
   UserGroupIcon,
@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/solid'
 
 const Sidebar = ({ isExpanded, onToggle }) => {
-  const { user } = useUser()
+  const { user } = useAuth()
   const location = useLocation()
   const [isHovered, setIsHovered] = useState(false)
   const hoverTimeoutRef = useRef(null)

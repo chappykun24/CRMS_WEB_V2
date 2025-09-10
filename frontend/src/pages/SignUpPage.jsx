@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useUser } from '../contexts/UnifiedAuthContext'
+import { useAuth } from '../contexts/UnifiedAuthContext'
 import { departmentService, schoolTermService } from '../services/schoolConfigService'
 import { facultyService } from '../services/facultyService'
 import { 
@@ -190,7 +190,7 @@ const CustomCalendar = ({ value, onChange, onClose, isOpen }) => {
 
 const SignUpPage = () => {
   const navigate = useNavigate()
-  const { login } = useUser()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     lastName: '',
     firstName: '',

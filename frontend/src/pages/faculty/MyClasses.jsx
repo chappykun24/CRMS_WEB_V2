@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useUser } from '../../contexts/UnifiedAuthContext'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
  
 import ClassCard from '../../components/ClassCard'
 
 const MyClasses = () => {
-  const { user } = useUser()
+  const { user } = useAuth()
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

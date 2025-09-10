@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useUser } from '../contexts/UnifiedAuthContext'
+import { useAuth } from '../contexts/UnifiedAuthContext'
 import { 
   Mail, 
   Lock, 
@@ -23,7 +23,7 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   
-  const { login } = useUser()
+  const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (e) => {
