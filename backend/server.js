@@ -578,7 +578,8 @@ app.get('/api/users/:id/profile', async (req, res) => {
       role_name: userData.role_name,
       role_id: userData.role_id,
       is_approved: userData.is_approved,
-      profile_pic: userData.profile_pic,
+      profilePic: userData.profile_pic, // Frontend expects camelCase
+      profile_pic: userData.profile_pic, // Keep both for compatibility
       created_at: userData.created_at,
       updated_at: userData.updated_at,
       department_id: userData.department_id,
@@ -694,7 +695,8 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
       role_name: userData.role_name,
       role_id: userData.role_id,
       is_approved: userData.is_approved,
-      profile_pic: userData.profile_pic,
+      profilePic: userData.profile_pic, // Frontend expects camelCase
+      profile_pic: userData.profile_pic, // Keep both for compatibility
       created_at: userData.created_at,
       updated_at: userData.updated_at,
       department_id: userData.department_id,
@@ -968,6 +970,55 @@ app.post('/api/users/:id/upload-photo', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [UPLOAD PHOTO] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Serve profile photos statically
+app.use('/api/photos', express.static('uploads'));
+
+// Get user profile photo endpoint
+app.get('/api/users/:id/photo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID' 
+      });
+    }
+
+    const result = await db.query(`
+      SELECT profile_pic FROM users WHERE user_id = $1
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    const profilePic = result.rows[0].profile_pic;
+    
+    if (!profilePic) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No profile photo found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      photoUrl: profilePic
+    });
+  } catch (error) {
+    console.error('❌ [GET PHOTO] Error occurred:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
