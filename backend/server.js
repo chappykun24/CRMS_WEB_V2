@@ -661,74 +661,7 @@ app.get('/api/roles', async (req, res) => {
   }
 });
 
-// Get current user profile endpoint (for authenticated user)
-app.get('/api/auth/profile', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    console.log('🔍 [AUTH PROFILE] Fetching profile for authenticated user ID:', userId);
-    
-    // First, let's check what's in the users table for this user
-    const userCheck = await db.query('SELECT user_id, name, email, profile_pic FROM users WHERE user_id = $1', [userId]);
-    console.log('🔍 [AUTH PROFILE] Raw user data from database:', userCheck.rows[0]);
-    
-    const result = await db.query(`
-      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
-             up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.role_id
-      LEFT JOIN user_profiles up ON u.user_id = up.user_id
-      LEFT JOIN departments d ON up.department_id = d.department_id
-      WHERE u.user_id = $1
-    `, [userId]);
-
-    console.log('🔍 [AUTH PROFILE] Query result:', result.rows.length, 'rows found');
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'User not found' 
-      });
-    }
-
-    // Transform user data to match frontend expectations
-    const userData = result.rows[0];
-    const transformedUser = {
-      user_id: userData.user_id,
-      name: userData.name,
-      email: userData.email,
-      role_name: userData.role_name,
-      role_id: userData.role_id,
-      is_approved: userData.is_approved,
-      profilePic: userData.profile_pic, // Frontend expects camelCase
-      profile_pic: userData.profile_pic, // Keep both for compatibility
-      created_at: userData.created_at,
-      updated_at: userData.updated_at,
-      department_id: userData.department_id,
-      department_name: userData.department_name,
-      department_abbreviation: userData.department_abbreviation,
-      profile_type: userData.profile_type,
-      specialization: userData.specialization,
-      designation: userData.designation,
-      office_assigned: userData.office_assigned,
-      contact_email: userData.contact_email,
-      bio: userData.bio,
-      position: userData.position
-    };
-    
-    console.log('🔍 [AUTH PROFILE] Transformed user data:', transformedUser);
-    
-    res.json({
-      success: true,
-      user: transformedUser
-    });
-  } catch (error) {
-    console.error('❌ [AUTH PROFILE] Error occurred:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
-  }
-});
+// Note: /api/auth/profile endpoint is handled by the imported auth routes
 
 // Update user profile endpoint
 app.put('/api/users/:id/profile', async (req, res) => {
