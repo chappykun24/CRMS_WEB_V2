@@ -18,9 +18,9 @@ export const authenticateToken = async (req, res, next) => {
 
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Get user from database to ensure they still exist and are active
+    // Get user from database to ensure they still exist and are approved
     const userResult = await db.query(
-      'SELECT user_id, email, first_name, last_name, role_id, department_id, is_active FROM users WHERE user_id = $1',
+      'SELECT user_id, email, name, role_id, is_approved FROM users WHERE user_id = $1',
       [decoded.userId]
     );
 
@@ -33,10 +33,10 @@ export const authenticateToken = async (req, res, next) => {
 
     const user = userResult.rows[0];
     
-    if (!user.is_active) {
+    if (!user.is_approved) {
       return res.status(401).json({ 
         success: false, 
-        error: 'Account is deactivated.' 
+        error: 'Account is not approved.' 
       });
     }
 

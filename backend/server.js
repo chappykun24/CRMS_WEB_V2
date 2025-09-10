@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
 import db from './config/database.js';
+import { authenticateToken } from './middleware/auth.js';
 
 const { Pool } = pg;
 // Load environment variables
