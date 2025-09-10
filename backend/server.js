@@ -1080,14 +1080,20 @@ app.get('/api/classes', async (req, res) => {
 });
 
 // Import API routes
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
 import departmentsRouter from './api/departments/index.js';
 import schoolTermsRouter from './api/school-terms/index.js';
 
 // Use API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/departments', departmentsRouter);
 app.use('/api/school-terms', schoolTermsRouter);
 
-console.log('🚀 [SERVER] School Configuration API routes loaded:');
+console.log('🚀 [SERVER] API routes loaded:');
+console.log('   📍 /api/auth');
+console.log('   📍 /api/users');
 console.log('   📍 /api/departments');
 console.log('   📍 /api/school-terms');
 
