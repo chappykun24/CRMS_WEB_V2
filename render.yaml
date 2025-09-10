@@ -28,3 +28,23 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: DB_HOST
+        fromDatabase:
+          name: crms-db
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: crms-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: crms-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: crms-db
+          property: password
+      - key: DB_PORT
+        fromDatabase:
+          name: crms-db
+          property: port

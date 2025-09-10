@@ -1,0 +1,40 @@
+#!/bin/bash
+
+echo "Setting up CRMS Project for Development and Deployment..."
+
+echo ""
+echo "Installing root dependencies..."
+npm install
+
+echo ""
+echo "Installing backend dependencies..."
+cd backend
+npm install
+cd ..
+
+echo ""
+echo "Installing frontend dependencies..."
+cd frontend
+npm install
+cd ..
+
+echo ""
+echo "Building frontend..."
+cd frontend
+npm run build
+cd ..
+
+echo ""
+echo "Setup complete!"
+echo ""
+echo "To start development:"
+echo "  npm run dev"
+echo ""
+echo "To deploy backend to Render:"
+echo "  1. Set up Neon database"
+echo "  2. Configure environment variables in Render"
+echo "  3. Deploy using render.yaml"
+echo ""
+echo "To deploy frontend to Vercel:"
+echo "  cd frontend"
+echo "  vercel --prod"

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { UserProvider } from './contexts/UserContext'
+import { AuthProvider } from './contexts/AuthContext'
 import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
@@ -50,7 +50,7 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <UserProvider>
+      <AuthProvider>
           <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/" element={<WelcomeScreen />} />
@@ -203,7 +203,7 @@ function App() {
               />
             </Routes>
           </div>
-      </UserProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

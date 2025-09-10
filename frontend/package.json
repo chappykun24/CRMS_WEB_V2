@@ -10,7 +10,8 @@
     "vercel-build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "start": "vite preview --port 3000 --host"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

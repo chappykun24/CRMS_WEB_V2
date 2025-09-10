@@ -13,7 +13,7 @@ if (process.env.VITE_NEON_HOST) {
   process.env.NEON_PORT = process.env.VITE_NEON_PORT;
 }
 
-// Database configuration
+// Database configuration - prioritize Neon, then Render DB, then local
 const dbConfig = {
   host: process.env.NEON_HOST || process.env.DB_HOST || 'localhost',
   database: process.env.NEON_DATABASE || process.env.DB_NAME || 'crms_db',
@@ -25,6 +25,15 @@ const dbConfig = {
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
 };
+
+console.log('Database configuration:', {
+  host: dbConfig.host,
+  database: dbConfig.database,
+  user: dbConfig.user,
+  port: dbConfig.port,
+  ssl: dbConfig.ssl,
+  env: process.env.NODE_ENV
+});
 
 // Create connection pool
 const pool = new Pool(dbConfig);

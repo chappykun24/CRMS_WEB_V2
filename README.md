@@ -84,15 +84,35 @@ npm run dev
 
 ## 🌐 Deployment
 
-**Ready for production deployment!** Follow these guides:
+**Ready for production deployment!** Follow the comprehensive deployment guide:
 
-1. **📖 Start Here**: [RENDER_DEPLOYMENT_SUMMARY.md](./RENDER_DEPLOYMENT_SUMMARY.md) - Quick overview
-2. **📋 Step-by-Step**: [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) - Complete checklist
-3. **📚 Detailed Guide**: [RENDER_SETUP_GUIDE.md](./RENDER_SETUP_GUIDE.md) - Comprehensive setup
+### 📖 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) - Complete Deployment Guide
+
+This guide covers:
+- Backend deployment to Render with Neon database
+- Frontend deployment to Vercel
+- Environment variable configuration
+- Database setup and migration
+- Troubleshooting and health checks
+
+### Quick Setup Scripts
+
+```bash
+# Windows
+setup-project.bat
+test-local.bat
+deploy-vercel.bat
+
+# Linux/Mac
+chmod +x setup-project.sh test-local.sh deploy-vercel.sh
+./setup-project.sh
+./test-local.sh
+./deploy-vercel.sh
+```
 
 ### Deployment URLs (After Setup)
 - **Backend API**: `https://crms-backend-api.onrender.com`
-- **Frontend App**: `https://crms-web-v2.vercel.app`
+- **Frontend App**: `https://your-app.vercel.app`
 - **Database**: Neon PostgreSQL (managed)
 
 ## 📚 Documentation

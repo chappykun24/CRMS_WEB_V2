@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const ProtectedRoute = ({ 
   children, 
@@ -8,12 +8,12 @@ const ProtectedRoute = ({
   requiredDepartment = null,
   fallbackPath = '/login' 
 }) => {
-  const { isAuthenticated, isLoading, user } = useUser();
+  const { isAuthenticated, isLoading, user } = useAuth();
   console.log('[ProtectedRoute] check', { isAuthenticated, isLoading, user, requiredRoles, requiredDepartment });
 
   const userHasAnyRole = (roles = []) => {
     if (!roles || roles.length === 0) return true;
-    const role = String(user?.role || '').toLowerCase().replace(/\s|_/g, '');
+    const role = String(user?.role_name || user?.role || '').toLowerCase().replace(/\s|_/g, '');
     return roles.some(r => String(r).toLowerCase().replace(/\s|_/g, '') === role);
   };
 
