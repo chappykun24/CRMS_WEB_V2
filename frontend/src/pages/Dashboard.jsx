@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import AdminDashboard from './admin/AdminDashboard'
 import FacultyDashboard from './faculty/FacultyDashboard'
@@ -8,7 +9,37 @@ import ProgramChairDashboard from './program-chair/ProgramChairDashboard'
 
 const Dashboard = () => {
   const { user, isLoading } = useUser()
+  const navigate = useNavigate()
   console.log('[Dashboard] render', { isLoading, user })
+
+  // Redirect to role-specific dashboard based on user role
+  useEffect(() => {
+    if (!isLoading && user) {
+      const role = String(user.role || '').toLowerCase().replace(/\s|_/g, '')
+      console.log('[Dashboard] redirecting based on role', { role, raw: user.role })
+      
+      switch (role) {
+        case 'admin':
+          navigate('/admin', { replace: true })
+          break
+        case 'faculty':
+          navigate('/faculty', { replace: true })
+          break
+        case 'dean':
+          navigate('/dean', { replace: true })
+          break
+        case 'staff':
+          navigate('/staff', { replace: true })
+          break
+        case 'programchair':
+        case 'programchair':
+          navigate('/program-chair', { replace: true })
+          break
+        default:
+          console.warn('[Dashboard] unknown role, staying on main dashboard', { role })
+      }
+    }
+  }, [user, isLoading, navigate])
 
   if (isLoading) {
     return (
@@ -32,35 +63,35 @@ const Dashboard = () => {
     )
   }
 
-  // Route to role-specific dashboard (normalize role variants)
-  const role = String(user.role || '').toLowerCase()
-  console.log('[Dashboard] resolved role', { role, raw: user.role })
+  // Fallback: Show role-specific dashboard directly if redirect didn't work
+  const role = String(user.role || '').toLowerCase().replace(/\s|_/g, '')
+  console.log('[Dashboard] fallback render', { role, raw: user.role })
 
   if (role === 'admin') return <AdminDashboard user={user} />
   if (role === 'faculty') return <FacultyDashboard user={user} />
   if (role === 'dean') return <DeanDashboard user={user} />
   if (role === 'staff') return <StaffDashboard user={user} />
-  if (role === 'program chair' || role === 'programchair' || role === 'program_chair') return <ProgramChairDashboard user={user} />
+  if (role === 'programchair') return <ProgramChairDashboard user={user} />
 
   return (
-        <div className="min-h-screen bg-gray-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Welcome, {user.name}!</h2>
-                <p className="text-gray-600 mb-4">Role: {user.role || 'Unknown'}</p>
-                <p className="text-gray-600">Email: {user.email}</p>
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-yellow-800">
-                    <strong>Note:</strong> Dashboard for role "{user.role}" is under development.
-                  </p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Welcome, {user.name}!</h2>
+            <p className="text-gray-600 mb-4">Role: {user.role || 'Unknown'}</p>
+            <p className="text-gray-600">Email: {user.email}</p>
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800">
+                <strong>Note:</strong> Dashboard for role "{user.role}" is under development.
+              </p>
             </div>
           </div>
         </div>
-      )
+      </div>
+    </div>
+  )
 }
 
 export default Dashboard 

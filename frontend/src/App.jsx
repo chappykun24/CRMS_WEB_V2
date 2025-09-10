@@ -68,7 +68,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              {/* Role-specific dashboard entry paths */}
+              {/* Main dashboard - redirects to role-specific dashboard */}
               <Route 
                 path="/dashboard" 
                 element={
@@ -81,6 +81,78 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              
+              {/* Admin Routes */}
+              <Route 
+                path="/admin/*" 
+                element={
+                  <ProtectedRoute requiredRoles={["admin"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <AdminDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Faculty Routes */}
+              <Route 
+                path="/faculty/*" 
+                element={
+                  <ProtectedRoute requiredRoles={["faculty"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <FacultyDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Dean Routes */}
+              <Route 
+                path="/dean/*" 
+                element={
+                  <ProtectedRoute requiredRoles={["dean"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <DeanDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Staff Routes */}
+              <Route 
+                path="/staff/*" 
+                element={
+                  <ProtectedRoute requiredRoles={["staff"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <StaffDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Program Chair Routes */}
+              <Route 
+                path="/program-chair/*" 
+                element={
+                  <ProtectedRoute requiredRoles={["program chair", "program_chair", "programchair"]}>
+                    <SidebarProvider>
+                      <DashboardLayout>
+                        <ProgramChairDashboard />
+                      </DashboardLayout>
+                    </SidebarProvider>
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Legacy role-specific dashboard paths for backward compatibility */}
               <Route 
                 path="/dashboard/classes" 
                 element={
