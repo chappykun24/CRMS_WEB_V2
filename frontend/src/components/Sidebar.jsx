@@ -28,44 +28,44 @@ const Sidebar = ({ isExpanded, onToggle }) => {
     switch (userRole) {
       case 'ADMIN':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
-          { name: 'User Management', icon: UserGroupIcon, href: '/dashboard/users' },
-          { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/dashboard/school-config' },
-          { name: 'System Settings', icon: Cog6ToothIcon, href: '/dashboard/settings' }
+          { name: 'Home', icon: HomeIcon, href: '/admin' },
+          { name: 'User Management', icon: UserGroupIcon, href: '/admin/users' },
+          { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/admin/school-config' },
+          { name: 'System Settings', icon: Cog6ToothIcon, href: '/admin/settings' }
         ]
       
       case 'FACULTY':
         return [
-          { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
-          { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/dashboard/assessments' },
-          { name: 'Grades', icon: AcademicCapIcon, href: '/dashboard/grades' },
-          { name: 'Syllabi', icon: DocumentTextIcon, href: '/dashboard/syllabi' }
+          { name: 'My Classes', icon: BookOpenIcon, href: '/faculty/classes' },
+          { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/faculty/assessments' },
+          { name: 'Grades', icon: AcademicCapIcon, href: '/faculty/grades' },
+          { name: 'Syllabi', icon: DocumentTextIcon, href: '/faculty/syllabi' }
         ]
       
       case 'DEAN':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
-          { name: 'Analytics', icon: ChartBarIcon, href: '/dashboard/analytics' },
-          { name: 'My Classes', icon: BookOpenIcon, href: '/dashboard/classes' },
-          { name: 'Reports', icon: DocumentTextIcon, href: '/dashboard/reports' },
-          { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dashboard/syllabus-approval' }
+          { name: 'Home', icon: HomeIcon, href: '/dean' },
+          { name: 'Analytics', icon: ChartBarIcon, href: '/dean/analytics' },
+          { name: 'My Classes', icon: BookOpenIcon, href: '/dean/classes' },
+          { name: 'Reports', icon: DocumentTextIcon, href: '/dean/reports' },
+          { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dean/syllabus-approval' }
         ]
       
       case 'STAFF':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
-          { name: 'Student Management', icon: UserGroupIcon, href: '/dashboard/students' },
-          { name: 'Class Management', icon: UserPlusIcon, href: '/dashboard/assign-faculty' },
-          { name: 'Section Management', icon: ClipboardDocumentListIcon, href: '/dashboard/sections' }
+          { name: 'Home', icon: HomeIcon, href: '/staff' },
+          { name: 'Student Management', icon: UserGroupIcon, href: '/staff/students' },
+          { name: 'Class Management', icon: UserPlusIcon, href: '/staff/assign-faculty' },
+          { name: 'Section Management', icon: ClipboardDocumentListIcon, href: '/staff/sections' }
         ]
       
       case 'PROGRAMCHAIR':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/dashboard' },
-          { name: 'Course Management', icon: BookOpenIcon, href: '/dashboard/courses' },
-          { name: 'Analytics', icon: ChartBarIcon, href: '/dashboard/analytics' },
-          { name: 'Reports', icon: DocumentTextIcon, href: '/dashboard/reports' },
-          { name: 'Submissions', icon: ClipboardDocumentListIcon, href: '/dashboard/submissions' }
+          { name: 'Home', icon: HomeIcon, href: '/program-chair' },
+          { name: 'Course Management', icon: BookOpenIcon, href: '/program-chair/courses' },
+          { name: 'Analytics', icon: ChartBarIcon, href: '/program-chair/analytics' },
+          { name: 'Reports', icon: DocumentTextIcon, href: '/program-chair/reports' },
+          { name: 'Submissions', icon: ClipboardDocumentListIcon, href: '/program-chair/submissions' }
         ]
       
       default:
