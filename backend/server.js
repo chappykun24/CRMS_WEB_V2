@@ -6,6 +6,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
+import db from './config/database.js';
 
 const { Pool } = pg;
 // Load environment variables
