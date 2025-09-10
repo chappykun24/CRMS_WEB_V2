@@ -546,8 +546,12 @@ app.get('/api/users/:id/profile', async (req, res) => {
         error: 'Invalid user ID. Must be a valid integer.' 
       });
     }
-    const result = await pool.query(`
-      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation
+
+    console.log('🔍 [USER PROFILE] Fetching profile for user ID:', userId);
+    
+    const result = await db.query(`
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
+             up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
       LEFT JOIN user_profiles up ON u.user_id = up.user_id
@@ -555,25 +559,40 @@ app.get('/api/users/:id/profile', async (req, res) => {
       WHERE u.user_id = $1
     `, [userId]);
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    console.log('🔍 [USER PROFILE] Query result:', result.rows.length, 'rows found');
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'User not found' 
+      });
     }
 
     // Transform user data to match frontend expectations
     const userData = result.rows[0];
     const transformedUser = {
-      id: userData.user_id,
+      user_id: userData.user_id,
       name: userData.name,
       email: userData.email,
-      role: userData.role_name,
-      isApproved: userData.is_approved,
-      profilePic: userData.profile_pic,
-      createdAt: userData.created_at,
-      updatedAt: userData.updated_at,
-      departmentId: userData.department_id,
-      departmentName: userData.department_name,
-      departmentAbbreviation: userData.department_abbreviation
+      role_name: userData.role_name,
+      role_id: userData.role_id,
+      is_approved: userData.is_approved,
+      profile_pic: userData.profile_pic,
+      created_at: userData.created_at,
+      updated_at: userData.updated_at,
+      department_id: userData.department_id,
+      department_name: userData.department_name,
+      department_abbreviation: userData.department_abbreviation,
+      profile_type: userData.profile_type,
+      specialization: userData.specialization,
+      designation: userData.designation,
+      office_assigned: userData.office_assigned,
+      contact_email: userData.contact_email,
+      bio: userData.bio,
+      position: userData.position
     };
+    
+    console.log('🔍 [USER PROFILE] Transformed user data:', transformedUser);
     
     res.json({
       success: true,
@@ -581,6 +600,122 @@ app.get('/api/users/:id/profile', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [USER PROFILE] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get all departments endpoint
+app.get('/api/departments', async (req, res) => {
+  try {
+    console.log('🔍 [DEPARTMENTS] Fetching all departments');
+    
+    const result = await db.query(`
+      SELECT department_id, name, department_abbreviation
+      FROM departments
+      ORDER BY name ASC
+    `);
+
+    console.log('🔍 [DEPARTMENTS] Query result:', result.rows.length, 'departments found');
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('❌ [DEPARTMENTS] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get all roles endpoint
+app.get('/api/roles', async (req, res) => {
+  try {
+    console.log('🔍 [ROLES] Fetching all roles');
+    
+    const result = await db.query(`
+      SELECT role_id, name
+      FROM roles
+      ORDER BY name ASC
+    `);
+
+    console.log('🔍 [ROLES] Query result:', result.rows.length, 'roles found');
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('❌ [ROLES] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get current user profile endpoint (for authenticated user)
+app.get('/api/auth/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log('🔍 [AUTH PROFILE] Fetching profile for authenticated user ID:', userId);
+    
+    const result = await db.query(`
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
+             up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      LEFT JOIN user_profiles up ON u.user_id = up.user_id
+      LEFT JOIN departments d ON up.department_id = d.department_id
+      WHERE u.user_id = $1
+    `, [userId]);
+
+    console.log('🔍 [AUTH PROFILE] Query result:', result.rows.length, 'rows found');
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'User not found' 
+      });
+    }
+
+    // Transform user data to match frontend expectations
+    const userData = result.rows[0];
+    const transformedUser = {
+      user_id: userData.user_id,
+      name: userData.name,
+      email: userData.email,
+      role_name: userData.role_name,
+      role_id: userData.role_id,
+      is_approved: userData.is_approved,
+      profile_pic: userData.profile_pic,
+      created_at: userData.created_at,
+      updated_at: userData.updated_at,
+      department_id: userData.department_id,
+      department_name: userData.department_name,
+      department_abbreviation: userData.department_abbreviation,
+      profile_type: userData.profile_type,
+      specialization: userData.specialization,
+      designation: userData.designation,
+      office_assigned: userData.office_assigned,
+      contact_email: userData.contact_email,
+      bio: userData.bio,
+      position: userData.position
+    };
+    
+    console.log('🔍 [AUTH PROFILE] Transformed user data:', transformedUser);
+    
+    res.json({
+      success: true,
+      user: transformedUser
+    });
+  } catch (error) {
+    console.error('❌ [AUTH PROFILE] Error occurred:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 

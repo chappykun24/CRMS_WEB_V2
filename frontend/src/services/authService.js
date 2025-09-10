@@ -79,6 +79,20 @@ class AuthService {
     }
   }
   
+  // Get current user profile via backend API
+  async getCurrentUserProfile() {
+    try {
+      const { data } = await api.get('/auth/profile');
+      return { success: true, user: data.user };
+    } catch (error) {
+      console.error('Get current user profile error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  }
+
   // Get user by ID via backend API
   async getUserById(userId) {
     try {
@@ -100,6 +114,34 @@ class AuthService {
       return data;
     } catch (error) {
       console.error('Update profile error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  }
+
+  // Get departments
+  async getDepartments() {
+    try {
+      const { data } = await api.get('/departments');
+      return { success: true, departments: data.data };
+    } catch (error) {
+      console.error('Get departments error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  }
+
+  // Get roles
+  async getRoles() {
+    try {
+      const { data } = await api.get('/roles');
+      return { success: true, roles: data.data };
+    } catch (error) {
+      console.error('Get roles error:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message

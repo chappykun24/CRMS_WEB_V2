@@ -127,20 +127,62 @@ export const UnifiedAuthProvider = ({ children }) => {
       console.log('[UnifiedAuth] authService.login result', result)
       
       if (result.success && result.user) {
-        // Store user data in localStorage
-        localStorage.setItem('userData', JSON.stringify(result.user))
-        if (result.token) {
-          localStorage.setItem('authToken', result.token)
+        // Fetch full user profile with department and other details
+        try {
+          console.log('[UnifiedAuth] Fetching full user profile...')
+          const profileResult = await authService.getCurrentUserProfile()
+          
+          if (profileResult.success && profileResult.user) {
+            console.log('[UnifiedAuth] Full profile fetched successfully:', profileResult.user)
+            // Use the full profile data instead of basic login data
+            const fullUserProfile = profileResult.user
+            
+            // Store full user data in localStorage
+            localStorage.setItem('userData', JSON.stringify(fullUserProfile))
+            if (result.token) {
+              localStorage.setItem('authToken', result.token)
+            }
+            
+            // Update user state with full profile
+            dispatch({ 
+              type: 'LOGIN_SUCCESS', 
+              payload: { user: fullUserProfile, token: result.token } 
+            })
+            console.log('[UnifiedAuth] LOGIN_SUCCESS with full profile', { user: fullUserProfile, token: result.token })
+            
+            return { success: true, user: fullUserProfile, token: result.token }
+          } else {
+            console.warn('[UnifiedAuth] Failed to fetch full profile, using basic login data')
+            // Fallback to basic login data
+            localStorage.setItem('userData', JSON.stringify(result.user))
+            if (result.token) {
+              localStorage.setItem('authToken', result.token)
+            }
+            
+            dispatch({ 
+              type: 'LOGIN_SUCCESS', 
+              payload: { user: result.user, token: result.token } 
+            })
+            console.log('[UnifiedAuth] LOGIN_SUCCESS with basic data', { user: result.user, token: result.token })
+            
+            return { success: true, user: result.user, token: result.token }
+          }
+        } catch (profileError) {
+          console.warn('[UnifiedAuth] Profile fetch failed, using basic login data:', profileError)
+          // Fallback to basic login data
+          localStorage.setItem('userData', JSON.stringify(result.user))
+          if (result.token) {
+            localStorage.setItem('authToken', result.token)
+          }
+          
+          dispatch({ 
+            type: 'LOGIN_SUCCESS', 
+            payload: { user: result.user, token: result.token } 
+          })
+          console.log('[UnifiedAuth] LOGIN_SUCCESS with basic data (fallback)', { user: result.user, token: result.token })
+          
+          return { success: true, user: result.user, token: result.token }
         }
-        
-        // Update user state
-        dispatch({ 
-          type: 'LOGIN_SUCCESS', 
-          payload: { user: result.user, token: result.token } 
-        })
-        console.log('[UnifiedAuth] LOGIN_SUCCESS', { user: result.user, token: result.token })
-        
-        return { success: true, user: result.user, token: result.token }
       } else {
         // Authentication failed
         dispatch({ 
