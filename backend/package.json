@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node server-new.js",
-    "dev": "nodemon server-new.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "build": "echo 'No build step required'",
     "test": "echo 'No tests specified'"
   },

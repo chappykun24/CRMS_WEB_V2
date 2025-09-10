@@ -4,7 +4,7 @@ import axios from 'axios';
 const isDevelopment = import.meta.env.DEV;
 const API_BASE_URL = isDevelopment 
   ? 'http://localhost:3001/api'  // Local backend in development
-  : (import.meta.env.VITE_API_BASE_URL || 'https://your-backend-url.onrender.com/api');
+  : (import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api');
 
 // Helpers
 const safeParseJson = (value, fallback) => {
