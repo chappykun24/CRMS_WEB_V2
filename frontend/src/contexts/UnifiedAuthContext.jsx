@@ -70,10 +70,12 @@ export const UnifiedAuthProvider = ({ children }) => {
           console.log('[UnifiedAuth] Found user data in localStorage:', user)
           
           // Verify token is still valid by making a test request
-          if (token) {
+          if (token && (user.user_id || user.id)) {
             try {
               // Test token validity by getting user profile
-              const profileResult = await authService.getUserById(user.user_id || user.id)
+              const userId = user.user_id || user.id
+              console.log('[UnifiedAuth] Validating token for user ID:', userId)
+              const profileResult = await authService.getUserById(userId)
               if (profileResult.success) {
                 console.log('[UnifiedAuth] Token is valid, user authenticated:', profileResult.user)
                 dispatch({ 
@@ -85,6 +87,12 @@ export const UnifiedAuthProvider = ({ children }) => {
             } catch (error) {
               console.warn('[UnifiedAuth] Token validation failed:', error.message)
             }
+          } else {
+            console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
+            localStorage.removeItem('userData')
+            localStorage.removeItem('authToken')
+            dispatch({ type: 'LOGOUT' })
+            return
           }
           
           // Fallback: use stored user data if token validation fails

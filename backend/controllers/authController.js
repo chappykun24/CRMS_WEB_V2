@@ -60,9 +60,32 @@ export const register = async (req, res) => {
 // Login user
 export const login = async (req, res) => {
   try {
+    console.log('🔐 [AUTH CONTROLLER] Login attempt for email:', req.body.email);
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+        statusCode: 400
+      });
+    }
+
+    // Test database connection first
+    try {
+      await db.testConnection();
+      console.log('🔐 [AUTH CONTROLLER] Database connection successful');
+    } catch (dbError) {
+      console.error('🔐 [AUTH CONTROLLER] Database connection failed:', dbError);
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed',
+        statusCode: 500
+      });
+    }
+
     // Find user by email
+    console.log('🔐 [AUTH CONTROLLER] Querying user with email:', email);
     const result = await db.query(`
       SELECT u.user_id, u.email, u.password_hash, u.name, 
              u.role_id, u.is_approved, u.last_login,
@@ -71,6 +94,8 @@ export const login = async (req, res) => {
       LEFT JOIN roles r ON u.role_id = r.role_id
       WHERE u.email = $1
     `, [email]);
+    
+    console.log('🔐 [AUTH CONTROLLER] Query result:', result.rows.length, 'rows found');
 
     if (result.rows.length === 0) {
       return res.status(401).json({
