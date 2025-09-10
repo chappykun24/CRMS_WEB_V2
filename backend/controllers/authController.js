@@ -97,12 +97,26 @@ export const login = async (req, res) => {
       });
     }
 
+    // First, let's check the actual table structure
+    console.log('🔐 [AUTH CONTROLLER] Checking users table structure...');
+    try {
+      const tableInfo = await db.query(`
+        SELECT column_name, data_type, is_nullable 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' 
+        ORDER BY ordinal_position
+      `);
+      console.log('🔐 [AUTH CONTROLLER] Users table columns:', JSON.stringify(tableInfo.rows, null, 2));
+    } catch (tableError) {
+      console.error('🔐 [AUTH CONTROLLER] Error checking table structure:', tableError.message);
+    }
+
     // Find user by email
     console.log('🔐 [AUTH CONTROLLER] Querying user with email:', email);
     let result;
     try {
       result = await db.query(`
-        SELECT u.user_id, u.email, u.password_hash, u.first_name, u.last_name, u.middle_name,
+        SELECT u.user_id, u.email, u.password_hash, u.name,
                u.role_id, u.is_active, u.last_login,
                r.name as role_name
         FROM users u
@@ -176,10 +190,9 @@ export const login = async (req, res) => {
         user: {
           user_id: user.user_id,
           email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          middle_name: user.middle_name,
-          name: `${user.first_name} ${user.last_name}`.trim(),
+          name: user.name,
+          first_name: user.name ? user.name.split(' ')[0] : '',
+          last_name: user.name ? user.name.split(' ').slice(1).join(' ') : '',
           role_id: user.role_id,
           role_name: user.role_name,
           is_active: user.is_active,
