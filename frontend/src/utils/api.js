@@ -1,10 +1,7 @@
 import axios from 'axios';
 
-// API Configuration - supports both proxy and direct connection
-const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = isDevelopment 
-  ? 'http://localhost:3001/api'  // Local backend in development
-  : (import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api');
+// API Configuration - always use Render backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api';
 
 // Helpers
 const safeParseJson = (value, fallback) => {
@@ -20,11 +17,11 @@ const safeParseJson = (value, fallback) => {
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: isDevelopment ? 15000 : 60000, // Allow longer time for cold-started backends
+  timeout: 60000, // Allow longer time for cold-started backends
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: isDevelopment, // Enable credentials in development
+  withCredentials: false, // Disable credentials for cross-origin requests
 });
 
 // Request interceptor

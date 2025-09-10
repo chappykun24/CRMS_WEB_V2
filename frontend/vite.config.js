@@ -10,16 +10,7 @@ export default defineConfig({
     host: true, // Allow external connections
     hmr: {
       port: 3000, // Use the same port for HMR
-    },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-      }
-    },
-    cors: true
+    }
   },
   build: {
     outDir: 'dist',
