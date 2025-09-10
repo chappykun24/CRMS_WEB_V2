@@ -117,7 +117,7 @@ export const login = async (req, res) => {
     try {
       result = await db.query(`
         SELECT u.user_id, u.email, u.password_hash, u.name,
-               u.role_id, u.is_approved, u.last_login,
+               u.role_id, u.is_approved, u.created_at, u.updated_at,
                r.name as role_name
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.role_id
@@ -177,8 +177,7 @@ export const login = async (req, res) => {
     // Generate JWT token
     const token = generateToken(user.user_id, user.email);
 
-    // Update last login
-    await db.query('UPDATE users SET last_login = NOW() WHERE user_id = $1', [user.user_id]);
+    // Note: last_login column doesn't exist in the actual database schema
 
     // Remove password from response
     delete user.password_hash;
@@ -196,7 +195,8 @@ export const login = async (req, res) => {
           role_id: user.role_id,
           role_name: user.role_name,
           is_approved: user.is_approved,
-          last_login: user.last_login
+          created_at: user.created_at,
+          updated_at: user.updated_at
         },
         token
       }
