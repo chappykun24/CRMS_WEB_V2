@@ -61,6 +61,9 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     console.log('🔐 [AUTH CONTROLLER] Login attempt for email:', req.body.email);
+    console.log('🔐 [AUTH CONTROLLER] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔐 [AUTH CONTROLLER] Request headers:', JSON.stringify(req.headers, null, 2));
+    
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -73,29 +76,60 @@ export const login = async (req, res) => {
 
     // Test database connection first
     try {
+      console.log('🔐 [AUTH CONTROLLER] Testing database connection...');
       await db.testConnection();
       console.log('🔐 [AUTH CONTROLLER] Database connection successful');
     } catch (dbError) {
       console.error('🔐 [AUTH CONTROLLER] Database connection failed:', dbError);
+      console.error('🔐 [AUTH CONTROLLER] Database error details:', {
+        message: dbError.message,
+        code: dbError.code,
+        stack: dbError.stack
+      });
       return res.status(500).json({
         success: false,
         message: 'Database connection failed',
-        statusCode: 500
+        statusCode: 500,
+        debug: {
+          error: dbError.message,
+          code: dbError.code
+        }
       });
     }
 
     // Find user by email
     console.log('🔐 [AUTH CONTROLLER] Querying user with email:', email);
-    const result = await db.query(`
-      SELECT u.user_id, u.email, u.password_hash, u.first_name, u.last_name, u.middle_name,
-             u.role_id, u.is_active, u.last_login,
-             r.name as role_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.role_id
-      WHERE u.email = $1
-    `, [email]);
+    let result;
+    try {
+      result = await db.query(`
+        SELECT u.user_id, u.email, u.password_hash, u.first_name, u.last_name, u.middle_name,
+               u.role_id, u.is_active, u.last_login,
+               r.name as role_name
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.role_id
+        WHERE u.email = $1
+      `, [email]);
+      console.log('🔐 [AUTH CONTROLLER] Query executed successfully');
+    } catch (queryError) {
+      console.error('🔐 [AUTH CONTROLLER] Database query failed:', queryError);
+      console.error('🔐 [AUTH CONTROLLER] Query error details:', {
+        message: queryError.message,
+        code: queryError.code,
+        stack: queryError.stack
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Database query failed',
+        statusCode: 500,
+        debug: {
+          error: queryError.message,
+          code: queryError.code
+        }
+      });
+    }
     
     console.log('🔐 [AUTH CONTROLLER] Query result:', result.rows.length, 'rows found');
+    console.log('🔐 [AUTH CONTROLLER] Query result data:', JSON.stringify(result.rows, null, 2));
 
     if (result.rows.length === 0) {
       return res.status(401).json({
@@ -155,11 +189,22 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('🔐 [AUTH CONTROLLER] Login error:', error);
+    console.error('🔐 [AUTH CONTROLLER] Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({
       success: false,
       message: 'Internal server error',
-      statusCode: 500
+      statusCode: 500,
+      debug: {
+        error: error.message,
+        code: error.code,
+        name: error.name
+      }
     });
   }
 };

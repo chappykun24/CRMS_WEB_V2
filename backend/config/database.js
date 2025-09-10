@@ -98,11 +98,23 @@ class DatabaseService {
   // Test database connection
   async testConnection() {
     try {
+      console.log('🔍 [DATABASE] Testing connection...');
+      console.log('🔍 [DATABASE] Pool stats:', {
+        totalCount: this.pool.totalCount,
+        idleCount: this.pool.idleCount,
+        waitingCount: this.pool.waitingCount
+      });
+      
       const result = await this.query('SELECT NOW()');
-      console.log('✅ Database connection successful');
+      console.log('✅ [DATABASE] Connection successful, timestamp:', result.rows[0].now);
       return { success: true, timestamp: result.rows[0].now };
     } catch (error) {
-      console.error('❌ Database connection failed:', error.message);
+      console.error('❌ [DATABASE] Connection failed:', error.message);
+      console.error('❌ [DATABASE] Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
       return { success: false, error: error.message };
     }
   }
