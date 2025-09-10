@@ -23,7 +23,13 @@ const Sidebar = ({ isExpanded, onToggle }) => {
   const hoverTimeoutRef = useRef(null)
 
   const getNavigationItems = () => {
-    const userRole = user?.role ? String(user.role).replace(/\s|_/g, '').toUpperCase() : undefined
+    const userRole = user?.role_name ? String(user.role_name).replace(/\s|_/g, '').toUpperCase() : undefined
+    console.log('🔍 [Sidebar] User role debug:', { 
+      user, 
+      role_name: user?.role_name, 
+      userRole,
+      hasUser: !!user 
+    })
     
     switch (userRole) {
       case 'ADMIN':
