@@ -1019,6 +1019,15 @@ console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');
 console.log('   📍 /api/users');
 
+// Debug: Test if auth routes are working
+app.get('/api/debug/auth', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth routes are loaded and working',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Catalog API (programs, specializations, terms, courses)
 const catalog = Router();
 
