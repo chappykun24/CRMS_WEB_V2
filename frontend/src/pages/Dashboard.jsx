@@ -11,6 +11,22 @@ const Dashboard = () => {
   const { user, isLoading } = useAuth()
   const navigate = useNavigate()
   console.log('[Dashboard] render', { isLoading, user })
+  
+  // Debug: Show detailed user information
+  useEffect(() => {
+    if (user) {
+      console.log('🔍 [Dashboard] User Debug Information:')
+      console.log('  - User ID:', user.user_id || user.id)
+      console.log('  - Email:', user.email)
+      console.log('  - Name:', user.first_name, user.last_name)
+      console.log('  - Role:', user.role_name || user.role)
+      console.log('  - Department:', user.department_name || user.department)
+      console.log('  - Employee ID:', user.employee_id)
+      console.log('  - Is Active:', user.is_active)
+      console.log('  - Last Login:', user.last_login)
+      console.log('  - Full User Object:', user)
+    }
+  }, [user])
 
   // Redirect to role-specific dashboard based on user role
   useEffect(() => {

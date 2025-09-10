@@ -1,7 +1,6 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
-import { UserProvider } from './contexts/UserContext'
+import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
 import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
@@ -51,9 +50,8 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <UserProvider>
-          <div className="min-h-screen bg-gray-50">
+      <UnifiedAuthProvider>
+        <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/" element={<WelcomeScreen />} />
               <Route path="/login" element={<LoginPage />} />
@@ -205,8 +203,7 @@ function App() {
               />
             </Routes>
           </div>
-        </UserProvider>
-      </AuthProvider>
+      </UnifiedAuthProvider>
     </ErrorBoundary>
   )
 }

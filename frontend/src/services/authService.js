@@ -8,36 +8,59 @@ class AuthService {
       console.log('[AuthService] login() start', { email });
       const { data } = await api.post(endpoints.login, { email, password });
       console.log('[AuthService] login() response', data);
-      // Only succeed if a user object is present
+      
+      // Handle successful login with user data from Neon database
       if (data && data.success && data.data && data.data.user) {
+        console.log('[AuthService] login() successful with user data from database:', data.data.user);
         return {
           success: true,
           user: data.data.user,
           token: data.data.token
         };
       }
-      // Temporary fallback: allow success payloads without user by synthesizing a minimal user
+      
+      // Handle successful login but no user data (shouldn't happen with proper backend)
       if (data && data.success && data.data && !data.data.user) {
-        console.warn('[AuthService] login() synthesizing user from stub payload');
-        const synthesizedUser = {
-          id: 0,
-          email,
-          name: email?.split('@')[0] || 'User',
-          role: 'admin'
+        console.warn('[AuthService] login() successful but no user data - this indicates a backend issue');
+        return { 
+          success: false, 
+          error: 'Login successful but no user data received from server' 
         };
-        return { success: true, user: synthesizedUser, token: data.data.token || 'stub-token' };
       }
-      console.warn('[AuthService] login() unexpected payload', data);
-      return { success: false, error: data?.message || 'Unexpected response from server' };
+      
+      // Handle login failure
+      console.warn('[AuthService] login() failed:', data?.message);
+      return { 
+        success: false, 
+        error: data?.message || 'Login failed' 
+      };
     } catch (error) {
       console.error('[AuthService] login() error', {
         message: error.message,
         status: error.response?.status,
         body: error.response?.data
       });
+      
+      // Handle network errors
+      if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        return {
+          success: false,
+          error: 'Unable to connect to server. Please check your internet connection.'
+        };
+      }
+      
+      // Handle server errors
+      if (error.response?.status >= 500) {
+        return {
+          success: false,
+          error: 'Server error. Please try again later.'
+        };
+      }
+      
+      // Handle client errors
       return {
         success: false,
-        error: error.response?.data?.error || error.message
+        error: error.response?.data?.message || error.message
       };
     }
   }
