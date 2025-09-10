@@ -6,6 +6,10 @@ class AuthService {
   async login(email, password) {
     try {
       console.log('[AuthService] login() start', { email });
+      console.log('[AuthService] API base URL:', api.defaults.baseURL);
+      console.log('[AuthService] Login endpoint:', endpoints.login);
+      console.log('[AuthService] Full URL:', `${api.defaults.baseURL}${endpoints.login}`);
+      
       const { data } = await api.post(endpoints.login, { email, password });
       console.log('[AuthService] login() response', data);
       
@@ -40,6 +44,14 @@ class AuthService {
         status: error.response?.status,
         body: error.response?.data
       });
+      
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        return {
+          success: false,
+          error: 'Connection timeout. The backend server may not be running or is taking too long to respond.'
+        };
+      }
       
       // Handle network errors
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
