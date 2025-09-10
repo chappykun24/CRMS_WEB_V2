@@ -667,6 +667,10 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
     const userId = req.user.userId;
     console.log('🔍 [AUTH PROFILE] Fetching profile for authenticated user ID:', userId);
     
+    // First, let's check what's in the users table for this user
+    const userCheck = await db.query('SELECT user_id, name, email, profile_pic FROM users WHERE user_id = $1', [userId]);
+    console.log('🔍 [AUTH PROFILE] Raw user data from database:', userCheck.rows[0]);
+    
     const result = await db.query(`
       SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
              up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position

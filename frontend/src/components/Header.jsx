@@ -19,7 +19,8 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   useEffect(() => {
     console.log('🔍 [HEADER] User data received:', user);
     console.log('🔍 [HEADER] User profilePic:', user?.profilePic);
-    console.log('🔍 [HEADER] User ID:', user?.id);
+    console.log('🔍 [HEADER] User profile_pic:', user?.profile_pic);
+    console.log('🔍 [HEADER] User ID:', user?.user_id || user?.id);
     console.log('🔍 [HEADER] User name:', user?.name);
   }, [user]);
   
@@ -437,17 +438,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
             >
               {/* User Photo */}
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-gray-200 relative">
-                {user?.profilePic ? (
+                {(user?.profilePic || user?.profile_pic) ? (
                   <img 
-                    src={user.profilePic} 
+                    src={user.profilePic || user.profile_pic} 
                     alt={user?.name || 'User'} 
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.log('🔍 [HEADER] Image load error, falling back to default avatar');
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full bg-primary-600 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-white" />
-                  </div>
-                )}
+                ) : null}
+                <div className={`w-full h-full bg-primary-600 flex items-center justify-center ${(user?.profilePic || user?.profile_pic) ? 'hidden' : ''}`}>
+                  <UserIcon className="h-5 w-5 text-white" />
+                </div>
               </div>
             </button>
 
@@ -472,17 +477,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 <div className="p-4 text-center bg-white">
                   {/* Large Profile Picture */}
                   <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-gray-200 mx-auto mb-3 relative shadow-lg">
-                    {user?.profilePic ? (
+                    {(user?.profilePic || user?.profile_pic) ? (
                       <img 
-                        src={user.profilePic} 
+                        src={user.profilePic || user.profile_pic} 
                         alt={user?.name || 'User'} 
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log('🔍 [HEADER MODAL] Image load error, falling back to default avatar');
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-full bg-primary-600 flex items-center justify-center">
-                        <UserIcon className="h-6 w-6 text-white" />
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={`w-full h-full bg-primary-600 flex items-center justify-center ${(user?.profilePic || user?.profile_pic) ? 'hidden' : ''}`}>
+                      <UserIcon className="h-6 w-6 text-white" />
+                    </div>
                   </div>
                   
                   {/* Greeting */}
