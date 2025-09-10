@@ -36,9 +36,7 @@ const corsOptions = {
         'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app', // Latest deployment
         'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app', // Previous deployment
         'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app', // Earlier deployment
-        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app',
-        'http://localhost:3000', // Local development
-        'http://127.0.0.1:3000'  // Local development
+        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
       ]
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
@@ -135,8 +133,11 @@ app.use('/api', checkDepartmentAccess);
 // Database connection
 const connectionString = `postgresql://${process.env.VITE_NEON_USER || process.env.NEON_USER}:${process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD}@${process.env.VITE_NEON_HOST || process.env.NEON_HOST}:${process.env.VITE_NEON_PORT || process.env.NEON_PORT || 5432}/${process.env.VITE_NEON_DATABASE || process.env.NEON_DATABASE}?sslmode=require`;
 
-console.log('🔗 [SERVER] Database connection string:', connectionString.replace(process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD, '***PASSWORD***'));
+// Log database connection info (masked for security)
+const maskedConnectionString = connectionString.replace(process.env.VITE_NEON_PASSWORD || process.env.NEON_PASSWORD, '***PASSWORD***');
+console.log('🔗 [SERVER] Database connection string:', maskedConnectionString);
 console.log('🌍 [SERVER] Environment:', process.env.NODE_ENV);
+console.log('🚀 [SERVER] Deployed on Render:', process.env.NODE_ENV === 'production' ? 'Yes' : 'No');
 
 const pool = new Pool({
   connectionString,
@@ -151,9 +152,21 @@ app.get('/api/health', async (req, res) => {
   try {
     const client = await pool.connect();
     client.release();
-    res.json({ status: 'healthy', message: 'Database connected' });
+    res.json({ 
+      status: 'healthy', 
+      message: 'Database connected',
+      environment: process.env.NODE_ENV || 'development',
+      deployed_on: process.env.NODE_ENV === 'production' ? 'Render' : 'Local',
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    res.status(500).json({ status: 'unhealthy', error: error.message });
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      error: error.message,
+      environment: process.env.NODE_ENV || 'development',
+      deployed_on: process.env.NODE_ENV === 'production' ? 'Render' : 'Local',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -2139,12 +2152,17 @@ app.post('/api/students/enroll', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://crms-backend-api.onrender.com'
+    : `http://localhost:${PORT}`;
+    
   console.log(`🚀 [SERVER] Backend API running on port ${PORT}`);
-  console.log(`🔍 [SERVER] Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔐 [SERVER] Auth API: http://localhost:${PORT}/api/auth`);
-  console.log(`📊 [SERVER] Departments API: http://localhost:${PORT}/api/departments`);
-  console.log(`📅 [SERVER] School Terms API: http://localhost:${PORT}/api/school-terms`);
-  console.log(`📚 [SERVER] Catalog API: http://localhost:${PORT}/api/programs, /api/program-specializations, /api/courses`);
+  console.log(`🔍 [SERVER] Health check: ${baseUrl}/api/health`);
+  console.log(`🔐 [SERVER] Auth API: ${baseUrl}/api/auth`);
+  console.log(`📊 [SERVER] Departments API: ${baseUrl}/api/departments`);
+  console.log(`📅 [SERVER] School Terms API: ${baseUrl}/api/school-terms`);
+  console.log(`📚 [SERVER] Catalog API: ${baseUrl}/api/programs, /api/program-specializations, /api/courses`);
   console.log(`📸 [SERVER] File uploads: Enabled (5MB max, base64 storage)`);
   console.log(`🌍 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 [SERVER] Frontend URLs: ${corsOptions.origin.join(', ')}`);
 });
