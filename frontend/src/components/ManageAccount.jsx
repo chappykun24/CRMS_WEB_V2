@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '../contexts/UnifiedAuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
   UserIcon,

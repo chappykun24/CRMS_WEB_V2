@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useUser } from '../contexts/UserContext'
+import { useUser } from '../contexts/UnifiedAuthContext'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   BellIcon,

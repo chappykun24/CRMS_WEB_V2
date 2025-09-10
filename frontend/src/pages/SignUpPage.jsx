@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useUser } from '../contexts/UserContext'
+import { useUser } from '../contexts/UnifiedAuthContext'
 import { departmentService, schoolTermService } from '../services/schoolConfigService'
 import { facultyService } from '../services/facultyService'
 import { 

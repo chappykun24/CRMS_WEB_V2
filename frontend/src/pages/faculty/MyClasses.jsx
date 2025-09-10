@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useUser } from '../../contexts/UserContext'
+import { useUser } from '../../contexts/UnifiedAuthContext'
  
 import ClassCard from '../../components/ClassCard'
 
