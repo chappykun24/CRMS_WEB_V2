@@ -117,7 +117,7 @@ export const login = async (req, res) => {
     try {
       result = await db.query(`
         SELECT u.user_id, u.email, u.password_hash, u.name,
-               u.role_id, u.last_login,
+               u.role_id, u.is_approved, u.last_login,
                r.name as role_name
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.role_id
@@ -155,8 +155,14 @@ export const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Note: is_active column doesn't exist in production database
-    // User validation will be handled by other means if needed
+    // Check if user is approved
+    if (!user.is_approved) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is not approved. Please contact administrator.',
+        statusCode: 401
+      });
+    }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -189,6 +195,7 @@ export const login = async (req, res) => {
           last_name: user.name ? user.name.split(' ').slice(1).join(' ') : '',
           role_id: user.role_id,
           role_name: user.role_name,
+          is_approved: user.is_approved,
           last_login: user.last_login
         },
         token
