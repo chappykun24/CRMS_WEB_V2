@@ -87,8 +87,8 @@ export const login = async (req, res) => {
     // Find user by email
     console.log('🔐 [AUTH CONTROLLER] Querying user with email:', email);
     const result = await db.query(`
-      SELECT u.user_id, u.email, u.password_hash, u.name, 
-             u.role_id, u.is_approved, u.last_login,
+      SELECT u.user_id, u.email, u.password_hash, u.first_name, u.last_name, u.middle_name,
+             u.role_id, u.is_active, u.last_login,
              r.name as role_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
@@ -107,11 +107,11 @@ export const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if user is approved
-    if (!user.is_approved) {
+    // Check if user is active
+    if (!user.is_active) {
       return res.status(401).json({
         success: false,
-        message: 'Account is not approved. Please contact administrator.',
+        message: 'Account is not active. Please contact administrator.',
         statusCode: 401
       });
     }
@@ -142,13 +142,13 @@ export const login = async (req, res) => {
         user: {
           user_id: user.user_id,
           email: user.email,
-          name: user.name,
-          first_name: user.name.split(' ')[0] || user.name,
-          last_name: user.name.split(' ').slice(1).join(' ') || '',
+          first_name: user.first_name,
+          last_name: user.last_name,
+          middle_name: user.middle_name,
+          name: `${user.first_name} ${user.last_name}`.trim(),
           role_id: user.role_id,
           role_name: user.role_name,
-          is_active: user.is_approved,
-          is_approved: user.is_approved,
+          is_active: user.is_active,
           last_login: user.last_login
         },
         token
