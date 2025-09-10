@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUser } from '../contexts/UserContext'
+import { useAuth } from '../contexts/AuthContext'
 import AdminDashboard from './admin/AdminDashboard'
 import FacultyDashboard from './faculty/FacultyDashboard'
 import DeanDashboard from './dean/DeanDashboard'
@@ -8,14 +8,14 @@ import StaffDashboard from './staff/StaffDashboard'
 import ProgramChairDashboard from './program-chair/ProgramChairDashboard'
 
 const Dashboard = () => {
-  const { user, isLoading } = useUser()
+  const { user, isLoading } = useAuth()
   const navigate = useNavigate()
   console.log('[Dashboard] render', { isLoading, user })
 
   // Redirect to role-specific dashboard based on user role
   useEffect(() => {
     if (!isLoading && user) {
-      const role = String(user.role || '').toLowerCase().replace(/\s|_/g, '')
+      const role = String(user.role_name || user.role || '').toLowerCase().replace(/\s|_/g, '')
       console.log('[Dashboard] redirecting based on role', { role, raw: user.role })
       
       switch (role) {
@@ -32,7 +32,8 @@ const Dashboard = () => {
           navigate('/staff', { replace: true })
           break
         case 'programchair':
-        case 'programchair':
+        case 'program_chair':
+        case 'program chair':
           navigate('/program-chair', { replace: true })
           break
         default:
@@ -64,7 +65,7 @@ const Dashboard = () => {
   }
 
   // Fallback: Show role-specific dashboard directly if redirect didn't work
-  const role = String(user.role || '').toLowerCase().replace(/\s|_/g, '')
+  const role = String(user.role_name || user.role || '').toLowerCase().replace(/\s|_/g, '')
   console.log('[Dashboard] fallback render', { role, raw: user.role })
 
   if (role === 'admin') return <AdminDashboard user={user} />
@@ -80,11 +81,11 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Welcome, {user.name}!</h2>
-            <p className="text-gray-600 mb-4">Role: {user.role || 'Unknown'}</p>
+            <p className="text-gray-600 mb-4">Role: {user.role_name || user.role || 'Unknown'}</p>
             <p className="text-gray-600">Email: {user.email}</p>
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800">
-                <strong>Note:</strong> Dashboard for role "{user.role}" is under development.
+                <strong>Note:</strong> Dashboard for role "{user.role_name || user.role}" is under development.
               </p>
             </div>
           </div>
