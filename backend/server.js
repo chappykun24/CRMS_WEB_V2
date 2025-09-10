@@ -47,6 +47,10 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -1030,6 +1034,26 @@ app.get('/api/debug/auth', (req, res) => {
     message: 'Auth routes are loaded and working',
     timestamp: new Date().toISOString()
   });
+});
+
+// Debug: Test database connection
+app.get('/api/debug/db', async (req, res) => {
+  try {
+    const result = await db.query('SELECT COUNT(*) as user_count FROM users');
+    res.json({
+      success: true,
+      message: 'Database connection working',
+      userCount: result.rows[0].user_count,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Catalog API (programs, specializations, terms, courses)
