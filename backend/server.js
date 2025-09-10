@@ -1040,7 +1040,9 @@ app.get('/api/debug/auth', (req, res) => {
 // Debug: Test database connection
 app.get('/api/debug/db', async (req, res) => {
   try {
+    console.log('🔍 [DEBUG DB] Testing database connection...');
     const result = await db.query('SELECT COUNT(*) as user_count FROM users');
+    console.log('🔍 [DEBUG DB] Query successful, user count:', result.rows[0].user_count);
     res.json({
       success: true,
       message: 'Database connection working',
@@ -1048,11 +1050,54 @@ app.get('/api/debug/db', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('🔍 [DEBUG DB] Database error:', error);
     res.status(500).json({
       success: false,
       message: 'Database connection failed',
       error: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Debug: Test simple login without auth controller
+app.post('/api/debug/login', async (req, res) => {
+  try {
+    console.log('🔍 [DEBUG LOGIN] Testing login endpoint...');
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+    
+    console.log('🔍 [DEBUG LOGIN] Querying user with email:', email);
+    const result = await db.query('SELECT user_id, email, name FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const user = result.rows[0];
+    console.log('🔍 [DEBUG LOGIN] User found:', user);
+    
+    res.json({
+      success: true,
+      message: 'Login test successful',
+      user: user
+    });
+    
+  } catch (error) {
+    console.error('🔍 [DEBUG LOGIN] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login test failed',
+      error: error.message
     });
   }
 });
