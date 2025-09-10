@@ -64,12 +64,11 @@ export const login = async (req, res) => {
 
     // Find user by email
     const result = await db.query(`
-      SELECT u.user_id, u.email, u.password_hash, u.first_name, u.last_name, u.middle_name, 
-             u.role_id, u.department_id, u.employee_id, u.phone, u.is_active, u.last_login,
-             r.name as role_name, d.name as department_name
+      SELECT u.user_id, u.email, u.password_hash, u.name, 
+             u.role_id, u.is_approved, u.last_login,
+             r.name as role_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
-      LEFT JOIN departments d ON u.department_id = d.department_id
       WHERE u.email = $1
     `, [email]);
 
@@ -83,11 +82,11 @@ export const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if user is active
-    if (!user.is_active) {
+    // Check if user is approved
+    if (!user.is_approved) {
       return res.status(401).json({
         success: false,
-        message: 'Account is deactivated. Please contact administrator.',
+        message: 'Account is not approved. Please contact administrator.',
         statusCode: 401
       });
     }
@@ -118,16 +117,13 @@ export const login = async (req, res) => {
         user: {
           user_id: user.user_id,
           email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          middle_name: user.middle_name,
+          name: user.name,
+          first_name: user.name.split(' ')[0] || user.name,
+          last_name: user.name.split(' ').slice(1).join(' ') || '',
           role_id: user.role_id,
           role_name: user.role_name,
-          department_id: user.department_id,
-          department_name: user.department_name,
-          employee_id: user.employee_id,
-          phone: user.phone,
-          is_active: user.is_active,
+          is_active: user.is_approved,
+          is_approved: user.is_approved,
           last_login: user.last_login
         },
         token
