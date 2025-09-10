@@ -984,6 +984,32 @@ app.post('/api/users/:id/upload-photo', async (req, res) => {
 // Serve profile photos statically
 app.use('/api/photos', express.static('uploads'));
 
+// Debug endpoint to check profile photos in database
+app.get('/api/debug/profile-photos', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT user_id, name, email, profile_pic 
+      FROM users 
+      WHERE profile_pic IS NOT NULL AND profile_pic != ''
+      ORDER BY user_id
+    `);
+    
+    console.log('🔍 [DEBUG] Users with profile photos:', result.rows);
+    
+    res.json({
+      success: true,
+      count: result.rows.length,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('❌ [DEBUG] Error checking profile photos:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Get user profile photo endpoint
 app.get('/api/users/:id/photo', async (req, res) => {
   try {
