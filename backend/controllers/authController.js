@@ -234,17 +234,19 @@ export const logout = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
+    console.log('🔍 [AUTH CONTROLLER] Getting profile for user ID:', userId);
 
     const result = await db.query(`
-      SELECT u.user_id, u.email, u.first_name, u.last_name, u.middle_name, 
-             u.role_id, u.department_id, u.employee_id, u.phone, u.profile_photo, 
-             u.is_active, u.last_login, u.created_at,
-             r.name as role_name, d.name as department_name
+      SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
+             up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id
-      LEFT JOIN departments d ON u.department_id = d.department_id
+      LEFT JOIN user_profiles up ON u.user_id = up.user_id
+      LEFT JOIN departments d ON up.department_id = d.department_id
       WHERE u.user_id = $1
     `, [userId]);
+
+    console.log('🔍 [AUTH CONTROLLER] Profile query result:', result.rows.length, 'rows found');
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -254,14 +256,39 @@ export const getProfile = async (req, res) => {
       });
     }
 
-    const user = result.rows[0];
+    // Transform user data to match frontend expectations
+    const userData = result.rows[0];
+    const user = {
+      user_id: userData.user_id,
+      name: userData.name,
+      email: userData.email,
+      role_name: userData.role_name,
+      role_id: userData.role_id,
+      is_approved: userData.is_approved,
+      profilePic: userData.profile_pic, // Frontend expects camelCase
+      profile_pic: userData.profile_pic, // Keep both for compatibility
+      created_at: userData.created_at,
+      updated_at: userData.updated_at,
+      department_id: userData.department_id,
+      department_name: userData.department_name,
+      department_abbreviation: userData.department_abbreviation,
+      profile_type: userData.profile_type,
+      specialization: userData.specialization,
+      designation: userData.designation,
+      office_assigned: userData.office_assigned,
+      contact_email: userData.contact_email,
+      bio: userData.bio,
+      position: userData.position
+    };
+
+    console.log('🔍 [AUTH CONTROLLER] Transformed user data:', user);
 
     res.json({
       success: true,
-      data: { user }
+      user: user
     });
   } catch (error) {
-    console.error('Get profile error:', error);
+    console.error('❌ [AUTH CONTROLLER] Get profile error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
