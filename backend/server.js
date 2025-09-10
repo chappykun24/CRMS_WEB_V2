@@ -31,14 +31,18 @@ const __dirname = path.dirname(__filename);
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
-        process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app', // Frontend URL
+        'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
+        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app', // Latest deployment
+        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app', // Previous deployment
+        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app', // Earlier deployment
+        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app',
         'http://localhost:3000', // Local development
         'http://127.0.0.1:3000'  // Local development
       ]
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'user-id']
 };
 
 // Middleware

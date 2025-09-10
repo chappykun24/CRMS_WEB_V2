@@ -30,6 +30,10 @@ router.post('/login',
   sanitizeInput,
   validateRequired(['email', 'password']),
   validateEmail,
+  (req, res, next) => {
+    console.log('🔐 [AUTH ROUTE] Login request received:', { email: req.body.email });
+    next();
+  },
   login
 );
 
