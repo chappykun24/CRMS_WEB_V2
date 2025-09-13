@@ -45,7 +45,11 @@ const Attendance = () => {
     try {
       setLoading(true)
       const facultyId = user?.user_id || user?.id
-      const response = await fetch(`/api/section-courses/faculty/${facultyId}`)
+      const response = await fetch(`/api/section-courses/faculty/${facultyId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Failed to load classes')
@@ -74,7 +78,11 @@ const Attendance = () => {
       if (dateFilter.startDate) params.append('startDate', dateFilter.startDate)
       if (dateFilter.endDate) params.append('endDate', dateFilter.endDate)
       
-      const response = await fetch(`/api/attendance/sessions/${selectedClass.section_course_id}?${params}`)
+      const response = await fetch(`/api/attendance/sessions/${selectedClass.section_course_id}?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Failed to load sessions')
@@ -93,7 +101,11 @@ const Attendance = () => {
     if (!selectedClass) return
     
     try {
-      const response = await fetch(`/api/attendance/students/${selectedClass.section_course_id}`)
+      const response = await fetch(`/api/attendance/students/${selectedClass.section_course_id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Failed to load students')
@@ -116,7 +128,11 @@ const Attendance = () => {
       if (dateFilter.startDate) params.append('startDate', dateFilter.startDate)
       if (dateFilter.endDate) params.append('endDate', dateFilter.endDate)
       
-      const response = await fetch(`/api/attendance/stats/${selectedClass.section_course_id}?${params}`)
+      const response = await fetch(`/api/attendance/stats/${selectedClass.section_course_id}?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Failed to load attendance stats')
@@ -537,9 +553,9 @@ const Attendance = () => {
                   {students.map((student) => (
                     <div key={student.student_id} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
                       <div className="flex-shrink-0">
-                        {student.student_photo ? (
+                        {student.profile_photo ? (
                           <img
-                            src={student.student_photo}
+                            src={student.profile_photo}
                             alt={student.full_name}
                             className="h-10 w-10 rounded-full object-cover"
                           />

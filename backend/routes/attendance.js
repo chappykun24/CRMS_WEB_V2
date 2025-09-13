@@ -20,9 +20,9 @@ router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
         al.recorded_at,
         al.remarks,
         s.student_id,
-        s.full_name,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
         s.student_number,
-        s.student_photo,
+        u.profile_photo,
         ses.session_id,
         ses.title,
         ses.session_type,
@@ -30,6 +30,7 @@ router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
       FROM attendance_logs al
       JOIN course_enrollments ce ON al.enrollment_id = ce.enrollment_id
       JOIN students s ON ce.student_id = s.student_id
+      JOIN users u ON s.user_id = u.user_id
       LEFT JOIN sessions ses ON al.session_id = ses.session_id
       WHERE ce.section_course_id = $1
     `;
@@ -88,7 +89,7 @@ router.get('/sessions/:sectionCourseId', authenticateToken, async (req, res) => 
       params.push(startDate, endDate);
     }
 
-    query += ` GROUP BY s.session_id, u.name ORDER BY s.session_date DESC`;
+    query += ` GROUP BY s.session_id, s.session_date, s.title, s.session_type, s.meeting_type, s.created_at ORDER BY s.session_date DESC`;
 
     const result = await db.query(query, params);
 
@@ -224,16 +225,17 @@ router.get('/students/:sectionCourseId', authenticateToken, async (req, res) => 
       SELECT 
         ce.enrollment_id,
         s.student_id,
-        s.full_name,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
         s.student_number,
-        s.student_photo,
-        s.contact_email,
-        ce.enrollment_date,
+        u.profile_photo,
+        u.email as contact_email,
+        ce.enrolled_at as enrollment_date,
         ce.status as enrollment_status
       FROM course_enrollments ce
       JOIN students s ON ce.student_id = s.student_id
+      JOIN users u ON s.user_id = u.user_id
       WHERE ce.section_course_id = $1
-      ORDER BY s.full_name
+      ORDER BY u.first_name, u.last_name
     `, [sectionCourseId]);
 
     res.json({
@@ -266,7 +268,7 @@ router.get('/stats/:sectionCourseId', authenticateToken, async (req, res) => {
     const result = await db.query(`
       SELECT 
         s.student_id,
-        s.full_name,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
         s.student_number,
         COUNT(al.attendance_id) as total_sessions,
         COUNT(CASE WHEN al.status = 'present' THEN 1 END) as present_count,
@@ -278,11 +280,12 @@ router.get('/stats/:sectionCourseId', authenticateToken, async (req, res) => {
            NULLIF(COUNT(al.attendance_id), 0)) * 100, 2
         ) as attendance_percentage
       FROM students s
+      JOIN users u ON s.user_id = u.user_id
       JOIN course_enrollments ce ON s.student_id = ce.student_id
       LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id ${dateFilter}
       WHERE ce.section_course_id = $1
-      GROUP BY s.student_id, s.full_name, s.student_number
-      ORDER BY s.full_name
+      GROUP BY s.student_id, u.first_name, u.last_name, s.student_number
+      ORDER BY u.first_name, u.last_name
     `, params);
 
     res.json({
@@ -370,7 +373,7 @@ router.get('/export/:sectionCourseId', authenticateToken, async (req, res) => {
 
     let query = `
       SELECT 
-        s.full_name as student_name,
+        CONCAT(u.first_name, ' ', u.last_name) as student_name,
         s.student_number,
         ses.title as session_title,
         ses.session_date,
@@ -382,6 +385,7 @@ router.get('/export/:sectionCourseId', authenticateToken, async (req, res) => {
       FROM attendance_logs al
       JOIN course_enrollments ce ON al.enrollment_id = ce.enrollment_id
       JOIN students s ON ce.student_id = s.student_id
+      JOIN users u ON s.user_id = u.user_id
       LEFT JOIN sessions ses ON al.session_id = ses.session_id
       WHERE ce.section_course_id = $1
     `;
@@ -393,7 +397,7 @@ router.get('/export/:sectionCourseId', authenticateToken, async (req, res) => {
       params.push(startDate, endDate);
     }
 
-    query += ` ORDER BY ses.session_date DESC, s.full_name`;
+    query += ` ORDER BY ses.session_date DESC, u.first_name, u.last_name`;
 
     const result = await db.query(query, params);
 
