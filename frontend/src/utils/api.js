@@ -56,10 +56,15 @@ api.interceptors.response.use(
       config.__retried = true;
       return api.request(config);
     }
+    
+    // Handle 401 errors more gracefully
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      console.warn('[API] 401 Unauthorized - token may be invalid or expired');
+      // Don't automatically clear tokens here - let the auth context handle it
     }
+    
+    // Do not force a global redirect on 401 here to avoid auth flicker.
+    // Let callers decide how to handle unauthorized responses.
     return Promise.reject(error);
   }
 );
