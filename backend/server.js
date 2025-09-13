@@ -1179,14 +1179,17 @@ app.get('/api/classes', async (req, res) => {
 // Import API routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import attendanceRoutes from './routes/attendance.js';
 
 // Use API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');
 console.log('   📍 /api/users');
+console.log('   📍 /api/attendance');
 
 // Debug: Test if auth routes are working
 app.get('/api/debug/auth', (req, res) => {
