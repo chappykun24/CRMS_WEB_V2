@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/UnifiedAuthContext'
-import { getIntendedDestination, getDefaultDashboardRoute } from '../utils/sessionManager'
 import { 
   Mail, 
   Lock, 
@@ -53,22 +52,18 @@ const LoginPage = () => {
       console.log('[LoginPage] login result', result)
       
       if (result.success) {
-        // Check for intended destination from browser history protection
-        const intendedDestination = getIntendedDestination()
-        
-        let redirectPath = ''
-        if (intendedDestination && intendedDestination !== '/login' && intendedDestination !== '/signup') {
-          // User was trying to access a protected route, redirect them there
-          redirectPath = intendedDestination
-          console.log('[LoginPage] redirecting to intended destination:', redirectPath)
-        } else {
-          // Redirect to role-specific default route
-          const role = result.user?.role || result.user?.role_name || ''
-          redirectPath = getDefaultDashboardRoute(role)
-          console.log('[LoginPage] navigating to role-specific dashboard:', redirectPath, 'for role', role)
-        }
-        
-        navigate(redirectPath, { replace: true })
+        // Redirect to role-specific default route
+        const role = String(result.user?.role || '').toLowerCase().replace(/\s|_/g, '')
+        const roleDefaultPath = (() => {
+          if (role === 'admin') return '/dashboard'
+          if (role === 'faculty') return '/dashboard/classes'
+          if (role === 'dean') return '/dashboard/analytics'
+          if (role === 'staff') return '/dashboard/students'
+          if (role === 'programchair') return '/dashboard/courses'
+          return '/dashboard'
+        })()
+        console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
+        navigate(roleDefaultPath)
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }

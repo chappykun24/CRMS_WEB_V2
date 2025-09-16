@@ -13,11 +13,11 @@ const FacultyTopNav = () => {
   const navigate = useNavigate()
 
   const tabs = [
-    { key: 'classes', label: 'My Classes', href: '/faculty/classes', icon: BookOpenIcon },
-    { key: 'attendance', label: 'Attendance', href: '/faculty/attendance', icon: CalendarDaysIcon },
-    { key: 'assessments', label: 'Assessments', href: '/faculty/assessments', icon: ClipboardDocumentListIcon },
-    { key: 'grades', label: 'Grades', href: '/faculty/grades', icon: TrophyIcon },
-    { key: 'syllabi', label: 'Syllabi', href: '/faculty/syllabi', icon: DocumentTextIcon }
+    { key: 'classes', label: 'My Classes', href: '/dashboard/classes', icon: BookOpenIcon },
+    { key: 'attendance', label: 'Attendance', href: '/dashboard/attendance', icon: CalendarDaysIcon },
+    { key: 'assessments', label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardDocumentListIcon },
+    { key: 'grades', label: 'Grades', href: '/dashboard/grades', icon: TrophyIcon },
+    { key: 'syllabi', label: 'Syllabi', href: '/dashboard/syllabi', icon: DocumentTextIcon }
   ]
 
   const isActive = (href) => location.pathname === href

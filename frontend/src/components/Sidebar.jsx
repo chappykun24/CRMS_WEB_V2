@@ -76,7 +76,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       default:
         return [
-          { name: 'Home', icon: HomeIcon, href: '/' }
+          { name: 'Home', icon: HomeIcon, href: '/dashboard' }
         ]
     }
   }
@@ -130,7 +130,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       <nav className="flex-1 py-4 md:py-6 px-2 md:px-3 space-y-2 md:space-y-3">
         {navigationItems.map((item, index) => {
           const isActive = location.pathname === item.href || 
-                         (item.href === '/' && location.pathname === '/')
+                         (item.href === '/dashboard' && location.pathname === '/dashboard/')
           return (
             <Link
               key={item.name}
