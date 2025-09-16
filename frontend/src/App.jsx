@@ -13,6 +13,7 @@ import StaffDashboard from './pages/staff/StaffDashboard'
 import ProgramChairDashboard from './pages/program-chair/ProgramChairDashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import BrowserHistoryProtection from './components/BrowserHistoryProtection'
 import ManageAccount from './components/ManageAccount'
 import './App.css'
 
@@ -51,7 +52,8 @@ function App() {
   return (
     <ErrorBoundary>
       <UnifiedAuthProvider>
-        <div className="min-h-screen bg-gray-50">
+        <BrowserHistoryProtection>
+          <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/" element={<WelcomeScreen />} />
               <Route path="/login" element={<LoginPage />} />
@@ -203,6 +205,7 @@ function App() {
               />
             </Routes>
           </div>
+        </BrowserHistoryProtection>
       </UnifiedAuthProvider>
     </ErrorBoundary>
   )

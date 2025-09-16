@@ -57,6 +57,66 @@ const authReducer = (state, action) => {
 export const UnifiedAuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
+  // Session validation and token refresh mechanism
+  const validateSession = async () => {
+    try {
+      const userData = localStorage.getItem('userData')
+      const token = localStorage.getItem('authToken')
+      
+      if (!userData || !token) {
+        console.log('[UnifiedAuth] No session data found')
+        return false
+      }
+
+      // Parse user data
+      let user = null
+      try {
+        user = JSON.parse(userData)
+      } catch (error) {
+        console.log('[UnifiedAuth] Invalid user data format')
+        localStorage.removeItem('userData')
+        localStorage.removeItem('authToken')
+        return false
+      }
+
+      // Validate user data structure
+      if (!user || (!user.user_id && !user.id)) {
+        console.log('[UnifiedAuth] Invalid user data structure')
+        localStorage.removeItem('userData')
+        localStorage.removeItem('authToken')
+        return false
+      }
+
+      // Check token validity by making a test API call
+      try {
+        const response = await fetch('/api/auth/validate', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          console.log('[UnifiedAuth] Session validation successful')
+          return true
+        } else {
+          console.log('[UnifiedAuth] Session validation failed, clearing data')
+          localStorage.removeItem('userData')
+          localStorage.removeItem('authToken')
+          return false
+        }
+      } catch (error) {
+        console.log('[UnifiedAuth] Session validation error, keeping session for offline use')
+        // Don't clear session on network errors, allow offline use
+        return true
+      }
+    } catch (error) {
+      console.error('[UnifiedAuth] Session validation exception:', error)
+      return false
+    }
+  }
+
   // Check if user is already logged in on app start
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -69,34 +129,47 @@ export const UnifiedAuthProvider = ({ children }) => {
           const user = JSON.parse(userData)
           console.log('[UnifiedAuth] Found user data in localStorage:', user)
           
-          // If we have both user data and token, authenticate immediately
+          // If we have both user data and token, validate session first
           if (token && (user.user_id || user.id)) {
-            console.log('[UnifiedAuth] Found valid user data and token, authenticating user')
-            dispatch({ 
-              type: 'LOGIN_SUCCESS', 
-              payload: { user, token } 
-            })
+            console.log('[UnifiedAuth] Found user data and token, validating session')
             
-            // Try to refresh user data in the background (non-blocking)
-            try {
-              const userId = user.user_id || user.id
-              console.log('[UnifiedAuth] Refreshing user data in background for user ID:', userId)
-              const profileResult = await authService.getUserById(userId)
-              if (profileResult.success) {
-                console.log('[UnifiedAuth] User data refreshed successfully:', profileResult.user)
-                localStorage.setItem('userData', JSON.stringify(profileResult.user))
-                dispatch({ 
-                  type: 'UPDATE_USER', 
-                  payload: { user: profileResult.user } 
-                })
-              } else {
-                console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+            // Validate session with server
+            const isValidSession = await validateSession()
+            
+            if (isValidSession) {
+              console.log('[UnifiedAuth] Session validated, authenticating user')
+              dispatch({ 
+                type: 'LOGIN_SUCCESS', 
+                payload: { user, token } 
+              })
+              
+              // Try to refresh user data in the background (non-blocking)
+              try {
+                const userId = user.user_id || user.id
+                console.log('[UnifiedAuth] Refreshing user data in background for user ID:', userId)
+                const profileResult = await authService.getUserById(userId)
+                if (profileResult.success) {
+                  console.log('[UnifiedAuth] User data refreshed successfully:', profileResult.user)
+                  localStorage.setItem('userData', JSON.stringify(profileResult.user))
+                  dispatch({ 
+                    type: 'UPDATE_USER', 
+                    payload: { user: profileResult.user } 
+                  })
+                } else {
+                  console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+                }
+              } catch (error) {
+                console.warn('[UnifiedAuth] User data refresh failed, keeping stored data:', error.message)
+                // Don't log out user if refresh fails
               }
-            } catch (error) {
-              console.warn('[UnifiedAuth] User data refresh failed, keeping stored data:', error.message)
-              // Don't log out user if refresh fails
+              return
+            } else {
+              console.log('[UnifiedAuth] Session validation failed, clearing invalid data')
+              localStorage.removeItem('userData')
+              localStorage.removeItem('authToken')
+              dispatch({ type: 'LOGOUT' })
+              return
             }
-            return
           } else {
             console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
             localStorage.removeItem('userData')
@@ -119,6 +192,50 @@ export const UnifiedAuthProvider = ({ children }) => {
 
     checkAuthStatus()
   }, [])
+
+  // Periodic session validation to prevent stale sessions
+  useEffect(() => {
+    if (!state.isAuthenticated) return
+
+    const sessionValidationInterval = setInterval(async () => {
+      console.log('[UnifiedAuth] Performing periodic session validation')
+      const isValidSession = await validateSession()
+      
+      if (!isValidSession) {
+        console.log('[UnifiedAuth] Periodic validation failed, logging out user')
+        dispatch({ type: 'LOGOUT' })
+        localStorage.removeItem('userData')
+        localStorage.removeItem('authToken')
+      }
+    }, 5 * 60 * 1000) // Check every 5 minutes
+
+    return () => {
+      clearInterval(sessionValidationInterval)
+    }
+  }, [state.isAuthenticated])
+
+  // Add visibility change listener to validate session when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && state.isAuthenticated) {
+        console.log('[UnifiedAuth] Tab became visible, validating session')
+        const isValidSession = await validateSession()
+        
+        if (!isValidSession) {
+          console.log('[UnifiedAuth] Session validation failed on visibility change, logging out')
+          dispatch({ type: 'LOGOUT' })
+          localStorage.removeItem('userData')
+          localStorage.removeItem('authToken')
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [state.isAuthenticated])
 
   const login = async (email, password) => {
     console.log('[UnifiedAuth] LOGIN_START', { email })
