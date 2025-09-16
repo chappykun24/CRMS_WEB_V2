@@ -171,6 +171,26 @@ export const enhancedApi = {
     return response.data;
   },
 
+  async getDepartmentById(id) {
+    const response = await api.get(endpoints.department(id));
+    return response.data;
+  },
+
+  async createDepartment(departmentData) {
+    const response = await api.post(endpoints.departments, departmentData);
+    return response.data;
+  },
+
+  async updateDepartment(id, departmentData) {
+    const response = await api.put(endpoints.department(id), departmentData);
+    return response.data;
+  },
+
+  async deleteDepartment(id) {
+    const response = await api.delete(endpoints.department(id));
+    return response.data;
+  },
+
   // School terms
   async getSchoolTerms() {
     const response = await api.get('/school-terms');

@@ -726,6 +726,107 @@ app.get('/api/departments', async (req, res) => {
   }
 });
 
+// Get department by ID
+app.get('/api/departments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const departmentId = parseInt(id);
+    if (isNaN(departmentId)) {
+      return res.status(400).json({ success: false, error: 'Invalid department ID' });
+    }
+    console.log('🔍 [DEPARTMENT] Fetching department with ID:', departmentId);
+    const result = await db.query(`
+      SELECT department_id, name, department_abbreviation
+      FROM departments
+      WHERE department_id = $1
+    `, [departmentId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Department not found' });
+    }
+    console.log('🔍 [DEPARTMENT] Department found:', result.rows[0]);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('❌ [DEPARTMENT] Error occurred:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create new department
+app.post('/api/departments', async (req, res) => {
+  try {
+    const { name, department_abbreviation } = req.body;
+    if (!name || !department_abbreviation) {
+      return res.status(400).json({ success: false, error: 'Name and department abbreviation are required' });
+    }
+    console.log('🔍 [DEPARTMENT] Creating new department:', { name, department_abbreviation });
+    const result = await db.query(`
+      INSERT INTO departments (name, department_abbreviation)
+      VALUES ($1, $2)
+      RETURNING department_id, name, department_abbreviation
+    `, [name, department_abbreviation]);
+    console.log('🔍 [DEPARTMENT] Department created:', result.rows[0]);
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('❌ [DEPARTMENT] Error creating department:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update department
+app.put('/api/departments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, department_abbreviation } = req.body;
+    const departmentId = parseInt(id);
+    if (isNaN(departmentId)) {
+      return res.status(400).json({ success: false, error: 'Invalid department ID' });
+    }
+    if (!name || !department_abbreviation) {
+      return res.status(400).json({ success: false, error: 'Name and department abbreviation are required' });
+    }
+    console.log('🔍 [DEPARTMENT] Updating department:', { id: departmentId, name, department_abbreviation });
+    const result = await db.query(`
+      UPDATE departments 
+      SET name = $1, department_abbreviation = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE department_id = $3
+      RETURNING department_id, name, department_abbreviation
+    `, [name, department_abbreviation, departmentId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Department not found' });
+    }
+    console.log('🔍 [DEPARTMENT] Department updated:', result.rows[0]);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('❌ [DEPARTMENT] Error updating department:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete department
+app.delete('/api/departments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const departmentId = parseInt(id);
+    if (isNaN(departmentId)) {
+      return res.status(400).json({ success: false, error: 'Invalid department ID' });
+    }
+    console.log('🔍 [DEPARTMENT] Deleting department with ID:', departmentId);
+    const result = await db.query(`
+      DELETE FROM departments 
+      WHERE department_id = $1
+      RETURNING department_id, name, department_abbreviation
+    `, [departmentId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Department not found' });
+    }
+    console.log('🔍 [DEPARTMENT] Department deleted:', result.rows[0]);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('❌ [DEPARTMENT] Error deleting department:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get all roles endpoint
 app.get('/api/roles', async (req, res) => {
   try {
