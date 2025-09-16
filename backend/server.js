@@ -2511,5 +2511,13 @@ app.listen(PORT, () => {
   console.log(`📚 [SERVER] Catalog API: ${baseUrl}/api/programs, /api/program-specializations, /api/courses`);
   console.log(`📸 [SERVER] File uploads: Enabled (5MB max, base64 storage)`);
   console.log(`🌍 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 [SERVER] Frontend URLs: ${corsOptions.origin.join(', ')}`);
+  const allowedOrigins = process.env.NODE_ENV === 'production' 
+    ? [
+        'https://crms-web-v2-frontend.vercel.app',
+        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app',
+        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app',
+        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app'
+      ]
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  console.log(`🔗 [SERVER] Frontend URLs: ${allowedOrigins.join(', ')}`);
 });
