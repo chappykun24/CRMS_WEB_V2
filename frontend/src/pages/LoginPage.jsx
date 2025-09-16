@@ -63,7 +63,8 @@ const LoginPage = () => {
           return '/dashboard'
         })()
         console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
-        navigate(roleDefaultPath)
+        // Use replace so back button won't return to login
+        navigate(roleDefaultPath, { replace: true })
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }
