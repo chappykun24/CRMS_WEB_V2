@@ -1,7 +1,6 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
-import PublicRoute from './components/PublicRoute'
 import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
@@ -15,6 +14,7 @@ import ProgramChairDashboard from './pages/program-chair/ProgramChairDashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
+import GuestRoute from './components/GuestRoute'
 import './App.css'
 
 class ErrorBoundary extends React.Component {
@@ -55,8 +55,8 @@ function App() {
         <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/" element={<WelcomeScreen />} />
-              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-              <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
+              <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+              <Route path="/signup" element={<GuestRoute><SignUpPage /></GuestRoute>} />
               <Route 
                 path="/manage-account" 
                 element={
