@@ -194,7 +194,9 @@ const SchoolConfiguration = () => {
 
     try {
       setIsAddingDepartment(true);
-      const createdDept = await departmentService.create(newDepartment);
+      const response = await departmentService.create(newDepartment);
+      // Extract the data from the response object
+      const createdDept = response.data || response;
       setDepartments([...departments, createdDept]);
       setNewDepartment({ name: '', department_abbreviation: '' });
       setShowAddDepartment(false);
@@ -228,7 +230,9 @@ const SchoolConfiguration = () => {
 
     try {
       setIsUpdatingDepartment(true);
-      const updatedDept = await departmentService.update(editingDepartment.department_id, newDepartment);
+      const response = await departmentService.update(editingDepartment.department_id, newDepartment);
+      // Extract the data from the response object
+      const updatedDept = response.data || response;
       setDepartments(departments.map(dept => 
         dept.department_id === editingDepartment.department_id ? updatedDept : dept
       ));
