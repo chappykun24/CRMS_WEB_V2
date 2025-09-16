@@ -190,6 +190,41 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Test departments endpoint for debugging
+app.get('/api/test-departments', async (req, res) => {
+  try {
+    console.log('🔍 [TEST DEPARTMENTS] Testing departments query');
+    
+    const result = await db.query(`
+      SELECT department_id, name, department_abbreviation
+      FROM departments
+      ORDER BY name ASC
+    `);
+
+    console.log('🔍 [TEST DEPARTMENTS] Raw result:', result);
+    console.log('🔍 [TEST DEPARTMENTS] Result.rows:', result.rows);
+    console.log('🔍 [TEST DEPARTMENTS] Result.rows type:', typeof result.rows);
+    console.log('🔍 [TEST DEPARTMENTS] Result.rows isArray:', Array.isArray(result.rows));
+    console.log('🔍 [TEST DEPARTMENTS] Result.rows length:', result.rows.length);
+    
+    res.json({
+      message: 'Test departments endpoint',
+      rawResult: result,
+      rows: result.rows,
+      rowsType: typeof result.rows,
+      isArray: Array.isArray(result.rows),
+      length: result.rows.length,
+      firstItem: result.rows[0] || null
+    });
+  } catch (error) {
+    console.error('❌ [TEST DEPARTMENTS] Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Test registration endpoint
 app.get('/api/auth/register', (req, res) => {
   res.json({ 
@@ -634,8 +669,13 @@ app.get('/api/departments', async (req, res) => {
     `);
 
     console.log('🔍 [DEPARTMENTS] Query result:', result.rows.length, 'departments found');
+    console.log('🔍 [DEPARTMENTS] Raw data:', JSON.stringify(result.rows, null, 2));
     
-    res.json(result.rows);
+    // Ensure we're returning an array
+    const departments = Array.isArray(result.rows) ? result.rows : [];
+    console.log('🔍 [DEPARTMENTS] Final response type:', typeof departments, 'Length:', departments.length);
+    
+    res.json(departments);
   } catch (error) {
     console.error('❌ [DEPARTMENTS] Error occurred:', error);
     res.status(500).json({ 
