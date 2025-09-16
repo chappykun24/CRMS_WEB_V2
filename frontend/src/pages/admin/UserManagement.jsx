@@ -22,6 +22,7 @@ const UserManagement = () => {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [isApproving, setIsApproving] = useState({})
+  const [isRejecting, setIsRejecting] = useState({})
   const [roles, setRoles] = useState([])
   const [departments, setDepartments] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
@@ -274,6 +275,23 @@ const UserManagement = () => {
       setError(e.message || 'Failed to approve user')
     } finally {
       setIsApproving(prev => ({ ...prev, [userId]: false }))
+    }
+  }
+
+  const handleReject = async (userId) => {
+    try {
+      setIsRejecting(prev => ({ ...prev, [userId]: true }))
+      await api.patch(endpoints.userReject(userId))
+      setUsers(prev => prev.map(u => (u.user_id === userId ? { ...u, is_approved: false } : u)))
+      if (selectedUser && selectedUser.user_id === userId) {
+        setSelectedUser(prev => ({ ...prev, is_approved: false }))
+      }
+      setSuccessMessage('User rejected successfully')
+      setShowSuccessModal(true)
+    } catch (e) {
+      setError(e.message || 'Failed to reject user')
+    } finally {
+      setIsRejecting(prev => ({ ...prev, [userId]: false }))
     }
   }
 
@@ -791,10 +809,11 @@ const UserManagement = () => {
                               {isApproving[selectedUser.user_id] ? 'Approving…' : 'Approve'}
                             </button>
                             <button
-                              onClick={() => alert('Reject handler not implemented yet')}
-                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                              onClick={() => handleReject(selectedUser.user_id)}
+                              disabled={!!isRejecting[selectedUser.user_id]}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                             >
-                              Reject
+                              {isRejecting[selectedUser.user_id] ? 'Rejecting...' : 'Reject'}
                             </button>
                           </div>
                         </div>

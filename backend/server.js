@@ -483,16 +483,57 @@ app.post('/api/users', async (req, res) => {
 app.patch('/api/users/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🔍 [APPROVE USER] Approving user:', id);
+    
     // Approve user and insert approval record
     const approveQuery = 'UPDATE users SET is_approved = TRUE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 RETURNING user_id, is_approved';
     const result = await pool.query(approveQuery, [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const insertApproval = 'INSERT INTO user_approvals (user_id, approval_note) VALUES ($1, $2)';
+    
+    const insertApproval = 'INSERT INTO user_approvals (user_id, approval_note, approved_at) VALUES ($1, $2, CURRENT_TIMESTAMP)';
     await pool.query(insertApproval, [id, 'Approved by admin']);
+    
+    console.log('✅ [APPROVE USER] User approved successfully:', id);
     res.json({ success: true, userId: id, isApproved: true });
   } catch (error) {
+    console.error('❌ [APPROVE USER] Error occurred:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reject user endpoint
+app.patch('/api/users/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🔍 [REJECT USER] Rejecting user:', id);
+    
+    // Reject user (set is_approved to false)
+    const rejectQuery = 'UPDATE users SET is_approved = FALSE, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 RETURNING user_id, is_approved';
+    const result = await pool.query(rejectQuery, [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Update or insert rejection record
+    const updateApproval = `
+      UPDATE user_approvals 
+      SET approval_note = $2, approved_at = NULL, updated_at = CURRENT_TIMESTAMP 
+      WHERE user_id = $1
+    `;
+    const updateResult = await pool.query(updateApproval, [id, 'Rejected by admin']);
+    
+    // If no existing approval record, create one
+    if (updateResult.rowCount === 0) {
+      const insertApproval = 'INSERT INTO user_approvals (user_id, approval_note) VALUES ($1, $2)';
+      await pool.query(insertApproval, [id, 'Rejected by admin']);
+    }
+    
+    console.log('✅ [REJECT USER] User rejected successfully:', id);
+    res.json({ success: true, userId: id, isApproved: false });
+  } catch (error) {
+    console.error('❌ [REJECT USER] Error occurred:', error);
     res.status(500).json({ error: error.message });
   }
 });

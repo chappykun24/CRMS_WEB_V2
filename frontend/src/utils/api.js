@@ -124,6 +124,60 @@ export const endpoints = {
 
 // Simple API helper methods (API only)
 export const enhancedApi = {
+  // User management methods
+  async getUsers() {
+    const response = await api.get(endpoints.users);
+    return response.data;
+  },
+
+  async getUserById(id) {
+    const response = await api.get(endpoints.user(id));
+    return response.data;
+  },
+
+  async createUser(userData) {
+    const response = await api.post(endpoints.users, userData);
+    return response.data;
+  },
+
+  async updateUser(id, userData) {
+    const response = await api.put(endpoints.user(id), userData);
+    return response.data;
+  },
+
+  async deleteUser(id) {
+    const response = await api.delete(endpoints.user(id));
+    return response.data;
+  },
+
+  async approveUser(id) {
+    const response = await api.patch(endpoints.userApprove(id));
+    return response.data;
+  },
+
+  async rejectUser(id) {
+    const response = await api.patch(endpoints.userReject(id));
+    return response.data;
+  },
+
+  // Role and department methods
+  async getRoles() {
+    const response = await api.get(endpoints.roles);
+    return response.data;
+  },
+
+  async getDepartments() {
+    const response = await api.get(endpoints.departments);
+    return response.data;
+  },
+
+  // School terms
+  async getSchoolTerms() {
+    const response = await api.get('/school-terms');
+    return response.data;
+  },
+
+  // Catalog methods
   async getPrograms() {
     const response = await api.get(endpoints.programs);
     return response.data;
