@@ -689,16 +689,238 @@ app.get('/api/school-terms', async (req, res) => {
     console.log('🔍 [SCHOOL TERMS] Fetching all school terms');
     
     const result = await db.query(`
-      SELECT term_id, school_year, semester, is_active
+      SELECT term_id, school_year, semester, start_date, end_date, is_active
       FROM school_terms
       ORDER BY term_id DESC
     `);
 
     console.log('🔍 [SCHOOL TERMS] Query result:', result.rows.length, 'terms found');
     
-    res.json(result.rows);
+    // Format dates properly for frontend
+    const formattedTerms = result.rows.map(term => {
+      let startDate = null;
+      let endDate = null;
+      
+      try {
+        if (term.start_date) {
+          const start = new Date(term.start_date);
+          startDate = isNaN(start.getTime()) ? null : start.toISOString().split('T')[0];
+        }
+        if (term.end_date) {
+          const end = new Date(term.end_date);
+          endDate = isNaN(end.getTime()) ? null : end.toISOString().split('T')[0];
+        }
+      } catch (error) {
+        console.error('❌ [SCHOOL TERMS] Date formatting error:', error);
+      }
+      
+      return {
+        ...term,
+        start_date: startDate,
+        end_date: endDate
+      };
+    });
+    
+    res.json(formattedTerms);
   } catch (error) {
     console.error('❌ [SCHOOL TERMS] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Create school term endpoint
+app.post('/api/school-terms', async (req, res) => {
+  try {
+    const { school_year, semester, start_date, end_date, is_active } = req.body;
+    
+    if (!school_year || !semester) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'School year and semester are required' 
+      });
+    }
+
+    console.log('🔍 [SCHOOL TERMS] Creating new school term:', { school_year, semester, start_date, end_date, is_active });
+    
+    const result = await db.query(`
+      INSERT INTO school_terms (school_year, semester, start_date, end_date, is_active)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING term_id, school_year, semester, start_date, end_date, is_active
+    `, [school_year, semester, start_date || null, end_date || null, is_active || false]);
+
+    const newTerm = result.rows[0];
+    
+    // Format dates for response
+    const formattedTerm = {
+      ...newTerm,
+      start_date: newTerm.start_date ? new Date(newTerm.start_date).toISOString().split('T')[0] : null,
+      end_date: newTerm.end_date ? new Date(newTerm.end_date).toISOString().split('T')[0] : null
+    };
+
+    console.log('✅ [SCHOOL TERMS] School term created successfully:', formattedTerm);
+    
+    res.status(201).json(formattedTerm);
+  } catch (error) {
+    console.error('❌ [SCHOOL TERMS] Error creating school term:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Update school term endpoint
+app.put('/api/school-terms/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { school_year, semester, start_date, end_date, is_active } = req.body;
+    
+    const termId = parseInt(id);
+    if (isNaN(termId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid term ID' 
+      });
+    }
+
+    console.log('🔍 [SCHOOL TERMS] Updating school term:', { id: termId, school_year, semester, start_date, end_date, is_active });
+    
+    const result = await db.query(`
+      UPDATE school_terms 
+      SET school_year = COALESCE($1, school_year),
+          semester = COALESCE($2, semester),
+          start_date = COALESCE($3, start_date),
+          end_date = COALESCE($4, end_date),
+          is_active = COALESCE($5, is_active)
+      WHERE term_id = $6
+      RETURNING term_id, school_year, semester, start_date, end_date, is_active
+    `, [school_year, semester, start_date, end_date, is_active, termId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'School term not found' 
+      });
+    }
+
+    const updatedTerm = result.rows[0];
+    
+    // Format dates for response
+    const formattedTerm = {
+      ...updatedTerm,
+      start_date: updatedTerm.start_date ? new Date(updatedTerm.start_date).toISOString().split('T')[0] : null,
+      end_date: updatedTerm.end_date ? new Date(updatedTerm.end_date).toISOString().split('T')[0] : null
+    };
+
+    console.log('✅ [SCHOOL TERMS] School term updated successfully:', formattedTerm);
+    
+    res.json(formattedTerm);
+  } catch (error) {
+    console.error('❌ [SCHOOL TERMS] Error updating school term:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Delete school term endpoint
+app.delete('/api/school-terms/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const termId = parseInt(id);
+    
+    if (isNaN(termId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid term ID' 
+      });
+    }
+
+    console.log('🔍 [SCHOOL TERMS] Deleting school term:', termId);
+    
+    const result = await db.query('DELETE FROM school_terms WHERE term_id = $1', [termId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'School term not found' 
+      });
+    }
+
+    console.log('✅ [SCHOOL TERMS] School term deleted successfully');
+    
+    res.json({ 
+      success: true, 
+      message: 'School term deleted successfully' 
+    });
+  } catch (error) {
+    console.error('❌ [SCHOOL TERMS] Error deleting school term:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Insert sample school terms for testing
+app.post('/api/school-terms/sample-data', async (req, res) => {
+  try {
+    console.log('🔍 [SCHOOL TERMS] Inserting sample data');
+    
+    const sampleTerms = [
+      {
+        school_year: '2024-2025',
+        semester: '1st',
+        start_date: '2024-08-01',
+        end_date: '2024-12-15',
+        is_active: true
+      },
+      {
+        school_year: '2024-2025',
+        semester: '2nd',
+        start_date: '2025-01-15',
+        end_date: '2025-05-30',
+        is_active: false
+      },
+      {
+        school_year: '2024-2025',
+        semester: 'Summer',
+        start_date: '2025-06-01',
+        end_date: '2025-07-31',
+        is_active: false
+      }
+    ];
+
+    const insertedTerms = [];
+    
+    for (const term of sampleTerms) {
+      const result = await db.query(`
+        INSERT INTO school_terms (school_year, semester, start_date, end_date, is_active)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING term_id, school_year, semester, start_date, end_date, is_active
+      `, [term.school_year, term.semester, term.start_date, term.end_date, term.is_active]);
+      
+      const newTerm = result.rows[0];
+      insertedTerms.push({
+        ...newTerm,
+        start_date: newTerm.start_date ? new Date(newTerm.start_date).toISOString().split('T')[0] : null,
+        end_date: newTerm.end_date ? new Date(newTerm.end_date).toISOString().split('T')[0] : null
+      });
+    }
+
+    console.log('✅ [SCHOOL TERMS] Sample data inserted successfully:', insertedTerms.length, 'terms');
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Sample school terms inserted successfully',
+      data: insertedTerms
+    });
+  } catch (error) {
+    console.error('❌ [SCHOOL TERMS] Error inserting sample data:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
