@@ -14,7 +14,6 @@ import ProgramChairDashboard from './pages/program-chair/ProgramChairDashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
-import GuestRoute from './components/GuestRoute'
 import './App.css'
 
 class ErrorBoundary extends React.Component {
@@ -55,8 +54,8 @@ function App() {
         <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/" element={<WelcomeScreen />} />
-              <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-              <Route path="/signup" element={<GuestRoute><SignUpPage /></GuestRoute>} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
               <Route 
                 path="/manage-account" 
                 element={
