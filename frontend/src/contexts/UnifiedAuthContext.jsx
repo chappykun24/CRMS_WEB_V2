@@ -3,13 +3,54 @@ import authService from '../services/authService'
 
 const UnifiedAuthContext = createContext()
 
-const initialState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-  token: null
+// Check if we have stored auth data to restore state immediately
+const getInitialAuthState = () => {
+  try {
+    // First try localStorage (persistent)
+    let userData = localStorage.getItem('userData')
+    let token = localStorage.getItem('authToken')
+    
+    // If not in localStorage, try sessionStorage (faster access during page reload)
+    if (!userData || !token) {
+      userData = sessionStorage.getItem('userData')
+      token = sessionStorage.getItem('authToken')
+      
+      // If found in sessionStorage, also restore to localStorage
+      if (userData && token) {
+        localStorage.setItem('userData', userData)
+        localStorage.setItem('authToken', token)
+      }
+    }
+    
+    if (userData && token && userData !== 'undefined' && userData !== 'null' && userData !== '') {
+      const user = JSON.parse(userData)
+      // If we have valid stored data, restore authentication state immediately
+      if (user && (user.user_id || user.id)) {
+        console.log('[UnifiedAuth] Restoring authentication state from storage')
+        return {
+          user,
+          isAuthenticated: true,
+          isLoading: true, // Still loading while we validate
+          error: null,
+          token
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[UnifiedAuth] Error restoring auth state:', error)
+  }
+  
+  // Default initial state
+  return {
+    user: null,
+    isAuthenticated: false,
+    isLoading: true,
+    error: null,
+    token: null
+  }
 }
+
+const initialState = getInitialAuthState()
 
 const authReducer = (state, action) => {
   switch (action.type) {
@@ -49,6 +90,22 @@ const authReducer = (state, action) => {
       return { ...state, isLoading: action.payload }
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+    case 'SESSION_RESTORED':
+      return { 
+        ...state, 
+        user: action.payload.user, 
+        token: action.payload.token,
+        isAuthenticated: true, 
+        isLoading: false 
+      }
+    case 'SESSION_INVALID':
+      return { 
+        ...state, 
+        user: null, 
+        token: null,
+        isAuthenticated: false, 
+        isLoading: false 
+      }
     default:
       return state
   }
@@ -133,13 +190,30 @@ export const UnifiedAuthProvider = ({ children }) => {
           if (token && (user.user_id || user.id)) {
             console.log('[UnifiedAuth] Found user data and token, validating session')
             
+            // If we already restored the session in initial state, just validate it
+            if (state.isAuthenticated && state.user) {
+              console.log('[UnifiedAuth] Session already restored, validating in background')
+              // Validate session in background without changing loading state
+              const isValidSession = await validateSession()
+              if (!isValidSession) {
+                console.log('[UnifiedAuth] Background validation failed, clearing session')
+                localStorage.removeItem('userData')
+                localStorage.removeItem('authToken')
+                dispatch({ type: 'SESSION_INVALID' })
+              } else {
+                console.log('[UnifiedAuth] Background validation successful')
+                dispatch({ type: 'SET_LOADING', payload: false })
+              }
+              return
+            }
+            
             // Validate session with server
             const isValidSession = await validateSession()
             
             if (isValidSession) {
               console.log('[UnifiedAuth] Session validated, authenticating user')
               dispatch({ 
-                type: 'LOGIN_SUCCESS', 
+                type: 'SESSION_RESTORED', 
                 payload: { user, token } 
               })
               
@@ -167,14 +241,14 @@ export const UnifiedAuthProvider = ({ children }) => {
               console.log('[UnifiedAuth] Session validation failed, clearing invalid data')
               localStorage.removeItem('userData')
               localStorage.removeItem('authToken')
-              dispatch({ type: 'LOGOUT' })
+              dispatch({ type: 'SESSION_INVALID' })
               return
             }
           } else {
             console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
             localStorage.removeItem('userData')
             localStorage.removeItem('authToken')
-            dispatch({ type: 'LOGOUT' })
+            dispatch({ type: 'SESSION_INVALID' })
             return
           }
         } catch (error) {
@@ -182,7 +256,7 @@ export const UnifiedAuthProvider = ({ children }) => {
           // User data is invalid, remove it and logout
           localStorage.removeItem('userData')
           localStorage.removeItem('authToken')
-          dispatch({ type: 'LOGOUT' })
+          dispatch({ type: 'SESSION_INVALID' })
         }
       } else {
         console.log('[UnifiedAuth] No user data found, user not authenticated')
@@ -247,10 +321,14 @@ export const UnifiedAuthProvider = ({ children }) => {
       console.log('[UnifiedAuth] authService.login result', result)
       
       if (result.success && result.user) {
-        // Store basic user data and token first
-        localStorage.setItem('userData', JSON.stringify(result.user))
+        // Store basic user data and token in both localStorage and sessionStorage
+        const userDataString = JSON.stringify(result.user)
+        localStorage.setItem('userData', userDataString)
+        sessionStorage.setItem('userData', userDataString)
+        
         if (result.token) {
           localStorage.setItem('authToken', result.token)
+          sessionStorage.setItem('authToken', result.token)
         }
         
         // Update user state with basic login data immediately
@@ -332,9 +410,11 @@ export const UnifiedAuthProvider = ({ children }) => {
 
   const logout = () => {
     console.log('[UnifiedAuth] LOGOUT')
-    // Clear localStorage
+    // Clear both localStorage and sessionStorage
     localStorage.removeItem('userData')
     localStorage.removeItem('authToken')
+    sessionStorage.removeItem('userData')
+    sessionStorage.removeItem('authToken')
     
     // Update state
     dispatch({ type: 'LOGOUT' })

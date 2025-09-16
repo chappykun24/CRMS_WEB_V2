@@ -151,64 +151,75 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       }
     }
     
-    if (path === '/dashboard') {
-      return 'Home'
-    }
+    // Handle role-specific routes instead of generic dashboard
     
     switch (userRole) {
       case 'ADMIN':
-        if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
-          // Show the current tab for User Management
-          if (userMgmtActiveTab === 'faculty') {
+        if (path.startsWith('/admin')) {
+          if (path.includes('/users') || path.includes('/faculty-approval')) {
+            // Show the current tab for User Management
+            if (userMgmtActiveTab === 'faculty') {
+              return 'Faculty Approval'
+            }
             return 'User Management'
           }
-          return 'User Management'
-        }
-        if (path === '/dashboard/school-config') {
-          // Show the current tab for School Configuration
-          if (schoolConfigActiveTab === 'terms') {
-            return 'School Terms'
+          if (path.includes('/school-config')) {
+            // Show the current tab for School Configuration
+            if (schoolConfigActiveTab === 'terms') {
+              return 'School Terms'
+            }
+            return 'School Configuration'
           }
-          return 'School Configuration'
-        }
-        if (path === '/dashboard/settings') {
-          return 'System Settings'
+          if (path.includes('/settings')) {
+            return 'System Settings'
+          }
+          return 'Admin Dashboard'
         }
         break
       case 'FACULTY':
-        if (path === '/dashboard/classes') return 'My Classes'
-        if (path === '/dashboard/attendance') return 'Attendance'
-        if (path === '/dashboard/assessments') return 'Assessments'
-        if (path === '/dashboard/grades') return 'Grades'
-        if (path === '/dashboard/syllabi') return 'Syllabi'
+        if (path.startsWith('/faculty')) {
+          if (path.includes('/classes')) return 'My Classes'
+          if (path.includes('/attendance')) return 'Attendance'
+          if (path.includes('/assessments')) return 'Assessments'
+          if (path.includes('/grades')) return 'Grades'
+          if (path.includes('/syllabi')) return 'Syllabi'
+          return 'Faculty Dashboard'
+        }
         break
       case 'DEAN':
-        if (path === '/dashboard/analytics') return 'Analytics'
-        if (path === '/dashboard/classes') return 'My Classes'
-        if (path === '/dashboard/reports') return 'Reports'
-        if (path === '/dashboard/syllabus-approval') return 'Syllabus Approval'
+        if (path.startsWith('/dean')) {
+          if (path.includes('/analytics')) return 'Analytics'
+          if (path.includes('/classes')) return 'My Classes'
+          if (path.includes('/reports')) return 'Reports'
+          if (path.includes('/syllabus-approval')) return 'Syllabus Approval'
+          return 'Dean Dashboard'
+        }
         break
       case 'STAFF':
-        if (path === '/dashboard/students') return 'Student Management'
-        if (path === '/dashboard/records') return 'Academic Records'
-        if (path === '/dashboard/assign-faculty') return 'Assign Faculty'
+        if (path.startsWith('/staff')) {
+          if (path.includes('/students')) return 'Student Management'
+          if (path.includes('/records')) return 'Academic Records'
+          if (path.includes('/assign-faculty')) return 'Assign Faculty'
+          return 'Staff Dashboard'
+        }
         break
       case 'PROGRAMCHAIR':
-        if (path === '/dashboard/courses' || path === '/dashboard/program-chair/courses') {
-          // Return "Course Management" as the main section
-          return 'Course Management'
+        if (path.startsWith('/program-chair')) {
+          if (path.includes('/courses')) {
+            return 'Course Management'
+          }
+          if (path.includes('/analytics')) return 'Analytics'
+          if (path.includes('/reports')) return 'Reports'
+          if (path.includes('/submissions')) return 'Submissions'
+          return 'Program Chair Dashboard'
         }
-        if (path === '/dashboard/analytics' || path === '/dashboard/program-chair/analytics') return 'Analytics'
-        if (path === '/dashboard/reports' || path === '/dashboard/program-chair/reports') return 'Reports'
-        if (path === '/dashboard/submissions' || path === '/dashboard/program-chair/submissions') return 'Submissions'
         break
       default:
         break
     }
     
     // Fallback: Check path directly if role detection failed
-    if (path === '/dashboard/courses' || path.startsWith('/dashboard/program-chair/courses')) {
-      // Return "Course Management" as the main section
+    if (path.startsWith('/program-chair/courses')) {
       return 'Course Management'
     }
     
@@ -219,76 +230,71 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const getBreadcrumbData = () => {
     const path = location.pathname
     
-    if (path === '/dashboard') {
-      return { 
-        title: 'Dashboard', 
-        subtitle: 'Overview',
-        path: '/dashboard'
-      }
-    } else if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
+    // Handle role-specific routes
+    if (path.startsWith('/admin/users') || path.startsWith('/admin/faculty-approval')) {
       // Show which tab is active: All Users or Faculty Approval
       const subtitle = userMgmtActiveTab === 'faculty' ? 'Faculty Approval' : 'All Users'
       return {
         title: userMgmtActiveTab === 'faculty' ? 'UserManagement' : 'User Management',
         subtitle,
-        path: '/dashboard/users'
+        path: '/admin/users'
       }
-    } else if (path.startsWith('/dashboard/users/')) {
+    } else if (path.startsWith('/admin/users/')) {
       // In case we introduce nested routes under user management later
       return {
         title: 'User Management',
         subtitle: 'Manage system users',
-        path: '/dashboard/users'
+        path: '/admin/users'
       }
-    } else if (path === '/dashboard/school-config') {
+    } else if (path.startsWith('/admin/school-config')) {
       // Use the state value instead of reading from localStorage
       const subtitle = schoolConfigActiveTab === 'terms' ? 'Manage school terms' : 'Manage departments'
       return { 
         title: 'School Configuration', 
         subtitle,
-        path: '/dashboard/school-config'
+        path: '/admin/school-config'
       }
-    } else if (path === '/dashboard/settings') {
+    } else if (path.startsWith('/admin/settings')) {
       return { 
         title: 'System Settings', 
         subtitle: 'Configure system preferences',
-        path: '/dashboard/settings'
+        path: '/admin/settings'
       }
-    } else if (path.startsWith('/dashboard/faculty/')) {
+    } else if (path.startsWith('/faculty/')) {
       // Check if we're in MyClasses and have a selected class
-      if (path === '/dashboard/faculty/my-classes') {
+      if (path === '/faculty/classes') {
         if (selectedClass) {
           return {
             title: 'My Classes',
             subtitle: `${selectedClass.course_title} - ${selectedClass.section_code}`,
-            path: '/dashboard/faculty/my-classes'
+            path: '/faculty/classes'
           }
         }
         return {
           title: 'My Classes',
           subtitle: 'Select a class to view details',
-          path: '/dashboard/faculty/my-classes'
+          path: '/faculty/classes'
         }
       }
       return { 
         title: 'Faculty Dashboard', 
         subtitle: 'Faculty management',
-        path: '/dashboard/faculty'
+        path: '/faculty'
       }
-    } else if (path.startsWith('/dashboard/dean/')) {
+    } else if (path.startsWith('/dean/')) {
       return { 
         title: 'Dean Dashboard', 
         subtitle: 'Dean management',
-        path: '/dashboard/dean'
+        path: '/dean'
       }
-    } else if (path.startsWith('/dashboard/staff/')) {
+    } else if (path.startsWith('/staff/')) {
       return { 
         title: 'Staff Dashboard', 
         subtitle: 'Staff management',
-        path: '/dashboard/staff'
+        path: '/staff'
       }
-    } else if (path.startsWith('/dashboard/program-chair/')) {
-      if (path === '/dashboard/program-chair/courses') {
+    } else if (path.startsWith('/program-chair/')) {
+      if (path === '/program-chair/courses') {
         // Enhanced dynamic breadcrumb for Course Management
         let subtitle = ''
         
@@ -305,39 +311,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         return {
           title: 'Course Management',
           subtitle,
-          path: '/dashboard/program-chair/courses'
+          path: '/program-chair/courses'
         }
       }
       return { 
         title: 'Program Chair Dashboard', 
         subtitle: 'Program management',
-        path: '/dashboard/program-chair'
-      }
-    } else if (path === '/dashboard/courses') {
-      // Handle the direct /dashboard/courses path
-      let subtitle = ''
-      
-      // Only show subtitle if there's selected parent content
-      if (courseMgmtDetails.programName) {
-        if (courseMgmtDetails.specializationName) {
-          subtitle = courseMgmtDetails.specializationName
-        } else {
-          subtitle = courseMgmtDetails.programName
-        }
-      }
-      // If no program is selected, don't show any subtitle
-      
-      return {
-        title: 'Course Management',
-        subtitle,
-        path: '/dashboard/courses'
+        path: '/program-chair'
       }
     }
     
+    // Default fallback for unknown routes
     return { 
       title: 'Dashboard', 
       subtitle: 'Overview',
-      path: '/dashboard'
+      path: '/'
     }
   }
 

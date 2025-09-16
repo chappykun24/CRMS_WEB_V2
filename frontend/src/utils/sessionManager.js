@@ -12,7 +12,6 @@ export const SESSION_CONFIG = {
 
 // Protected routes that require authentication
 export const PROTECTED_ROUTES = [
-  '/dashboard',
   '/admin',
   '/faculty', 
   '/dean',
@@ -66,7 +65,8 @@ export const getDefaultDashboardRoute = (role) => {
     case 'programchair':
       return '/program-chair'
     default:
-      return '/dashboard'
+      // If role is unknown, redirect to login to let them choose
+      return '/login'
   }
 }
 

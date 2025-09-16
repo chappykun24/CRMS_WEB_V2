@@ -85,8 +85,8 @@ const BrowserHistoryProtection = ({ children }) => {
       return
     }
 
-    // If not authenticated and trying to access protected route
-    if (!isAuthenticated && isProtectedRoute(location.pathname)) {
+    // If not authenticated and trying to access protected route (but only after loading is complete)
+    if (!isAuthenticated && !isLoading && isProtectedRoute(location.pathname)) {
       console.log('[BrowserHistoryProtection] Redirecting unauthenticated user to login')
       isNavigating.current = true
       

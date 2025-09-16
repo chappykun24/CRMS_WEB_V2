@@ -31,6 +31,12 @@ const ProtectedRoute = ({
   // Enhanced authentication validation with browser history protection
   useEffect(() => {
     const validateAuthentication = () => {
+      // Don't validate if we're still loading - wait for auth context to finish
+      if (isLoading) {
+        console.log('[ProtectedRoute] Still loading, skipping validation');
+        return;
+      }
+
       // Check if we have valid authentication data
       const token = localStorage.getItem('authToken');
       const userData = localStorage.getItem('userData');
@@ -126,10 +132,20 @@ const ProtectedRoute = ({
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
+  // Redirect to login if not authenticated (but only after loading is complete)
+  if (!isAuthenticated && !isLoading) {
     console.warn('[ProtectedRoute] not authenticated, redirecting', { to: fallbackPath, from: location.pathname });
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
+  }
+
+  // If still loading, show loading spinner instead of redirecting
+  if (!isAuthenticated && isLoading) {
+    console.log('[ProtectedRoute] Still loading authentication, showing loading spinner');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   // Check role requirements

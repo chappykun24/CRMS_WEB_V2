@@ -289,7 +289,23 @@ const ManageAccount = () => {
         <div className="text-center">
           <p className="text-gray-600 mb-4">Unable to load user information</p>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => {
+              // Navigate to role-specific dashboard
+              const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+              const role = userData?.role_name || userData?.role || ''
+              const defaultRoute = (() => {
+                const normalizedRole = String(role).toLowerCase().replace(/\s|_/g, '')
+                switch (normalizedRole) {
+                  case 'admin': return '/admin'
+                  case 'faculty': return '/faculty'
+                  case 'dean': return '/dean'
+                  case 'staff': return '/staff'
+                  case 'programchair': return '/program-chair'
+                  default: return '/'
+                }
+              })()
+              navigate(defaultRoute)
+            }}
             className="text-primary-600 hover:text-primary-700 underline"
           >
             Return to Dashboard
