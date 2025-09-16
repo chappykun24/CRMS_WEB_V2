@@ -15,7 +15,6 @@ import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
 import './App.css'
-import { useAuth } from './contexts/UnifiedAuthContext'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -51,7 +50,6 @@ function App() {
   // Guard against BFCache restoring protected content after logout
   const location = useLocation()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
 
   useEffect(() => {
     const onPageShow = (event) => {
@@ -65,7 +63,7 @@ function App() {
     }
     window.addEventListener('pageshow', onPageShow)
     return () => window.removeEventListener('pageshow', onPageShow)
-  }, [location.pathname, navigate, isAuthenticated])
+  }, [location.pathname, navigate])
   
   return (
     <ErrorBoundary>
