@@ -787,7 +787,7 @@ app.put('/api/departments/:id', async (req, res) => {
     console.log('🔍 [DEPARTMENT] Updating department:', { id: departmentId, name, department_abbreviation });
     const result = await db.query(`
       UPDATE departments 
-      SET name = $1, department_abbreviation = $2, updated_at = CURRENT_TIMESTAMP
+      SET name = $1, department_abbreviation = $2
       WHERE department_id = $3
       RETURNING department_id, name, department_abbreviation
     `, [name, department_abbreviation, departmentId]);
