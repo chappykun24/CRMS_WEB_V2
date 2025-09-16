@@ -443,15 +443,6 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Get roles endpoint
-app.get('/api/roles', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT role_id, name FROM roles ORDER BY name ASC');
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Approve user endpoint
 app.patch('/api/users/:id/approve', async (req, res) => {
@@ -644,10 +635,7 @@ app.get('/api/departments', async (req, res) => {
 
     console.log('🔍 [DEPARTMENTS] Query result:', result.rows.length, 'departments found');
     
-    res.json({
-      success: true,
-      data: result.rows
-    });
+    res.json(result.rows);
   } catch (error) {
     console.error('❌ [DEPARTMENTS] Error occurred:', error);
     res.status(500).json({ 
@@ -670,10 +658,7 @@ app.get('/api/roles', async (req, res) => {
 
     console.log('🔍 [ROLES] Query result:', result.rows.length, 'roles found');
     
-    res.json({
-      success: true,
-      data: result.rows
-    });
+    res.json(result.rows);
   } catch (error) {
     console.error('❌ [ROLES] Error occurred:', error);
     res.status(500).json({ 
@@ -921,6 +906,89 @@ app.post('/api/school-terms/sample-data', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [SCHOOL TERMS] Error inserting sample data:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Insert sample departments for testing
+app.post('/api/departments/sample-data', async (req, res) => {
+  try {
+    console.log('🔍 [DEPARTMENTS] Inserting sample data');
+    
+    const sampleDepartments = [
+      { name: 'Computer Science', department_abbreviation: 'CS' },
+      { name: 'Information Technology', department_abbreviation: 'IT' },
+      { name: 'Business Administration', department_abbreviation: 'BA' },
+      { name: 'Education', department_abbreviation: 'EDU' },
+      { name: 'Engineering', department_abbreviation: 'ENG' }
+    ];
+
+    const insertedDepartments = [];
+    
+    for (const dept of sampleDepartments) {
+      const result = await db.query(`
+        INSERT INTO departments (name, department_abbreviation)
+        VALUES ($1, $2)
+        RETURNING department_id, name, department_abbreviation
+      `, [dept.name, dept.department_abbreviation]);
+      
+      insertedDepartments.push(result.rows[0]);
+    }
+
+    console.log('✅ [DEPARTMENTS] Sample data inserted successfully:', insertedDepartments.length, 'departments');
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Sample departments inserted successfully',
+      data: insertedDepartments
+    });
+  } catch (error) {
+    console.error('❌ [DEPARTMENTS] Error inserting sample data:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Insert sample roles for testing
+app.post('/api/roles/sample-data', async (req, res) => {
+  try {
+    console.log('🔍 [ROLES] Inserting sample data');
+    
+    const sampleRoles = [
+      { name: 'admin' },
+      { name: 'dean' },
+      { name: 'program_chair' },
+      { name: 'faculty' },
+      { name: 'staff' },
+      { name: 'student' }
+    ];
+
+    const insertedRoles = [];
+    
+    for (const role of sampleRoles) {
+      const result = await db.query(`
+        INSERT INTO roles (name)
+        VALUES ($1)
+        RETURNING role_id, name
+      `, [role.name]);
+      
+      insertedRoles.push(result.rows[0]);
+    }
+
+    console.log('✅ [ROLES] Sample data inserted successfully:', insertedRoles.length, 'roles');
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Sample roles inserted successfully',
+      data: insertedRoles
+    });
+  } catch (error) {
+    console.error('❌ [ROLES] Error inserting sample data:', error);
     res.status(500).json({ 
       success: false, 
       error: error.message 
