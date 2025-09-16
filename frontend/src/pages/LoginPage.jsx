@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/UnifiedAuthContext'
 import { 
   Mail, 
@@ -25,9 +25,13 @@ const LoginPage = () => {
   
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   // If already authenticated, don't allow visiting the login page
   useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const forceLogin = params.get('force') === 'true'
+    if (forceLogin) return
     const storedUser = localStorage.getItem('userData')
     const authed = isAuthenticated || (!!storedUser && storedUser !== 'null' && storedUser !== 'undefined' && storedUser !== '')
     if (authed) {
@@ -47,7 +51,7 @@ const LoginPage = () => {
               : '/dashboard'
       navigate(defaultPath, { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, location.search])
 
   const handleChange = (e) => {
     setFormData({

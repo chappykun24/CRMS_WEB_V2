@@ -107,7 +107,7 @@ const WelcomeScreen = () => {
             {/* Right side - Navigation and Bagong Pilipinas Logo */}
             <div className="flex items-center space-x-4">
               <Link
-                to="/login"
+                to="/login?force=true"
                 className="text-primary-600 hover:text-primary-800 transition-colors font-semibold px-4 py-2 rounded-lg"
               >
                 Log in
