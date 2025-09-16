@@ -31,7 +31,21 @@ const LoginPage = () => {
     const storedUser = localStorage.getItem('userData')
     const authed = isAuthenticated || (!!storedUser && storedUser !== 'null' && storedUser !== 'undefined' && storedUser !== '')
     if (authed) {
-      navigate('/dashboard', { replace: true })
+      let role = ''
+      try {
+        const user = storedUser ? JSON.parse(storedUser) : null
+        role = String(user?.role_name || user?.role || '').toLowerCase().replace(/\s|_/g, '')
+      } catch (_) {}
+      const defaultPath = role === 'faculty'
+        ? '/dashboard/classes'
+        : role === 'dean'
+          ? '/dashboard/analytics'
+          : role === 'staff'
+            ? '/dashboard/students'
+            : role === 'programchair'
+              ? '/dashboard/courses'
+              : '/dashboard'
+      navigate(defaultPath, { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -62,7 +76,7 @@ const LoginPage = () => {
       
       if (result.success) {
         // Redirect to role-specific default route
-        const role = String(result.user?.role || '').toLowerCase().replace(/\s|_/g, '')
+        const role = String(result.user?.role_name || result.user?.role || '').toLowerCase().replace(/\s|_/g, '')
         const roleDefaultPath = (() => {
           if (role === 'admin') return '/dashboard'
           if (role === 'faculty') return '/dashboard/classes'
