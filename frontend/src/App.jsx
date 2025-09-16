@@ -61,8 +61,20 @@ function App() {
         }
       }
     }
+    const onPopState = () => {
+      const storedUser = localStorage.getItem('userData')
+      const authed = !!storedUser && storedUser !== 'null' && storedUser !== 'undefined' && storedUser !== ''
+      const isProtected = !['/', '/login', '/signup'].includes(location.pathname)
+      if (!authed && isProtected) {
+        navigate('/login', { replace: true })
+      }
+    }
     window.addEventListener('pageshow', onPageShow)
-    return () => window.removeEventListener('pageshow', onPageShow)
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('popstate', onPopState)
+    }
   }, [location.pathname, navigate])
   
   return (
