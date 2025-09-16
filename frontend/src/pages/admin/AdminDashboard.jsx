@@ -9,29 +9,12 @@ import Home from './Home'
 const AdminDashboard = ({ user }) => {
   const location = useLocation()
 
-  // Default admin dashboard content
+  // Default admin dashboard content - empty
   const defaultContent = (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">User Management</h3>
-            <p className="text-gray-600">Manage system users and permissions</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Faculty Approval</h3>
-            <p className="text-gray-600">Review and approve faculty applications</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">School Configuration</h3>
-            <p className="text-gray-600">Configure school settings and departments</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">System Settings</h3>
-            <p className="text-gray-600">Manage system-wide configurations</p>
-          </div>
-        </div>
+        {/* Content removed */}
       </div>
     </div>
   )
