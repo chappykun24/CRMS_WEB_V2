@@ -63,7 +63,7 @@ const LoginPage = () => {
           return '/dashboard'
         })()
         console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
-        navigate(roleDefaultPath)
+        navigate(roleDefaultPath, { replace: true })
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }

@@ -70,6 +70,8 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
   const handleLogout = () => {
     logout()
+    // Ensure we return to login and remove protected page from history
+    navigate('/login', { replace: true })
   }
 
   const handleSidebarToggle = () => {

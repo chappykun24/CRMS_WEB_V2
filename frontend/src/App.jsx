@@ -1,5 +1,5 @@
-import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
 import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
@@ -15,6 +15,7 @@ import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
 import './App.css'
+import { useAuth } from './contexts/UnifiedAuthContext'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -47,6 +48,24 @@ class ErrorBoundary extends React.Component {
 
 function App() {
   console.log('App component is rendering')
+  // Guard against BFCache restoring protected content after logout
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    const onPageShow = (event) => {
+      if (event.persisted || (performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
+        const storedUser = localStorage.getItem('userData')
+        const authed = !!storedUser && storedUser !== 'null' && storedUser !== 'undefined' && storedUser !== ''
+        if (!authed && location.pathname !== '/login') {
+          navigate('/login', { replace: true })
+        }
+      }
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [location.pathname, navigate, isAuthenticated])
   
   return (
     <ErrorBoundary>
