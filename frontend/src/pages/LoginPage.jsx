@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/UnifiedAuthContext'
 import { 
@@ -23,8 +23,17 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+
+  // If already authenticated, don't allow visiting the login page
+  useEffect(() => {
+    const storedUser = localStorage.getItem('userData')
+    const authed = isAuthenticated || (!!storedUser && storedUser !== 'null' && storedUser !== 'undefined' && storedUser !== '')
+    if (authed) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const handleChange = (e) => {
     setFormData({
