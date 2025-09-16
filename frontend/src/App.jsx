@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
 import { SidebarProvider } from './contexts/SidebarContext'
 import WelcomeScreen from './pages/WelcomeScreen'
@@ -118,11 +118,7 @@ function App() {
                 path="/faculty/*" 
                 element={
                   <ProtectedRoute requiredRoles={["faculty"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
-                        <FacultyDashboard />
-                      </DashboardLayout>
-                    </SidebarProvider>
+                    <Navigate to="/dashboard/classes" replace />
                   </ProtectedRoute>
                 } 
               />
