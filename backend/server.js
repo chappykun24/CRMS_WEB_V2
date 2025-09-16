@@ -31,15 +31,27 @@ const __dirname = path.dirname(__filename);
 
 // Enhanced CORS configuration for both development and production
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
-        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app', // Latest deployment
-        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app', // Previous deployment
-        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app', // Earlier deployment
-        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
-      ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? [
+          'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
+          'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app', // Latest deployment
+          'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app', // Previous deployment
+          'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app', // Earlier deployment
+          process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
+        ]
+      : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'user-id'],
@@ -48,9 +60,6 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -161,7 +170,14 @@ app.get('/api/health', async (req, res) => {
       message: 'Database connected',
       environment: process.env.NODE_ENV || 'development',
       deployed_on: process.env.NODE_ENV === 'production' ? 'Render' : 'Local',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      cors_configured: true,
+      endpoints_added: [
+        '/api/school-terms',
+        '/api/students/:id/enrollments',
+        '/api/users/check-email',
+        '/api/users/:id/approval-status'
+      ]
     });
   } catch (error) {
     res.status(500).json({ 
