@@ -113,7 +113,7 @@ function App() {
                 } 
               />
               
-              {/* Faculty Routes - redirect to My Classes */}
+              {/* Faculty Routes */}
               <Route 
                 path="/faculty/*" 
                 element={
