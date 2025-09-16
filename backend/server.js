@@ -661,6 +661,181 @@ app.get('/api/roles', async (req, res) => {
   }
 });
 
+// Get all school terms endpoint (for frontend compatibility)
+app.get('/api/school-terms', async (req, res) => {
+  try {
+    console.log('🔍 [SCHOOL TERMS] Fetching all school terms');
+    
+    const result = await db.query(`
+      SELECT term_id, school_year, semester, is_active
+      FROM school_terms
+      ORDER BY term_id DESC
+    `);
+
+    console.log('🔍 [SCHOOL TERMS] Query result:', result.rows.length, 'terms found');
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ [SCHOOL TERMS] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get student enrollments endpoint
+app.get('/api/students/:id/enrollments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const studentId = parseInt(id);
+    
+    if (isNaN(studentId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid student ID' 
+      });
+    }
+
+    console.log('🔍 [STUDENT ENROLLMENTS] Fetching enrollments for student:', studentId);
+    
+    const result = await db.query(`
+      SELECT 
+        ce.enrollment_id,
+        ce.section_course_id,
+        ce.enrollment_date,
+        ce.status as enrollment_status,
+        sc.section_id,
+        s.section_code,
+        c.course_id,
+        c.course_code,
+        c.title as course_title,
+        u.name as instructor_name,
+        st.school_year,
+        st.semester
+      FROM course_enrollments ce
+      JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      JOIN sections s ON sc.section_id = s.section_id
+      JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN users u ON sc.instructor_id = u.user_id
+      LEFT JOIN school_terms st ON sc.term_id = st.term_id
+      WHERE ce.student_id = $1
+      ORDER BY ce.enrollment_date DESC
+    `, [studentId]);
+
+    console.log('🔍 [STUDENT ENROLLMENTS] Query result:', result.rows.length, 'enrollments found');
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('❌ [STUDENT ENROLLMENTS] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Check email availability endpoint
+app.get('/api/users/check-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email parameter is required' 
+      });
+    }
+
+    console.log('🔍 [CHECK EMAIL] Checking email availability for:', email);
+    
+    const result = await db.query(
+      'SELECT user_id FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    const isAvailable = result.rows.length === 0;
+    
+    console.log('🔍 [CHECK EMAIL] Email available:', isAvailable);
+    
+    res.json({
+      success: true,
+      available: isAvailable,
+      email: email
+    });
+  } catch (error) {
+    console.error('❌ [CHECK EMAIL] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get user approval status endpoint
+app.get('/api/users/:id/approval-status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+    
+    if (isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid user ID' 
+      });
+    }
+
+    console.log('🔍 [APPROVAL STATUS] Fetching approval status for user:', userId);
+    
+    const result = await db.query(`
+      SELECT 
+        u.user_id,
+        u.name,
+        u.email,
+        u.is_approved,
+        ua.approval_note,
+        ua.approved_at,
+        ua.approved_by
+      FROM users u
+      LEFT JOIN user_approvals ua ON u.user_id = ua.user_id
+      WHERE u.user_id = $1
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+
+    const user = result.rows[0];
+    
+    console.log('🔍 [APPROVAL STATUS] User approval status:', user.is_approved);
+    
+    res.json({
+      success: true,
+      data: {
+        user_id: user.user_id,
+        name: user.name,
+        email: user.email,
+        is_approved: user.is_approved,
+        approval_note: user.approval_note,
+        approved_at: user.approved_at,
+        approved_by: user.approved_by
+      }
+    });
+  } catch (error) {
+    console.error('❌ [APPROVAL STATUS] Error occurred:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // Note: /api/auth/profile endpoint is handled by the imported auth routes
 
 // Update user profile endpoint
