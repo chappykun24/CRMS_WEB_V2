@@ -83,7 +83,7 @@ const LoginPage = () => {
         const role = String(result.user?.role_name || result.user?.role || '').toLowerCase().replace(/\s|_/g, '')
         const roleDefaultPath = (() => {
           if (role === 'admin') return '/dashboard'
-          if (role === 'faculty') return '/dashboard/classes'
+          if (role === 'faculty') return '/faculty/classes'
           if (role === 'dean') return '/dashboard/analytics'
           if (role === 'staff') return '/dashboard/students'
           if (role === 'programchair') return '/dashboard/courses'

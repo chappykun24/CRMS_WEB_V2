@@ -39,7 +39,7 @@ const Dashboard = () => {
           navigate('/admin', { replace: true })
           break
         case 'faculty':
-          navigate('/dashboard/classes', { replace: true })
+          navigate('/faculty/classes', { replace: true })
           break
         case 'dean':
           navigate('/dean', { replace: true })
