@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
+import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 
 
 
@@ -8,6 +9,7 @@ const AssignFaculty = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [query, setQuery] = useState('')
   const [classes, setClasses] = useState([])
+  const [loadingClasses, setLoadingClasses] = useState(true)
   const [courses, setCourses] = useState([])
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false)
   const [terms, setTerms] = useState([])
@@ -42,6 +44,7 @@ const AssignFaculty = () => {
     avatarUrl: '',
     termId: ''
   })
+  const [creatingClass, setCreatingClass] = useState(false)
 
   const openCreateModal = () => setShowCreateModal(true)
   const closeCreateModal = () => {
@@ -150,6 +153,8 @@ const AssignFaculty = () => {
 
   const handleSave = async () => {
     try {
+      setCreatingClass(true)
+      
       // Validate required fields
       if (!formData.title || !formData.section || !formData.instructorId || !formData.termId) {
         alert('Please fill in all required fields: Course Title, Section, Instructor, and Semester')
@@ -228,6 +233,8 @@ const AssignFaculty = () => {
     } catch (error) {
       console.error('Error creating class:', error)
       alert(`Failed to create class: ${error.message}`)
+    } finally {
+      setCreatingClass(false)
     }
   }
 
@@ -288,6 +295,7 @@ const AssignFaculty = () => {
     let isMounted = true
     ;(async () => {
       try {
+        setLoadingClasses(true)
         const response = await fetch(`${API_BASE_URL}/section-courses/assigned`)
         if (!response.ok) throw new Error(`Failed to fetch assigned courses: ${response.status}`)
         const data = await response.json()
@@ -307,6 +315,9 @@ const AssignFaculty = () => {
         }
       } catch (error) {
         console.error('Error loading assigned courses:', error)
+        if (isMounted) setClasses([])
+      } finally {
+        if (isMounted) setLoadingClasses(false)
       }
     })()
     return () => {
@@ -415,26 +426,34 @@ const AssignFaculty = () => {
 
               {/* Classes Grid */}
               <div className="flex-1 min-h-0 overflow-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filtered.map(cls => (
-                    <ClassCard
-                      key={cls.id}
-                      title={cls.title}
-                      code={cls.code}
-                      section={cls.section}
-                      instructor={cls.instructor}
-                      bannerType={cls.bannerType}
-                      bannerColor={cls.bannerColor}
-                      bannerImage={cls.bannerImage}
-                      avatarUrl={cls.avatarUrl}
-                      isSelected={selectedClass?.id === cls.id}
-                      onClick={() => handleClassSelect(cls)}
-                      onAttendance={() => {}}
-                      onAssessments={() => {}}
-                      onMore={() => {}}
-                    />
-                  ))}
-                </div>
+                {loadingClasses ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, index) => (
+                      <ClassCardSkeleton key={index} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filtered.map(cls => (
+                      <ClassCard
+                        key={cls.id}
+                        title={cls.title}
+                        code={cls.code}
+                        section={cls.section}
+                        instructor={cls.instructor}
+                        bannerType={cls.bannerType}
+                        bannerColor={cls.bannerColor}
+                        bannerImage={cls.bannerImage}
+                        avatarUrl={cls.avatarUrl}
+                        isSelected={selectedClass?.id === cls.id}
+                        onClick={() => handleClassSelect(cls)}
+                        onAttendance={() => {}}
+                        onAssessments={() => {}}
+                        onMore={() => {}}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -787,8 +806,27 @@ const AssignFaculty = () => {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={closeCreateModal} className="px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200">Cancel</button>
-              <button onClick={handleSave} className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700">Save</button>
+              <button 
+                onClick={closeCreateModal} 
+                disabled={creatingClass}
+                className="px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSave} 
+                disabled={creatingClass}
+                className="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {creatingClass ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </button>
             </div>
           </div>
         </div>
