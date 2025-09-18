@@ -14,6 +14,7 @@ import { useSidebar } from '../../contexts/SidebarContext'
 import studentService from '../../services/studentService'
 import { validateStudentRegistration, buildStudentRegistrationPayload, buildStudentUpdatePayload } from '../../services/studentSpec'
 import api, { endpoints } from '../../utils/api'
+import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -518,10 +519,54 @@ const StudentManagement = () => {
 
   if (loading) {
     return (
-      <div className="p-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto min-h-0">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      <div className="pt-0 pb-4 overflow-hidden">
+        <div className="w-full">
+          {/* Tabs and Add Student Button */}
+          <div className="bg-gray-50 border-b border-gray-200 mb-2">
+            <div className="px-0">
+              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                <nav className="flex space-x-8">
+                  <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+                    All Students
+                  </div>
+                </nav>
+                
+                {/* Add Student Button aligned with navigation */}
+                <button
+                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                  disabled
+                >
+                  <PlusIcon className="h-5 w-5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Area - Loading State */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-150px)]">
+            {/* Left Section - Table Skeleton */}
+            <div className="lg:col-span-3 flex flex-col h-full min-h-0">
+              {/* Search Bar Skeleton */}
+              <div className="mb-6 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <div className="w-full h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+              </div>
+
+              {/* Table Skeleton */}
+              <div className="flex-1 min-h-0">
+                <TableSkeleton rows={8} columns={6} />
+              </div>
+            </div>
+
+            {/* Right Section - Sidebar Skeleton */}
+            <div className="lg:col-span-1">
+              <SidebarSkeleton />
+            </div>
           </div>
         </div>
       </div>

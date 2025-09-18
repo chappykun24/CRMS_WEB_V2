@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { useSidebar } from '../../contexts/SidebarContext'
 import { enhancedApi } from '../../utils/api'
+import { TableSkeleton, ListSkeleton, StudentListSkeleton, SidebarSkeleton } from '../../components/skeletons'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -590,16 +591,89 @@ const CourseManagement = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading courses...</p>
+      <>
+        <style>{`
+          .tab-button {
+            transition: all 0.2s ease-in-out !important;
+            border: none !important;
+            border-bottom: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          input[type="text"], input[type="search"], select {
+            border-color: #d1d5db !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          input[type="text"]:focus, input[type="search"]:focus, select:focus {
+            border-color: #ef4444 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 1px #ef4444 !important;
+          }
+          
+          select {
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+            background-position: right 8px center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px !important;
+            padding-right: 40px !important;
+            cursor: pointer !important;
+          }
+        `}</style>
+        
+        <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
+          sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+        }`} style={{ marginTop: '0px' }}>
+          <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+
+            {/* Tabs and Add Button */}
+            <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
+              <div className="px-8 bg-gray-50">
+                <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                  <nav className="flex space-x-8">
+                    <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+                      Programs
+                    </div>
+                  </nav>
+                  
+                  {/* Add Button aligned with navigation */}
+                  <button
+                    className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    disabled
+                  >
+                    <PlusIcon className="h-5 w-5 stroke-[3]" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+              <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full`}>
+                {/* List */}
+                <div className={`lg:col-span-3 h-full`}>
+                  {/* Controls */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative flex-1">
+                      <div className="w-full h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                    </div>
+                  </div>
+
+                  <ListSkeleton items={6} />
+                </div>
+
+                {/* Side actions / Course details and Students */}
+                <div className="lg:col-span-1">
+                  <SidebarSkeleton />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -975,10 +1049,7 @@ const CourseManagement = () => {
                         </div>
                         
                         {loadingStudents ? (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                            <span className="ml-2 text-sm text-gray-600">Loading students...</span>
-                          </div>
+                          <StudentListSkeleton students={5} />
                         ) : students.length > 0 ? (
                           <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
                             {students.map((student) => (

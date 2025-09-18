@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
  
 import ClassCard from '../../components/ClassCard'
+import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
 
 const MyClasses = () => {
   const { user } = useAuth()
@@ -477,18 +478,7 @@ const MyClasses = () => {
         <div className="flex-1 p-6">
           {console.log('🔍 [FACULTY] Render - loading:', loading, 'initialLoad:', initialLoad, 'error:', error, 'classes.length:', classes.length, 'filteredClasses.length:', filteredClasses.length)}
           {(loading || initialLoad || forceLoading) ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden animate-pulse">
-                  <div className="h-24 bg-gradient-to-r from-gray-200 to-gray-300"></div>
-                  <div className="p-4">
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CardGridSkeleton cards={6} />
           ) : error ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -666,17 +656,7 @@ const MyClasses = () => {
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
                 {loadingStudents ? (
-                  <div className="space-y-3">
-                    {[...Array(5)].map((_, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-3 animate-pulse">
-                        <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <StudentListSkeleton students={5} />
                 ) : students.length > 0 ? (
                   <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "space-y-3"}>
                     {students.map((student, index) => {
