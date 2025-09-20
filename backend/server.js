@@ -6,6 +6,7 @@ import pg from 'pg';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
+import compression from 'compression';
 import db from './config/database.js';
 import { authenticateToken } from './middleware/auth.js';
 
@@ -59,6 +60,20 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
+
+// Enable compression for all responses
+app.use(compression({
+  level: 6, // Compression level (1-9, 6 is good balance)
+  threshold: 1024, // Only compress responses > 1KB
+  filter: (req, res) => {
+    // Don't compress if client doesn't support it
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression for all other requests
+    return compression.filter(req, res);
+  }
+}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -706,7 +721,7 @@ app.get('/api/users/:id/profile', async (req, res) => {
   }
 });
 
-// Get all departments endpoint
+// Get all departments endpoint with caching
 app.get('/api/departments', async (req, res) => {
   try {
     console.log('🔍 [DEPARTMENTS] Fetching all departments');
@@ -715,15 +730,16 @@ app.get('/api/departments', async (req, res) => {
       SELECT department_id, name, department_abbreviation
       FROM departments
       ORDER BY name ASC
-    `);
+    `, [], true); // Enable caching for this query
 
     console.log('🔍 [DEPARTMENTS] Query result:', result.rows.length, 'departments found');
-    console.log('🔍 [DEPARTMENTS] Raw data:', JSON.stringify(result.rows, null, 2));
     
     // Ensure we're returning an array
     const departments = Array.isArray(result.rows) ? result.rows : [];
     console.log('🔍 [DEPARTMENTS] Final response type:', typeof departments, 'Length:', departments.length);
     
+    // Set cache headers for client-side caching
+    res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
     res.json(departments);
   } catch (error) {
     console.error('❌ [DEPARTMENTS] Error occurred:', error);

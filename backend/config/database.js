@@ -21,9 +21,19 @@ const dbConfig = {
   password: process.env.NEON_PASSWORD || process.env.DB_PASSWORD || 'password',
   port: parseInt(process.env.NEON_PORT || process.env.DB_PORT || '5432'),
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  // Optimized connection pool settings
+  max: 30, // Increased max connections for better concurrency
+  min: 5, // Maintain minimum connections
+  idleTimeoutMillis: 60000, // Keep connections alive longer
+  connectionTimeoutMillis: 5000, // Increased timeout for better reliability
+  acquireTimeoutMillis: 10000, // Time to wait for connection from pool
+  allowExitOnIdle: true, // Allow process to exit when all connections are idle
+  // Query optimization settings
+  statement_timeout: 30000, // 30 second query timeout
+  query_timeout: 30000, // 30 second query timeout
+  // Connection keep-alive settings
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 };
 
 console.log('Database configuration:', {
@@ -52,6 +62,8 @@ pool.on('error', (err) => {
 class DatabaseService {
   constructor() {
     this.pool = pool;
+    this.queryCache = new Map(); // Simple in-memory cache
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache timeout
   }
 
   // Get a client from the pool
@@ -65,11 +77,43 @@ class DatabaseService {
     }
   }
 
-  // Execute a query
-  async query(text, params = []) {
+  // Execute a query with optional caching
+  async query(text, params = [], useCache = false) {
+    // Check cache first for read queries
+    if (useCache && text.trim().toUpperCase().startsWith('SELECT')) {
+      const cacheKey = `${text}:${JSON.stringify(params)}`;
+      const cached = this.queryCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+        console.log('📦 [DB] Cache hit for query');
+        return cached.result;
+      }
+    }
+
     const client = await this.getClient();
     try {
+      const startTime = Date.now();
       const result = await client.query(text, params);
+      const duration = Date.now() - startTime;
+      
+      // Log slow queries
+      if (duration > 1000) {
+        console.warn(`🐌 [DB] Slow query (${duration}ms):`, text.substring(0, 100));
+      }
+      
+      // Cache SELECT queries
+      if (useCache && text.trim().toUpperCase().startsWith('SELECT')) {
+        const cacheKey = `${text}:${JSON.stringify(params)}`;
+        this.queryCache.set(cacheKey, {
+          result,
+          timestamp: Date.now()
+        });
+        
+        // Clean old cache entries periodically
+        if (this.queryCache.size > 100) {
+          this.cleanCache();
+        }
+      }
+      
       return result;
     } catch (error) {
       console.error('Database query error:', error);
@@ -77,6 +121,21 @@ class DatabaseService {
     } finally {
       client.release();
     }
+  }
+
+  // Clean old cache entries
+  cleanCache() {
+    const now = Date.now();
+    for (const [key, value] of this.queryCache.entries()) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.queryCache.delete(key);
+      }
+    }
+  }
+
+  // Clear cache (useful for testing or manual cache invalidation)
+  clearCache() {
+    this.queryCache.clear();
   }
 
   // Execute a transaction
