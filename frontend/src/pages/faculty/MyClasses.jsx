@@ -296,7 +296,7 @@ const MyClasses = () => {
 
   
 
-  // Fetch faculty's assigned classes with caching and abort support
+  // Fetch faculty's assigned classes with optimized caching and abort support
   const fetchClasses = useCallback(async () => {
     if (!facultyId) {
       console.log('🔍 [FACULTY] fetchClasses called but no facultyId')
@@ -304,22 +304,18 @@ const MyClasses = () => {
     }
     
     console.log('🔍 [FACULTY] fetchClasses starting - facultyId:', facultyId)
-    // Always show loading initially
     setLoading(true)
     setError(null)
-    setInitialLoad(false) // Stop initial load when we start fetching
+    setInitialLoad(false)
     
-    // Check cache first
+    // Check cache first with longer cache duration
     const cacheKey = `classes_${facultyId}`
     const cachedData = classesCacheRef.current.get(cacheKey)
-    if (cachedData && Date.now() - cachedData.timestamp < 30000) { // 30 second cache
+    if (cachedData && Date.now() - cachedData.timestamp < 300000) { // 5 minute cache
       console.log('📦 [FACULTY] Using cached classes data')
-      // Add a small delay to show loading state briefly
-      setTimeout(() => {
-        setClasses(cachedData.data)
-        setLoading(false)
-        setInitialLoad(false)
-      }, 500) // Increased delay to ensure loading is visible
+      setClasses(cachedData.data)
+      setLoading(false)
+      setInitialLoad(false)
       return
     }
     
@@ -337,7 +333,8 @@ const MyClasses = () => {
       const response = await fetch(`/api/section-courses/faculty/${facultyId}`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300' // 5 minutes browser cache
         },
         signal: abortControllerRef.current.signal
       })
@@ -354,7 +351,7 @@ const MyClasses = () => {
       const classesData = Array.isArray(data) ? data : []
       setClasses(classesData)
       
-      // Cache the data
+      // Cache the data with longer duration
       classesCacheRef.current.set(cacheKey, {
         data: classesData,
         timestamp: Date.now()
