@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
+import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 
 const SectionManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -524,7 +525,24 @@ const SectionManagement = () => {
               </div>
 
               <div className="flex-1">
-                {filtered.length === 0 ? (
+                {isLoadingSections ? (
+                  <div className="space-y-2">
+                    {[...Array(6)].map((_, index) => (
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : filtered.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
                       <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

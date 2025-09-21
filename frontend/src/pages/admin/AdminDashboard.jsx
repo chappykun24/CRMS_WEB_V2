@@ -5,16 +5,19 @@ import FacultyApproval from './FacultyApproval'
 import SystemSettings from './SystemSettings'
 import SchoolConfiguration from './SchoolConfiguration'
 import Home from './Home'
+import { CardGridSkeleton } from '../../components/skeletons'
 
 const AdminDashboard = ({ user }) => {
   const location = useLocation()
 
-  // Default admin dashboard content - empty
+  // Default admin dashboard content with skeleton loading
   const defaultContent = (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
-        {/* Content removed */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CardGridSkeleton cards={6} />
+        </div>
       </div>
     </div>
   )

@@ -4,30 +4,16 @@ import CourseManagement from './CourseManagement'
 import Analytics from './Analytics'
 import Reports from './Reports'
 import Submissions from './Submissions'
+import { CardGridSkeleton } from '../../components/skeletons'
 
 const ProgramChairDashboard = ({ user }) => {
-  // Default program chair dashboard content
+  // Default program chair dashboard content with skeleton loading
   const defaultContent = (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Program Chair Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Course Management</h3>
-            <p className="text-gray-600">Manage program courses and curriculum</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics</h3>
-            <p className="text-gray-600">View program performance analytics</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Reports</h3>
-            <p className="text-gray-600">Generate program reports and summaries</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Submissions</h3>
-            <p className="text-gray-600">Review faculty submissions and materials</p>
-          </div>
+          <CardGridSkeleton cards={8} />
         </div>
       </div>
     </div>

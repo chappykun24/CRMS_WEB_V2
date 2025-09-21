@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, AcademicCapIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
 
 const SchoolConfiguration = () => {
   const { sidebarExpanded } = useSidebar();
@@ -449,12 +450,42 @@ const SchoolConfiguration = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading school configuration...</p>
+      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
+        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+      }`} style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out rounded-tl-3xl" style={{ marginTop: '0px' }}>
+          {/* Tabs Skeleton */}
+          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0 rounded-tl-3xl">
+            <div className="px-8 bg-gray-50">
+              <div className="flex space-x-8 bg-gray-50 border-b border-gray-200">
+                <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+              {/* List Container Skeleton */}
+              <div className="lg:col-span-3 h-full">
+                {/* Controls toolbar skeleton */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative flex-1">
+                    <div className="w-full h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+
+                {/* Table Skeleton */}
+                <TableSkeleton rows={8} columns={4} />
+              </div>
+
+              {/* Sidebar Skeleton */}
+              <div className="lg:col-span-1">
+                <SidebarSkeleton />
+              </div>
             </div>
           </div>
         </div>
