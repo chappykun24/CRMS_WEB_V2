@@ -4,6 +4,7 @@ import facultyCacheService from '../../services/facultyCacheService'
  
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
+import AttendanceDashboard from '../../components/AttendanceDashboard'
 
 const MyClasses = () => {
   const { user } = useAuth()
@@ -36,6 +37,9 @@ const MyClasses = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
+  
+  // Attendance view state
+  const [showAttendanceDashboard, setShowAttendanceDashboard] = useState(false)
 
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false)
@@ -587,8 +591,8 @@ const MyClasses = () => {
                         if (selectedClass?.section_course_id !== cls.section_course_id) {
                           await handleClassSelect(cls)
                         }
-                        // Then toggle attendance mode
-                        setIsAttendanceMode(!isAttendanceMode)
+                        // Show attendance dashboard instead of old mode
+                        setShowAttendanceDashboard(true)
                       } finally {
                         setTogglingAttendance(false)
                       }
@@ -1016,6 +1020,15 @@ const MyClasses = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Attendance Dashboard Modal */}
+      {showAttendanceDashboard && selectedClass && (
+        <AttendanceDashboard
+          selectedClass={selectedClass}
+          onClassChange={setSelectedClass}
+          onClose={() => setShowAttendanceDashboard(false)}
+        />
       )}
     </div>
   )
