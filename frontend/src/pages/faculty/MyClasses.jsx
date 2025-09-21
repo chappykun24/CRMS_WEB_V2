@@ -540,42 +540,6 @@ const MyClasses = () => {
       {/* Main Content - Classes List */}
       <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
 
-        {/* Cache Control Panel */}
-        <div className="px-6 pt-4 pb-2">
-          <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-blue-700">
-                <span className="font-medium">Cache Status:</span>
-                <span className="ml-2">Classes: {facultyCacheService.cache.classes.size}</span>
-                <span className="ml-2">Students: {facultyCacheService.cache.students.size}</span>
-                <span className="ml-2">Total: {facultyCacheService.getStats().totalEntries}</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={preloadFacultyData}
-                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                title="Preload faculty data for faster access"
-              >
-                🚀 Preload Data
-              </button>
-              <button
-                onClick={refreshCache}
-                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                title="Refresh cache and reload data"
-              >
-                🔄 Refresh Cache
-              </button>
-              <button
-                onClick={getCacheStats}
-                className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                title="Show detailed cache statistics"
-              >
-                📊 Cache Stats
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Classes Grid */}
         <div className="flex-1 p-6">
