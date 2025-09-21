@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import facultyCacheService from '../../services/facultyCacheService'
  
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -22,6 +23,14 @@ const MyClasses = () => {
   const abortControllerRef = useRef(null)
   const classesCacheRef = useRef(new Map())
   const sidebarRef = useRef(null)
+  
+  // Enhanced caching for faculty data
+  const facultyCacheRef = useRef({
+    classes: new Map(),
+    students: new Map(),
+    departments: new Map(),
+    lastUpdated: new Map()
+  })
   
   // Selected class and students
   const [selectedClass, setSelectedClass] = useState(null)
@@ -296,7 +305,21 @@ const MyClasses = () => {
 
   
 
-  // Fetch faculty's assigned classes with optimized caching and abort support
+  // Enhanced cache management using dedicated service
+  const getCachedData = useCallback((cacheType, key, maxAge = 300000) => {
+    return facultyCacheService.get(cacheType, key, maxAge)
+  }, [])
+
+  const setCachedData = useCallback((cacheType, key, data) => {
+    return facultyCacheService.set(cacheType, key, data)
+  }, [])
+
+  // Clear specific cache
+  const clearCache = useCallback((cacheType, key = null) => {
+    return facultyCacheService.clear(cacheType, key)
+  }, [])
+
+  // Fetch faculty's assigned classes with enhanced caching
   const fetchClasses = useCallback(async () => {
     if (!facultyId) {
       console.log('🔍 [FACULTY] fetchClasses called but no facultyId')
@@ -308,12 +331,12 @@ const MyClasses = () => {
     setError(null)
     setInitialLoad(false)
     
-    // Check cache first with longer cache duration
+    // Check enhanced cache first
     const cacheKey = `classes_${facultyId}`
-    const cachedData = classesCacheRef.current.get(cacheKey)
-    if (cachedData && Date.now() - cachedData.timestamp < 300000) { // 5 minute cache
-      console.log('📦 [FACULTY] Using cached classes data')
-      setClasses(cachedData.data)
+    const cachedData = getCachedData('classes', cacheKey, 300000) // 5 minute cache
+    if (cachedData) {
+      console.log('📦 [FACULTY] Using enhanced cached classes data')
+      setClasses(cachedData)
       setLoading(false)
       setInitialLoad(false)
       return
@@ -351,7 +374,10 @@ const MyClasses = () => {
       const classesData = Array.isArray(data) ? data : []
       setClasses(classesData)
       
-      // Cache the data with longer duration
+      // Store in enhanced cache
+      setCachedData('classes', cacheKey, classesData)
+      
+      // Also store in legacy cache for compatibility
       classesCacheRef.current.set(cacheKey, {
         data: classesData,
         timestamp: Date.now()
@@ -371,7 +397,7 @@ const MyClasses = () => {
     }
   }, [facultyId])
 
-  // Handle class selection with lazy loading and caching
+  // Handle class selection with enhanced caching
   const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
@@ -391,13 +417,13 @@ const MyClasses = () => {
     // Dispatch custom event to notify Header of change
     window.dispatchEvent(new CustomEvent('selectedClassChanged'))
     
-    // Check if students are already cached for this class
+    // Check enhanced cache for students
     const studentsCacheKey = `students_${classItem.section_course_id}`
-    const cachedStudents = classesCacheRef.current.get(studentsCacheKey)
+    const cachedStudents = getCachedData('students', studentsCacheKey, 600000) // 10 minute cache
     
-    if (cachedStudents && Date.now() - cachedStudents.timestamp < 60000) { // 1 minute cache
-      console.log('📦 [FACULTY] Using cached students data')
-      setStudents(cachedStudents.data)
+    if (cachedStudents) {
+      console.log('📦 [FACULTY] Using enhanced cached students data')
+      setStudents(cachedStudents)
       return
     }
     
@@ -420,7 +446,10 @@ const MyClasses = () => {
       
       setStudents(sortedStudents)
       
-      // Cache the students data
+      // Store in enhanced cache
+      setCachedData('students', studentsCacheKey, sortedStudents)
+      
+      // Also store in legacy cache for compatibility
       classesCacheRef.current.set(studentsCacheKey, {
         data: sortedStudents,
         timestamp: Date.now()
@@ -466,10 +495,87 @@ const MyClasses = () => {
     }
   }, [facultyId, fetchClasses])
 
+  // Cache management functions
+  const refreshCache = useCallback(() => {
+    facultyCacheService.clearAll()
+    fetchClasses()
+    console.log('🔄 [FACULTY] Cache refreshed')
+  }, [fetchClasses])
+
+  // Preload faculty data for better performance
+  const preloadFacultyData = useCallback(async () => {
+    if (!facultyId) return
+    
+    try {
+      console.log('🚀 [FACULTY] Preloading faculty data...')
+      
+      // Preload classes
+      const classesData = await fetch(`/api/section-courses/faculty/${facultyId}`)
+        .then(r => r.json())
+        .then(data => Array.isArray(data) ? data : [])
+      
+      setCachedData('classes', `classes_${facultyId}`, classesData)
+      
+      // Preload departments
+      const departmentsData = await fetch('/api/departments')
+        .then(r => r.json())
+        .then(data => Array.isArray(data) ? data : [])
+      
+      setCachedData('departments', 'all_departments', departmentsData)
+      
+      console.log('✅ [FACULTY] Preloading completed')
+    } catch (error) {
+      console.error('❌ [FACULTY] Preloading failed:', error)
+    }
+  }, [facultyId, setCachedData])
+
+  const getCacheStats = useCallback(() => {
+    const stats = facultyCacheService.getStats()
+    console.log('📊 [FACULTY] Cache stats:', stats)
+    return stats
+  }, [])
+
   return (
     <div className="h-full flex overflow-hidden">
       {/* Main Content - Classes List */}
       <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
+
+        {/* Cache Control Panel */}
+        <div className="px-6 pt-4 pb-2">
+          <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-blue-700">
+                <span className="font-medium">Cache Status:</span>
+                <span className="ml-2">Classes: {facultyCacheService.cache.classes.size}</span>
+                <span className="ml-2">Students: {facultyCacheService.cache.students.size}</span>
+                <span className="ml-2">Total: {facultyCacheService.getStats().totalEntries}</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={preloadFacultyData}
+                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                title="Preload faculty data for faster access"
+              >
+                🚀 Preload Data
+              </button>
+              <button
+                onClick={refreshCache}
+                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                title="Refresh cache and reload data"
+              >
+                🔄 Refresh Cache
+              </button>
+              <button
+                onClick={getCacheStats}
+                className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                title="Show detailed cache statistics"
+              >
+                📊 Cache Stats
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Classes Grid */}
         <div className="flex-1 p-6">
