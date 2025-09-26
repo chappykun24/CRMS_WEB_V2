@@ -16,6 +16,19 @@ import cacheService from '../services/cacheService'
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
   
+  // Debug development mode detection
+  const isDev = import.meta.env.DEV || 
+                import.meta.env.MODE === 'development' || 
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1'
+  
+  console.log('🔍 Development Mode Debug:', {
+    'import.meta.env.DEV': import.meta.env.DEV,
+    'import.meta.env.MODE': import.meta.env.MODE,
+    'hostname': window.location.hostname,
+    'isDev': isDev
+  })
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -60,7 +73,12 @@ const LoginPage = () => {
 
   // Set up storage monitoring in development
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    const isDev = import.meta.env.DEV || 
+                  import.meta.env.MODE === 'development' || 
+                  window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1'
+    
+    if (isDev) {
       // Update storage usage display
       const updateStorageUsage = () => {
         const usage = cacheService.getStorageUsage()
@@ -92,7 +110,13 @@ const LoginPage = () => {
   }
 
   const handleClearCache = async () => {
-    if (!import.meta.env.DEV) {
+    // More reliable development detection
+    const isDev = import.meta.env.DEV || 
+                  import.meta.env.MODE === 'development' || 
+                  window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1'
+    
+    if (!isDev) {
       setError('Cache clearing is only available in development mode')
       return
     }
@@ -202,8 +226,18 @@ const LoginPage = () => {
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10 shadow-lg">
+            {/* Debug Info - Always visible for troubleshooting */}
+            <div className="mb-4 p-2 bg-gray-100 border border-gray-300 rounded text-xs">
+              <div className="font-mono">
+                <div>DEV: {String(import.meta.env.DEV)}</div>
+                <div>MODE: {import.meta.env.MODE}</div>
+                <div>HOST: {window.location.hostname}</div>
+                <div>IS_DEV: {String(isDev)}</div>
+              </div>
+            </div>
+
             {/* Development Clear Cache Button */}
-            {import.meta.env.DEV && (
+            {isDev && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
