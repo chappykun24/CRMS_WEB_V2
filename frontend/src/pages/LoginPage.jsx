@@ -8,7 +8,8 @@ import {
   EyeOff,
   ArrowRight,
   CheckCircle,
-  Trash2
+  Trash2,
+  Settings
 } from 'lucide-react'
 import logo from '../images/logo.png'
 import cacheService from '../services/cacheService'
@@ -16,18 +17,15 @@ import cacheService from '../services/cacheService'
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
   
-  // Debug development mode detection
-  const isDev = import.meta.env.DEV || 
-                import.meta.env.MODE === 'development' || 
-                window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1'
-  
-  console.log('🔍 Development Mode Debug:', {
+  // Debug environment variables
+  console.log('🔍 Environment Debug:', {
     'import.meta.env.DEV': import.meta.env.DEV,
     'import.meta.env.MODE': import.meta.env.MODE,
-    'hostname': window.location.hostname,
-    'isDev': isDev
+    'import.meta.env.PROD': import.meta.env.PROD,
+    'NODE_ENV': process.env.NODE_ENV,
+    'hostname': window.location.hostname
   })
+  
   
   const [formData, setFormData] = useState({
     email: '',
@@ -73,12 +71,7 @@ const LoginPage = () => {
 
   // Set up storage monitoring in development
   useEffect(() => {
-    const isDev = import.meta.env.DEV || 
-                  import.meta.env.MODE === 'development' || 
-                  window.location.hostname === 'localhost' ||
-                  window.location.hostname === '127.0.0.1'
-    
-    if (isDev) {
+    if (import.meta.env.DEV) {
       // Update storage usage display
       const updateStorageUsage = () => {
         const usage = cacheService.getStorageUsage()
@@ -110,13 +103,7 @@ const LoginPage = () => {
   }
 
   const handleClearCache = async () => {
-    // More reliable development detection
-    const isDev = import.meta.env.DEV || 
-                  import.meta.env.MODE === 'development' || 
-                  window.location.hostname === 'localhost' ||
-                  window.location.hostname === '127.0.0.1'
-    
-    if (!isDev) {
+    if (!import.meta.env.DEV) {
       setError('Cache clearing is only available in development mode')
       return
     }
@@ -226,18 +213,20 @@ const LoginPage = () => {
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10 shadow-lg">
-            {/* Debug Info - Always visible for troubleshooting */}
-            <div className="mb-4 p-2 bg-gray-100 border border-gray-300 rounded text-xs">
-              <div className="font-mono">
+            {/* DEBUG PANEL - TEMPORARY */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+              <div className="font-mono text-blue-800">
+                <div><strong>DEBUG INFO:</strong></div>
                 <div>DEV: {String(import.meta.env.DEV)}</div>
                 <div>MODE: {import.meta.env.MODE}</div>
+                <div>PROD: {String(import.meta.env.PROD)}</div>
                 <div>HOST: {window.location.hostname}</div>
-                <div>IS_DEV: {String(isDev)}</div>
+                <div>SHOW BUTTON: {String(true)}</div>
               </div>
             </div>
 
-            {/* Development Clear Cache Button */}
-            {isDev && (
+            {/* Development Clear Cache Button - TEMPORARY DEBUG VERSION */}
+            {true && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -270,7 +259,11 @@ const LoginPage = () => {
                     disabled={isClearingCache}
                     className="flex items-center space-x-2 px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {isClearingCache ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-800"></div>
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                     <span>{isClearingCache ? 'Clearing...' : 'Clear Cache'}</span>
                   </button>
                 </div>

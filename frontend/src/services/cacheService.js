@@ -6,7 +6,8 @@ class CacheService {
 
   // Clear all frontend caches
   clearFrontendCache() {
-    if (!this.isDevelopment) {
+    const isDev = import.meta.env.DEV;
+    if (!isDev) {
       console.warn('Cache clearing is only available in development mode');
       return false;
     }
@@ -65,7 +66,8 @@ class CacheService {
 
   // Clear backend database indexes
   async clearBackendCache() {
-    if (!this.isDevelopment) {
+    const isDev = import.meta.env.DEV;
+    if (!isDev) {
       console.warn('Backend cache clearing is only available in development mode');
       return { success: false, message: 'Not available in production' };
     }
@@ -102,7 +104,8 @@ class CacheService {
 
   // Clear all caches (frontend + backend)
   async clearAllCaches() {
-    if (!this.isDevelopment) {
+    const isDev = import.meta.env.DEV;
+    if (!isDev) {
       console.warn('Cache clearing is only available in development mode');
       return { success: false, message: 'Not available in production' };
     }
@@ -202,7 +205,8 @@ class CacheService {
 
   // Check if storage usage exceeds threshold and auto-clear if needed
   async checkStorageAndAutoClear(thresholdMB = 5) {
-    if (!this.isDevelopment) {
+    const isDev = import.meta.env.DEV;
+    if (!isDev) {
       return { cleared: false, reason: 'Not in development mode' };
     }
 
@@ -246,7 +250,8 @@ class CacheService {
 
   // Set up automatic storage monitoring
   setupStorageMonitoring(thresholdMB = 5, checkInterval = 30000) {
-    if (!this.isDevelopment) {
+    const isDev = import.meta.env.DEV;
+    if (!isDev) {
       console.warn('Storage monitoring is only available in development mode');
       return;
     }
