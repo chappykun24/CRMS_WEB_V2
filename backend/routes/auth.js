@@ -5,7 +5,8 @@ import {
   logout, 
   getProfile, 
   updateProfile, 
-  changePassword 
+  changePassword,
+  clearCache
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { 
@@ -38,6 +39,9 @@ router.post('/login',
 );
 
 router.post('/logout', logout);
+
+// Development-only routes
+router.post('/clear-cache', clearCache);
 
 // Protected routes
 router.get('/profile', authenticateToken, getProfile);

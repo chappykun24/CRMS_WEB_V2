@@ -385,3 +385,123 @@ export const changePassword = async (req, res) => {
     });
   }
 };
+
+// Clear cache endpoint for development
+export const clearCache = async (req, res) => {
+  try {
+    // Only allow in development environment
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cache clearing is only available in development',
+        statusCode: 403
+      });
+    }
+
+    console.log('🧹 [CLEAR CACHE] Starting cache clearing process...');
+
+    // List of all indexes to drop
+    const indexesToDrop = [
+      'idx_users_email',
+      'idx_users_role_id', 
+      'idx_users_is_approved',
+      'idx_users_created_at',
+      'idx_user_profiles_user_id',
+      'idx_user_profiles_department_id',
+      'idx_departments_name',
+      'idx_departments_abbreviation',
+      'idx_roles_name',
+      'idx_programs_department_id',
+      'idx_programs_name',
+      'idx_program_specializations_program_id',
+      'idx_courses_specialization_id',
+      'idx_courses_term_id',
+      'idx_courses_course_code',
+      'idx_section_courses_course_id',
+      'idx_section_courses_faculty_id',
+      'idx_section_courses_semester',
+      'idx_section_courses_school_year',
+      'idx_students_student_number',
+      'idx_students_contact_email',
+      'idx_students_program_id',
+      'idx_students_specialization_id',
+      'idx_student_enrollments_student_id',
+      'idx_student_enrollments_section_course_id',
+      'idx_student_enrollments_enrollment_date',
+      'idx_attendance_section_course_id',
+      'idx_attendance_student_id',
+      'idx_attendance_date',
+      'idx_attendance_created_at',
+      'idx_users_role_approved',
+      'idx_user_profiles_department_user',
+      'idx_section_courses_faculty_semester',
+      'idx_student_enrollments_section_student',
+      'idx_attendance_section_date',
+      'idx_users_pending_approval',
+      'idx_users_faculty_approved',
+      'idx_submissions_assessment_id',
+      'idx_submissions_status',
+      'idx_submissions_submitted_at',
+      'idx_submissions_graded_by',
+      'idx_rubric_scores_submission_id',
+      'idx_rubric_scores_rubric_id',
+      'idx_grade_adjustments_submission_id',
+      'idx_grade_adjustments_type',
+      'idx_course_final_grades_enrollment_id',
+      'idx_assessment_ilo_weights_assessment_id',
+      'idx_assessment_ilo_weights_ilo_id',
+      'idx_student_ilo_scores_enrollment_id',
+      'idx_student_ilo_scores_ilo_id',
+      'idx_sessions_section_course_id',
+      'idx_sessions_date',
+      'idx_attendance_logs_enrollment_id',
+      'idx_attendance_logs_session_id',
+      'idx_attendance_logs_date',
+      'idx_analytics_clusters_enrollment_id',
+      'idx_dashboards_data_cache_type',
+      'idx_dashboards_data_cache_course_id',
+      'idx_notifications_user_id',
+      'idx_notifications_is_read'
+    ];
+
+    let droppedCount = 0;
+    let errorCount = 0;
+
+    // Drop each index
+    for (const indexName of indexesToDrop) {
+      try {
+        await db.query(`DROP INDEX IF EXISTS ${indexName}`);
+        droppedCount++;
+        console.log(`✅ Dropped index: ${indexName}`);
+      } catch (error) {
+        console.log(`⚠️  Could not drop index ${indexName}:`, error.message);
+        errorCount++;
+      }
+    }
+
+    // Clear any cached query plans
+    await db.query('DISCARD PLANS');
+
+    console.log(`🧹 [CLEAR CACHE] Completed: ${droppedCount} indexes dropped, ${errorCount} errors`);
+
+    res.json({
+      success: true,
+      message: `Cache cleared successfully. Dropped ${droppedCount} indexes.`,
+      data: {
+        indexesDropped: droppedCount,
+        errors: errorCount,
+        timestamp: new Date().toISOString()
+      },
+      statusCode: 200
+    });
+
+  } catch (error) {
+    console.error('Clear cache error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear cache',
+      error: error.message,
+      statusCode: 500
+    });
+  }
+};

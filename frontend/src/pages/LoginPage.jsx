@@ -7,9 +7,11 @@ import {
   Eye, 
   EyeOff,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  Trash2
 } from 'lucide-react'
 import logo from '../images/logo.png'
+import cacheService from '../services/cacheService'
 
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
@@ -22,6 +24,9 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
+  const [isClearingCache, setIsClearingCache] = useState(false)
+  const [cacheStatus, setCacheStatus] = useState('')
+  const [storageUsage, setStorageUsage] = useState(null)
   
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
@@ -53,12 +58,67 @@ const LoginPage = () => {
     }
   }, [isAuthenticated, navigate, location.search])
 
+  // Set up storage monitoring in development
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // Update storage usage display
+      const updateStorageUsage = () => {
+        const usage = cacheService.getStorageUsage()
+        setStorageUsage(usage)
+      }
+
+      // Initial update
+      updateStorageUsage()
+
+      // Set up storage monitoring with 5MB threshold
+      const cleanup = cacheService.setupStorageMonitoring(5, 10000) // Check every 10 seconds
+
+      // Update storage display every 5 seconds
+      const interval = setInterval(updateStorageUsage, 5000)
+
+      return () => {
+        if (cleanup) cleanup()
+        clearInterval(interval)
+      }
+    }
+  }, [])
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     })
     setError('')
+  }
+
+  const handleClearCache = async () => {
+    if (!import.meta.env.DEV) {
+      setError('Cache clearing is only available in development mode')
+      return
+    }
+
+    setIsClearingCache(true)
+    setCacheStatus('Clearing caches...')
+    setError('')
+
+    try {
+      const result = await cacheService.clearAllCaches()
+      
+      if (result.success) {
+        setCacheStatus(`✅ Cache cleared successfully! Dropped ${result.backend?.data?.indexesDropped || 0} database indexes.`)
+        // Clear the status message after 5 seconds
+        setTimeout(() => setCacheStatus(''), 5000)
+      } else {
+        setError(`Cache clearing failed: ${result.backend?.message || 'Unknown error'}`)
+        setCacheStatus('')
+      }
+    } catch (error) {
+      console.error('Cache clearing error:', error)
+      setError(`Cache clearing failed: ${error.message}`)
+      setCacheStatus('')
+    } finally {
+      setIsClearingCache(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -142,6 +202,52 @@ const LoginPage = () => {
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10 shadow-lg">
+            {/* Development Clear Cache Button */}
+            {import.meta.env.DEV && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800">Development Tools</h3>
+                    <p className="text-xs text-yellow-600">Clear all caches and database indexes</p>
+                    {storageUsage && (
+                      <div className="mt-2 text-xs text-yellow-700">
+                        <div className="flex items-center space-x-4">
+                          <span>Storage: {storageUsage.total.sizeMB}MB</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            storageUsage.total.sizeMB > 5 
+                              ? 'bg-red-100 text-red-700' 
+                              : storageUsage.total.sizeMB > 3 
+                                ? 'bg-orange-100 text-orange-700' 
+                                : 'bg-green-100 text-green-700'
+                          }`}>
+                            {storageUsage.total.sizeMB > 5 ? 'High Usage' : 
+                             storageUsage.total.sizeMB > 3 ? 'Medium Usage' : 'Low Usage'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-yellow-600 mt-1">
+                          Auto-clear at 5MB • Monitoring active
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearCache}
+                    disabled={isClearingCache}
+                    className="flex items-center space-x-2 px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>{isClearingCache ? 'Clearing...' : 'Clear Cache'}</span>
+                  </button>
+                </div>
+                {cacheStatus && (
+                  <div className="mt-2 text-xs text-yellow-700">
+                    {cacheStatus}
+                  </div>
+                )}
+              </div>
+            )}
+
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
