@@ -386,17 +386,10 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// Clear cache endpoint for development
+// Clear cache endpoint - available in all environments
 export const clearCache = async (req, res) => {
   try {
-    // Only allow in development environment
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cache clearing is only available in development',
-        statusCode: 403
-      });
-    }
+    // Available in all environments
 
     console.log('🧹 [CLEAR CACHE] Starting cache clearing process...');
 

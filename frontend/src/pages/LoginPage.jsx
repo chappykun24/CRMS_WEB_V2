@@ -69,9 +69,8 @@ const LoginPage = () => {
     }
   }, [isAuthenticated, navigate, location.search])
 
-  // Set up storage monitoring in development
+  // Set up storage monitoring in all environments
   useEffect(() => {
-    if (import.meta.env.DEV) {
       // Update storage usage display
       const updateStorageUsage = () => {
         const usage = cacheService.getStorageUsage()
@@ -84,13 +83,12 @@ const LoginPage = () => {
       // Set up storage monitoring with 5MB threshold
       const cleanup = cacheService.setupStorageMonitoring(5, 10000) // Check every 10 seconds
 
-      // Update storage display every 5 seconds
-      const interval = setInterval(updateStorageUsage, 5000)
+    // Update storage display every 5 seconds
+    const interval = setInterval(updateStorageUsage, 5000)
 
-      return () => {
-        if (cleanup) cleanup()
-        clearInterval(interval)
-      }
+    return () => {
+      if (cleanup) cleanup()
+      clearInterval(interval)
     }
   }, [])
 
@@ -103,10 +101,11 @@ const LoginPage = () => {
   }
 
   const handleClearCache = async () => {
-    if (!import.meta.env.DEV) {
-      setError('Cache clearing is only available in development mode')
-      return
-    }
+    // Allow in production for testing (TEMPORARY)
+    // if (!import.meta.env.DEV) {
+    //   setError('Cache clearing is only available in development mode')
+    //   return
+    // }
 
     setIsClearingCache(true)
     setCacheStatus('Clearing caches...')
@@ -225,12 +224,12 @@ const LoginPage = () => {
               </div>
             </div>
 
-            {/* Development Clear Cache Button - TEMPORARY DEBUG VERSION */}
+            {/* Clear Cache Button - Available in all environments */}
             {true && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h3 className="text-sm font-medium text-yellow-800">Development Tools</h3>
+                    <h3 className="text-sm font-medium text-yellow-800">Cache Management</h3>
                     <p className="text-xs text-yellow-600">Clear all caches and database indexes</p>
                     {storageUsage && (
                       <div className="mt-2 text-xs text-yellow-700">

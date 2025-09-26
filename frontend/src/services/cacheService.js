@@ -6,11 +6,12 @@ class CacheService {
 
   // Clear all frontend caches
   clearFrontendCache() {
-    const isDev = import.meta.env.DEV;
-    if (!isDev) {
-      console.warn('Cache clearing is only available in development mode');
-      return false;
-    }
+    // Allow in production for testing (TEMPORARY)
+    // const isDev = import.meta.env.DEV;
+    // if (!isDev) {
+    //   console.warn('Cache clearing is only available in development mode');
+    //   return false;
+    // }
 
     console.log('🧹 [CACHE SERVICE] Clearing frontend caches...');
 
@@ -66,11 +67,12 @@ class CacheService {
 
   // Clear backend database indexes
   async clearBackendCache() {
-    const isDev = import.meta.env.DEV;
-    if (!isDev) {
-      console.warn('Backend cache clearing is only available in development mode');
-      return { success: false, message: 'Not available in production' };
-    }
+    // Allow in production for testing (TEMPORARY)
+    // const isDev = import.meta.env.DEV;
+    // if (!isDev) {
+    //   console.warn('Backend cache clearing is only available in development mode');
+    //   return { success: false, message: 'Not available in production' };
+    // }
 
     try {
       console.log('🧹 [CACHE SERVICE] Clearing backend database indexes...');
@@ -104,11 +106,7 @@ class CacheService {
 
   // Clear all caches (frontend + backend)
   async clearAllCaches() {
-    const isDev = import.meta.env.DEV;
-    if (!isDev) {
-      console.warn('Cache clearing is only available in development mode');
-      return { success: false, message: 'Not available in production' };
-    }
+    // Available in all environments
 
     console.log('🧹 [CACHE SERVICE] Starting complete cache clearing...');
 
@@ -205,10 +203,7 @@ class CacheService {
 
   // Check if storage usage exceeds threshold and auto-clear if needed
   async checkStorageAndAutoClear(thresholdMB = 5) {
-    const isDev = import.meta.env.DEV;
-    if (!isDev) {
-      return { cleared: false, reason: 'Not in development mode' };
-    }
+    // Available in all environments
 
     const storageUsage = this.getStorageUsage();
     if (!storageUsage) {
@@ -250,11 +245,7 @@ class CacheService {
 
   // Set up automatic storage monitoring
   setupStorageMonitoring(thresholdMB = 5, checkInterval = 30000) {
-    const isDev = import.meta.env.DEV;
-    if (!isDev) {
-      console.warn('Storage monitoring is only available in development mode');
-      return;
-    }
+    // Available in all environments
 
     console.log(`🔍 [STORAGE MONITOR] Setting up monitoring with ${thresholdMB}MB threshold, checking every ${checkInterval/1000}s`);
 
