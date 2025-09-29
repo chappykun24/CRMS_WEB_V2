@@ -37,6 +37,7 @@ const Attendance = () => {
     session_type: 'Lecture',
     meeting_type: 'Face-to-Face'
   })
+  const [sessionFormError, setSessionFormError] = useState('')
   
   const [attendanceForm, setAttendanceForm] = useState({})
   
@@ -151,6 +152,12 @@ const Attendance = () => {
     e.preventDefault()
     
     try {
+      // Basic client-side validation aligned with SQL requirements
+      if (!sessionForm.title.trim() || !sessionForm.session_date) {
+        setSessionFormError('Fill required fields')
+        return
+      }
+
       const response = await fetch('/api/attendance/sessions', {
         method: 'POST',
         headers: {
@@ -174,6 +181,7 @@ const Attendance = () => {
         session_type: 'Lecture',
         meeting_type: 'Face-to-Face'
       })
+      setSessionFormError('')
       loadSessions()
     } catch (error) {
       console.error('Error creating session:', error)
@@ -494,6 +502,9 @@ const Attendance = () => {
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
                     />
+                    {sessionFormError && (
+                      <p className="mt-1 text-sm text-red-600">{sessionFormError}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
@@ -531,7 +542,8 @@ const Attendance = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!sessionForm.title.trim() || !sessionForm.session_date}
                   >
                     Create Session
                   </button>
