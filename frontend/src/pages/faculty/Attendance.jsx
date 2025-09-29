@@ -38,6 +38,11 @@ const Attendance = () => {
     meeting_type: 'Face-to-Face'
   })
   const [sessionFormError, setSessionFormError] = useState('')
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false)
+
+  const isSessionFormValid = useCallback(() => {
+    return sessionForm.title.trim() && sessionForm.session_date
+  }, [sessionForm])
   
   const [attendanceForm, setAttendanceForm] = useState({})
   
@@ -153,7 +158,8 @@ const Attendance = () => {
     
     try {
       // Basic client-side validation aligned with SQL requirements
-      if (!sessionForm.title.trim() || !sessionForm.session_date) {
+      setAttemptedSubmit(true)
+      if (!isSessionFormValid()) {
         setSessionFormError('Fill required fields')
         return
       }
@@ -182,6 +188,7 @@ const Attendance = () => {
         meeting_type: 'Face-to-Face'
       })
       setSessionFormError('')
+      setAttemptedSubmit(false)
       loadSessions()
     } catch (error) {
       console.error('Error creating session:', error)
@@ -488,7 +495,12 @@ const Attendance = () => {
                     <input
                       type="text"
                       value={sessionForm.title}
-                      onChange={(e) => setSessionForm(prev => ({ ...prev, title: e.target.value }))}
+                      onChange={(e) => {
+                        setSessionForm(prev => ({ ...prev, title: e.target.value }))
+                        if (attemptedSubmit) {
+                          setSessionFormError(isSessionFormValid() ? '' : 'Fill required fields')
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
                     />
@@ -498,11 +510,16 @@ const Attendance = () => {
                     <input
                       type="date"
                       value={sessionForm.session_date}
-                      onChange={(e) => setSessionForm(prev => ({ ...prev, session_date: e.target.value }))}
+                      onChange={(e) => {
+                        setSessionForm(prev => ({ ...prev, session_date: e.target.value }))
+                        if (attemptedSubmit) {
+                          setSessionFormError(isSessionFormValid() ? '' : 'Fill required fields')
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
                     />
-                    {sessionFormError && (
+                    {attemptedSubmit && sessionFormError && (
                       <p className="mt-1 text-sm text-red-600">{sessionFormError}</p>
                     )}
                   </div>
