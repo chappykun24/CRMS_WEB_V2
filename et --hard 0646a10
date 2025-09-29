@@ -1,0 +1,108 @@
+[33m0646a10[m[33m ([m[1;32mworking-branch[m[33m)[m Fix database connection issues for Neon compatibility
+[1mdiff --git a/backend/config/database.js b/backend/config/database.js[m
+[1mindex 571c982..105fc07 100644[m
+[1m--- a/backend/config/database.js[m
+[1m+++ b/backend/config/database.js[m
+[36m@@ -21,13 +21,13 @@[m [mconst dbConfig = {[m
+   password: process.env.NEON_PASSWORD || process.env.DB_PASSWORD || 'password',[m
+   port: parseInt(process.env.NEON_PORT || process.env.DB_PORT || '5432'),[m
+   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,[m
+[31m-  // Optimized connection pool settings[m
+[31m-  max: 30, // Increased max connections for better concurrency[m
+[31m-  min: 5, // Maintain minimum connections[m
+[31m-  idleTimeoutMillis: 60000, // Keep connections alive longer[m
+[31m-  connectionTimeoutMillis: 5000, // Increased timeout for better reliability[m
+[31m-  acquireTimeoutMillis: 10000, // Time to wait for connection from pool[m
+[31m-  allowExitOnIdle: true, // Allow process to exit when all connections are idle[m
+[32m+[m[32m  // Optimized connection pool settings for Neon[m
+[32m+[m[32m  max: 10, // Reduced max connections for Neon compatibility[m
+[32m+[m[32m  min: 2, // Reduced minimum connections[m
+[32m+[m[32m  idleTimeoutMillis: 30000, // Reduced idle timeout for Neon[m
+[32m+[m[32m  connectionTimeoutMillis: 10000, // Increased timeout for better reliability[m
+[32m+[m[32m  acquireTimeoutMillis: 30000, // Increased timeout for acquiring connections[m
+[32m+[m[32m  // Removed allowExitOnIdle as it can cause issues with Neon[m
+   // Query optimization settings[m
+   statement_timeout: 30000, // 30 second query timeout[m
+   query_timeout: 30000, // 30 second query timeout[m
+[36m@@ -51,11 +51,9 @@[m [mconst pool = new Pool(dbConfig);[m
+ // Handle pool errors[m
+ pool.on('error', (err) => {[m
+   console.error('Unexpected error on idle client', err);[m
+[31m-  if (process.env.NODE_ENV === 'production') {[m
+[31m-    process.exit(-1);[m
+[31m-  } else {[m
+[31m-    console.warn('Continuing without exiting due to pool error in development.');[m
+[31m-  }[m
+[32m+[m[32m  // Don't exit the process on connection errors - let the app continue[m
+[32m+[m[32m  // The connection pool will handle reconnection automatically[m
+[32m+[m[32m  console.warn('Database connection error - pool will attempt to reconnect');[m
+ });[m
+ [m
+ // Database service class[m
+[36m@@ -66,14 +64,20 @@[m [mclass DatabaseService {[m
+     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache timeout[m
+   }[m
+ [m
+[31m-  // Get a client from the pool[m
+[31m-  async getClient() {[m
+[31m-    try {[m
+[31m-      const client = await this.pool.connect();[m
+[31m-      return client;[m
+[31m-    } catch (error) {[m
+[31m-      console.error('Error getting database client:', error);[m
+[31m-      throw error;[m
+[32m+[m[32m  // Get a client from the pool with retry logic[m
+[32m+[m[32m  async getClient(retries = 3) {[m
+[32m+[m[32m    for (let i = 0; i < retries; i++) {[m
+[32m+[m[32m      try {[m
+[32m+[m[32m        const client = await this.pool.connect();[m
+[32m+[m[32m        return client;[m
+[32m+[m[32m      } catch (error) {[m
+[32m+[m[32m        console.error(`Error getting database client (attempt ${i + 1}/${retries}):`, error.message);[m
+[32m+[m[32m        if (i === retries - 1) {[m
+[32m+[m[32m          throw error;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        // Wait before retry[m
+[32m+[m[32m        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));[m
+[32m+[m[32m      }[m
+     }[m
+   }[m
+ [m
+[36m@@ -89,8 +93,9 @@[m [mclass DatabaseService {[m
+       }[m
+     }[m
+ [m
+[31m-    const client = await this.getClient();[m
+[32m+[m[32m    let client;[m
+     try {[m
+[32m+[m[32m      client = await this.getClient();[m
+       const startTime = Date.now();[m
+       const result = await client.query(text, params);[m
+       const duration = Date.now() - startTime;[m
+[36m@@ -116,10 +121,24 @@[m [mclass DatabaseService {[m
+       [m
+       return result;[m
+     } catch (error) {[m
+[31m-      console.error('Database query error:', error);[m
+[32m+[m[32m      console.error('Database query error:', error.message);[m
+[32m+[m[32m      // Don't throw the error immediately - log it and return a graceful response[m
+[32m+[m[32m      if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.message.includes('Connection terminated')) {[m
+[32m+[m[32m        console.warn('Database connection lost - attempting to continue');[m
+[32m+[m[32m        // Return empty result for SELECT queries, throw for others[m
+[32m+[m[32m        if (text.trim().toUpperCase().startsWith('SELECT')) {[m
+[32m+[m[32m          return { rows: [], rowCount: 0 };[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+       throw error;[m
+     } finally {[m
+[31m-      client.release();[m
+[32m+[m[32m      if (client) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          client.release();[m
+[32m+[m[32m        } catch (releaseError) {[m
+[32m+[m[32m          console.warn('Error releasing client:', releaseError.message);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+     }[m
+   }[m
+ [m
