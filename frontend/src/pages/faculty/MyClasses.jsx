@@ -67,6 +67,7 @@ const MyClasses = () => {
     endTime: ''
   })
   const [sessionDetailsValid, setSessionDetailsValid] = useState(false)
+  const [attemptedSessionSubmit, setAttemptedSessionSubmit] = useState(false)
 
   // Validate session details
   const validateSessionDetails = useCallback(() => {
@@ -85,6 +86,10 @@ const MyClasses = () => {
       const updated = { ...prev, [field]: value }
       return updated
     })
+    if (attemptedSessionSubmit) {
+      // Re-validate live after an attempted submit
+      validateSessionDetails()
+    }
   }, [])
 
   // Validate session details when they change
@@ -130,6 +135,7 @@ const MyClasses = () => {
     if (!selectedClass) return
 
     // Validate session details before submitting
+    setAttemptedSessionSubmit(true)
     if (!validateSessionDetails()) {
       alert('Please fill in all required session details (Session Number, Topic, Start Time, End Time)')
       return
