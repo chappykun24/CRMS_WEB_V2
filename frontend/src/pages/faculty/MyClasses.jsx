@@ -53,7 +53,6 @@ const MyClasses = () => {
 
   // Attendance mode state
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0])
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
@@ -103,33 +102,35 @@ const MyClasses = () => {
 
   // Attendance functions with memoization
   const markAttendance = useCallback((studentId, status, remarks = '') => {
-    console.log('🔍 [ATTENDANCE DEBUG] Marking attendance:', { studentId, status, remarks, attendanceDate })
+    const currentDate = sessionDetails.session_date
+    console.log('🔍 [ATTENDANCE DEBUG] Marking attendance:', { studentId, status, remarks, currentDate })
     setAttendanceRecords(prev => {
       const newRecords = {
         ...prev,
         [studentId]: {
           ...prev[studentId],
-          [attendanceDate]: { status, remarks }
+          [currentDate]: { status, remarks }
         }
       }
       console.log('🔍 [ATTENDANCE DEBUG] New attendance records:', newRecords)
       return newRecords
     })
-  }, [attendanceDate])
+  }, [sessionDetails.session_date])
 
   const markAllPresent = useCallback(() => {
+    console.log('🔍 [ATTENDANCE DEBUG] Marking all students present...')
     students.forEach(student => {
       markAttendance(student.student_id, 'present')
     })
   }, [students, markAttendance])
 
   const getAttendanceStatus = useCallback((studentId) => {
-    return attendanceRecords[studentId]?.[attendanceDate]?.status || null
-  }, [attendanceRecords, attendanceDate])
+    return attendanceRecords[studentId]?.[sessionDetails.session_date]?.status || null
+  }, [attendanceRecords, sessionDetails.session_date])
 
   const getAttendanceRemarks = useCallback((studentId) => {
-    return attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
-  }, [attendanceRecords, attendanceDate])
+    return attendanceRecords[studentId]?.[sessionDetails.session_date]?.remarks || ''
+  }, [attendanceRecords, sessionDetails.session_date])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
@@ -148,7 +149,7 @@ const MyClasses = () => {
       console.log('🔍 [FRONTEND DEBUG] Selected class:', selectedClass)
       console.log('🔍 [FRONTEND DEBUG] Session details:', sessionDetails)
       console.log('🔍 [FRONTEND DEBUG] Attendance records:', attendanceRecords)
-      console.log('🔍 [FRONTEND DEBUG] Attendance date:', attendanceDate)
+      console.log('🔍 [FRONTEND DEBUG] Session date:', sessionDetails.session_date)
       
       // First create a session
       console.log('🔍 [FRONTEND DEBUG] Creating session...')
@@ -182,15 +183,15 @@ const MyClasses = () => {
       // Then mark attendance for the session
       console.log('🔍 [FRONTEND DEBUG] Building attendance records list...')
       console.log('🔍 [FRONTEND DEBUG] attendanceRecords object:', attendanceRecords)
-      console.log('🔍 [FRONTEND DEBUG] attendanceDate:', attendanceDate)
+      console.log('🔍 [FRONTEND DEBUG] session_date:', sessionDetails.session_date)
       console.log('🔍 [FRONTEND DEBUG] Object.keys(attendanceRecords):', Object.keys(attendanceRecords))
       
       const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => {
         const student = students.find(s => s.student_id === studentId)
         const record = {
           enrollment_id: student?.enrollment_id,
-          status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
-          remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
+          status: attendanceRecords[studentId]?.[sessionDetails.session_date]?.status || 'present',
+          remarks: attendanceRecords[studentId]?.[sessionDetails.session_date]?.remarks || ''
         }
         console.log('🔍 [FRONTEND DEBUG] Processing student:', { studentId, student, record })
         return record
@@ -236,7 +237,7 @@ const MyClasses = () => {
     } finally {
       setSubmittingAttendance(false)
     }
-  }, [selectedClass, attendanceDate, attendanceRecords])
+  }, [selectedClass, sessionDetails.session_date, attendanceRecords])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
@@ -683,15 +684,6 @@ const MyClasses = () => {
                   </h2>
                     {isAttendanceMode && (
                       <div className="flex items-center space-x-3 ml-4">
-                        <div className="flex items-center space-x-2">
-                          <label className="text-xs text-gray-600">Date:</label>
-                          <input
-                            type="date"
-                            value={attendanceDate}
-                            onChange={(e) => setAttendanceDate(e.target.value)}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        </div>
                         <button
                           onClick={markAllPresent}
                           className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
