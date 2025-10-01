@@ -58,24 +58,20 @@ const MyClasses = () => {
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
 
-  // Session details state
+  // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
-    sessionNumber: '',
-    topic: '',
-    description: '',
-    startTime: '',
-    endTime: ''
+    title: '',           // Required for sessions table
+    session_date: '',    // Required for sessions table
+    session_type: 'Lecture',  // Optional for sessions table
+    meeting_type: 'Face-to-Face'  // Optional for sessions table
   })
   const [sessionDetailsValid, setSessionDetailsValid] = useState(false)
   const [attemptedSessionSubmit, setAttemptedSessionSubmit] = useState(false)
 
-  // Validate session details
+  // Validate session details - only title and session_date are required per SQL
   const validateSessionDetails = useCallback(() => {
-    const { sessionNumber, topic, startTime, endTime } = sessionDetails
-    const isValid = sessionNumber.trim() !== '' && 
-                   topic.trim() !== '' && 
-                   startTime !== '' && 
-                   endTime !== ''
+    const { title, session_date } = sessionDetails
+    const isValid = title.trim() !== '' && session_date !== ''
     setSessionDetailsValid(isValid)
     return isValid
   }, [sessionDetails])
@@ -137,7 +133,7 @@ const MyClasses = () => {
     // Validate session details before submitting
     setAttemptedSessionSubmit(true)
     if (!validateSessionDetails()) {
-      alert('Please fill in all required session details (Session Number, Topic, Start Time, End Time)')
+      alert('Please fill in all required session details (Title and Date)')
       return
     }
 
@@ -410,11 +406,10 @@ const MyClasses = () => {
     
     // Reset session details when selecting different class
     setSessionDetails({
-      sessionNumber: '',
-      topic: '',
-      description: '',
-      startTime: '',
-      endTime: ''
+      title: '',
+      session_date: '',
+      session_type: 'Lecture',
+      meeting_type: 'Face-to-Face'
     })
     
     // Save selected class to localStorage for Header breadcrumb
@@ -689,34 +684,40 @@ const MyClasses = () => {
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <input
                     type="text"
-                    value={sessionDetails.sessionNumber}
-                    onChange={(e) => updateSessionDetails('sessionNumber', e.target.value)}
-                    placeholder="Session #"
+                    value={sessionDetails.title}
+                    onChange={(e) => updateSessionDetails('title', e.target.value)}
+                    placeholder="Session Title"
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                   <input
-                    type="text"
-                    value={sessionDetails.topic}
-                    onChange={(e) => updateSessionDetails('topic', e.target.value)}
-                    placeholder="Topic"
+                    type="date"
+                    value={sessionDetails.session_date}
+                    onChange={(e) => updateSessionDetails('session_date', e.target.value)}
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="time"
-                    value={sessionDetails.startTime}
-                    onChange={(e) => updateSessionDetails('startTime', e.target.value)}
+                  <select
+                    value={sessionDetails.session_type}
+                    onChange={(e) => updateSessionDetails('session_type', e.target.value)}
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <input
-                    type="time"
-                    value={sessionDetails.endTime}
-                    onChange={(e) => updateSessionDetails('endTime', e.target.value)}
+                  >
+                    <option value="Lecture">Lecture</option>
+                    <option value="Laboratory">Laboratory</option>
+                    <option value="Field Work">Field Work</option>
+                    <option value="Seminar">Seminar</option>
+                  </select>
+                  <select
+                    value={sessionDetails.meeting_type}
+                    onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="Face-to-Face">Face-to-Face</option>
+                    <option value="Online">Online</option>
+                    <option value="Hybrid">Hybrid</option>
+                  </select>
                 </div>
-                {!sessionDetailsValid && (
+                {attemptedSessionSubmit && !sessionDetailsValid && (
                   <div className="mt-1 text-xs text-red-600">Fill required fields</div>
                 )}
               </div>
