@@ -1883,6 +1883,8 @@ console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');
 console.log('   📍 /api/users');
 console.log('   📍 /api/attendance');
+console.log('   📍 /api/attendance/sessions - Session management');
+console.log('   📍 /api/attendance/mark - Mark attendance');
 
 // Debug: Test if auth routes are working
 app.get('/api/debug/auth', (req, res) => {
