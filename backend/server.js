@@ -1882,11 +1882,14 @@ app.use('/api/attendance', attendanceRoutes);
 console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');
 console.log('   📍 /api/users');
-console.log('   📍 /api/attendance');
+console.log('   📍 /api/attendance - ATTENDANCE SYSTEM ACTIVE');
 console.log('   📍 /api/attendance/sessions - Session management');
 console.log('   📍 /api/attendance/mark - Mark attendance');
 console.log('   📍 /api/attendance/students - Get students for class');
 console.log('   📍 /api/attendance/stats - Get attendance statistics');
+console.log('   📍 /api/section-courses - Section courses management');
+console.log('   📍 /api/section-courses/faculty/:id - Get faculty classes');
+console.log('   📍 /api/section-courses/:id/students - Get class students');
 
 // Debug: Test if auth routes are working
 app.get('/api/debug/auth', (req, res) => {
@@ -1894,6 +1897,21 @@ app.get('/api/debug/auth', (req, res) => {
     success: true,
     message: 'Auth routes are loaded and working',
     timestamp: new Date().toISOString()
+  });
+});
+
+// Debug: Test if attendance routes are working
+app.get('/api/debug/attendance', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Attendance routes are working',
+    timestamp: new Date().toISOString(),
+    routes: [
+      'POST /api/attendance/sessions',
+      'POST /api/attendance/mark',
+      'GET /api/attendance/students/:id',
+      'GET /api/attendance/stats/:id'
+    ]
   });
 });
 
