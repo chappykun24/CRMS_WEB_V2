@@ -2723,7 +2723,7 @@ app.get('/api/section-courses/faculty/:facultyId', async (req, res) => {
     const { facultyId } = req.params;
     console.log(`🔍 [FACULTY CLASSES] Fetching classes for faculty ID: ${facultyId}`);
     
-    const result = await pool.query(`
+    const result = await db.query(`
       SELECT 
         sc.section_course_id,
         sc.section_id,
