@@ -109,6 +109,9 @@ router.get('/sessions/:sectionCourseId', authenticateToken, async (req, res) => 
 // Create a new attendance session
 router.post('/sessions', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 [ATTENDANCE DEBUG] Session creation request received');
+    console.log('🔍 [ATTENDANCE DEBUG] Request body:', req.body);
+    
     const {
       section_course_id,
       session_date,
@@ -118,12 +121,14 @@ router.post('/sessions', authenticateToken, async (req, res) => {
     } = req.body;
 
     if (!section_course_id || !session_date || !title) {
+      console.log('❌ [ATTENDANCE DEBUG] Missing required fields');
       return res.status(400).json({
         success: false,
         error: 'section_course_id, session_date, and title are required'
       });
     }
 
+    console.log('🔍 [ATTENDANCE DEBUG] Inserting session into database...');
     const result = await db.query(`
       INSERT INTO sessions (
         section_course_id, session_date, title, session_type, meeting_type
@@ -133,12 +138,13 @@ router.post('/sessions', authenticateToken, async (req, res) => {
       section_course_id, session_date, title, session_type, meeting_type
     ]);
 
+    console.log('✅ [ATTENDANCE DEBUG] Session created successfully:', result.rows[0]);
     res.status(201).json({
       success: true,
       data: result.rows[0]
     });
   } catch (error) {
-    console.error('Error creating session:', error);
+    console.error('❌ [ATTENDANCE DEBUG] Error creating session:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -149,9 +155,13 @@ router.post('/sessions', authenticateToken, async (req, res) => {
 // Mark attendance for a session
 router.post('/mark', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 [ATTENDANCE DEBUG] Mark attendance request received');
+    console.log('🔍 [ATTENDANCE DEBUG] Request body:', req.body);
+    
     const { session_id, attendance_records } = req.body;
 
     if (!session_id || !attendance_records || !Array.isArray(attendance_records)) {
+      console.log('❌ [ATTENDANCE DEBUG] Missing required fields for attendance marking');
       return res.status(400).json({
         success: false,
         error: 'session_id and attendance_records array are required'
@@ -159,12 +169,14 @@ router.post('/mark', authenticateToken, async (req, res) => {
     }
 
     // Get session details
+    console.log('🔍 [ATTENDANCE DEBUG] Looking up session:', session_id);
     const sessionResult = await db.query(
       'SELECT session_date FROM sessions WHERE session_id = $1',
       [session_id]
     );
 
     if (sessionResult.rows.length === 0) {
+      console.log('❌ [ATTENDANCE DEBUG] Session not found:', session_id);
       return res.status(404).json({
         success: false,
         error: 'Session not found'
@@ -172,21 +184,26 @@ router.post('/mark', authenticateToken, async (req, res) => {
     }
 
     const sessionDate = sessionResult.rows[0].session_date;
+    console.log('✅ [ATTENDANCE DEBUG] Session found, date:', sessionDate);
 
     // Use transaction to ensure data consistency
+    console.log('🔍 [ATTENDANCE DEBUG] Starting transaction...');
     const client = await db.getClient();
     await client.query('BEGIN');
 
     try {
       // Delete existing attendance records for this session
+      console.log('🔍 [ATTENDANCE DEBUG] Deleting existing attendance records for session:', session_id);
       await client.query(
         'DELETE FROM attendance_logs WHERE session_id = $1',
         [session_id]
       );
 
       // Insert new attendance records
+      console.log('🔍 [ATTENDANCE DEBUG] Inserting', attendance_records.length, 'attendance records...');
       for (const record of attendance_records) {
         const { enrollment_id, status, remarks } = record;
+        console.log('🔍 [ATTENDANCE DEBUG] Inserting record:', { enrollment_id, status, remarks });
         
         await client.query(`
           INSERT INTO attendance_logs (
@@ -196,19 +213,21 @@ router.post('/mark', authenticateToken, async (req, res) => {
       }
 
       await client.query('COMMIT');
+      console.log('✅ [ATTENDANCE DEBUG] Transaction committed successfully');
 
       res.json({
         success: true,
         message: 'Attendance marked successfully'
       });
     } catch (error) {
+      console.log('❌ [ATTENDANCE DEBUG] Transaction error, rolling back:', error.message);
       await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Error marking attendance:', error);
+    console.error('❌ [ATTENDANCE DEBUG] Error marking attendance:', error);
     res.status(500).json({
       success: false,
       error: error.message

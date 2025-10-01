@@ -139,7 +139,14 @@ const MyClasses = () => {
 
     setSubmittingAttendance(true)
     try {
+      console.log('🔍 [FRONTEND DEBUG] Starting attendance submission...')
+      console.log('🔍 [FRONTEND DEBUG] Selected class:', selectedClass)
+      console.log('🔍 [FRONTEND DEBUG] Session details:', sessionDetails)
+      console.log('🔍 [FRONTEND DEBUG] Attendance records:', attendanceRecords)
+      console.log('🔍 [FRONTEND DEBUG] Attendance date:', attendanceDate)
+      
       // First create a session
+      console.log('🔍 [FRONTEND DEBUG] Creating session...')
       const sessionResponse = await fetch('/api/attendance/sessions', {
         method: 'POST',
         headers: {
@@ -155,22 +162,30 @@ const MyClasses = () => {
         })
       })
 
+      console.log('🔍 [FRONTEND DEBUG] Session response status:', sessionResponse.status)
+      
       if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text()
+        console.log('❌ [FRONTEND DEBUG] Session creation failed:', errorText)
         throw new Error(`Failed to create session: ${sessionResponse.status}`)
       }
 
       const sessionData = await sessionResponse.json()
+      console.log('✅ [FRONTEND DEBUG] Session created successfully:', sessionData)
       const sessionId = sessionData.data.session_id
 
       // Then mark attendance for the session
+      console.log('🔍 [FRONTEND DEBUG] Building attendance records list...')
       const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => ({
         enrollment_id: students.find(s => s.student_id === studentId)?.enrollment_id,
         status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
         remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
       })).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
 
-      console.log('📤 [ATTENDANCE] Submitting attendance data:', { sessionId, attendanceRecordsList })
+      console.log('🔍 [FRONTEND DEBUG] Students data:', students)
+      console.log('📤 [FRONTEND DEBUG] Submitting attendance data:', { sessionId, attendanceRecordsList })
 
+      console.log('🔍 [FRONTEND DEBUG] Submitting attendance records...')
       const response = await fetch('/api/attendance/mark', {
         method: 'POST',
         headers: {
@@ -183,9 +198,16 @@ const MyClasses = () => {
         })
       })
 
+      console.log('🔍 [FRONTEND DEBUG] Attendance response status:', response.status)
+      
       if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ [FRONTEND DEBUG] Attendance submission failed:', errorText)
         throw new Error(`Failed to submit attendance: ${response.status}`)
       }
+      
+      const responseData = await response.json()
+      console.log('✅ [FRONTEND DEBUG] Attendance submitted successfully:', responseData)
 
       // Show success message
       setSuccessMessage('Attendance submitted successfully!')
