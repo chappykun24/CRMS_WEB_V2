@@ -103,13 +103,18 @@ const MyClasses = () => {
 
   // Attendance functions with memoization
   const markAttendance = useCallback((studentId, status, remarks = '') => {
-    setAttendanceRecords(prev => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        [attendanceDate]: { status, remarks }
+    console.log('🔍 [ATTENDANCE DEBUG] Marking attendance:', { studentId, status, remarks, attendanceDate })
+    setAttendanceRecords(prev => {
+      const newRecords = {
+        ...prev,
+        [studentId]: {
+          ...prev[studentId],
+          [attendanceDate]: { status, remarks }
+        }
       }
-    }))
+      console.log('🔍 [ATTENDANCE DEBUG] New attendance records:', newRecords)
+      return newRecords
+    })
   }, [attendanceDate])
 
   const markAllPresent = useCallback(() => {
@@ -176,11 +181,20 @@ const MyClasses = () => {
 
       // Then mark attendance for the session
       console.log('🔍 [FRONTEND DEBUG] Building attendance records list...')
-      const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => ({
-        enrollment_id: students.find(s => s.student_id === studentId)?.enrollment_id,
-        status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
-        remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
-      })).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
+      console.log('🔍 [FRONTEND DEBUG] attendanceRecords object:', attendanceRecords)
+      console.log('🔍 [FRONTEND DEBUG] attendanceDate:', attendanceDate)
+      console.log('🔍 [FRONTEND DEBUG] Object.keys(attendanceRecords):', Object.keys(attendanceRecords))
+      
+      const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => {
+        const student = students.find(s => s.student_id === studentId)
+        const record = {
+          enrollment_id: student?.enrollment_id,
+          status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
+          remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
+        }
+        console.log('🔍 [FRONTEND DEBUG] Processing student:', { studentId, student, record })
+        return record
+      }).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
 
       console.log('🔍 [FRONTEND DEBUG] Students data:', students)
       console.log('📤 [FRONTEND DEBUG] Submitting attendance data:', { sessionId, attendanceRecordsList })
