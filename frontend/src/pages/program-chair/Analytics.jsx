@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { ChartBarIcon, UsersIcon, BookOpenIcon, AcademicCapIcon, ClockIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/solid'
-import { useSidebar } from '../../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 
 const Analytics = () => {
-  const { sidebarExpanded } = useSidebar()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [selectedPeriod, setSelectedPeriod] = useState('current')
   const [selectedProgram, setSelectedProgram] = useState('')
 

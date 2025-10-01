@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
-import { useSidebar } from '../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 
 const DashboardLayout = ({ children }) => {
-  const { sidebarExpanded, toggleSidebar } = useSidebar()
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const toggleSidebar = () => setSidebarExpanded(!sidebarExpanded)
 
   return (
     <div className="h-screen overflow-hidden bg-white flex flex-col">

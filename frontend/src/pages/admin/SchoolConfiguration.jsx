@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, AcademicCapIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
-import { useSidebar } from '../../contexts/SidebarContext';
+// Removed SidebarContext import - using local state instead
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
 
 const SchoolConfiguration = () => {
-  const { sidebarExpanded } = useSidebar();
+  const [sidebarExpanded] = useState(true); // Default to expanded
   const [activeTab, setActiveTab] = useState(() => {
     // Get the active tab from localStorage or default to departments
     return localStorage.getItem('schoolConfigActiveTab') || 'departments'

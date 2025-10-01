@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { ClipboardDocumentListIcon, MagnifyingGlassIcon, EyeIcon, CheckIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/solid'
-import { useSidebar } from '../../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -14,7 +14,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 )
 
 const Submissions = () => {
-  const { sidebarExpanded } = useSidebar()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [activeTab, setActiveTab] = useState('pending')
   const [query, setQuery] = useState('')
   const [selectedSubmission, setSelectedSubmission] = useState(null)

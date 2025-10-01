@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { DocumentTextIcon, MagnifyingGlassIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
-import { useSidebar } from '../../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 
 const Reports = () => {
-  const { sidebarExpanded } = useSidebar()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [query, setQuery] = useState('')
   const [selectedReport, setSelectedReport] = useState(null)
   const [showGenerateModal, setShowGenerateModal] = useState(false)

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
-import { SidebarProvider } from './contexts/SidebarContext'
+// Removed SidebarProvider import - using local state instead
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
@@ -89,11 +89,9 @@ function App() {
                 path="/manage-account" 
                 element={
                   <ProtectedRoute>
-                    <SidebarProvider>
-                      <DashboardLayout>
-                        <ManageAccount />
-                      </DashboardLayout>
-                    </SidebarProvider>
+                    <DashboardLayout>
+                      <ManageAccount />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 } 
               />
@@ -102,11 +100,9 @@ function App() {
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <SidebarProvider>
-                      <DashboardLayout>
-                        <Dashboard />
-                      </DashboardLayout>
-                    </SidebarProvider>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 } 
               />
@@ -116,11 +112,9 @@ function App() {
                 path="/admin/*" 
                 element={
                   <ProtectedRoute requiredRoles={["admin"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
-                        <AdminDashboard />
-                      </DashboardLayout>
-                    </SidebarProvider>
+                    <DashboardLayout>
+                      <AdminDashboard />
+                    </DashboardLayout>
                   </ProtectedRoute>
                 } 
               />
@@ -130,11 +124,9 @@ function App() {
                 path="/faculty/*" 
                 element={
                   <ProtectedRoute requiredRoles={["faculty"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <FacultyDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -144,11 +136,9 @@ function App() {
                 path="/dean/*" 
                 element={
                   <ProtectedRoute requiredRoles={["dean"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <DeanDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -158,11 +148,9 @@ function App() {
                 path="/staff/*" 
                 element={
                   <ProtectedRoute requiredRoles={["staff"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <StaffDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -172,11 +160,9 @@ function App() {
                 path="/program-chair/*" 
                 element={
                   <ProtectedRoute requiredRoles={["program chair", "program_chair", "programchair"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <ProgramChairDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -186,11 +172,9 @@ function App() {
                 path="/dashboard/classes" 
                 element={
                   <ProtectedRoute requiredRoles={["faculty"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <FacultyDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -198,11 +182,9 @@ function App() {
                 path="/dashboard/analytics" 
                 element={
                   <ProtectedRoute requiredRoles={["dean"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <DeanDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -210,11 +192,9 @@ function App() {
                 path="/dashboard/students" 
                 element={
                   <ProtectedRoute requiredRoles={["staff"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <StaffDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />
@@ -222,11 +202,9 @@ function App() {
                 path="/dashboard/courses" 
                 element={
                   <ProtectedRoute requiredRoles={["program chair", "program_chair", "programchair"]}>
-                    <SidebarProvider>
-                      <DashboardLayout>
+                    <DashboardLayout>
                         <ProgramChairDashboard />
                       </DashboardLayout>
-                    </SidebarProvider>
                   </ProtectedRoute>
                 } 
               />

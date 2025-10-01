@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
-import { useSidebar } from '../../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 
@@ -16,7 +16,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 )
 
 const UserManagement = () => {
-  const { sidebarExpanded } = useSidebar()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('userMgmtActiveTab') || 'all')
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)

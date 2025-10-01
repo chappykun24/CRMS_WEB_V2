@@ -10,9 +10,9 @@ import {
   BuildingOfficeIcon,
   CalendarIcon
 } from '@heroicons/react/24/solid'
-import { useSidebar } from '../../contexts/SidebarContext'
+// Removed SidebarContext import - using local state instead
 import studentService from '../../services/studentService'
-import { validateStudentRegistration, buildStudentRegistrationPayload, buildStudentUpdatePayload } from '../../services/studentSpec'
+// Removed studentSpec import - using inline validation instead
 import api, { endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 
@@ -28,7 +28,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 )
 
 const StudentManagement = () => {
-  const { sidebarExpanded } = useSidebar()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [activeTab, setActiveTab] = useState('all')
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -381,7 +381,13 @@ const StudentManagement = () => {
     e.preventDefault()
     
     // Students-only validation
-    const { valid, errors } = validateStudentRegistration(formData)
+    // Simple validation - check required fields
+    const errors = {}
+    if (!formData.firstName?.trim()) errors.firstName = 'First name is required'
+    if (!formData.lastName?.trim()) errors.lastName = 'Last name is required'
+    if (!formData.email?.trim()) errors.email = 'Email is required'
+    if (!formData.studentNumber?.trim()) errors.studentNumber = 'Student number is required'
+    const valid = Object.keys(errors).length === 0
     if (!valid) {
       const firstError = Object.values(errors)[0]
       setCreateError(firstError || 'Please check the form and try again')
@@ -393,8 +399,38 @@ const StudentManagement = () => {
       setCreateError('')
 
       const studentData = isEditMode
-        ? buildStudentUpdatePayload(formData)
-        : buildStudentRegistrationPayload(formData)
+        ? {
+            firstName: formData.firstName?.trim(),
+            lastName: formData.lastName?.trim(),
+            email: formData.email?.trim(),
+            studentNumber: formData.studentNumber?.trim(),
+            gender: formData.gender || 'other',
+            birthDate: formData.birthDate || null,
+            contactEmail: formData.contactEmail?.trim() || formData.email?.trim(),
+            phone: formData.phone?.trim() || null,
+            address: formData.address?.trim() || null,
+            emergencyContact: formData.emergencyContact?.trim() || null,
+            emergencyPhone: formData.emergencyPhone?.trim() || null,
+            programId: formData.programId || null,
+            specializationId: formData.specializationId || null,
+            yearLevel: formData.yearLevel || 1
+          }
+        : {
+            firstName: formData.firstName?.trim(),
+            lastName: formData.lastName?.trim(),
+            email: formData.email?.trim(),
+            studentNumber: formData.studentNumber?.trim(),
+            gender: formData.gender || 'other',
+            birthDate: formData.birthDate || null,
+            contactEmail: formData.contactEmail?.trim() || formData.email?.trim(),
+            phone: formData.phone?.trim() || null,
+            address: formData.address?.trim() || null,
+            emergencyContact: formData.emergencyContact?.trim() || null,
+            emergencyPhone: formData.emergencyPhone?.trim() || null,
+            programId: formData.programId || null,
+            specializationId: formData.specializationId || null,
+            yearLevel: formData.yearLevel || 1
+          }
 
       let result
       if (isEditMode && selectedStudent) {
