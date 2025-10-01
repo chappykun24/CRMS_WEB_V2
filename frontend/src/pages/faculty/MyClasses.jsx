@@ -139,26 +139,48 @@ const MyClasses = () => {
 
     setSubmittingAttendance(true)
     try {
-      // Prepare attendance data for submission
-      const attendanceData = {
-        section_course_id: selectedClass.section_course_id,
-        date: attendanceDate,
-        session_details: sessionDetails,
-        records: Object.keys(attendanceRecords).map(studentId => ({
-          student_id: studentId,
-          status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
-          remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
-        }))
-      }
-
-      console.log('📤 [ATTENDANCE] Submitting attendance data:', attendanceData)
-
-      const response = await fetch('/api/attendance', {
+      // First create a session
+      const sessionResponse = await fetch('/api/attendance/sessions', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
-        body: JSON.stringify(attendanceData)
+        body: JSON.stringify({
+          section_course_id: selectedClass.section_course_id,
+          title: sessionDetails.title,
+          session_date: sessionDetails.session_date,
+          session_type: sessionDetails.session_type,
+          meeting_type: sessionDetails.meeting_type
+        })
+      })
+
+      if (!sessionResponse.ok) {
+        throw new Error(`Failed to create session: ${sessionResponse.status}`)
+      }
+
+      const sessionData = await sessionResponse.json()
+      const sessionId = sessionData.data.session_id
+
+      // Then mark attendance for the session
+      const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => ({
+        enrollment_id: students.find(s => s.student_id === studentId)?.enrollment_id,
+        status: attendanceRecords[studentId]?.[attendanceDate]?.status || 'present',
+        remarks: attendanceRecords[studentId]?.[attendanceDate]?.remarks || ''
+      })).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
+
+      console.log('📤 [ATTENDANCE] Submitting attendance data:', { sessionId, attendanceRecordsList })
+
+      const response = await fetch('/api/attendance/mark', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          attendance_records: attendanceRecordsList
+        })
       })
 
       if (!response.ok) {
