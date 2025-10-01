@@ -1885,6 +1885,8 @@ console.log('   📍 /api/users');
 console.log('   📍 /api/attendance');
 console.log('   📍 /api/attendance/sessions - Session management');
 console.log('   📍 /api/attendance/mark - Mark attendance');
+console.log('   📍 /api/attendance/students - Get students for class');
+console.log('   📍 /api/attendance/stats - Get attendance statistics');
 
 // Debug: Test if auth routes are working
 app.get('/api/debug/auth', (req, res) => {
