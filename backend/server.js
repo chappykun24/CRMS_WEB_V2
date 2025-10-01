@@ -2935,17 +2935,28 @@ app.post('/api/syllabus/draft', async (req, res) => {
 app.get('/api/section-courses/:id/students', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      `SELECT ce.enrollment_id, ce.enrollment_date, ce.status,
-              s.student_id, s.full_name, s.student_number, s.student_photo
-       FROM course_final_grades cfg RIGHT JOIN course_enrollments ce ON false
-       FULL JOIN students s ON ce.student_id = s.student_id
+    console.log(`🔍 [STUDENTS] Fetching students for section course: ${id}`);
+    
+    const result = await db.query(
+      `SELECT 
+        ce.enrollment_id, 
+        ce.enrollment_date, 
+        ce.status,
+        s.student_id, 
+        s.full_name, 
+        s.student_number, 
+        s.student_photo
+       FROM course_enrollments ce
+       JOIN students s ON ce.student_id = s.student_id
        WHERE ce.section_course_id = $1
        ORDER BY s.full_name`,
       [id]
     );
+    
+    console.log(`✅ [STUDENTS] Found ${result.rows.length} students for section course ${id}`);
     res.json(result.rows);
   } catch (error) {
+    console.error('❌ [STUDENTS] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
