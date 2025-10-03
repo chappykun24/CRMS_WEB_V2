@@ -205,6 +205,19 @@ router.post('/mark', authenticateToken, async (req, res) => {
         const { enrollment_id, status, remarks } = record;
         console.log('🔍 [ATTENDANCE DEBUG] Inserting record:', { enrollment_id, status, remarks });
         
+        // Validate attendance status
+        const validStatuses = ['present', 'absent', 'late', 'excuse'];
+        if (!validStatuses.includes(status)) {
+          console.log('❌ [ATTENDANCE DEBUG] Invalid status:', status);
+          throw new Error(`Invalid attendance status: ${status}. Valid statuses are: ${validStatuses.join(', ')}`);
+        }
+        
+        // Validate enrollment_id
+        if (!enrollment_id) {
+          console.log('❌ [ATTENDANCE DEBUG] Missing enrollment_id');
+          throw new Error('enrollment_id is required for attendance record');
+        }
+        
         await client.query(`
           INSERT INTO attendance_logs (
             enrollment_id, session_id, status, session_date, remarks

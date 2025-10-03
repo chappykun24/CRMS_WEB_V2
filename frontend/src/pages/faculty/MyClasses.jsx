@@ -53,7 +53,7 @@ const MyClasses = () => {
 
   // Attendance mode state
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
-  const [attendanceRecords, setAttendanceRecords] = useState({}) // {studentId: {date: status}}
+  const [attendanceRecords, setAttendanceRecords] = useState({}) // {enrollmentId: {date: {status, remarks}}}
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
 
@@ -101,14 +101,14 @@ const MyClasses = () => {
   }
 
   // Attendance functions with memoization
-  const markAttendance = useCallback((studentId, status, remarks = '') => {
+  const markAttendance = useCallback((enrollmentId, status, remarks = '') => {
     const currentDate = sessionDetails.session_date
-    console.log('🔍 [ATTENDANCE DEBUG] Marking attendance:', { studentId, status, remarks, currentDate })
+    console.log('🔍 [ATTENDANCE DEBUG] Marking attendance:', { enrollmentId, status, remarks, currentDate })
     setAttendanceRecords(prev => {
       const newRecords = {
         ...prev,
-        [studentId]: {
-          ...prev[studentId],
+        [enrollmentId]: {
+          ...prev[enrollmentId],
           [currentDate]: { status, remarks }
         }
       }
@@ -120,16 +120,16 @@ const MyClasses = () => {
   const markAllPresent = useCallback(() => {
     console.log('🔍 [ATTENDANCE DEBUG] Marking all students present...')
     students.forEach(student => {
-      markAttendance(student.student_id, 'present')
+      markAttendance(student.enrollment_id, 'present')
     })
   }, [students, markAttendance])
 
-  const getAttendanceStatus = useCallback((studentId) => {
-    return attendanceRecords[studentId]?.[sessionDetails.session_date]?.status || null
+  const getAttendanceStatus = useCallback((enrollmentId) => {
+    return attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.status || null
   }, [attendanceRecords, sessionDetails.session_date])
 
-  const getAttendanceRemarks = useCallback((studentId) => {
-    return attendanceRecords[studentId]?.[sessionDetails.session_date]?.remarks || ''
+  const getAttendanceRemarks = useCallback((enrollmentId) => {
+    return attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.remarks || ''
   }, [attendanceRecords, sessionDetails.session_date])
 
   // Submit attendance data
@@ -186,14 +186,14 @@ const MyClasses = () => {
       console.log('🔍 [FRONTEND DEBUG] session_date:', sessionDetails.session_date)
       console.log('🔍 [FRONTEND DEBUG] Object.keys(attendanceRecords):', Object.keys(attendanceRecords))
       
-      const attendanceRecordsList = Object.keys(attendanceRecords).map(studentId => {
-        const student = students.find(s => s.student_id === studentId)
+      const attendanceRecordsList = Object.keys(attendanceRecords).map(enrollmentId => {
+        const student = students.find(s => s.enrollment_id === enrollmentId)
         const record = {
-          enrollment_id: student?.enrollment_id,
-          status: attendanceRecords[studentId]?.[sessionDetails.session_date]?.status || 'present',
-          remarks: attendanceRecords[studentId]?.[sessionDetails.session_date]?.remarks || ''
+          enrollment_id: enrollmentId,
+          status: attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.status || 'present',
+          remarks: attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.remarks || ''
         }
-        console.log('🔍 [FRONTEND DEBUG] Processing student:', { studentId, student, record })
+        console.log('🔍 [FRONTEND DEBUG] Processing student:', { enrollmentId, student, record })
         return record
       }).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
 
@@ -821,9 +821,9 @@ const MyClasses = () => {
                         <div className="flex-shrink-0">
                             <div className="flex items-center space-x-1">
                               <button 
-                                onClick={() => markAttendance(student.student_id, 'present')}
+                                onClick={() => markAttendance(student.enrollment_id, 'present')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
-                                  getAttendanceStatus(student.student_id) === 'present' 
+                                  getAttendanceStatus(student.enrollment_id) === 'present' 
                                     ? 'bg-green-200 text-green-900' 
                                     : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-800'
                                 }`}
@@ -832,9 +832,9 @@ const MyClasses = () => {
                                 Present
                               </button>
                               <button 
-                                onClick={() => markAttendance(student.student_id, 'absent')}
+                                onClick={() => markAttendance(student.enrollment_id, 'absent')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
-                                  getAttendanceStatus(student.student_id) === 'absent' 
+                                  getAttendanceStatus(student.enrollment_id) === 'absent' 
                                     ? 'bg-gray-300 text-gray-900' 
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
                                 }`}
@@ -843,9 +843,9 @@ const MyClasses = () => {
                                 Absent
                               </button>
                               <button 
-                                onClick={() => markAttendance(student.student_id, 'late')}
+                                onClick={() => markAttendance(student.enrollment_id, 'late')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
-                                  getAttendanceStatus(student.student_id) === 'late' 
+                                  getAttendanceStatus(student.enrollment_id) === 'late' 
                                     ? 'bg-yellow-200 text-yellow-900' 
                                     : 'bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-800'
                                 }`}
@@ -854,9 +854,9 @@ const MyClasses = () => {
                                 Late
                               </button>
                               <button 
-                                onClick={() => markAttendance(student.student_id, 'excuse')}
+                                onClick={() => markAttendance(student.enrollment_id, 'excuse')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
-                                  getAttendanceStatus(student.student_id) === 'excuse' 
+                                  getAttendanceStatus(student.enrollment_id) === 'excuse' 
                                     ? 'bg-blue-200 text-blue-900' 
                                     : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-800'
                                 }`}
@@ -867,10 +867,10 @@ const MyClasses = () => {
                               <input 
                                 type="text" 
                                 placeholder="Remarks" 
-                                value={getAttendanceRemarks(student.student_id)}
+                                value={getAttendanceRemarks(student.enrollment_id)}
                                 onChange={(e) => {
-                                  const currentStatus = getAttendanceStatus(student.student_id)
-                                  markAttendance(student.student_id, currentStatus || 'present', e.target.value)
+                                  const currentStatus = getAttendanceStatus(student.enrollment_id)
+                                  markAttendance(student.enrollment_id, currentStatus || 'present', e.target.value)
                                 }}
                                 className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 w-20"
                               />
