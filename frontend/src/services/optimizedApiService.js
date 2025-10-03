@@ -2,9 +2,7 @@ import axios from 'axios';
 
 // API Configuration
 const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = isDevelopment 
-  ? 'http://localhost:3001/api'
-  : (import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Request cache and deduplication
 const requestCache = new Map();

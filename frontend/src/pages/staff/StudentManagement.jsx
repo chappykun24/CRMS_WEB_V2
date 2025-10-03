@@ -265,7 +265,7 @@ const StudentManagement = () => {
       try {
         const photoBase64 = e.target.result
 
-        const response = await fetch('http://localhost:3001/api/students/upload-photo', {
+        const response = await fetch('/api/students/upload-photo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -34,7 +34,7 @@ const SectionManagement = () => {
   const [isLoadingTerms, setIsLoadingTerms] = useState(true)
   const [selectedSection, setSelectedSection] = useState(null)
 
-  const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api'
+  const API_BASE_URL = '/api'
 
   // Load school terms when component mounts
   useEffect(() => {

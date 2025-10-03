@@ -239,7 +239,7 @@ const AssignFaculty = () => {
   }
 
   // Compute API base URL similar to other services
-  const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api'
+  const API_BASE_URL = '/api'
 
   // Load courses when the create modal opens (once per open)
   useEffect(() => {
