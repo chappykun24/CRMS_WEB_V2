@@ -25,6 +25,7 @@ const Attendance = () => {
   const [showAttendanceModal, setShowAttendanceModal] = useState(false)
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState(null)
+  const [loadingAttendanceData, setLoadingAttendanceData] = useState(false)
   const [dateFilter, setDateFilter] = useState({
     startDate: '',
     endDate: ''
@@ -151,6 +152,55 @@ const Attendance = () => {
       setError(error.message)
     }
   }, [selectedClass, dateFilter])
+
+  // Load existing attendance data for a specific session
+  const loadSessionAttendance = useCallback(async (sessionId) => {
+    if (!sessionId) return
+    
+    try {
+      setLoadingAttendanceData(true)
+      const response = await fetch(`/api/attendance/session/${sessionId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to load session attendance data')
+      }
+      
+      const data = await response.json()
+      const attendanceRecords = data.data || []
+      
+      // Convert attendance records to form format
+      const formData = {}
+      attendanceRecords.forEach(record => {
+        formData[record.student_id] = {
+          status: record.status,
+          remarks: record.remarks || ''
+        }
+      })
+      
+      // If no existing attendance records, initialize with default 'present' status
+      if (attendanceRecords.length === 0) {
+        students.forEach(student => {
+          formData[student.student_id] = {
+            status: 'present',
+            remarks: ''
+          }
+        })
+      }
+      
+      setAttendanceForm(formData)
+    } catch (error) {
+      console.error('Error loading session attendance:', error)
+      setError(error.message)
+      // Reset form if loading fails
+      setAttendanceForm({})
+    } finally {
+      setLoadingAttendanceData(false)
+    }
+  }, [students])
   
   // Create new session
   const createSession = async (e) => {
@@ -485,9 +535,11 @@ const Attendance = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 setSelectedSession(session)
                                 setShowAttendanceModal(true)
+                                // Load existing attendance data for this session
+                                await loadSessionAttendance(session.session_id)
                               }}
                               className="text-blue-600 hover:text-blue-900"
                             >
@@ -601,10 +653,33 @@ const Attendance = () => {
         {showAttendanceModal && selectedSession && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Mark Attendance - {selectedSession.title}
-              </h3>
-              <form onSubmit={markAttendance}>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Mark Attendance - {selectedSession.title}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowAttendanceModal(false)
+                    setSelectedSession(null)
+                    setAttendanceForm({})
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {loadingAttendanceData ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-gray-600">Loading attendance data...</p>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={markAttendance}>
                 <div className="space-y-4">
                   {students.map((student) => (
                     <div key={student.student_id} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
@@ -662,7 +737,11 @@ const Attendance = () => {
                 <div className="flex justify-end gap-3 mt-6">
                   <button
                     type="button"
-                    onClick={() => setShowAttendanceModal(false)}
+                    onClick={() => {
+                      setShowAttendanceModal(false)
+                      setSelectedSession(null)
+                      setAttendanceForm({})
+                    }}
                     className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
                   >
                     Cancel
@@ -675,6 +754,7 @@ const Attendance = () => {
                   </button>
                 </div>
               </form>
+              )}
             </div>
           </div>
         )}

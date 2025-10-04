@@ -62,6 +62,42 @@ router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
   }
 });
 
+// Get attendance records for a specific session
+router.get('/session/:sessionId', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const result = await db.query(`
+      SELECT 
+        al.attendance_id,
+        al.enrollment_id,
+        al.status,
+        al.remarks,
+        s.student_id,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
+        s.student_number,
+        u.profile_photo
+      FROM attendance_logs al
+      JOIN course_enrollments ce ON al.enrollment_id = ce.enrollment_id
+      JOIN students s ON ce.student_id = s.student_id
+      JOIN users u ON s.user_id = u.user_id
+      WHERE al.session_id = $1
+      ORDER BY u.first_name, u.last_name
+    `, [sessionId]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching session attendance:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get attendance sessions for a class
 router.get('/sessions/:sectionCourseId', authenticateToken, async (req, res) => {
   try {
