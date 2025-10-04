@@ -8,7 +8,7 @@ import {
   Trash2,
   BarChart3,
   Download,
-  Slideshow
+  Monitor
 } from 'lucide-react'
 
 const Attendance = () => {
@@ -751,7 +751,7 @@ const Attendance = () => {
                     type="submit"
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
-                    <Slideshow className="h-4 w-4" />
+                    <Monitor className="h-4 w-4" />
                     Mark Attendance
                   </button>
                 </div>
