@@ -62,7 +62,7 @@ const MyClasses = () => {
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
     title: '',           // Required for sessions table
-    session_date: '',    // Required for sessions table
+    session_date: new Date().toISOString().split('T')[0],    // Default to today's date
     session_type: 'Lecture',  // Optional for sessions table
     meeting_type: 'Face-to-Face'  // Optional for sessions table
   })
