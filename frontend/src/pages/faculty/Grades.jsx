@@ -179,173 +179,281 @@ const Grades = () => {
 
   if (loading && !classes.length) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading grade management...</p>
+      <>
+        <style>{`
+          input[type="text"], input[type="search"], select {
+            border-color: #d1d5db !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          input[type="text"]:focus, input[type="search"]:focus, select:focus {
+            border-color: #9ca3af !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          
+          select {
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+            background-position: right 8px center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px !important;
+            padding-right: 40px !important;
+            cursor: pointer !important;
+          }
+        `}</style>
+        <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
+          <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+            <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading grade management...</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Grade Management</h1>
+    <>
+      <style>{`
+        input[type="text"], input[type="search"], select {
+          border-color: #d1d5db !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        
+        input[type="text"]:focus, input[type="search"]:focus, select:focus {
+          border-color: #9ca3af !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        
+        select {
+          appearance: none !important;
+          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
+          background-position: right 8px center !important;
+          background-repeat: no-repeat !important;
+          background-size: 16px !important;
+          padding-right: 40px !important;
+          cursor: pointer !important;
+        }
+      `}</style>
+      <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-6">
-            {error}
-          </div>
-        )}
-        {successMessage && (
-          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md mb-6">
-            {successMessage}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Class Selection */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <label htmlFor="class-select" className="block text-lg font-medium text-gray-700 mb-3">
-              <AcademicCapIcon className="h-6 w-6 inline-block mr-2 text-blue-600" />
-              Select Class:
-            </label>
-            <select
-              id="class-select"
-              className="w-full p-3 rounded-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-              value={selectedClass ? selectedClass.section_course_id : ''}
-              onChange={(e) => setSelectedClass(classes.find(c => c.section_course_id === parseInt(e.target.value)))}
-            >
-              <option value="">-- Select a Class --</option>
-              {classes.map((cls) => (
-                <option key={cls.section_course_id} value={cls.section_course_id}>
-                  {cls.course_title} - {cls.section_code}
-                </option>
-              ))}
-            </select>
+          {/* Header */}
+          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
+            <div className="px-8 bg-gray-50">
+              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+                <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+                  Grade Management
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Assessment Selection */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <label htmlFor="assessment-select" className="block text-lg font-medium text-gray-700 mb-3">
-              <ClipboardDocumentCheckIcon className="h-6 w-6 inline-block mr-2 text-blue-600" />
-              Select Assessment:
-            </label>
-            <select
-              id="assessment-select"
-              className="w-full p-3 rounded-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-              value={selectedAssessment ? selectedAssessment.assessment_id : ''}
-              onChange={(e) => setSelectedAssessment(assessments.find(a => a.assessment_id === parseInt(e.target.value)))}
-              disabled={!selectedClass || assessments.length === 0}
-            >
-              <option value="">-- Select an Assessment --</option>
-              {assessments.map((assessment) => (
-                <option key={assessment.assessment_id} value={assessment.assessment_id}>
-                  {assessment.title} ({assessment.type}) - {assessment.total_points} pts
-                </option>
-              ))}
-            </select>
+          {/* Content */}
+          <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+              {/* Main Content */}
+              <div className="lg:col-span-3 h-full">
+                {/* Controls */}
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Class Selection */}
+                  <select
+                    value={selectedClass ? selectedClass.section_course_id : ''}
+                    onChange={(e) => setSelectedClass(classes.find(c => c.section_course_id === parseInt(e.target.value)))}
+                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-48"
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map((cls) => (
+                      <option key={cls.section_course_id} value={cls.section_course_id}>
+                        {cls.course_title} - {cls.section_code}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Assessment Selection */}
+                  <select
+                    value={selectedAssessment ? selectedAssessment.assessment_id : ''}
+                    onChange={(e) => setSelectedAssessment(assessments.find(a => a.assessment_id === parseInt(e.target.value)))}
+                    disabled={!selectedClass || assessments.length === 0}
+                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-64"
+                  >
+                    <option value="">Select Assessment</option>
+                    {assessments.map((assessment) => (
+                      <option key={assessment.assessment_id} value={assessment.assessment_id}>
+                        {assessment.title} ({assessment.type}) - {assessment.total_points} pts
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Error and Success Messages */}
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800">{error}</p>
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800">{successMessage}</p>
+                  </div>
+                )}
+
+                {/* Grades Table */}
+                {selectedAssessment && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <DocumentTextIcon className="h-5 w-5 mr-2 text-red-600" />
+                        Grades for: {selectedAssessment.title}
+                        <span className="ml-2 text-sm text-gray-600">({selectedAssessment.total_points} Total Points)</span>
+                      </h2>
+                    </div>
+
+                    {Object.keys(grades).length === 0 && !loading ? (
+                      <div className="flex-1 flex items-center justify-center py-16">
+                        <div className="text-center">
+                          <UserGroupIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+                          <p className="text-gray-500">No students or grades found for this assessment yet.</p>
+                        </div>
+                      </div>
+                    ) : Object.keys(grades).length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Raw Score</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Late Penalty</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adjusted Score</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Percentage</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {Object.entries(grades).map(([enrollmentId, gradeData]) => (
+                              <tr key={enrollmentId} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-8 w-8">
+                                      <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+                                        <span className="text-sm font-medium text-red-600">
+                                          {(gradeData.student_name || 'S').charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="text-sm font-medium text-gray-900">{gradeData.student_name || 'Student'}</div>
+                                      <div className="text-sm text-gray-500">ID: {gradeData.student_id || enrollmentId}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <input
+                                    type="number"
+                                    value={gradeData.raw_score || ''}
+                                    onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
+                                    className="w-20 p-2 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
+                                    min="0"
+                                    max={selectedAssessment.total_points}
+                                  />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <input
+                                    type="number"
+                                    value={gradeData.late_penalty || ''}
+                                    onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
+                                    className="w-20 p-2 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
+                                    min="0"
+                                  />
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {calculatePercentage(
+                                    calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points),
+                                    selectedAssessment.total_points
+                                  )}%
+                                </td>
+                                <td className="px-6 py-4">
+                                  <textarea
+                                    value={gradeData.feedback || ''}
+                                    onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
+                                    className="w-full p-2 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-y text-sm"
+                                    rows="2"
+                                    placeholder="Add feedback..."
+                                  ></textarea>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+
+                    {Object.keys(grades).length > 0 && (
+                      <div className="px-6 py-4 border-t border-gray-200">
+                        <button
+                          onClick={handleSubmitGrades}
+                          disabled={isSubmitting || !selectedAssessment || Object.keys(grades).length === 0}
+                          className={`w-full py-3 px-6 rounded-md text-lg font-semibold transition-colors duration-300
+                            ${isSubmitting ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}
+                            focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
+                        >
+                          {isSubmitting ? (
+                            <span className="flex items-center justify-center">
+                              <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" /> Submitting Grades...
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center">
+                              <CheckIcon className="h-5 w-5 mr-2" /> Submit All Grades
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No Assessment Selected */}
+                {!selectedAssessment && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300">
+                    <div className="flex-1 flex items-center justify-center py-16">
+                      <div className="text-center">
+                        <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Assessment</h3>
+                        <p className="text-gray-500">Choose a class and assessment to start grading</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Side Panel - Grade Summary */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300 h-[calc(100vh-200px)] overflow-y-auto">
+                  <div className="text-center py-8">
+                    <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Grade Summary</h3>
+                    <p className="text-gray-500">Grade statistics will appear here</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        {selectedAssessment && (
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-3xl font-semibold mb-6 text-gray-900 flex items-center">
-              <DocumentTextIcon className="h-7 w-7 inline-block mr-3 text-blue-600" />
-              Grades for: {selectedAssessment.title}
-              <span className="ml-4 text-xl text-gray-600">({selectedAssessment.total_points} Total Points)</span>
-            </h2>
-
-            {Object.keys(grades).length === 0 && !loading && (
-              <p className="text-gray-500 text-center py-8">No students or grades found for this assessment yet.</p>
-            )}
-
-            {Object.keys(grades).length > 0 && (
-              <div className="overflow-x-auto mb-6">
-                <table className="min-w-full bg-white rounded-lg overflow-hidden border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Student Name</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Raw Score</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Late Penalty</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Adjusted Score</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Percentage</th>
-                      <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Feedback</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {Object.entries(grades).map(([enrollmentId, gradeData]) => (
-                      <tr key={enrollmentId} className="hover:bg-gray-50 transition-colors duration-200">
-                        <td className="py-3 px-4 whitespace-nowrap text-gray-900">
-                          {gradeData.student_name || 'Student'}
-                          <span className="block text-xs text-gray-500">ID: {gradeData.student_id || enrollmentId}</span>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <input
-                            type="number"
-                            value={gradeData.raw_score || ''}
-                            onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                            className="w-24 p-2 rounded-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                            max={selectedAssessment.total_points}
-                          />
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <input
-                            type="number"
-                            value={gradeData.late_penalty || ''}
-                            onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                            className="w-24 p-2 rounded-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-gray-900 font-medium">
-                          {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-gray-900 font-medium">
-                          {calculatePercentage(
-                            calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points),
-                            selectedAssessment.total_points
-                          )}%
-                        </td>
-                        <td className="py-3 px-4">
-                          <textarea
-                            value={gradeData.feedback || ''}
-                            onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                            className="w-full p-2 rounded-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500 resize-y"
-                            rows="2"
-                            placeholder="Add feedback..."
-                          ></textarea>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <button
-              onClick={handleSubmitGrades}
-              disabled={isSubmitting || !selectedAssessment || Object.keys(grades).length === 0}
-              className={`w-full py-3 px-6 rounded-md text-lg font-semibold transition-colors duration-300
-                ${isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-white`}
-            >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center">
-                  <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" /> Submitting Grades...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  <CheckIcon className="h-5 w-5 mr-2" /> Submit All Grades
-                </span>
-              )}
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+    </>
   )
 }
 
