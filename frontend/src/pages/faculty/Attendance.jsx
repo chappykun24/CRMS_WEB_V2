@@ -642,15 +642,10 @@ const Attendance = () => {
                     <input
                       type="date"
                       value={sessionForm.session_date}
-                      onChange={async (e) => {
-                        const selectedDate = e.target.value
-                        setSessionForm(prev => ({ ...prev, session_date: selectedDate }))
+                      onChange={(e) => {
+                        setSessionForm(prev => ({ ...prev, session_date: e.target.value }))
                         if (attemptedSubmit) {
                           setSessionFormError(isSessionFormValid() ? '' : 'Fill required fields')
-                        }
-                        // Load attendance data for the selected date
-                        if (selectedDate) {
-                          await loadAttendanceForDate(selectedDate)
                         }
                       }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -728,6 +723,30 @@ const Attendance = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+              </div>
+              
+              {/* Date Selection for Attendance Restoration */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Date to Restore Attendance
+                </label>
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                  <input
+                    type="date"
+                    value={selectedSession.session_date}
+                    onChange={async (e) => {
+                      const selectedDate = e.target.value
+                      if (selectedDate) {
+                        await loadAttendanceForDate(selectedDate)
+                      }
+                    }}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                  <span className="text-xs text-gray-500">
+                    Select a date to restore attendance markings
+                  </span>
+                </div>
               </div>
               
               {(loadingAttendanceData || loadingDateAttendance) ? (
