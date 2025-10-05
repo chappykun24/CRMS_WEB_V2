@@ -14,7 +14,6 @@ const FacultyTopNav = () => {
 
   const tabs = [
     { key: 'classes', label: 'My Classes', href: '/dashboard/classes', icon: BookOpenIcon },
-    { key: 'attendance', label: 'Attendance', href: '/dashboard/attendance', icon: CalendarDaysIcon },
     { key: 'assessments', label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardDocumentListIcon },
     { key: 'grades', label: 'Grades', href: '/dashboard/grades', icon: TrophyIcon },
     { key: 'syllabi', label: 'Syllabi', href: '/dashboard/syllabi', icon: DocumentTextIcon }

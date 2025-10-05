@@ -179,7 +179,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         break
       case 'FACULTY':
         if (path === '/dashboard/classes') return 'My Classes'
-        if (path === '/dashboard/attendance') return 'Attendance'
         if (path === '/dashboard/assessments') return 'Assessments'
         if (path === '/dashboard/grades') return 'Grades'
         if (path === '/dashboard/syllabi') return 'Syllabi'
