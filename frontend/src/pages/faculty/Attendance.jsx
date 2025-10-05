@@ -749,7 +749,6 @@ const Attendance = () => {
                   <Calendar className="h-5 w-5 text-gray-400" />
                   <input
                     type="date"
-                    value={selectedSession.session_date}
                     onChange={async (e) => {
                       const selectedDate = e.target.value
                       console.log('📅 Date selected:', selectedDate)
@@ -759,10 +758,27 @@ const Attendance = () => {
                       }
                     }}
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    placeholder="Select date to restore attendance"
                   />
                   <span className="text-xs text-gray-500">
                     Select a date to restore attendance markings
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const dateInput = document.querySelector('input[type="date"]');
+                      const selectedDate = dateInput?.value;
+                      if (selectedDate) {
+                        console.log('🔄 Manual trigger - Loading attendance for date:', selectedDate);
+                        loadAttendanceForDate(selectedDate);
+                      } else {
+                        alert('Please select a date first');
+                      }
+                    }}
+                    className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Load
+                  </button>
                 </div>
               </div>
               
