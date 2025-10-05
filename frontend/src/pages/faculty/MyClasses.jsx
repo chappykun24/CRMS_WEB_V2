@@ -778,6 +778,53 @@ const MyClasses = () => {
                       </div>
                     )}
                   </div>
+                  {/* Session Details Inputs in the middle space - Only in attendance mode */}
+                  {isAttendanceMode && (
+                    <div className="flex items-center gap-3 mt-2">
+                      <input
+                        type="text"
+                        value={sessionDetails.title}
+                        onChange={(e) => updateSessionDetails('title', e.target.value)}
+                        placeholder="Session Title"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={sessionDetails.session_date}
+                          onChange={async (e) => {
+                            const selectedDate = e.target.value
+                            console.log('📅 Date selected:', selectedDate)
+                            updateSessionDetails('session_date', selectedDate)
+                            
+                            // Load attendance data for the selected date
+                            if (selectedDate && selectedClass) {
+                              console.log('🔄 Loading attendance for date:', selectedDate)
+                              await loadExistingAttendanceForDate(selectedDate)
+                            }
+                          }}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        {loadingAttendanceData && (
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={sessionDetails.session_type}
+                        onChange={(e) => updateSessionDetails('session_type', e.target.value)}
+                        placeholder="Session Type"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                      />
+                      <input
+                        type="text"
+                        value={sessionDetails.meeting_type}
+                        onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
+                        placeholder="Meeting Type"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                      />
+                    </div>
+                  )}
                   <div className="mt-1 text-xs text-gray-600 space-y-0.5">
                     <p className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</p>
                     <div className="flex items-center justify-between">
@@ -801,60 +848,7 @@ const MyClasses = () => {
               </div>
             </div>
 
-            {/* Session Details Section - Only show in attendance mode */}
-            {isAttendanceMode && (
-              <div className="mb-3 p-3 bg-gray-50 rounded border">
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={sessionDetails.title}
-                    onChange={(e) => updateSessionDetails('title', e.target.value)}
-                    placeholder="Session Title"
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={sessionDetails.session_date}
-                      onChange={async (e) => {
-                        const selectedDate = e.target.value
-                        console.log('📅 Date selected:', selectedDate)
-                        updateSessionDetails('session_date', selectedDate)
-                        
-                        // Load attendance data for the selected date
-                        if (selectedDate && selectedClass) {
-                          console.log('🔄 Loading attendance for date:', selectedDate)
-                          await loadExistingAttendanceForDate(selectedDate)
-                        }
-                      }}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    {loadingAttendanceData && (
-                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={sessionDetails.session_type}
-                    onChange={(e) => updateSessionDetails('session_type', e.target.value)}
-                    placeholder="Session Type"
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={sessionDetails.meeting_type}
-                    onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
-                    placeholder="Meeting Type"
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                  />
-                </div>
-                {attemptedSessionSubmit && !sessionDetailsValid && (
-                  <div className="mt-1 text-xs text-red-600">Fill required fields</div>
-                )}
-              </div>
-            )}
+
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
