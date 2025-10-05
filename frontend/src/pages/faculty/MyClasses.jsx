@@ -73,14 +73,17 @@ const MyClasses = () => {
   const validateSessionDetails = useCallback(() => {
     const { title, session_date } = sessionDetails
     const isValid = title.trim() !== '' && session_date !== ''
+    console.log('🔍 [VALIDATION] Validating session details:', { title, session_date, isValid })
     setSessionDetailsValid(isValid)
     return isValid
   }, [sessionDetails])
 
   // Update session details and validate
   const updateSessionDetails = useCallback((field, value) => {
+    console.log('🔍 [UPDATE] Updating session details:', { field, value })
     setSessionDetails(prev => {
       const updated = { ...prev, [field]: value }
+      console.log('🔍 [UPDATE] New session details:', updated)
       return updated
     })
     if (attemptedSessionSubmit) {
@@ -206,7 +209,9 @@ const MyClasses = () => {
 
     // Validate session details before submitting
     setAttemptedSessionSubmit(true)
+    console.log('🔍 [SUBMIT] Current session details before validation:', sessionDetails)
     if (!validateSessionDetails()) {
+      console.log('❌ [SUBMIT] Validation failed, current values:', { title: sessionDetails.title, session_date: sessionDetails.session_date })
       alert('Please fill in all required session details (Title and Date)')
       return
     }
