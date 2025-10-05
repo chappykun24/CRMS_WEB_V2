@@ -135,6 +135,15 @@ const MyClasses = () => {
           session_type: firstRecord.session_type || prev.session_type,
           meeting_type: firstRecord.meeting_type || prev.meeting_type
         }))
+      } else {
+        // Reset session details if no data found for this date
+        console.log('🔄 [MYCLASSES] No attendance data found for date, resetting session details')
+        setSessionDetails(prev => ({
+          ...prev,
+          title: '',
+          session_type: 'Lecture',
+          meeting_type: 'Face-to-Face'
+        }))
       }
       
       // Convert attendance records to form format
@@ -796,7 +805,7 @@ const MyClasses = () => {
                     value={sessionDetails.title}
                     onChange={(e) => updateSessionDetails('title', e.target.value)}
                     placeholder="Session Title"
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
                   />
                   <div className="flex items-center gap-2">
                     <input
@@ -821,25 +830,20 @@ const MyClasses = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <select
+                  <input
+                    type="text"
                     value={sessionDetails.session_type}
                     onChange={(e) => updateSessionDetails('session_type', e.target.value)}
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="Lecture">Lecture</option>
-                    <option value="Laboratory">Laboratory</option>
-                    <option value="Field Work">Field Work</option>
-                    <option value="Seminar">Seminar</option>
-                  </select>
-                  <select
+                    placeholder="Session Type"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                  />
+                  <input
+                    type="text"
                     value={sessionDetails.meeting_type}
                     onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="Face-to-Face">Face-to-Face</option>
-                    <option value="Online">Online</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </select>
+                    placeholder="Meeting Type"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                  />
                 </div>
                 {attemptedSessionSubmit && !sessionDetailsValid && (
                   <div className="mt-1 text-xs text-red-600">Fill required fields</div>
