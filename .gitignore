@@ -187,6 +187,7 @@ public/
 # ==========================================
 # References folder (exclude from version control)
 references/
+reference/
 
 # Uploads folder (user-generated content)
 uploads/
