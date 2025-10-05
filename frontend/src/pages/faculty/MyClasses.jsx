@@ -100,6 +100,60 @@ const MyClasses = () => {
     return tokens[tokens.length - 1].toLowerCase()
   }
 
+  // Load existing attendance data for a specific date
+  const loadExistingAttendanceForDate = useCallback(async (date) => {
+    if (!selectedClass || !date) return
+    
+    try {
+      console.log('🔍 [MYCLASSES] Loading attendance for date:', date)
+      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${date}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to load attendance data for date')
+      }
+      
+      const data = await response.json()
+      const attendanceRecords = data.data || []
+      console.log('✅ [MYCLASSES] Received attendance data:', attendanceRecords)
+      
+      // Restore session details from the first record if available
+      if (attendanceRecords.length > 0) {
+        const firstRecord = attendanceRecords[0]
+        console.log('🔄 [MYCLASSES] Restoring session details from:', firstRecord)
+        
+        // Update session details with restored data
+        setSessionDetails(prev => ({
+          ...prev,
+          title: firstRecord.title || prev.title,
+          session_type: firstRecord.session_type || prev.session_type,
+          meeting_type: firstRecord.meeting_type || prev.meeting_type
+        }))
+      }
+      
+      // Convert attendance records to form format
+      const newAttendanceRecords = {}
+      attendanceRecords.forEach(record => {
+        if (!newAttendanceRecords[record.enrollment_id]) {
+          newAttendanceRecords[record.enrollment_id] = {}
+        }
+        newAttendanceRecords[record.enrollment_id][date] = {
+          status: record.status,
+          remarks: record.remarks || ''
+        }
+      })
+      
+      console.log('💾 [MYCLASSES] Setting attendance records:', newAttendanceRecords)
+      setAttendanceRecords(prev => ({ ...prev, ...newAttendanceRecords }))
+      
+    } catch (error) {
+      console.error('❌ [MYCLASSES] Error loading attendance for date:', error)
+    }
+  }, [selectedClass])
+
   // Attendance functions with memoization
   const markAttendance = useCallback((enrollmentId, status, remarks = '') => {
     const currentDate = sessionDetails.session_date
@@ -742,7 +796,17 @@ const MyClasses = () => {
                   <input
                     type="date"
                     value={sessionDetails.session_date}
-                    onChange={(e) => updateSessionDetails('session_date', e.target.value)}
+                    onChange={async (e) => {
+                      const selectedDate = e.target.value
+                      console.log('📅 Date selected:', selectedDate)
+                      updateSessionDetails('session_date', selectedDate)
+                      
+                      // Load attendance data for the selected date
+                      if (selectedDate && selectedClass) {
+                        console.log('🔄 Loading attendance for date:', selectedDate)
+                        await loadExistingAttendanceForDate(selectedDate)
+                      }
+                    }}
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
