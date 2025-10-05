@@ -4,11 +4,32 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
+// Test database connection endpoint
+router.get('/test-connection', authenticateToken, async (req, res) => {
+  try {
+    console.log('🔍 [ATTENDANCE API] Testing database connection...');
+    const result = await db.testConnection();
+    res.json({
+      success: true,
+      message: 'Database connection test completed',
+      result
+    });
+  } catch (error) {
+    console.error('❌ [ATTENDANCE API] Database connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get attendance for a specific class/section
 router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
   try {
     const { sectionCourseId } = req.params;
     const { date, startDate, endDate } = req.query;
+
+    console.log('🔍 [ATTENDANCE API] Fetching attendance for class:', { sectionCourseId, date, startDate, endDate });
 
     let query = `
       SELECT 
@@ -40,21 +61,30 @@ router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
     if (date) {
       query += ` AND al.session_date = $${params.length + 1}`;
       params.push(date);
+      console.log('🔍 [ATTENDANCE API] Filtering by date:', date);
     } else if (startDate && endDate) {
       query += ` AND al.session_date BETWEEN $${params.length + 1} AND $${params.length + 2}`;
       params.push(startDate, endDate);
     }
 
-    query += ` ORDER BY al.session_date DESC, s.full_name`;
+    query += ` ORDER BY al.session_date DESC, u.first_name, u.last_name`;
 
+    console.log('🔍 [ATTENDANCE API] Executing query with params:', params);
     const result = await db.query(query, params);
+    console.log('✅ [ATTENDANCE API] Query successful, found', result.rows.length, 'records');
 
     res.json({
       success: true,
       data: result.rows
     });
   } catch (error) {
-    console.error('Error fetching attendance:', error);
+    console.error('❌ [ATTENDANCE API] Error fetching attendance:', error);
+    console.error('❌ [ATTENDANCE API] Error details:', {
+      message: error.message,
+      code: error.code,
+      sectionCourseId: req.params.sectionCourseId,
+      query: req.query
+    });
     res.status(500).json({
       success: false,
       error: error.message

@@ -22,18 +22,19 @@ const dbConfig = {
   port: parseInt(process.env.NEON_PORT || process.env.DB_PORT || '5432'),
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   // Optimized connection pool settings for Neon
-  max: 10, // Reduced max connections for Neon compatibility
-  min: 2, // Reduced minimum connections
-  idleTimeoutMillis: 30000, // Reduced idle timeout for Neon
-  connectionTimeoutMillis: 10000, // Increased timeout for better reliability
+  max: 5, // Further reduced max connections for Neon compatibility
+  min: 1, // Reduced minimum connections
+  idleTimeoutMillis: 20000, // Reduced idle timeout for Neon
+  connectionTimeoutMillis: 15000, // Increased timeout for better reliability
   acquireTimeoutMillis: 30000, // Increased timeout for acquiring connections
+  // Neon-specific settings
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0, // Start keep-alive immediately
   // Removed allowExitOnIdle as it can cause issues with Neon
   // Query optimization settings
   statement_timeout: 30000, // 30 second query timeout
   query_timeout: 30000, // 30 second query timeout
-  // Connection keep-alive settings
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
+  // Connection keep-alive settings (already set above)
 };
 
 console.log('Database configuration:', {

@@ -206,22 +206,35 @@ const Attendance = () => {
 
   // Load attendance data for a specific date
   const loadAttendanceForDate = useCallback(async (date) => {
-    if (!selectedClass || !date) return
+    console.log('🔍 loadAttendanceForDate called with:', { date, selectedClass: selectedClass?.section_course_id })
+    if (!selectedClass || !date) {
+      console.log('❌ Missing required data:', { selectedClass: !!selectedClass, date: !!date })
+      return
+    }
     
     try {
       setLoadingDateAttendance(true)
-      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${date}`, {
+      const url = `/api/attendance/class/${selectedClass.section_course_id}?date=${date}`
+      console.log('🌐 Fetching URL:', url)
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       })
       
+      console.log('📡 Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to load attendance data for date')
+        const errorText = await response.text()
+        console.log('❌ Error response:', errorText)
+        throw new Error(`Failed to load attendance data for date: ${response.status}`)
       }
       
       const data = await response.json()
+      console.log('✅ Received data:', data)
       const attendanceRecords = data.data || []
+      console.log('📊 Attendance records:', attendanceRecords)
       
       // Convert attendance records to form format
       const formData = {}
@@ -234,6 +247,7 @@ const Attendance = () => {
       
       // If no existing attendance records, initialize with default 'present' status
       if (attendanceRecords.length === 0) {
+        console.log('📝 No existing records, initializing with present status for', students.length, 'students')
         students.forEach(student => {
           formData[student.student_id] = {
             status: 'present',
@@ -242,9 +256,10 @@ const Attendance = () => {
         })
       }
       
+      console.log('💾 Setting attendance form data:', formData)
       setAttendanceForm(formData)
     } catch (error) {
-      console.error('Error loading attendance for date:', error)
+      console.error('❌ Error loading attendance for date:', error)
       setError(error.message)
       // Reset form if loading fails
       setAttendanceForm({})
@@ -737,7 +752,9 @@ const Attendance = () => {
                     value={selectedSession.session_date}
                     onChange={async (e) => {
                       const selectedDate = e.target.value
+                      console.log('📅 Date selected:', selectedDate)
                       if (selectedDate) {
+                        console.log('🔄 Loading attendance for date:', selectedDate)
                         await loadAttendanceForDate(selectedDate)
                       }
                     }}
