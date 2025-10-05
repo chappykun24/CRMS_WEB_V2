@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import facultyCacheService from '../../services/facultyCacheService'
- 
+import { Loader2 } from 'lucide-react'
+
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
 
@@ -56,6 +57,7 @@ const MyClasses = () => {
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {enrollmentId: {date: {status, remarks}}}
   const [togglingAttendance, setTogglingAttendance] = useState(false)
   const [submittingAttendance, setSubmittingAttendance] = useState(false)
+  const [loadingAttendanceData, setLoadingAttendanceData] = useState(false)
 
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
@@ -105,6 +107,7 @@ const MyClasses = () => {
     if (!selectedClass || !date) return
     
     try {
+      setLoadingAttendanceData(true)
       console.log('🔍 [MYCLASSES] Loading attendance for date:', date)
       const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${date}`, {
         headers: {
@@ -151,6 +154,8 @@ const MyClasses = () => {
       
     } catch (error) {
       console.error('❌ [MYCLASSES] Error loading attendance for date:', error)
+    } finally {
+      setLoadingAttendanceData(false)
     }
   }, [selectedClass])
 
@@ -793,22 +798,27 @@ const MyClasses = () => {
                     placeholder="Session Title"
                     className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <input
-                    type="date"
-                    value={sessionDetails.session_date}
-                    onChange={async (e) => {
-                      const selectedDate = e.target.value
-                      console.log('📅 Date selected:', selectedDate)
-                      updateSessionDetails('session_date', selectedDate)
-                      
-                      // Load attendance data for the selected date
-                      if (selectedDate && selectedClass) {
-                        console.log('🔄 Loading attendance for date:', selectedDate)
-                        await loadExistingAttendanceForDate(selectedDate)
-                      }
-                    }}
-                    className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={sessionDetails.session_date}
+                      onChange={async (e) => {
+                        const selectedDate = e.target.value
+                        console.log('📅 Date selected:', selectedDate)
+                        updateSessionDetails('session_date', selectedDate)
+                        
+                        // Load attendance data for the selected date
+                        if (selectedDate && selectedClass) {
+                          console.log('🔄 Loading attendance for date:', selectedDate)
+                          await loadExistingAttendanceForDate(selectedDate)
+                        }
+                      }}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    {loadingAttendanceData && (
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <select
