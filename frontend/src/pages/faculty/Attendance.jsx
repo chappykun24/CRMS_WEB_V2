@@ -27,6 +27,7 @@ const Attendance = () => {
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState(null)
   const [loadingAttendanceData, setLoadingAttendanceData] = useState(false)
+  const [loadingDateAttendance, setLoadingDateAttendance] = useState(false)
   const [dateFilter, setDateFilter] = useState({
     startDate: '',
     endDate: ''
@@ -202,6 +203,55 @@ const Attendance = () => {
       setLoadingAttendanceData(false)
     }
   }, [students])
+
+  // Load attendance data for a specific date
+  const loadAttendanceForDate = useCallback(async (date) => {
+    if (!selectedClass || !date) return
+    
+    try {
+      setLoadingDateAttendance(true)
+      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${date}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to load attendance data for date')
+      }
+      
+      const data = await response.json()
+      const attendanceRecords = data.data || []
+      
+      // Convert attendance records to form format
+      const formData = {}
+      attendanceRecords.forEach(record => {
+        formData[record.student_id] = {
+          status: record.status,
+          remarks: record.remarks || ''
+        }
+      })
+      
+      // If no existing attendance records, initialize with default 'present' status
+      if (attendanceRecords.length === 0) {
+        students.forEach(student => {
+          formData[student.student_id] = {
+            status: 'present',
+            remarks: ''
+          }
+        })
+      }
+      
+      setAttendanceForm(formData)
+    } catch (error) {
+      console.error('Error loading attendance for date:', error)
+      setError(error.message)
+      // Reset form if loading fails
+      setAttendanceForm({})
+    } finally {
+      setLoadingDateAttendance(false)
+    }
+  }, [selectedClass, students])
   
   // Create new session
   const createSession = async (e) => {
@@ -275,7 +325,9 @@ const Attendance = () => {
       }
       
       setShowAttendanceModal(false)
+      setSelectedSession(null)
       setAttendanceForm({})
+      setLoadingDateAttendance(false)
       loadSessions()
       loadAttendanceStats()
     } catch (error) {
@@ -590,10 +642,15 @@ const Attendance = () => {
                     <input
                       type="date"
                       value={sessionForm.session_date}
-                      onChange={(e) => {
-                        setSessionForm(prev => ({ ...prev, session_date: e.target.value }))
+                      onChange={async (e) => {
+                        const selectedDate = e.target.value
+                        setSessionForm(prev => ({ ...prev, session_date: selectedDate }))
                         if (attemptedSubmit) {
                           setSessionFormError(isSessionFormValid() ? '' : 'Fill required fields')
+                        }
+                        // Load attendance data for the selected date
+                        if (selectedDate) {
+                          await loadAttendanceForDate(selectedDate)
                         }
                       }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -663,6 +720,7 @@ const Attendance = () => {
                     setShowAttendanceModal(false)
                     setSelectedSession(null)
                     setAttendanceForm({})
+                    setLoadingDateAttendance(false)
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -672,11 +730,13 @@ const Attendance = () => {
                 </button>
               </div>
               
-              {loadingAttendanceData ? (
+              {(loadingAttendanceData || loadingDateAttendance) ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p className="text-gray-600">Loading attendance data...</p>
+                    <p className="text-gray-600">
+                      {loadingDateAttendance ? 'Loading attendance for selected date...' : 'Loading attendance data...'}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -742,6 +802,7 @@ const Attendance = () => {
                       setShowAttendanceModal(false)
                       setSelectedSession(null)
                       setAttendanceForm({})
+                      setLoadingDateAttendance(false)
                     }}
                     className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
                   >
