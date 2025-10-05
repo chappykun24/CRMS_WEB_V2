@@ -66,7 +66,7 @@ router.get('/class/:sectionCourseId', authenticateToken, async (req, res) => {
       params.push(startDate, endDate);
     }
 
-    query += ` ORDER BY al.session_date DESC, u.first_name, u.last_name`;
+    query += ` ORDER BY al.session_date DESC, s.full_name`;
 
     console.log('🔍 [ATTENDANCE API] Executing query with params:', params);
     const result = await db.query(query, params);
@@ -490,7 +490,7 @@ router.get('/export/:sectionCourseId', authenticateToken, async (req, res) => {
       params.push(startDate, endDate);
     }
 
-    query += ` ORDER BY ses.session_date DESC, u.first_name, u.last_name`;
+    query += ` ORDER BY ses.session_date DESC, s.full_name`;
 
     const result = await db.query(query, params);
 
