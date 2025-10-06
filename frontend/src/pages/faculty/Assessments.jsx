@@ -298,283 +298,175 @@ const Assessments = () => {
 
   if (loading) {
     return (
-      <>
-        <style>{`
-          input[type="text"], input[type="search"], select {
-            border-color: #d1d5db !important;
-            outline: none !important;
-            box-shadow: none !important;
-          }
-          
-          input[type="text"]:focus, input[type="search"]:focus, select:focus {
-            border-color: #9ca3af !important;
-            outline: none !important;
-            box-shadow: none !important;
-          }
-          
-          select {
-            appearance: none !important;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
-            background-position: right 8px center !important;
-            background-repeat: no-repeat !important;
-            background-size: 16px !important;
-            padding-right: 40px !important;
-            cursor: pointer !important;
-          }
-        `}</style>
-        <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
-          <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-            <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading assessments...</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading assessments...</p>
         </div>
-      </>
+      </div>
     )
   }
 
   return (
-    <>
-      <style>{`
-        input[type="text"], input[type="search"], select {
-          border-color: #d1d5db !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
-        
-        input[type="text"]:focus, input[type="search"]:focus, select:focus {
-          border-color: #9ca3af !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
-        
-        select {
-          appearance: none !important;
-          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
-          background-position: right 8px center !important;
-          background-repeat: no-repeat !important;
-          background-size: 16px !important;
-          padding-right: 40px !important;
-          cursor: pointer !important;
-        }
-      `}</style>
-      <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-
-          {/* Header and Add Assessment Button */}
-          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
-            <div className="px-8 bg-gray-50">
-              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
-                <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
-                  Assessment Management
-                </div>
-                
-                {/* Add Assessment Button */}
-                <button
-                  onClick={openCreateModal}
-                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                >
-                  <PlusIcon className="h-5 w-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
-              {/* Main Content */}
-              <div className="lg:col-span-3 h-full">
-                {/* Controls */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search assessments..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Class Selection */}
-                  {classes.length > 0 && (
-                    <select
-                      value={selectedClass?.section_course_id || ''}
-                      onChange={(e) => {
-                        const classId = e.target.value
-                        const selected = classes.find(c => c.section_course_id == classId)
-                        setSelectedClass(selected)
-                      }}
-                      className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-48"
-                    >
-                      <option value="">Select Class</option>
-                      {classes.map(cls => (
-                        <option key={cls.section_course_id} value={cls.section_course_id}>
-                          {cls.course_title} - {cls.section_code}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-800">{error}</p>
-                  </div>
-                )}
-
-                {/* Assessments Table */}
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                  {filteredAssessments.length > 0 ? (
-                    <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Assessment
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Points
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Weight
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Due Date
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {filteredAssessments.map((assessment) => (
-                            <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                              <td className="px-8 py-4">
-                                <div className="flex items-center">
-                                  <div className="flex-shrink-0 h-10 w-10">
-                                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                                      <DocumentTextIcon className="h-5 w-5 text-red-600" />
-                                    </div>
-                                  </div>
-                                  <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
-                                    <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-8 py-4">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {assessment.type}
-                                </span>
-                              </td>
-                              <td className="px-8 py-4">
-                                <div className="text-sm text-gray-900">{assessment.total_points}</div>
-                              </td>
-                              <td className="px-8 py-4">
-                                <div className="text-sm text-gray-900">{assessment.weight_percentage}%</div>
-                              </td>
-                              <td className="px-8 py-4">
-                                <div className="text-sm text-gray-900">
-                                  {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : '—'}
-                                </div>
-                              </td>
-                              <td className="px-8 py-4">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assessment.status)}`}>
-                                  {assessment.status}
-                                </span>
-                              </td>
-                              <td className="px-8 py-4">
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    onClick={() => openEditModal(assessment)}
-                                    className="text-red-600 hover:text-red-900"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  
-                                  {assessment.is_published ? (
-                                    <button
-                                      onClick={() => handleUnpublishAssessment(assessment.assessment_id)}
-                                      className="text-yellow-600 hover:text-yellow-900"
-                                    >
-                                      <XMarkIcon className="h-4 w-4" />
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => handlePublishAssessment(assessment.assessment_id)}
-                                      className="text-green-600 hover:text-green-900"
-                                    >
-                                      <CheckIcon className="h-4 w-4" />
-                                    </button>
-                                  )}
-                                  
-                                  <button
-                                    onClick={() => handleDeleteAssessment(assessment.assessment_id)}
-                                    className="text-red-600 hover:text-red-900"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center py-16">
-                      <div className="text-center">
-                        <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
-                        <p className="text-gray-500">
-                          {searchQuery ? 'No assessments match your search.' : 'Create your first assessment to get started.'}
-                        </p>
-                        {!searchQuery && (
-                          <button
-                            onClick={openCreateModal}
-                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                          >
-                            <PlusIcon className="h-4 w-4" />
-                            Create Assessment
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Side Panel - Assessment Details */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300 h-[calc(100vh-200px)] overflow-y-auto">
-                  <div className="text-center py-8">
-                    <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Assessment Details</h3>
-                    <p className="text-gray-500">Select an assessment to view details</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Assessment Management</h1>
+          <p className="text-gray-600">Create and manage assessments for your classes</p>
         </div>
-      </div>
+
+        {/* Class Selection */}
+        {classes.length > 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+            <select
+              value={selectedClass?.section_course_id || ''}
+              onChange={(e) => {
+                const classId = e.target.value
+                const selected = classes.find(c => c.section_course_id == classId)
+                setSelectedClass(selected)
+              }}
+              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+            >
+              {classes.map(cls => (
+                <option key={cls.section_course_id} value={cls.section_course_id}>
+                  {cls.course_title} - {cls.section_code}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search assessments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+          </div>
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create Assessment
+          </button>
+        </div>
+
+        {/* Assessments List */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        {filteredAssessments.length === 0 ? (
+          <div className="text-center py-12">
+            <AcademicCapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
+            <p className="text-gray-600 mb-4">
+              {searchQuery ? 'No assessments match your search.' : 'Create your first assessment to get started.'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Create Assessment
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAssessments.map((assessment) => (
+              <div key={assessment.assessment_id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{getTypeIcon(assessment.type)}</span>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{assessment.title}</h3>
+                      <p className="text-sm text-gray-600">{assessment.type}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(assessment.status)}`}>
+                    {assessment.status}
+                  </span>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Points:</span>
+                    <span className="font-medium">{assessment.total_points}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Weight:</span>
+                    <span className="font-medium">{assessment.weight_percentage}%</span>
+                  </div>
+                  {assessment.due_date && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Due:</span>
+                      <span className="font-medium">
+                        {new Date(assessment.due_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  {assessment.total_submissions !== undefined && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Submissions:</span>
+                      <span className="font-medium">
+                        {assessment.graded_submissions || 0}/{assessment.total_submissions || 0}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEditModal(assessment)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    Edit
+                  </button>
+                  
+                  {assessment.is_published ? (
+                    <button
+                      onClick={() => handleUnpublishAssessment(assessment.assessment_id)}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                      Unpublish
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handlePublishAssessment(assessment.assessment_id)}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      Publish
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => handleDeleteAssessment(assessment.assessment_id)}
+                    className="flex items-center justify-center px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Create Assessment Modal */}
         {showCreateModal && (
@@ -593,7 +485,7 @@ const Assessments = () => {
                         value={formData.title}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="e.g., Midterm Exam"
                       />
                     </div>
@@ -604,7 +496,7 @@ const Assessments = () => {
                         name="type"
                         value={formData.type}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="Quiz">Quiz</option>
                         <option value="Exam">Exam</option>
@@ -622,7 +514,7 @@ const Assessments = () => {
                       value={formData.description}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       placeholder="Assessment description..."
                     />
                   </div>
@@ -637,7 +529,7 @@ const Assessments = () => {
                         onChange={handleInputChange}
                         required
                         min="1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -651,7 +543,7 @@ const Assessments = () => {
                         required
                         min="0"
                         max="100"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -661,7 +553,7 @@ const Assessments = () => {
                         name="category"
                         value={formData.category}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="Formative">Formative</option>
                         <option value="Summative">Summative</option>
@@ -678,7 +570,7 @@ const Assessments = () => {
                         name="due_date"
                         value={formData.due_date}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -689,7 +581,7 @@ const Assessments = () => {
                         name="submission_deadline"
                         value={formData.submission_deadline}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                   </div>
@@ -701,7 +593,7 @@ const Assessments = () => {
                       value={formData.instructions}
                       onChange={handleInputChange}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       placeholder="Instructions for students..."
                     />
                   </div>
@@ -717,7 +609,7 @@ const Assessments = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                     >
                       {isSubmitting ? 'Creating...' : 'Create Assessment'}
                     </button>
@@ -745,7 +637,7 @@ const Assessments = () => {
                         value={formData.title}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -755,7 +647,7 @@ const Assessments = () => {
                         name="type"
                         value={formData.type}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="Quiz">Quiz</option>
                         <option value="Exam">Exam</option>
@@ -773,7 +665,7 @@ const Assessments = () => {
                       value={formData.description}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
                   </div>
 
@@ -787,7 +679,7 @@ const Assessments = () => {
                         onChange={handleInputChange}
                         required
                         min="1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -801,7 +693,7 @@ const Assessments = () => {
                         required
                         min="0"
                         max="100"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -811,7 +703,7 @@ const Assessments = () => {
                         name="category"
                         value={formData.category}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="Formative">Formative</option>
                         <option value="Summative">Summative</option>
@@ -828,7 +720,7 @@ const Assessments = () => {
                         name="due_date"
                         value={formData.due_date}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                     
@@ -839,7 +731,7 @@ const Assessments = () => {
                         name="submission_deadline"
                         value={formData.submission_deadline}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                     </div>
                   </div>
@@ -851,7 +743,7 @@ const Assessments = () => {
                       value={formData.instructions}
                       onChange={handleInputChange}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     />
                   </div>
 
@@ -866,7 +758,7 @@ const Assessments = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                     >
                       {isSubmitting ? 'Updating...' : 'Update Assessment'}
                     </button>
