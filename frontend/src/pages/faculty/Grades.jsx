@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import defaultAvatar from '../../images/bsu-logo.png'
+
+// Normalize possible image paths coming from backend
+const normalizeImageUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('data:')) return url
+  return url
+}
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { 
   MagnifyingGlassIcon, 
@@ -108,7 +116,7 @@ const Grades = () => {
             student_name: grade.student_name || grade.full_name || 'Student',
             student_id: grade.student_id || grade.student_number || grade.enrollment_id,
             sr_code: grade.sr_code || grade.student_number || grade.student_id || '',
-            profile_image_url: grade.profile_image_url || grade.photo_url || ''
+            profile_image_url: normalizeImageUrl(grade.student_photo || grade.profile_image_url || grade.photo_url || '')
           }
         })
         setGrades(initialGrades)
@@ -183,7 +191,8 @@ const Grades = () => {
     return ((adjustedScore / totalPoints) * 100).toFixed(2)
   }
 
-  if (loading && !classes.length) {
+  // Initial app skeleton removed per request; keep only in-list skeleton later
+  if (false && loading && !classes.length) {
     return (
       <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden left-64 right-0" style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2" style={{ marginTop: '0px' }}>
