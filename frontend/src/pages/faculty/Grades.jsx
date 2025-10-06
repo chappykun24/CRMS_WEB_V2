@@ -331,6 +331,26 @@ const Grades = () => {
                           <p className="text-gray-500">No students or grades found for this assessment yet.</p>
                         </div>
                       </div>
+                    ) : loading ? (
+                      <div className="p-4">
+                        <ul className="space-y-3">
+                          {Array.from({ length: 8 }).map((_, idx) => (
+                            <li key={idx} className="px-4 py-2">
+                              <div className="flex items-center gap-3 animate-pulse">
+                                <div className="h-9 w-9 rounded-full bg-gray-200" />
+                                <div className="flex-1 space-y-2">
+                                  <div className="h-3 w-40 bg-gray-200 rounded" />
+                                  <div className="h-2 w-24 bg-gray-200 rounded" />
+                                </div>
+                                <div className="h-8 w-20 bg-gray-200 rounded" />
+                                <div className="h-8 w-20 bg-gray-200 rounded" />
+                                <div className="h-4 w-16 bg-gray-200 rounded" />
+                                <div className="h-8 w-56 bg-gray-200 rounded" />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ) : Object.keys(grades).length > 0 ? (
                       <div className="overflow-x-auto">
                         {/* Sticky header matching card layout widths */}
@@ -342,7 +362,7 @@ const Grades = () => {
                           <div className="w-16 text-left mr-2">%</div>
                           <div className="w-56 md:w-72">Feedback</div>
                         </div>
-                        <div className="max-h-[480px] overflow-y-auto">
+                        <div className="max-h-[60vh] overflow-y-auto">
                           <ul className="divide-y divide-gray-200">
                             {Object.entries(grades).map(([enrollmentId, gradeData]) => (
                               <li key={enrollmentId} className="px-4 py-2">
@@ -409,7 +429,7 @@ const Grades = () => {
                     ) : null}
 
                     {Object.keys(grades).length > 0 && (
-                      <div className="px-6 py-4 border-t border-gray-200">
+                      <div className="px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
                         <button
                           onClick={handleSubmitGrades}
                           disabled={isSubmitting || !selectedAssessment || Object.keys(grades).length === 0}
