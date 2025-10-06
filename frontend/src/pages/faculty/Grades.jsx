@@ -431,21 +431,21 @@ const Grades = () => {
                     ) : null}
 
                     {Object.keys(grades).length > 0 && (
-                      <div className="px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] rounded-b-lg">
+                      <div className="px-6 py-3 border-t border-gray-200 sticky bottom-0 bg-white z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.04)] rounded-b-lg flex justify-end">
                         <button
                           onClick={handleSubmitGrades}
                           disabled={isSubmitting || !selectedAssessment || Object.keys(grades).length === 0}
-                          className={`w-full py-3 px-6 rounded-md text-lg font-semibold transition-colors duration-300
+                          className={`w-full sm:w-auto py-2 px-4 rounded-md text-sm font-medium transition-colors duration-300
                             ${isSubmitting ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}
                             focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
                         >
                           {isSubmitting ? (
                             <span className="flex items-center justify-center">
-                              <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" /> Submitting Grades...
+                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" /> Submitting...
                             </span>
                           ) : (
                             <span className="flex items-center justify-center">
-                              <CheckIcon className="h-5 w-5 mr-2" /> Submit All Grades
+                              <CheckIcon className="h-4 w-4 mr-2" /> Submit Grades
                             </span>
                           )}
                         </button>
@@ -468,16 +468,7 @@ const Grades = () => {
                 )}
               </div>
 
-              {/* Side Panel - Grade Summary */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300 h-[calc(100vh-200px)] overflow-y-auto">
-                  <div className="text-center py-8">
-                    <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Grade Summary</h3>
-                    <p className="text-gray-500">Grade statistics will appear here</p>
-                  </div>
-                </div>
-              </div>
+              {/* Side Panel removed per request */}
           </div>
         </div>
       </div>
