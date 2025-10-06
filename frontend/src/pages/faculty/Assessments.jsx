@@ -310,10 +310,8 @@ const Assessments = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Assessment Management</h1>
-        </div>
+        {/* Header (removed title per request) */}
+        <div className="mb-2"></div>
 
         {/* Controls: Class dropdown + Search + Create button */}
         <div className="flex flex-col sm:flex-row items-end gap-4 mb-6">
