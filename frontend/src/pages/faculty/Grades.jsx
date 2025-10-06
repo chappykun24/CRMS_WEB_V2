@@ -106,6 +106,7 @@ const Grades = () => {
             // Student info (if API provides). Fallbacks keep UI usable.
             student_name: grade.student_name || grade.full_name || 'Student',
             student_id: grade.student_id || grade.student_number || grade.enrollment_id,
+            sr_code: grade.sr_code || grade.student_number || grade.student_id || '',
             profile_image_url: grade.profile_image_url || grade.photo_url || ''
           }
         })
@@ -357,7 +358,7 @@ const Grades = () => {
                                     )}
                                     <div className="ml-3 truncate">
                                       <div className="text-[13px] font-medium text-gray-900 truncate">{gradeData.student_name || 'Student'}</div>
-                                      <div className="text-[11px] text-gray-500 truncate">ID: {gradeData.student_id || enrollmentId}</div>
+                                      <div className="text-[11px] text-gray-500 truncate">SR Code: {gradeData.sr_code || '-'}</div>
                                     </div>
                                   </div>
 
