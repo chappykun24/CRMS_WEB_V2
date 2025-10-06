@@ -269,37 +269,8 @@ const Grades = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
               {/* Main Content */}
               <div className="lg:col-span-3 h-full">
-                {/* Controls */}
-                <div className="flex items-center gap-3 mb-3">
-                  {/* Class Selection */}
-                  <select
-                    value={selectedClass ? selectedClass.section_course_id : ''}
-                    onChange={(e) => setSelectedClass(classes.find(c => c.section_course_id === parseInt(e.target.value)))}
-                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-48"
-                  >
-                    <option value="">Select Class</option>
-                    {classes.map((cls) => (
-                      <option key={cls.section_course_id} value={cls.section_course_id}>
-                        {cls.course_title} - {cls.section_code}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Assessment Selection */}
-                  <select
-                    value={selectedAssessment ? selectedAssessment.assessment_id : ''}
-                    onChange={(e) => setSelectedAssessment(assessments.find(a => a.assessment_id === parseInt(e.target.value)))}
-                    disabled={!selectedClass || assessments.length === 0}
-                    className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-64"
-                  >
-                    <option value="">Select Assessment</option>
-                    {assessments.map((assessment) => (
-                      <option key={assessment.assessment_id} value={assessment.assessment_id}>
-                        {assessment.title} ({assessment.type}) - {assessment.total_points} pts
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Controls removed; selection handled in right sidebar */}
+                <div className="mb-3" />
 
                 {/* Error and Success Messages */}
                 {error && (
@@ -468,7 +439,45 @@ const Grades = () => {
                 )}
               </div>
 
-              {/* Side Panel removed per request */}
+              {/* Right Sidebar: Subjects and Assessments */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm p-3 border border-gray-300 h-[calc(100vh-200px)] overflow-y-auto">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Subjects</h3>
+                  <div className="space-y-2">
+                    {classes.map((cls) => (
+                      <button
+                        key={cls.section_course_id}
+                        onClick={() => setSelectedClass(cls)}
+                        className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedClass && selectedClass.section_course_id === cls.section_course_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                      >
+                        <div className="text-sm font-medium text-gray-900 truncate">{cls.course_title}</div>
+                        <div className="text-xs text-gray-500">{cls.section_code}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedClass && (
+                    <>
+                      <h4 className="text-sm font-medium text-gray-900 mt-4 mb-2">Assessments</h4>
+                      <div className="space-y-2">
+                        {assessments.map((assessment) => (
+                          <button
+                            key={assessment.assessment_id}
+                            onClick={() => setSelectedAssessment(assessment)}
+                            className={`w-full text-left p-2 rounded border transition-colors ${selectedAssessment && selectedAssessment.assessment_id === assessment.assessment_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                          >
+                            <div className="text-sm font-medium text-gray-900 truncate">{assessment.title}</div>
+                            <div className="text-xs text-gray-500">{assessment.type} • {assessment.total_points} pts</div>
+                          </button>
+                        ))}
+                        {assessments.length === 0 && (
+                          <div className="text-xs text-gray-500 p-2">No assessments yet.</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
           </div>
         </div>
       </div>
