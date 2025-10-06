@@ -332,23 +332,30 @@ const Grades = () => {
                       </div>
                     ) : Object.keys(grades).length > 0 ? (
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Raw</th>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Penalty</th>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Adjusted</th>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">%</th>
-                              <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200 block max-h-[480px] overflow-y-auto">
-                            {/* Make header fixed by matching table layout */}
-                            <tr className="hidden sm:table-row"></tr>
-                            {Object.entries(grades).map(([enrollmentId, gradeData]) => (
-                              <tr key={enrollmentId} className="hover:bg-gray-50 text-sm">
-                                <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="max-h-[480px] overflow-y-auto">
+                          <table className="min-w-full table-fixed">
+                            <colgroup>
+                              <col style={{ width: '40%' }} />
+                              <col style={{ width: '10%' }} />
+                              <col style={{ width: '10%' }} />
+                              <col style={{ width: '15%' }} />
+                              <col style={{ width: '10%' }} />
+                              <col style={{ width: '15%' }} />
+                            </colgroup>
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Student</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Raw</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Penalty</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Adjusted</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">%</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Feedback</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {Object.entries(grades).map(([enrollmentId, gradeData]) => (
+                                <tr key={enrollmentId} className="hover:bg-gray-50 text-sm">
+                                  <td className="px-4 py-2 whitespace-nowrap">
                                   <div className="flex items-center">
                                     {gradeData.profile_image_url ? (
                                       <img src={gradeData.profile_image_url} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
@@ -362,8 +369,8 @@ const Grades = () => {
                                       <div className="text-[11px] text-gray-500">ID: {gradeData.student_id || enrollmentId}</div>
                                     </div>
                                   </div>
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
                                   <input
                                     type="number"
                                     value={gradeData.raw_score || ''}
@@ -372,8 +379,8 @@ const Grades = () => {
                                     min="0"
                                     max={selectedAssessment.total_points}
                                   />
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
                                   <input
                                     type="number"
                                     value={gradeData.late_penalty || ''}
@@ -381,17 +388,17 @@ const Grades = () => {
                                     className="w-16 px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
                                     min="0"
                                   />
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                                   {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                                   {calculatePercentage(
                                     calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points),
                                     selectedAssessment.total_points
                                   )}%
-                                </td>
-                                <td className="px-4 py-2">
+                                  </td>
+                                  <td className="px-4 py-2">
                                   <textarea
                                     value={gradeData.feedback || ''}
                                     onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
@@ -399,11 +406,12 @@ const Grades = () => {
                                     rows="1"
                                     placeholder="Add feedback..."
                                   ></textarea>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     ) : null}
 
