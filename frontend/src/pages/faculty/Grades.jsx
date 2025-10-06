@@ -332,85 +332,77 @@ const Grades = () => {
                       </div>
                     ) : Object.keys(grades).length > 0 ? (
                       <div className="overflow-x-auto">
+                        {/* Sticky header matching card layout widths */}
+                        <div className="hidden md:flex items-center text-[10px] uppercase text-gray-500 tracking-wider bg-gray-50 px-4 py-2 rounded-t">
+                          <div className="flex-1">Student</div>
+                          <div className="w-20 text-left mr-2">Raw</div>
+                          <div className="w-20 text-left mr-2">Penalty</div>
+                          <div className="w-24 text-left mr-2">Adjusted</div>
+                          <div className="w-16 text-left mr-2">%</div>
+                          <div className="w-56 md:w-72">Feedback</div>
+                        </div>
                         <div className="max-h-[480px] overflow-y-auto">
-                          <table className="min-w-full table-fixed">
-                            <colgroup>
-                              <col style={{ width: '40%' }} />
-                              <col style={{ width: '10%' }} />
-                              <col style={{ width: '10%' }} />
-                              <col style={{ width: '15%' }} />
-                              <col style={{ width: '10%' }} />
-                              <col style={{ width: '15%' }} />
-                            </colgroup>
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Student</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Raw</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Penalty</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Adjusted</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">%</th>
-                                <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Feedback</th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {Object.entries(grades).map(([enrollmentId, gradeData]) => (
-                                <tr key={enrollmentId} className="hover:bg-gray-50 text-sm">
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                  <div className="flex items-center">
+                          <ul className="divide-y divide-gray-200">
+                            {Object.entries(grades).map(([enrollmentId, gradeData]) => (
+                              <li key={enrollmentId} className="px-4 py-2">
+                                <div className="flex items-center gap-3">
+                                  {/* Student info */}
+                                  <div className="flex items-center flex-1 min-w-0">
                                     {gradeData.profile_image_url ? (
-                                      <img src={gradeData.profile_image_url} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                                      <img src={gradeData.profile_image_url} alt="Profile" className="h-9 w-9 rounded-full object-cover" />
                                     ) : (
-                                      <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs font-semibold">
+                                      <div className="h-9 w-9 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs font-semibold">
                                         {(gradeData.student_name || 'S').charAt(0).toUpperCase()}
                                       </div>
                                     )}
-                                    <div className="ml-3">
-                                      <div className="text-[13px] font-medium text-gray-900">{gradeData.student_name || 'Student'}</div>
-                                      <div className="text-[11px] text-gray-500">ID: {gradeData.student_id || enrollmentId}</div>
+                                    <div className="ml-3 truncate">
+                                      <div className="text-[13px] font-medium text-gray-900 truncate">{gradeData.student_name || 'Student'}</div>
+                                      <div className="text-[11px] text-gray-500 truncate">ID: {gradeData.student_id || enrollmentId}</div>
                                     </div>
                                   </div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                  <input
-                                    type="number"
-                                    value={gradeData.raw_score || ''}
-                                    onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                    className="w-16 px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
-                                    min="0"
-                                    max={selectedAssessment.total_points}
-                                  />
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                  <input
-                                    type="number"
-                                    value={gradeData.late_penalty || ''}
-                                    onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                    className="w-16 px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
-                                    min="0"
-                                  />
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {calculatePercentage(
-                                    calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points),
-                                    selectedAssessment.total_points
-                                  )}%
-                                  </td>
-                                  <td className="px-4 py-2">
-                                  <textarea
-                                    value={gradeData.feedback || ''}
-                                    onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                                    className="w-full px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-y text-sm"
-                                    rows="1"
-                                    placeholder="Add feedback..."
-                                  ></textarea>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+
+                                  {/* Controls */}
+                                  <div className="w-20">
+                                    <input
+                                      type="number"
+                                      value={gradeData.raw_score || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
+                                      className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
+                                      min="0"
+                                      max={selectedAssessment.total_points}
+                                    />
+                                  </div>
+                                  <div className="w-20">
+                                    <input
+                                      type="number"
+                                      value={gradeData.late_penalty || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
+                                      className="w-20 px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
+                                      min="0"
+                                    />
+                                  </div>
+                                  <div className="w-24 text-sm font-medium text-gray-900">
+                                    {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
+                                  </div>
+                                  <div className="w-16 text-sm font-medium text-gray-900">
+                                    {calculatePercentage(
+                                      calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points),
+                                      selectedAssessment.total_points
+                                    )}%
+                                  </div>
+                                  <div className="w-56 md:w-72">
+                                    <input
+                                      type="text"
+                                      value={gradeData.feedback || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
+                                      className="w-full px-2 py-1 rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm"
+                                      placeholder="Add feedback..."
+                                    />
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       </div>
                     ) : null}
