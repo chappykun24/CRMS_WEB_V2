@@ -311,36 +311,35 @@ const Assessments = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Assessment Management</h1>
-          <p className="text-gray-600">Create and manage assessments for your classes</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Assessment Management</h1>
         </div>
 
-        {/* Class Selection */}
-        {classes.length > 0 && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
-            <select
-              value={selectedClass?.section_course_id || ''}
-              onChange={(e) => {
-                const classId = e.target.value
-                const selected = classes.find(c => c.section_course_id == classId)
-                setSelectedClass(selected)
-              }}
-              className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            >
-              {classes.map(cls => (
-                <option key={cls.section_course_id} value={cls.section_course_id}>
-                  {cls.course_title} - {cls.section_code}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* Controls: Class dropdown + Search + Create button */}
+        <div className="flex flex-col sm:flex-row items-end gap-4 mb-6">
+          {classes.length > 0 && (
+            <div className="w-full sm:w-1/2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+              <select
+                value={selectedClass?.section_course_id || ''}
+                onChange={(e) => {
+                  const classId = e.target.value
+                  const selected = classes.find(c => c.section_course_id == classId)
+                  setSelectedClass(selected)
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              >
+                {classes.map(cls => (
+                  <option key={cls.section_course_id} value={cls.section_course_id}>
+                    {cls.course_title} - {cls.section_code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
+          <div className="flex-1 w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2 sm:sr-only">Search</label>
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -352,13 +351,16 @@ const Assessments = () => {
               />
             </div>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Create Assessment
-          </button>
+
+          <div className="sm:w-auto">
+            <button
+              onClick={openCreateModal}
+              className="w-full sm:w-auto inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Create Assessment
+            </button>
+          </div>
         </div>
 
         {/* Assessments List */}
