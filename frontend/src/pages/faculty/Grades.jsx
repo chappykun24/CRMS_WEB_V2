@@ -184,43 +184,32 @@ const Grades = () => {
 
   if (loading && !classes.length) {
     return (
-      <>
-        <style>{`
-          input[type="text"], input[type="search"], select {
-            border-color: #d1d5db !important;
-            outline: none !important;
-            box-shadow: none !important;
-          }
-          
-          input[type="text"]:focus, input[type="search"]:focus, select:focus {
-            border-color: #9ca3af !important;
-            outline: none !important;
-            box-shadow: none !important;
-          }
-          
-          select {
-            appearance: none !important;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
-            background-position: right 8px center !important;
-            background-repeat: no-repeat !important;
-            background-size: 16px !important;
-            padding-right: 40px !important;
-            cursor: pointer !important;
-          }
-        `}</style>
-        <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
-          <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-            <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading grade management...</p>
-                </div>
+      <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden left-64 right-0" style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2" style={{ marginTop: '0px' }}>
+          <div className="pt-16 pb-6" style={{ height: 'calc(100vh - 80px)' }}>
+            <div className="px-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
+                <div className="h-4 w-48 bg-gray-200 rounded mb-4" />
+                <ul className="space-y-3">
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <li key={idx} className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-gray-200" />
+                      <div className="flex-1">
+                        <div className="h-3 w-40 bg-gray-200 rounded mb-2" />
+                        <div className="h-2 w-24 bg-gray-200 rounded" />
+                      </div>
+                      <div className="h-8 w-20 bg-gray-200 rounded" />
+                      <div className="h-8 w-20 bg-gray-200 rounded" />
+                      <div className="h-4 w-16 bg-gray-200 rounded" />
+                      <div className="h-8 w-56 bg-gray-200 rounded" />
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
