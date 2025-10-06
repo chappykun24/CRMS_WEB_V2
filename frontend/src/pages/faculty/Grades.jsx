@@ -362,7 +362,7 @@ const Grades = () => {
                           <div className="w-16 text-left mr-2">%</div>
                           <div className="w-56 md:w-72">Feedback</div>
                         </div>
-                        <div className="max-h-[60vh] overflow-y-auto">
+                        <div className="max-h-[50vh] overflow-y-auto pb-24">
                           <ul className="divide-y divide-gray-200">
                             {Object.entries(grades).map(([enrollmentId, gradeData]) => (
                               <li key={enrollmentId} className="px-4 py-2">
@@ -431,7 +431,7 @@ const Grades = () => {
                     ) : null}
 
                     {Object.keys(grades).length > 0 && (
-                      <div className="px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                      <div className="px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
                         <button
                           onClick={handleSubmitGrades}
                           disabled={isSubmitting || !selectedAssessment || Object.keys(grades).length === 0}
