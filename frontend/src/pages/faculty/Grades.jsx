@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import defaultAvatar from '../../images/bsu-logo.png'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { 
   MagnifyingGlassIcon, 
@@ -188,20 +189,22 @@ const Grades = () => {
         <div className="w-full pr-2 pl-2" style={{ marginTop: '0px' }}>
           <div className="pt-16 pb-6" style={{ height: 'calc(100vh - 80px)' }}>
             <div className="px-8">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
-                <div className="h-4 w-48 bg-gray-200 rounded mb-4" />
-                <ul className="space-y-3">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
+                <div className="h-5 w-56 bg-gray-200 rounded mb-6" />
+                <ul className="space-y-4">
                   {Array.from({ length: 6 }).map((_, idx) => (
-                    <li key={idx} className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-gray-200" />
-                      <div className="flex-1">
-                        <div className="h-3 w-40 bg-gray-200 rounded mb-2" />
-                        <div className="h-2 w-24 bg-gray-200 rounded" />
+                    <li key={idx} className="px-4 py-3 rounded-lg border border-gray-100">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-gray-200" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-48 bg-gray-200 rounded" />
+                          <div className="h-3 w-28 bg-gray-200 rounded" />
+                        </div>
+                        <div className="h-9 w-24 bg-gray-200 rounded" />
+                        <div className="h-9 w-24 bg-gray-200 rounded" />
+                        <div className="h-4 w-16 bg-gray-200 rounded" />
+                        <div className="h-9 w-64 bg-gray-200 rounded" />
                       </div>
-                      <div className="h-8 w-20 bg-gray-200 rounded" />
-                      <div className="h-8 w-20 bg-gray-200 rounded" />
-                      <div className="h-4 w-16 bg-gray-200 rounded" />
-                      <div className="h-8 w-56 bg-gray-200 rounded" />
                     </li>
                   ))}
                 </ul>
@@ -358,13 +361,15 @@ const Grades = () => {
                                 <div className="flex items-center gap-3">
                                   {/* Student info */}
                                   <div className="flex items-center flex-1 min-w-0">
-                                    {gradeData.profile_image_url ? (
-                                      <img src={gradeData.profile_image_url} alt="Profile" className="h-9 w-9 rounded-full object-cover" />
-                                    ) : (
-                                      <div className="h-9 w-9 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xs font-semibold">
-                                        {(gradeData.student_name || 'S').charAt(0).toUpperCase()}
-                                      </div>
-                                    )}
+                                    <img
+                                      src={gradeData.profile_image_url || defaultAvatar}
+                                      alt="Student"
+                                      className="h-9 w-9 rounded-full object-cover bg-gray-100"
+                                      onError={(e) => {
+                                        e.currentTarget.onerror = null
+                                        e.currentTarget.src = defaultAvatar
+                                      }}
+                                    />
                                     <div className="ml-3 truncate">
                                       <div className="text-[13px] font-medium text-gray-900 truncate">{gradeData.student_name || 'Student'}</div>
                                       <div className="text-[11px] text-gray-500 truncate">SR Code: {gradeData.sr_code || '-'}</div>
