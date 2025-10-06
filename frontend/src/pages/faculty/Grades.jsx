@@ -316,11 +316,10 @@ const Grades = () => {
                 {/* Grades Table */}
                 {selectedAssessment && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                        <DocumentTextIcon className="h-5 w-5 mr-2 text-red-600" />
-                        Grades for: {selectedAssessment.title}
-                        <span className="ml-2 text-sm text-gray-600">({selectedAssessment.total_points} Total Points)</span>
+                    <div className="px-6 py-3 border-b border-gray-200">
+                      <h2 className="text-base font-medium text-gray-900">
+                        Grades for: <span className="font-semibold">{selectedAssessment.title}</span>
+                        <span className="ml-2 text-xs text-gray-500">({selectedAssessment.total_points} Total Points)</span>
                       </h2>
                     </div>
 
