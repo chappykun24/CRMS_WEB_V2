@@ -59,16 +59,7 @@ const ClassCard = ({
             {section || code}
           </div>
         </div>
-        {/* Avatar */}
-        <div className="absolute -bottom-6 right-4 z-10">
-          <div className="h-16 w-16 rounded-full ring-4 ring-white overflow-hidden">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={instructor} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-gray-100" />
-            )}
-          </div>
-        </div>
+        {/* Avatar removed per request */}
       </div>
 
       {/* Body */}

@@ -707,7 +707,7 @@ const MyClasses = () => {
                   code={cls.course_code}
                   section={cls.section_code}
                   instructor={cls.faculty_name}
-                  avatarUrl={cls.faculty_avatar}
+                  avatarUrl={null}
                   bannerColor={cls.banner_color}
                   bannerImage={cls.banner_image}
                   bannerType={cls.banner_type}
@@ -1093,7 +1093,7 @@ const MyClasses = () => {
                   bannerType={editFormData.bannerType}
                   bannerColor={editFormData.bannerColor}
                   bannerImage={editFormData.bannerImage}
-                  avatarUrl={editingClass.faculty_avatar}
+                  avatarUrl={null}
                   onAttendance={() => {}}
                   onAssessments={() => {}}
                   onMore={() => {}}
