@@ -284,6 +284,28 @@ const Grades = () => {
                   </div>
                 )}
 
+                {/* If no subject selected, show subjects grid here */}
+                {!selectedClass && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
+                    <h2 className="text-sm font-medium text-gray-900 mb-3">Select a Subject</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+                      {classes.map((cls) => (
+                        <button
+                          key={cls.section_course_id}
+                          onClick={() => setSelectedClass(cls)}
+                          className={`text-left p-3 rounded-lg border transition-colors ${selectedClass && selectedClass.section_course_id === cls.section_course_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                        >
+                          <div className="text-sm font-medium text-gray-900 truncate">{cls.course_title}</div>
+                          <div className="text-xs text-gray-500">{cls.section_code}</div>
+                        </button>
+                      ))}
+                      {classes.length === 0 && (
+                        <div className="text-xs text-gray-500 p-2">No subjects found.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Grades Table */}
                 {selectedAssessment && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
@@ -426,7 +448,7 @@ const Grades = () => {
                 )}
 
                 {/* No Assessment Selected */}
-                {!selectedAssessment && (
+                {selectedClass && !selectedAssessment && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-300">
                     <div className="flex-1 flex items-center justify-center py-16">
                       <div className="text-center">
