@@ -284,24 +284,50 @@ const Grades = () => {
                   </div>
                 )}
 
-                {/* If no subject selected, show subjects grid here */}
-                {!selectedClass && (
+                {/* Selection UI in main panel until an assessment is selected */}
+                {!selectedAssessment && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
-                    <h2 className="text-sm font-medium text-gray-900 mb-3">Select a Subject</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
-                      {classes.map((cls) => (
-                        <button
-                          key={cls.section_course_id}
-                          onClick={() => setSelectedClass(cls)}
-                          className={`text-left p-3 rounded-lg border transition-colors ${selectedClass && selectedClass.section_course_id === cls.section_course_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                        >
-                          <div className="text-sm font-medium text-gray-900 truncate">{cls.course_title}</div>
-                          <div className="text-xs text-gray-500">{cls.section_code}</div>
-                        </button>
-                      ))}
-                      {classes.length === 0 && (
-                        <div className="text-xs text-gray-500 p-2">No subjects found.</div>
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-2">Subjects</h3>
+                        <div className="grid grid-cols-1 gap-2 max-h-[50vh] overflow-y-auto pr-1">
+                          {classes.map((cls) => (
+                            <button
+                              key={cls.section_course_id}
+                              onClick={() => setSelectedClass(cls)}
+                              className={`text-left p-3 rounded-lg border transition-colors ${selectedClass && selectedClass.section_course_id === cls.section_course_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                            >
+                              <div className="text-sm font-medium text-gray-900 truncate">{cls.course_title}</div>
+                              <div className="text-xs text-gray-500">{cls.section_code}</div>
+                            </button>
+                          ))}
+                          {classes.length === 0 && (
+                            <div className="text-xs text-gray-500 p-2">No subjects found.</div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900 mb-2">Assessments</h3>
+                        {selectedClass ? (
+                          <div className="grid grid-cols-1 gap-2 max-h-[50vh] overflow-y-auto pl-1">
+                            {assessments.map((assessment) => (
+                              <button
+                                key={assessment.assessment_id}
+                                onClick={() => setSelectedAssessment(assessment)}
+                                className={`text-left p-3 rounded-lg border transition-colors ${selectedAssessment && selectedAssessment.assessment_id === assessment.assessment_id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                              >
+                                <div className="text-sm font-medium text-gray-900 truncate">{assessment.title}</div>
+                                <div className="text-xs text-gray-500">{assessment.type} • {assessment.total_points} pts</div>
+                              </button>
+                            ))}
+                            {assessments.length === 0 && (
+                              <div className="text-xs text-gray-500 p-2">No assessments yet.</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500 p-2">Select a subject to view assessments.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
