@@ -86,9 +86,9 @@ const Grades = () => {
       if (response.ok) {
         const data = await response.json()
         setAssessments(Array.isArray(data) ? data : [])
-        if (data.length > 0) {
-          setSelectedAssessment(data[0]) // Select the first assessment by default
-        }
+        // Do not auto-select an assessment; wait for user to choose
+        setSelectedAssessment(null)
+        setGrades({})
       }
     } catch (err) {
       setError('Failed to fetch assessments.')
