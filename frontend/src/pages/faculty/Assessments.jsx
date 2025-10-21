@@ -426,19 +426,16 @@ const Assessments = () => {
       `}</style>
       <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-          {/* Header and Tab Navigation */}
+          {/* Header and Navigation */}
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
             <div className="px-8 bg-gray-50">
               <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
-                <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
-                  Assessment Management
-                </div>
-                <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                <div className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab('assessments')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`py-2 px-4 font-medium text-sm transition-colors ${
                       activeTab === 'assessments'
-                        ? 'bg-white text-red-600 shadow-sm'
+                        ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -446,9 +443,9 @@ const Assessments = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('grading')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`py-2 px-4 font-medium text-sm transition-colors ${
                       activeTab === 'grading'
-                        ? 'bg-white text-red-600 shadow-sm'
+                        ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
