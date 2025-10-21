@@ -11,7 +11,10 @@ import {
   ClockIcon,
   AcademicCapIcon,
   DocumentTextIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  UserGroupIcon,
+  ClipboardDocumentCheckIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/solid'
 
 const Assessments = () => {
@@ -22,6 +25,15 @@ const Assessments = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
+  
+  // Tab navigation
+  const [activeTab, setActiveTab] = useState('assessments')
+  
+  // Grading states
+  const [selectedAssessment, setSelectedAssessment] = useState(null)
+  const [grades, setGrades] = useState({})
+  const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -296,6 +308,100 @@ const Assessments = () => {
     }
   }
 
+  // Grading functions
+  const loadGrades = async (assessmentId) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
+      if (response.ok) {
+        const data = await response.json()
+        const gradesMap = {}
+        data.forEach(grade => {
+          gradesMap[grade.enrollment_id] = {
+            student_name: grade.full_name,
+            student_number: grade.student_number,
+            student_photo: grade.student_photo,
+            raw_score: grade.raw_score || '',
+            late_penalty: grade.late_penalty || '',
+            feedback: grade.feedback || ''
+          }
+        })
+        setGrades(gradesMap)
+      } else {
+        setError('Failed to load grades')
+      }
+    } catch (error) {
+      console.error('Error loading grades:', error)
+      setError('Failed to load grades')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGradeChange = (enrollmentId, field, value) => {
+    setGrades(prev => ({
+      ...prev,
+      [enrollmentId]: {
+        ...prev[enrollmentId],
+        [field]: value
+      }
+    }))
+  }
+
+  const calculateAdjustedScore = (rawScore, latePenalty, totalPoints) => {
+    const raw = parseFloat(rawScore) || 0
+    const penalty = parseFloat(latePenalty) || 0
+    const adjusted = Math.max(0, raw - penalty)
+    return adjusted > totalPoints ? totalPoints : adjusted
+  }
+
+  const calculatePercentage = (adjustedScore, totalPoints) => {
+    if (!totalPoints || totalPoints === 0) return 0
+    return ((adjustedScore / totalPoints) * 100).toFixed(1)
+  }
+
+  const handleSubmitGrades = async () => {
+    if (!selectedAssessment) return
+
+    setIsSubmittingGrades(true)
+    try {
+      const gradesArray = Object.entries(grades).map(([enrollmentId, gradeData]) => ({
+        enrollment_id: parseInt(enrollmentId),
+        assessment_id: selectedAssessment.assessment_id,
+        raw_score: parseFloat(gradeData.raw_score) || 0,
+        late_penalty: parseFloat(gradeData.late_penalty) || 0,
+        feedback: gradeData.feedback || ''
+      }))
+
+      const response = await fetch('/api/grading/submit-grades', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ grades: gradesArray })
+      })
+
+      if (response.ok) {
+        setSuccessMessage('Grades saved successfully!')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      } else {
+        const error = await response.json()
+        setError(error.error || 'Failed to save grades')
+      }
+    } catch (error) {
+      console.error('Error submitting grades:', error)
+      setError('Failed to save grades')
+    } finally {
+      setIsSubmittingGrades(false)
+    }
+  }
+
+  const handleAssessmentSelect = (assessment) => {
+    setSelectedAssessment(assessment)
+    loadGrades(assessment.assessment_id)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -310,11 +416,37 @@ const Assessments = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header (removed title per request) */}
-        <div className="mb-2"></div>
+        {/* Header with Tab Navigation */}
+        <div className="mb-6">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+            <button
+              onClick={() => setActiveTab('assessments')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'assessments'
+                  ? 'bg-white text-red-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Assessments
+            </button>
+            <button
+              onClick={() => setActiveTab('grading')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'grading'
+                  ? 'bg-white text-red-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Grading
+            </button>
+          </div>
+        </div>
 
-        {/* Controls: Class dropdown + Search + Create button */}
-        <div className="flex flex-col sm:flex-row items-end gap-4 mb-6">
+        {/* Tab Content */}
+        {activeTab === 'assessments' && (
+          <>
+            {/* Controls: Class dropdown + Search + Create button */}
+            <div className="flex flex-col sm:flex-row items-end gap-4 mb-6">
           {classes.length > 0 && (
             <div className="w-full sm:w-1/2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
@@ -465,6 +597,222 @@ const Assessments = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+          </>
+        )}
+
+        {/* Grading Tab Content */}
+        {activeTab === 'grading' && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Main Content - Student List for Grading */}
+            <div className="lg:col-span-3">
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800">{error}</p>
+                </div>
+              )}
+              {successMessage && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800">{successMessage}</p>
+                </div>
+              )}
+
+              {selectedAssessment ? (
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  <div className="px-6 py-3 border-b border-gray-200">
+                    <h2 className="text-base font-semibold text-gray-900">
+                      Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
+                    </h2>
+                  </div>
+                  {loading ? (
+                    <div className="p-4 space-y-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                          <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gray-300"></div>
+                          <div className="flex-1 space-y-1">
+                            <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                          <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                          <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                          <div className="h-8 w-24 bg-gray-200 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : Object.keys(grades).length > 0 ? (
+                    <div className="max-h-[60vh] overflow-y-auto pb-32">
+                      <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
+                        <div className="w-48 flex-shrink-0">Student</div>
+                        <div className="w-20 flex-shrink-0">Raw</div>
+                        <div className="w-20 flex-shrink-0">Penalty</div>
+                        <div className="w-20 flex-shrink-0">Adjusted</div>
+                        <div className="w-20 flex-shrink-0">Percent</div>
+                        <div className="flex-1">Feedback</div>
+                      </div>
+                      <ul className="divide-y divide-gray-200">
+                        {Object.entries(grades).map(([enrollmentId, gradeData]) => (
+                          <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50">
+                            <div className="w-48 flex-shrink-0 flex items-center space-x-3">
+                              <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                                {gradeData.student_photo ? (
+                                  <img 
+                                    src={gradeData.student_photo} 
+                                    alt={gradeData.student_name} 
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => e.target.src = '/src/images/bsu-logo.png'}
+                                  />
+                                ) : (
+                                  <img src="/src/images/bsu-logo.png" alt="Default Avatar" className="h-full w-full object-cover" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900">{gradeData.student_name || 'Student'}</div>
+                                <div className="text-xs text-gray-500">SR Code: {gradeData.student_number || 'N/A'}</div>
+                              </div>
+                            </div>
+                            <div className="w-20 flex-shrink-0">
+                              <input
+                                type="number"
+                                value={gradeData.raw_score || ''}
+                                onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
+                                className="w-full p-1 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                min="0"
+                                max={selectedAssessment.total_points}
+                              />
+                            </div>
+                            <div className="w-20 flex-shrink-0 ml-2">
+                              <input
+                                type="number"
+                                value={gradeData.late_penalty || ''}
+                                onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
+                                className="w-full p-1 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                min="0"
+                              />
+                            </div>
+                            <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900">
+                              {calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
+                            </div>
+                            <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900">
+                              {calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points)}%
+                            </div>
+                            <div className="flex-1 ml-2">
+                              <textarea
+                                value={gradeData.feedback || ''}
+                                onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
+                                className="w-full p-1 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-y"
+                                rows="1"
+                                placeholder="Feedback..."
+                              />
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="text-center">
+                        <UserGroupIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+                        <p className="text-gray-500">No students enrolled in this assessment yet.</p>
+                      </div>
+                    </div>
+                  )}
+                  {Object.keys(grades).length > 0 && (
+                    <div className="sticky bottom-0 bg-white px-6 py-3 border-t border-gray-200 flex justify-end shadow-md z-10 rounded-b-lg">
+                      <button
+                        onClick={handleSubmitGrades}
+                        disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0}
+                        className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-300 ${
+                          isSubmittingGrades
+                            ? 'bg-red-400 cursor-not-allowed'
+                            : 'bg-red-600 hover:bg-red-700'
+                        } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
+                      >
+                        {isSubmittingGrades ? (
+                          <span className="flex items-center justify-center">
+                            <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center">
+                            <CheckIcon className="h-4 w-4 mr-2" />
+                            Save Grades
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Assessment</h3>
+                    <p className="text-gray-500">Choose a subject and assessment to start grading</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Sidebar - Subjects and Assessments */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Subjects</h3>
+                {classes.length > 0 ? (
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                    {classes.map((cls) => (
+                      <div
+                        key={cls.section_course_id}
+                        onClick={() => setSelectedClass(cls)}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedClass?.section_course_id === cls.section_course_id
+                            ? 'bg-red-50 border-red-200 ring-1 ring-red-100'
+                            : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                      >
+                        <p className="font-medium text-gray-900">{cls.course_title}</p>
+                        <p className="text-sm text-gray-500">{cls.course_code} - {cls.section_code}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                    <p className="text-sm text-gray-500">No subjects assigned.</p>
+                  </div>
+                )}
+
+                {selectedClass && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessments for {selectedClass.course_code}</h3>
+                    {assessments.length > 0 ? (
+                      <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                        {assessments.map((assessment) => (
+                          <div
+                            key={assessment.assessment_id}
+                            onClick={() => handleAssessmentSelect(assessment)}
+                            className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                              selectedAssessment?.assessment_id === assessment.assessment_id
+                                ? 'bg-red-50 border-red-200 ring-1 ring-red-100'
+                                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            <p className="font-medium text-gray-900">{assessment.title}</p>
+                            <p className="text-sm text-gray-500">{assessment.type} - {assessment.total_points} pts</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                        <p className="text-sm text-gray-500">No assessments for this subject.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
