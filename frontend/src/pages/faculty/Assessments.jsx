@@ -1056,8 +1056,7 @@ const Assessments = () => {
                       {/* Header */}
                       {selectedClass && (
                         <div className="px-6 py-4 border-b border-gray-200">
-                          <h3 className="text-lg font-semibold text-gray-900">Assessments</h3>
-                          <p className="text-sm text-gray-500 mt-1">{selectedClass.course_title}</p>
+                          <p className="text-sm text-gray-500">{selectedClass.course_title}</p>
                         </div>
                       )}
 
