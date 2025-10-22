@@ -469,24 +469,87 @@ const Assessments = () => {
             {/* Tab Content */}
             {activeTab === 'assessments' && (
               <div className="px-8 h-full">
-                {/* Controls: Class dropdown + Search + Create button */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
+                {/* Subject Selection Boxes */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Select Subject</h3>
+                    <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                      <PlusIcon className="h-4 w-4" />
+                      Create Assessment
+                    </button>
+                  </div>
+                  
+                  {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                            <div className="flex-1">
+                              <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
+                              <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : classes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {classes.map((cls) => (
+                        <div
+                          key={cls.section_course_id}
+                          onClick={() => setSelectedClass(cls)}
+                          className={`p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md border ${
+                            selectedClass?.section_course_id === cls.section_course_id
+                              ? 'border-red-300 bg-red-50 ring-1 ring-red-200'
+                              : 'border-gray-200 hover:border-red-300 bg-white hover:bg-red-50'
+                          } group`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors ${
+                              selectedClass?.section_course_id === cls.section_course_id
+                                ? 'bg-red-200'
+                                : 'bg-gradient-to-br from-red-100 to-red-200 group-hover:from-red-200 group-hover:to-red-300'
+                            }`}>
+                              <AcademicCapIcon className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium truncate ${
+                                selectedClass?.section_course_id === cls.section_course_id
+                                  ? 'text-red-900'
+                                  : 'text-gray-900 group-hover:text-red-900'
+                              }`}>
+                                {cls.course_title}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                            </div>
+                            {selectedClass?.section_course_id === cls.section_course_id && (
+                              <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects assigned</h3>
+                      <p className="text-gray-500">Contact your administrator to get subjects assigned.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Bar - Only show when subject is selected */}
+                {selectedClass && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative flex-1">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
+                      </div>
                     </div>
                   </div>
-                  {classes.length > 0 && (
-                    <select value={selectedClass?.section_course_id || ''} onChange={(e) => { const classId = e.target.value; const selected = classes.find(c => c.section_course_id == classId); setSelectedClass(selected); }} className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-64 min-w-0">
-                      <option value="">Select Class</option>
-                      {classes.map(cls => (<option key={cls.section_course_id} value={cls.section_course_id}>{cls.course_title} - {cls.section_code}</option>))}
-                    </select>
-                  )}
-                  <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors flex-shrink-0">
-                    <PlusIcon className="h-5 w-5 stroke-[3]" />
-                  </button>
-                </div>
+                )}
 
                 {/* Error Message */}
                 {error && (<div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-800">{error}</p></div>)}
