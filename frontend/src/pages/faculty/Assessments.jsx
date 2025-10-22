@@ -443,7 +443,7 @@ const Assessments = () => {
                     onClick={() => setActiveTab('assessments')}
                     className={`py-2 px-4 font-medium text-sm transition-colors ${
                       activeTab === 'assessments'
-                        ? 'text-red-600 border-b-2 border-gray-300'
+                        ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -453,7 +453,7 @@ const Assessments = () => {
                     onClick={() => setActiveTab('grading')}
                     className={`py-2 px-4 font-medium text-sm transition-colors ${
                       activeTab === 'grading'
-                        ? 'text-red-600 border-b-2 border-gray-300'
+                        ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
