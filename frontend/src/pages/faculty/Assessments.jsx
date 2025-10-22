@@ -700,11 +700,9 @@ const Assessments = () => {
                     ) : (
                       <div className="flex-1 flex items-center justify-center p-8">
                         <div className="text-center">
-                          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                            <div className="h-8 w-8 bg-gray-300 rounded"></div>
-                          </div>
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects assigned</h3>
-                          <p className="text-sm text-gray-500">Contact your administrator to get subjects assigned.</p>
+                          <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                          <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
                         </div>
                       </div>
                     )}
@@ -921,8 +919,7 @@ const Assessments = () => {
                               <div className="p-4 space-y-2">
                                 {Array.from({ length: 4 }).map((_, i) => (
                                   <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
+                                    <div className="flex items-center">
                                       <div className="flex-1">
                                         <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
                                         <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
@@ -985,8 +982,7 @@ const Assessments = () => {
                               <div className="p-4 space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
                                   <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
+                                    <div className="flex items-center">
                                       <div className="flex-1">
                                         <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-1"></div>
                                         <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
