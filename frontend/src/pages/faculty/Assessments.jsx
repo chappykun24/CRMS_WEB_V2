@@ -472,7 +472,7 @@ const Assessments = () => {
             {/* Subject Selection Boxes */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Subjects</h3>
+                <div></div>
                 <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                   <PlusIcon className="h-4 w-4" />
                   Create Assessment
@@ -480,13 +480,13 @@ const Assessments = () => {
               </div>
               
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse bg-white">
+                    <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse bg-white">
                       <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                        <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
                         <div className="flex-1">
-                          <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
+                          <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
                           <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
                         </div>
                       </div>
@@ -494,33 +494,33 @@ const Assessments = () => {
                   ))}
                 </div>
               ) : classes.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {classes.map((cls) => (
                     <div
                       key={cls.section_course_id}
                       onClick={() => setSelectedClass(cls)}
-                      className={`p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                      className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
                         selectedClass?.section_course_id === cls.section_course_id
                           ? 'border-red-300 bg-red-50'
                           : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <div className="h-5 w-5 bg-gray-300 rounded"></div>
+                        <div className="h-8 w-8 rounded bg-red-100 flex items-center justify-center flex-shrink-0">
+                          <div className="h-4 w-4 bg-red-200 rounded"></div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-medium truncate ${
+                          <p className={`font-medium text-sm truncate ${
                             selectedClass?.section_course_id === cls.section_course_id
                               ? 'text-red-900'
                               : 'text-gray-900'
                           }`}>
                             {cls.course_title}
                           </p>
-                          <p className="text-sm text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                          <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
                         </div>
                         {selectedClass?.section_course_id === cls.section_course_id && (
-                          <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                          <div className="h-2 w-2 bg-red-500 rounded-full flex-shrink-0"></div>
                         )}
                       </div>
                     </div>
@@ -881,7 +881,7 @@ const Assessments = () => {
                       {/* Header */}
                       <div className="px-6 py-4 border-b border-gray-200">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {selectedClass ? 'Assessments' : 'Subjects'}
+                          {selectedClass ? 'Assessments' : ''}
                         </h3>
                         {selectedClass && (
                           <p className="text-sm text-gray-500 mt-1">{selectedClass.course_title}</p>
@@ -894,13 +894,13 @@ const Assessments = () => {
                           // Subjects Selection
                           <div className="h-full flex flex-col">
                             {loading ? (
-                              <div className="p-4 space-y-3">
+                              <div className="p-4 space-y-2">
                                 {Array.from({ length: 4 }).map((_, i) => (
-                                  <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                                  <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
                                     <div className="flex items-center space-x-3">
-                                      <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                                      <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
                                       <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
                                         <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
                                       </div>
                                     </div>
@@ -908,20 +908,20 @@ const Assessments = () => {
                                 ))}
                               </div>
                             ) : classes.length > 0 ? (
-                              <div className="p-4 space-y-3 overflow-y-auto h-full">
+                              <div className="p-4 space-y-2 overflow-y-auto h-full">
                                 {classes.map((cls) => (
                                   <div
                                     key={cls.section_course_id}
                                     onClick={() => setSelectedClass(cls)}
-                                    className="p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md border border-gray-200 hover:border-red-300 bg-white hover:bg-red-50 group"
+                                    className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border border-gray-200 hover:border-red-300 bg-white hover:bg-red-50 group"
                                   >
                                     <div className="flex items-center space-x-3">
-                                      <div className="h-10 w-10 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center group-hover:from-red-200 group-hover:to-red-300 transition-colors">
-                                        <AcademicCapIcon className="h-5 w-5 text-red-600" />
+                                      <div className="h-8 w-8 rounded bg-red-100 flex items-center justify-center flex-shrink-0">
+                                        <div className="h-4 w-4 bg-red-200 rounded"></div>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-gray-900 truncate group-hover:text-red-900">{cls.course_title}</p>
-                                        <p className="text-sm text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                                        <p className="font-medium text-sm text-gray-900 truncate group-hover:text-red-900">{cls.course_title}</p>
+                                        <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
                                       </div>
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="h-2 w-2 bg-red-500 rounded-full"></div>
@@ -961,13 +961,13 @@ const Assessments = () => {
                             </div>
 
                             {loading ? (
-                              <div className="p-4 space-y-3">
+                              <div className="p-4 space-y-2">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                  <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                                  <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
                                     <div className="flex items-center space-x-3">
-                                      <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                                      <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
                                       <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-2"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-1"></div>
                                         <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
                                       </div>
                                     </div>
@@ -975,31 +975,31 @@ const Assessments = () => {
                                 ))}
                               </div>
                             ) : assessments.length > 0 ? (
-                              <div className="p-4 space-y-3 overflow-y-auto h-full">
+                              <div className="p-4 space-y-2 overflow-y-auto h-full">
                                 {assessments.map((assessment) => (
                                   <div
                                     key={assessment.assessment_id}
                                     onClick={() => handleAssessmentSelect(assessment)}
-                                    className={`p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md border ${
+                                    className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
                                       selectedAssessment?.assessment_id === assessment.assessment_id
-                                        ? 'border-red-300 bg-red-50 ring-1 ring-red-200'
+                                        ? 'border-red-300 bg-red-50'
                                         : 'border-gray-200 hover:border-red-300 bg-white hover:bg-red-50'
                                     } group`}
                                   >
                                     <div className="flex items-center space-x-3">
-                                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors ${
+                                      <div className={`h-8 w-8 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
                                         selectedAssessment?.assessment_id === assessment.assessment_id
                                           ? 'bg-red-200'
-                                          : 'bg-gradient-to-br from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300'
+                                          : 'bg-red-100 group-hover:bg-red-200'
                                       }`}>
-                                        <DocumentTextIcon className={`h-5 w-5 ${
+                                        <div className={`h-4 w-4 rounded ${
                                           selectedAssessment?.assessment_id === assessment.assessment_id
-                                            ? 'text-red-600'
-                                            : 'text-blue-600'
-                                        }`} />
+                                            ? 'bg-red-300'
+                                            : 'bg-red-200 group-hover:bg-red-300'
+                                        }`}></div>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className={`font-medium truncate ${
+                                        <p className={`font-medium text-sm truncate ${
                                           selectedAssessment?.assessment_id === assessment.assessment_id
                                             ? 'text-red-900'
                                             : 'text-gray-900 group-hover:text-red-900'
@@ -1007,13 +1007,13 @@ const Assessments = () => {
                                           {assessment.title}
                                         </p>
                                         <div className="flex items-center space-x-2 mt-1">
-                                          <span className="text-sm text-gray-500">{assessment.type}</span>
+                                          <span className="text-xs text-gray-500">{assessment.type}</span>
                                           <span className="text-gray-300">•</span>
-                                          <span className="text-sm text-gray-500">{assessment.total_points} pts</span>
+                                          <span className="text-xs text-gray-500">{assessment.total_points} pts</span>
                                         </div>
                                       </div>
                                       {selectedAssessment?.assessment_id === assessment.assessment_id && (
-                                        <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                                        <div className="h-2 w-2 bg-red-500 rounded-full flex-shrink-0"></div>
                                       )}
                                     </div>
                                   </div>
