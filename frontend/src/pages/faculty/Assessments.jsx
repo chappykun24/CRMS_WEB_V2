@@ -66,9 +66,7 @@ const Assessments = () => {
         if (response.ok) {
           const data = await response.json()
           setClasses(Array.isArray(data) ? data : [])
-          if (data.length > 0) {
-            setSelectedClass(data[0])
-          }
+          // Don't auto-select first class - user must select manually
         }
       } catch (error) {
         console.error('Error loading classes:', error)
@@ -639,13 +637,13 @@ const Assessments = () => {
                   </div>
                 )}
 
-                {/* No Subject Selected State */}
+                {/* No Class Selected State */}
                 {!selectedClass && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
                     <div className="text-center">
                       <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Subject</h3>
-                      <p className="text-gray-500">Choose a subject from the sidebar to view its assessments.</p>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
+                      <p className="text-gray-500">Choose a class from the sidebar to view its assessments.</p>
                     </div>
                   </div>
                 )}
@@ -885,12 +883,20 @@ const Assessments = () => {
                           </div>
                         )}
                       </div>
+                    ) : !selectedClass ? (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                        <div className="text-center">
+                          <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
+                          <p className="text-gray-500">Choose a class from the sidebar to start grading</p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
                         <div className="text-center">
                           <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Assessment</h3>
-                          <p className="text-gray-500">Choose a subject and assessment to start grading</p>
+                          <p className="text-gray-500">Choose an assessment to start grading</p>
                         </div>
                       </div>
                     )}
@@ -909,7 +915,7 @@ const Assessments = () => {
                       {/* Content */}
                       <div className="flex-1 overflow-hidden">
                         {!selectedClass ? (
-                          // Subjects Selection
+                          // Classes Selection
                           <div className="h-full flex flex-col">
                             {loading ? (
                               <div className="p-4 space-y-2">
@@ -949,8 +955,8 @@ const Assessments = () => {
                               <div className="flex-1 flex items-center justify-center p-8">
                                 <div className="text-center">
                                   <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects assigned</h3>
-                                  <p className="text-sm text-gray-500">Contact your administrator to get subjects assigned.</p>
+                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                                  <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
                                 </div>
                               </div>
                             )}
@@ -971,7 +977,7 @@ const Assessments = () => {
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
-                                <span>Back to Subjects</span>
+                                <span>Back to Classes</span>
                               </button>
                             </div>
 
@@ -1028,7 +1034,7 @@ const Assessments = () => {
                                 <div className="text-center">
                                   <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                                   <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
-                                  <p className="text-sm text-gray-500">Create assessments for this subject to start grading.</p>
+                                  <p className="text-sm text-gray-500">Create assessments for this class to start grading.</p>
                                 </div>
                               </div>
                             )}
