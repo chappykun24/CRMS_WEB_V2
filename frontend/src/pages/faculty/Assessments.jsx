@@ -473,15 +473,7 @@ const Assessments = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-full">
               {/* Main Content - Assessments Table */}
               <div className="lg:col-span-3">
-                <div className="flex items-center justify-between mb-4">
-                  <div></div>
-                  <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                    <PlusIcon className="h-4 w-4" />
-                    Create Assessment
-                  </button>
-                </div>
-
-                {/* Search Bar - Only show when subject is selected */}
+                {/* Search Bar and Create Button - Only show when subject is selected */}
                 {selectedClass && (
                   <div className="flex items-center gap-3 mb-3">
                     <div className="relative flex-1">
@@ -490,6 +482,9 @@ const Assessments = () => {
                         <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
                       </div>
                     </div>
+                    <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
+                      <PlusIcon className="h-5 w-5" />
+                    </button>
                   </div>
                 )}
 
@@ -656,11 +651,6 @@ const Assessments = () => {
               {/* Right Sidebar - Subjects */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
-                  {/* Header */}
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Subjects</h3>
-                  </div>
-
                   {/* Content */}
                   <div className="flex-1 overflow-hidden">
                     {loading ? (
@@ -668,7 +658,6 @@ const Assessments = () => {
                         {Array.from({ length: 4 }).map((_, i) => (
                           <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
                             <div className="flex items-center space-x-3">
-                              <div className="h-8 w-8 bg-gray-200 rounded skeleton"></div>
                               <div className="flex-1">
                                 <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
                                 <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
@@ -689,10 +678,7 @@ const Assessments = () => {
                                 : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                             } group`}
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                <div className="h-4 w-4 bg-gray-300 rounded"></div>
-                              </div>
+                            <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0">
                                 <p className={`font-medium text-sm truncate ${
                                   selectedClass?.section_course_id === cls.section_course_id
@@ -704,7 +690,7 @@ const Assessments = () => {
                                 <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
                               </div>
                               {selectedClass?.section_course_id === cls.section_course_id && (
-                                <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                                <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
                               )}
                             </div>
                           </div>
@@ -1068,14 +1054,12 @@ const Assessments = () => {
                   <div className="lg:col-span-1">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
                       {/* Header */}
-                      <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {selectedClass ? 'Assessments' : ''}
-                        </h3>
-                        {selectedClass && (
+                      {selectedClass && (
+                        <div className="px-6 py-4 border-b border-gray-200">
+                          <h3 className="text-lg font-semibold text-gray-900">Assessments</h3>
                           <p className="text-sm text-gray-500 mt-1">{selectedClass.course_title}</p>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Content */}
                       <div className="flex-1 overflow-hidden">
@@ -1104,10 +1088,7 @@ const Assessments = () => {
                                     onClick={() => setSelectedClass(cls)}
                                     className="p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 group"
                                   >
-                                    <div className="flex items-center space-x-3">
-                                      <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                        <div className="h-4 w-4 bg-gray-300 rounded"></div>
-                                      </div>
+                                    <div className="flex items-center justify-between">
                                       <div className="flex-1 min-w-0">
                                         <p className="font-medium text-sm text-gray-900 truncate group-hover:text-gray-900">{cls.course_title}</p>
                                         <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
@@ -1175,18 +1156,7 @@ const Assessments = () => {
                                         : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                                     } group`}
                                   >
-                                    <div className="flex items-center space-x-3">
-                                      <div className={`h-8 w-8 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
-                                        selectedAssessment?.assessment_id === assessment.assessment_id
-                                          ? 'bg-gray-200'
-                                          : 'bg-gray-100 group-hover:bg-gray-200'
-                                      }`}>
-                                        <div className={`h-4 w-4 rounded ${
-                                          selectedAssessment?.assessment_id === assessment.assessment_id
-                                            ? 'bg-gray-300'
-                                            : 'bg-gray-300 group-hover:bg-gray-400'
-                                        }`}></div>
-                                      </div>
+                                    <div className="flex items-center justify-between">
                                       <div className="flex-1 min-w-0">
                                         <p className={`font-medium text-sm truncate ${
                                           selectedAssessment?.assessment_id === assessment.assessment_id
@@ -1202,7 +1172,7 @@ const Assessments = () => {
                                         </div>
                                       </div>
                                       {selectedAssessment?.assessment_id === assessment.assessment_id && (
-                                        <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                                        <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
                                       )}
                                     </div>
                                   </div>
