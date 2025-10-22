@@ -816,78 +816,160 @@ const Assessments = () => {
 
                   {/* Right Sidebar - Subjects and Assessments */}
                   <div className="lg:col-span-1">
-                    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Subjects</h3>
-                      {loading ? (
-                        <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                          {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                              <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
-                              <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : classes.length > 0 ? (
-                        <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                          {classes.map((cls) => (
-                            <div
-                              key={cls.section_course_id}
-                              onClick={() => setSelectedClass(cls)}
-                              className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                                selectedClass?.section_course_id === cls.section_course_id
-                                  ? 'bg-red-50 border-red-200 ring-1 ring-red-100'
-                                  : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-                              }`}
-                            >
-                              <p className="font-medium text-gray-900">{cls.course_title}</p>
-                              <p className="text-sm text-gray-500">{cls.course_code} - {cls.section_code}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                          <p className="text-sm text-gray-500">No subjects assigned.</p>
-                        </div>
-                      )}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
+                      {/* Header */}
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {selectedClass ? 'Assessments' : 'Subjects'}
+                        </h3>
+                        {selectedClass && (
+                          <p className="text-sm text-gray-500 mt-1">{selectedClass.course_title}</p>
+                        )}
+                      </div>
 
-                      {selectedClass && (
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessments for {selectedClass.course_code}</h3>
-                          {loading ? (
-                            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                              {Array.from({ length: 2 }).map((_, i) => (
-                                <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                                  <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-2"></div>
-                                  <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
+                      {/* Content */}
+                      <div className="flex-1 overflow-hidden">
+                        {!selectedClass ? (
+                          // Subjects Selection
+                          <div className="h-full flex flex-col">
+                            {loading ? (
+                              <div className="p-4 space-y-3">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                  <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                                      <div className="flex-1">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
+                                        <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : classes.length > 0 ? (
+                              <div className="p-4 space-y-3 overflow-y-auto h-full">
+                                {classes.map((cls) => (
+                                  <div
+                                    key={cls.section_course_id}
+                                    onClick={() => setSelectedClass(cls)}
+                                    className="p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md border border-gray-200 hover:border-red-300 bg-white hover:bg-red-50 group"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <div className="h-10 w-10 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center group-hover:from-red-200 group-hover:to-red-300 transition-colors">
+                                        <AcademicCapIcon className="h-5 w-5 text-red-600" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-gray-900 truncate group-hover:text-red-900">{cls.course_title}</p>
+                                        <p className="text-sm text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                                      </div>
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex items-center justify-center p-8">
+                                <div className="text-center">
+                                  <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects assigned</h3>
+                                  <p className="text-sm text-gray-500">Contact your administrator to get subjects assigned.</p>
                                 </div>
-                              ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          // Assessments Selection
+                          <div className="h-full flex flex-col">
+                            {/* Back Button */}
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <button
+                                onClick={() => {
+                                  setSelectedClass(null)
+                                  setSelectedAssessment(null)
+                                  setGrades({})
+                                }}
+                                className="flex items-center space-x-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                                <span>Back to Subjects</span>
+                              </button>
                             </div>
-                          ) : assessments.length > 0 ? (
-                            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                              {assessments.map((assessment) => (
-                                <div
-                                  key={assessment.assessment_id}
-                                  onClick={() => handleAssessmentSelect(assessment)}
-                                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                                    selectedAssessment?.assessment_id === assessment.assessment_id
-                                      ? 'bg-red-50 border-red-200 ring-1 ring-red-100'
-                                      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-                                  }`}
-                                >
-                                  <p className="font-medium text-gray-900">{assessment.title}</p>
-                                  <p className="text-sm text-gray-500">{assessment.type} - {assessment.total_points} pts</p>
+
+                            {loading ? (
+                              <div className="p-4 space-y-3">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                  <div key={i} className="p-4 rounded-lg border border-gray-200 animate-pulse">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="h-10 w-10 bg-gray-200 rounded-lg skeleton"></div>
+                                      <div className="flex-1">
+                                        <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-2"></div>
+                                        <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : assessments.length > 0 ? (
+                              <div className="p-4 space-y-3 overflow-y-auto h-full">
+                                {assessments.map((assessment) => (
+                                  <div
+                                    key={assessment.assessment_id}
+                                    onClick={() => handleAssessmentSelect(assessment)}
+                                    className={`p-4 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md border ${
+                                      selectedAssessment?.assessment_id === assessment.assessment_id
+                                        ? 'border-red-300 bg-red-50 ring-1 ring-red-200'
+                                        : 'border-gray-200 hover:border-red-300 bg-white hover:bg-red-50'
+                                    } group`}
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors ${
+                                        selectedAssessment?.assessment_id === assessment.assessment_id
+                                          ? 'bg-red-200'
+                                          : 'bg-gradient-to-br from-blue-100 to-blue-200 group-hover:from-blue-200 group-hover:to-blue-300'
+                                      }`}>
+                                        <DocumentTextIcon className={`h-5 w-5 ${
+                                          selectedAssessment?.assessment_id === assessment.assessment_id
+                                            ? 'text-red-600'
+                                            : 'text-blue-600'
+                                        }`} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`font-medium truncate ${
+                                          selectedAssessment?.assessment_id === assessment.assessment_id
+                                            ? 'text-red-900'
+                                            : 'text-gray-900 group-hover:text-red-900'
+                                        }`}>
+                                          {assessment.title}
+                                        </p>
+                                        <div className="flex items-center space-x-2 mt-1">
+                                          <span className="text-sm text-gray-500">{assessment.type}</span>
+                                          <span className="text-gray-300">•</span>
+                                          <span className="text-sm text-gray-500">{assessment.total_points} pts</span>
+                                        </div>
+                                      </div>
+                                      {selectedAssessment?.assessment_id === assessment.assessment_id && (
+                                        <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex items-center justify-center p-8">
+                                <div className="text-center">
+                                  <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
+                                  <p className="text-sm text-gray-500">Create assessments for this subject to start grading.</p>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8">
-                              <ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                              <p className="text-sm text-gray-500">No assessments for this subject.</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
