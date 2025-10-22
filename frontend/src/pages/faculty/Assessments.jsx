@@ -60,6 +60,7 @@ const Assessments = () => {
   useEffect(() => {
     const loadClasses = async () => {
       try {
+        setLoading(true)
         const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
         if (response.ok) {
           const data = await response.json()
@@ -70,6 +71,8 @@ const Assessments = () => {
         }
       } catch (error) {
         console.error('Error loading classes:', error)
+      } finally {
+        setLoading(false)
       }
     }
     
@@ -815,7 +818,16 @@ const Assessments = () => {
                   <div className="lg:col-span-1">
                     <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-300">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Subjects</h3>
-                      {classes.length > 0 ? (
+                      {loading ? (
+                        <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                              <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-2"></div>
+                              <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : classes.length > 0 ? (
                         <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                           {classes.map((cls) => (
                             <div
@@ -842,7 +854,16 @@ const Assessments = () => {
                       {selectedClass && (
                         <div className="mt-6 pt-4 border-t border-gray-200">
                           <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessments for {selectedClass.course_code}</h3>
-                          {assessments.length > 0 ? (
+                          {loading ? (
+                            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                              {Array.from({ length: 2 }).map((_, i) => (
+                                <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                  <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-2"></div>
+                                  <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : assessments.length > 0 ? (
                             <div className="space-y-2 max-h-[40vh] overflow-y-auto">
                               {assessments.map((assessment) => (
                                 <div
