@@ -19,6 +19,7 @@ import {
 
 const Assessments = () => {
   const { user } = useAuth()
+  const [sidebarExpanded] = useState(true) // Default to expanded
   const [assessments, setAssessments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -432,7 +433,9 @@ const Assessments = () => {
           }
         }
       `}</style>
-      <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
+      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
+        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+      }`} style={{ marginTop: '0px' }}>
         <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
           {/* Header and Navigation */}
           <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
