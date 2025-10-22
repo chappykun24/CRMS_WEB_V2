@@ -39,6 +39,10 @@ const ManageAccount = () => {
   // Initialize form data with user data
   useEffect(() => {
     if (user) {
+      console.log('🔍 [MANAGE ACCOUNT] User data received:', user);
+      console.log('🔍 [MANAGE ACCOUNT] User ID:', user.user_id || user.id);
+      console.log('🔍 [MANAGE ACCOUNT] User name:', user.name);
+      console.log('🔍 [MANAGE ACCOUNT] User email:', user.email);
       setFormData({
         name: user.name || '',
         email: user.email || ''
@@ -103,15 +107,16 @@ const ManageAccount = () => {
   };
 
   const handlePhotoUpload = async () => {
-    if (!photoFile || !user?.id) return;
+    const userId = user?.user_id || user?.id;
+    if (!photoFile || !userId) return;
 
-    console.log('📸 [PHOTO UPLOAD] Starting upload for user:', user.id);
+    console.log('📸 [PHOTO UPLOAD] Starting upload for user:', userId);
     console.log('📸 [PHOTO UPLOAD] Photo file data length:', photoFile?.length);
 
     setIsUploading(true);
 
     try {
-      const response = await fetch(`/api/users/${user.id}/upload-photo`, {
+      const response = await fetch(`/api/users/${userId}/upload-photo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +133,7 @@ const ManageAccount = () => {
       if (data.success) {
         // Update user context with new photo
         if (updateUser) {
-          updateUser({ ...user, profilePic: data.user.profilePic });
+          updateUser({ ...user, profilePic: data.user.profilePic || data.user.profile_pic });
         }
         
         setSuccessMessage('Profile photo updated successfully!');
@@ -158,7 +163,8 @@ const ManageAccount = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id) return;
+    const userId = user?.user_id || user?.id;
+    if (!userId) return;
     
     setIsLoading(true);
 
@@ -167,13 +173,13 @@ const ManageAccount = () => {
       const payload = {
         name: formData.name,
         email: formData.email,
-        profilePic: user.profilePic // Include current profile picture
+        profilePic: user.profilePic || user.profile_pic // Include current profile picture
       };
       
       console.log('📤 [FRONTEND] Sending payload:', payload);
-      console.log('📤 [FRONTEND] User ID:', user.id);
+      console.log('📤 [FRONTEND] User ID:', userId);
       
-      const response = await fetch(`/api/users/${user.id}/profile`, {
+      const response = await fetch(`/api/users/${userId}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +194,7 @@ const ManageAccount = () => {
       if (data.success) {
         // Update user context
         if (updateUser) {
-          updateUser({ ...user, ...formData });
+          updateUser({ ...user, ...formData, profilePic: data.user.profilePic || data.user.profile_pic });
         }
         
         setSuccessMessage('Profile updated successfully!');
@@ -219,7 +225,8 @@ const ManageAccount = () => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id) return;
+    const userId = user?.user_id || user?.id;
+    if (!userId) return;
 
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -238,7 +245,7 @@ const ManageAccount = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch(`/api/users/${user.id}/change-password`, {
+      const response = await fetch(`/api/users/${userId}/change-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -283,7 +290,7 @@ const ManageAccount = () => {
     );
   }
 
-  if (!user.id) {
+  if (!user?.user_id && !user?.id) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -319,9 +326,9 @@ const ManageAccount = () => {
                       alt="Preview" 
                       className="w-full h-full object-cover"
                     />
-                  ) : user.profilePic ? (
+                  ) : (user.profilePic || user.profile_pic) ? (
                     <img 
-                      src={user.profilePic} 
+                      src={user.profilePic || user.profile_pic} 
                       alt={user.name || 'User'} 
                       className="w-full h-full object-cover"
                     />

@@ -685,9 +685,13 @@ app.get('/api/users/:id/profile', async (req, res) => {
     const userData = result.rows[0];
     const transformedUser = {
       user_id: userData.user_id,
+      id: userData.user_id, // Add id field for compatibility
       name: userData.name,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
       email: userData.email,
       role_name: userData.role_name,
+      role: userData.role_name, // Add role field for compatibility
       role_id: userData.role_id,
       is_approved: userData.is_approved,
       profilePic: userData.profile_pic, // Frontend expects camelCase
@@ -1429,12 +1433,17 @@ app.put('/api/users/:id/profile', async (req, res) => {
 
     // Transform user data to match frontend expectations
     const transformedUser = {
-      id: updatedUser.user_id,
+      user_id: updatedUser.user_id,
+      id: updatedUser.user_id, // Add id field for compatibility
       name: updatedUser.name,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
       email: updatedUser.email,
       role: updatedUser.role_id, // This might need a join to get role name
       profilePic: updatedUser.profile_pic,
-      updatedAt: updatedUser.updated_at
+      profile_pic: updatedUser.profile_pic, // Keep both for compatibility
+      updatedAt: updatedUser.updated_at,
+      updated_at: updatedUser.updated_at
     };
 
     res.json({
@@ -1594,8 +1603,10 @@ app.post('/api/users/:id/upload-photo', async (req, res) => {
       message: 'Photo uploaded successfully',
       photoUrl: photoData,
       user: {
+        user_id: result.rows[0].user_id,
         id: result.rows[0].user_id,
-        profilePic: result.rows[0].profile_pic
+        profilePic: result.rows[0].profile_pic,
+        profile_pic: result.rows[0].profile_pic
       }
     });
   } catch (error) {

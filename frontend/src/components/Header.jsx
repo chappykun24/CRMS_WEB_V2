@@ -22,6 +22,9 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     console.log('🔍 [HEADER] User profile_pic:', user?.profile_pic);
     console.log('🔍 [HEADER] User ID:', user?.user_id || user?.id);
     console.log('🔍 [HEADER] User name:', user?.name);
+    console.log('🔍 [HEADER] User first_name:', user?.first_name);
+    console.log('🔍 [HEADER] User last_name:', user?.last_name);
+    console.log('🔍 [HEADER] User email:', user?.email);
   }, [user]);
   
   const location = useLocation()
@@ -497,7 +500,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   
                   {/* Greeting */}
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Hi, {user?.name?.split(' ')[0] || 'User'}!
+                    Hi, {user?.name?.split(' ')[0] || user?.first_name || 'User'}!
                   </h3>
                   
                   {/* Manage Account Button */}

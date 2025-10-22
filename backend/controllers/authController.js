@@ -188,13 +188,17 @@ export const login = async (req, res) => {
       data: {
         user: {
           user_id: user.user_id,
+          id: user.user_id, // Add id field for compatibility
           email: user.email,
           name: user.name,
           first_name: user.name ? user.name.split(' ')[0] : '',
           last_name: user.name ? user.name.split(' ').slice(1).join(' ') : '',
           role_id: user.role_id,
           role_name: user.role_name,
+          role: user.role_name, // Add role field for compatibility
           is_approved: user.is_approved,
+          profilePic: user.profile_pic, // Add profile picture
+          profile_pic: user.profile_pic, // Keep both for compatibility
           created_at: user.created_at,
           updated_at: user.updated_at
         },
@@ -260,9 +264,13 @@ export const getProfile = async (req, res) => {
     const userData = result.rows[0];
     const user = {
       user_id: userData.user_id,
+      id: userData.user_id, // Add id field for compatibility
       name: userData.name,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
       email: userData.email,
       role_name: userData.role_name,
+      role: userData.role_name, // Add role field for compatibility
       role_id: userData.role_id,
       is_approved: userData.is_approved,
       profilePic: userData.profile_pic, // Frontend expects camelCase
