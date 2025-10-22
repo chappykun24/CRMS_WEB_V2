@@ -478,12 +478,12 @@ const Assessments = () => {
                     </div>
                   </div>
                   {classes.length > 0 && (
-                    <select value={selectedClass?.section_course_id || ''} onChange={(e) => { const classId = e.target.value; const selected = classes.find(c => c.section_course_id == classId); setSelectedClass(selected); }} className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-48">
+                    <select value={selectedClass?.section_course_id || ''} onChange={(e) => { const classId = e.target.value; const selected = classes.find(c => c.section_course_id == classId); setSelectedClass(selected); }} className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-64 min-w-0">
                       <option value="">Select Class</option>
                       {classes.map(cls => (<option key={cls.section_course_id} value={cls.section_course_id}>{cls.course_title} - {cls.section_code}</option>))}
                     </select>
                   )}
-                  <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
+                  <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors flex-shrink-0">
                     <PlusIcon className="h-5 w-5 stroke-[3]" />
                   </button>
                 </div>
