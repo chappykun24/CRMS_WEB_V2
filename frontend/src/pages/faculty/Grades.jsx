@@ -114,10 +114,13 @@ const Grades = () => {
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
                     {loading ? (
                       <div className="p-6">
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex items-center space-x-4 animate-pulse">
-                              <div className="h-12 w-12 bg-gray-200 rounded-full"></div>
+                            <div key={i} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg animate-pulse">
+                              <div className="flex-shrink-0 w-6 text-center">
+                                <div className="h-3 bg-gray-200 rounded w-4 mx-auto"></div>
+                              </div>
+                              <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
                               <div className="flex-1">
                                 <div className="h-4 bg-gray-200 rounded w-48 mb-2"></div>
                                 <div className="h-3 bg-gray-100 rounded w-32"></div>
@@ -127,34 +130,37 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="divide-y divide-gray-200">
-                        {filteredStudents.map((student) => (
-                          <div key={student.enrollment_id} className="p-6 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center space-x-4">
-                              <div className="flex-shrink-0 h-12 w-12">
-                                {student.student_photo ? (
-                                  <img
-                                    src={student.student_photo}
-                                    alt={student.full_name}
-                                    className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
-                                    onError={(e) => {
-                                      e.target.src = '/src/images/bsu-logo.png'
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                                    <UserGroupIcon className="h-6 w-6 text-gray-400" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {student.full_name || 'Unknown Student'}
-                                </p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  SR Code: {student.student_number || 'N/A'}
-                                </p>
-                              </div>
+                      <div className="space-y-3">
+                        {filteredStudents.map((student, index) => (
+                          <div key={student.enrollment_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-shrink-0 w-6 text-center">
+                              <span className="text-xs font-medium text-gray-500">
+                                {index + 1}
+                              </span>
+                            </div>
+                            <div className="flex-shrink-0">
+                              {student.student_photo ? (
+                                <img 
+                                  src={student.student_photo} 
+                                  alt={student.full_name}
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  onError={(e) => e.target.src = '/src/images/bsu-logo.png'}
+                                />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                  <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {student.full_name || 'Unknown Student'}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                SR Code: {student.student_number || 'N/A'}
+                              </p>
                             </div>
                           </div>
                         ))}
