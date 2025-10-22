@@ -34,6 +34,7 @@ const Assessments = () => {
   const [grades, setGrades] = useState({})
   const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [gradingLoading, setGradingLoading] = useState(false)
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -311,7 +312,11 @@ const Assessments = () => {
   // Grading functions
   const loadGrades = async (assessmentId) => {
     try {
-      setLoading(true)
+      setGradingLoading(true)
+      
+      // Add a small delay to make skeleton loading visible
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
         const data = await response.json()
@@ -334,7 +339,7 @@ const Assessments = () => {
       console.error('Error loading grades:', error)
       setError('Failed to load grades')
     } finally {
-      setLoading(false)
+      setGradingLoading(false)
     }
   }
 
@@ -652,7 +657,7 @@ const Assessments = () => {
                             Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
-                        {loading ? (
+                        {gradingLoading ? (
                           <div className="max-h-[60vh] overflow-y-auto pb-32">
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-48 flex-shrink-0">Student</div>
