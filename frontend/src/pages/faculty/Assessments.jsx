@@ -441,7 +441,7 @@ const Assessments = () => {
                 <div className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab('assessments')}
-                    className={`py-2 px-4 font-medium text-sm transition-colors ${
+                    className={`py-2 px-4 font-medium text-sm transition-colors bg-transparent border-0 focus:outline-none focus:ring-0 ${
                       activeTab === 'assessments'
                         ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
@@ -451,7 +451,7 @@ const Assessments = () => {
                   </button>
                   <button
                     onClick={() => setActiveTab('grading')}
-                    className={`py-2 px-4 font-medium text-sm transition-colors ${
+                    className={`py-2 px-4 font-medium text-sm transition-colors bg-transparent border-0 focus:outline-none focus:ring-0 ${
                       activeTab === 'grading'
                         ? 'text-red-600 border-b-2 border-red-600'
                         : 'text-gray-600 hover:text-gray-900'
