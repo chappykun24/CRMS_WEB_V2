@@ -653,19 +653,43 @@ const Assessments = () => {
                           </h2>
                         </div>
                         {loading ? (
-                          <div className="p-4 space-y-4">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <div key={i} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
-                                <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gray-300"></div>
-                                <div className="flex-1 space-y-1">
-                                  <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                                </div>
-                                <div className="h-8 w-16 bg-gray-200 rounded"></div>
-                                <div className="h-8 w-16 bg-gray-200 rounded"></div>
-                                <div className="h-8 w-24 bg-gray-200 rounded"></div>
-                              </div>
-                            ))}
+                          <div className="max-h-[60vh] overflow-y-auto pb-32">
+                            <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
+                              <div className="w-48 flex-shrink-0">Student</div>
+                              <div className="w-20 flex-shrink-0">Raw</div>
+                              <div className="w-20 flex-shrink-0">Penalty</div>
+                              <div className="w-20 flex-shrink-0">Adjusted</div>
+                              <div className="w-20 flex-shrink-0">Percent</div>
+                              <div className="flex-1">Feedback</div>
+                            </div>
+                            <ul className="divide-y divide-gray-200">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <li key={i} className="flex items-center px-6 py-3 hover:bg-gray-50">
+                                  <div className="w-48 flex-shrink-0 flex items-center space-x-3">
+                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 skeleton"></div>
+                                    <div className="flex-1">
+                                      <div className="h-4 bg-gray-200 rounded w-24 skeleton mb-1"></div>
+                                      <div className="h-3 bg-gray-100 rounded w-16 skeleton"></div>
+                                    </div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0">
+                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
+                                  </div>
+                                  <div className="flex-1 ml-2">
+                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         ) : Object.keys(grades).length > 0 ? (
                           <div className="max-h-[60vh] overflow-y-auto pb-32">
