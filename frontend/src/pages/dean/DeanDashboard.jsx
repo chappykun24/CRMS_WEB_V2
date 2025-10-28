@@ -2,6 +2,7 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Analytics from './Analytics'
 import MyClasses from './MyClasses'
+import SyllabusApproval from './SyllabusApproval'
 import { CardGridSkeleton } from '../../components/skeletons'
 
 const DeanDashboard = ({ user }) => {
@@ -22,6 +23,7 @@ const DeanDashboard = ({ user }) => {
       <Route path="/" element={defaultContent} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/classes" element={<MyClasses />} />
+      <Route path="/syllabus-approval" element={<SyllabusApproval />} />
       <Route path="*" element={<Navigate to="/dean" replace />} />
     </Routes>
   )

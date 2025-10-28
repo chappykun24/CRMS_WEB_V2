@@ -21,3 +21,4 @@ const Syllabi = () => {
 }
 
 export default Syllabi
+

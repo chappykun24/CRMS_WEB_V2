@@ -4,6 +4,7 @@ import CourseManagement from './CourseManagement'
 import Analytics from './Analytics'
 import Reports from './Reports'
 import Submissions from './Submissions'
+import Syllabi from './Syllabi'
 import { CardGridSkeleton } from '../../components/skeletons'
 
 const ProgramChairDashboard = ({ user }) => {
@@ -27,6 +28,7 @@ const ProgramChairDashboard = ({ user }) => {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/submissions" element={<Submissions />} />
+      <Route path="/syllabi" element={<Syllabi />} />
       <Route path="*" element={<Navigate to="/program-chair" replace />} />
     </Routes>
   )
