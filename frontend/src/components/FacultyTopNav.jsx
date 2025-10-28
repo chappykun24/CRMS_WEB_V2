@@ -13,13 +13,24 @@ const FacultyTopNav = () => {
   const navigate = useNavigate()
 
   const tabs = [
-    { key: 'classes', label: 'My Classes', href: '/dashboard/classes', icon: BookOpenIcon },
-    { key: 'assessments', label: 'Assessments', href: '/dashboard/assessments', icon: ClipboardDocumentListIcon },
-    { key: 'grades', label: 'Grades', href: '/dashboard/grades', icon: TrophyIcon },
-    { key: 'syllabi', label: 'Syllabi', href: '/dashboard/syllabi', icon: DocumentTextIcon }
+    { key: 'classes', label: 'My Classes', href: '/faculty/classes', icon: BookOpenIcon },
+    { key: 'assessments', label: 'Assessments', href: '/faculty/assessments', icon: ClipboardDocumentListIcon },
+    { key: 'grades', label: 'Grades', href: '/faculty/grades', icon: TrophyIcon },
+    { key: 'syllabi', label: 'Syllabi', href: '/faculty/syllabi', icon: DocumentTextIcon }
   ]
 
-  const isActive = (href) => location.pathname === href
+  const isActive = (href) => {
+    const currentPath = location.pathname
+    // Handle both /faculty/ and /dashboard/ paths
+    if (currentPath === href) return true
+    // Check for legacy /dashboard/ paths
+    const legacyPath = href.replace('/faculty/', '/dashboard/')
+    if (currentPath === legacyPath) return true
+    // Check for new /faculty/ paths when on legacy
+    const newPath = href.replace('/dashboard/', '/faculty/')
+    if (currentPath === newPath) return true
+    return false
+  }
 
   return (
     <div className="w-full">

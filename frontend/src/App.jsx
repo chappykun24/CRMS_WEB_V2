@@ -179,6 +179,36 @@ function App() {
                 } 
               />
               <Route 
+                path="/dashboard/assessments" 
+                element={
+                  <ProtectedRoute requiredRoles={["faculty"]}>
+                    <DashboardLayout>
+                        <FacultyDashboard />
+                      </DashboardLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/grades" 
+                element={
+                  <ProtectedRoute requiredRoles={["faculty"]}>
+                    <DashboardLayout>
+                        <FacultyDashboard />
+                      </DashboardLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard/syllabi" 
+                element={
+                  <ProtectedRoute requiredRoles={["faculty"]}>
+                    <DashboardLayout>
+                        <FacultyDashboard />
+                      </DashboardLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/dashboard/analytics" 
                 element={
                   <ProtectedRoute requiredRoles={["dean"]}>

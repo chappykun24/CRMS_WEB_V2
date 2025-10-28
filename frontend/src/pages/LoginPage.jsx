@@ -41,9 +41,9 @@ const LoginPage = () => {
         role = String(user?.role_name || user?.role || '').toLowerCase().replace(/\s|_/g, '')
       } catch (_) {}
       const defaultPath = role === 'faculty'
-        ? '/dashboard/classes'
+        ? '/faculty/classes'
         : role === 'dean'
-          ? '/dashboard/analytics'
+          ? '/dean/analytics'
           : role === 'staff'
             ? '/dashboard/students'
             : role === 'programchair'

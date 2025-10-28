@@ -730,7 +730,8 @@ const MyClasses = () => {
                     }}
                   onAssessments={() => {
                     // Navigate to assessments page with class pre-selected and grading tab active
-                    navigate('/dashboard/assessments', { 
+                    // Use /faculty/assessments which properly uses nested routes
+                    navigate('/faculty/assessments', { 
                       state: { 
                         selectedClassId: cls.section_course_id,
                         defaultTab: 'grading'
