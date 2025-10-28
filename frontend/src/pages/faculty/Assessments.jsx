@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { 
   PlusIcon, 
@@ -19,6 +20,7 @@ import {
 
 const Assessments = () => {
   const { user } = useAuth()
+  const location = useLocation()
   const [sidebarExpanded] = useState(true) // Default to expanded
   const [assessments, setAssessments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,8 +29,8 @@ const Assessments = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
   
-  // Tab navigation
-  const [activeTab, setActiveTab] = useState('assessments')
+  // Tab navigation - check location state for default tab
+  const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'assessments')
   
   // Grading states
   const [selectedAssessment, setSelectedAssessment] = useState(null)
@@ -66,7 +68,14 @@ const Assessments = () => {
         if (response.ok) {
           const data = await response.json()
           setClasses(Array.isArray(data) ? data : [])
-          // Don't auto-select first class - user must select manually
+          
+          // Auto-select class if provided in location state
+          if (location.state?.selectedClassId) {
+            const classToSelect = data.find(cls => cls.section_course_id === location.state.selectedClassId)
+            if (classToSelect) {
+              setSelectedClass(classToSelect)
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading classes:', error)
@@ -78,7 +87,7 @@ const Assessments = () => {
     if (user?.user_id) {
       loadClasses()
     }
-  }, [user])
+  }, [user, location.state])
 
   // Load assessments for selected class
   useEffect(() => {

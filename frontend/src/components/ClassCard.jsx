@@ -86,7 +86,7 @@ const ClassCard = ({
             onAssessments()
           }}
           className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-          title="Assessments"
+          title="Grading"
         >
           <AssessmentsIcon className="h-5 w-5" />
         </button>

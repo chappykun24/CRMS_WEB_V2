@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import facultyCacheService from '../../services/facultyCacheService'
 import { Loader2 } from 'lucide-react'
@@ -8,6 +9,7 @@ import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeleton
 
 const MyClasses = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -726,7 +728,15 @@ const MyClasses = () => {
                         setTogglingAttendance(false)
                       }
                     }}
-                  onAssessments={() => console.log('Assessments clicked')}
+                  onAssessments={() => {
+                    // Navigate to assessments page with class pre-selected and grading tab active
+                    navigate('/dashboard/assessments', { 
+                      state: { 
+                        selectedClassId: cls.section_course_id,
+                        defaultTab: 'grading'
+                      } 
+                    })
+                  }}
                   onMore={() => console.log('More clicked')}
                   onEdit={() => handleEditClass(cls)}
                   onArchive={() => console.log('Archive clicked')}
