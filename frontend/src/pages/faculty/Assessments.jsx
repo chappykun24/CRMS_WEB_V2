@@ -315,9 +315,10 @@ const Assessments = () => {
   const loadGrades = async (assessmentId) => {
     try {
       setGradingLoading(true)
+      setError('') // Clear previous errors
       
       // Add a small delay to make skeleton loading visible
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
@@ -328,14 +329,15 @@ const Assessments = () => {
             student_name: grade.full_name,
             student_number: grade.student_number,
             student_photo: grade.student_photo,
-            raw_score: grade.raw_score || '',
-            late_penalty: grade.late_penalty || '',
+            raw_score: grade.raw_score !== null ? grade.raw_score : '',
+            late_penalty: grade.late_penalty !== null ? grade.late_penalty : '',
             feedback: grade.feedback || ''
           }
         })
         setGrades(gradesMap)
       } else {
-        setError('Failed to load grades')
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to load grades')
       }
     } catch (error) {
       console.error('Error loading grades:', error)
@@ -374,10 +376,10 @@ const Assessments = () => {
     try {
       const gradesArray = Object.entries(grades).map(([enrollmentId, gradeData]) => ({
         enrollment_id: parseInt(enrollmentId),
-        assessment_id: selectedAssessment.assessment_id,
         raw_score: parseFloat(gradeData.raw_score) || 0,
         late_penalty: parseFloat(gradeData.late_penalty) || 0,
-        feedback: gradeData.feedback || ''
+        feedback: gradeData.feedback || '',
+        graded_by: user.user_id
       }))
 
       const response = await fetch('/api/grading/submit-grades', {
@@ -386,12 +388,17 @@ const Assessments = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
-        body: JSON.stringify({ grades: gradesArray })
+        body: JSON.stringify({ 
+          assessment_id: selectedAssessment.assessment_id,
+          grades: gradesArray 
+        })
       })
 
       if (response.ok) {
         setSuccessMessage('Grades saved successfully!')
         setTimeout(() => setSuccessMessage(''), 3000)
+        // Clear error message
+        setError('')
       } else {
         const error = await response.json()
         setError(error.error || 'Failed to save grades')
