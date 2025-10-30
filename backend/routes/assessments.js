@@ -355,15 +355,16 @@ router.get('/dean-analytics/sample', async (req, res) => {
       SELECT
         s.student_id,
         s.full_name,
-        ROUND(COALESCE(AVG(sub.total_score), 0), 2) as average_score,
+        ROUND(CAST(COALESCE(AVG(sub.total_score), 0) AS numeric), 2) as average_score,
         COUNT(al.attendance_id) as total_sessions,
         COUNT(CASE WHEN al.status = 'present' THEN 1 END) as present_count,
-        ROUND(
-          (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / NULLIF(COUNT(al.attendance_id), 0)) * 100, 2
-        ) AS attendance_percentage,
-        ROUND(COALESCE(AVG(
+        ROUND(CAST(
+          (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / NULLIF(COUNT(al.attendance_id), 0)) * 100
+          AS numeric
+        ), 2) AS attendance_percentage,
+        ROUND(CAST(COALESCE(AVG(
           GREATEST(0, DATE_PART('day', sub.submitted_at - ass.due_date))
-        ), 0), 2) as average_days_late
+        ), 0) AS numeric), 2) as average_days_late
       FROM students s
       LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
       LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id

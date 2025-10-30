@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 const Analytics = () => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
-  useEffect(() => {
+  const handleFetch = () => {
     setLoading(true);
+    setError(null);
     fetch('/api/assessments/dean-analytics/sample')
       .then((res) => res.json())
       .then((json) => {
@@ -16,20 +18,30 @@ const Analytics = () => {
           setError('Failed to load analytics');
         }
         setLoading(false);
+        setHasFetched(true);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Unable to fetch analytics');
         setLoading(false);
+        setHasFetched(true);
       });
-  }, []);
+  };
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Analytics</h1>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600">{error}</div>}
-      {!loading && !error && (
-        <div className="overflow-x-auto">
+      {!hasFetched && (
+        <button
+          className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded"
+          onClick={handleFetch}
+          disabled={loading}
+        >
+          {loading ? 'Loading...' : 'Show Analytics'}
+        </button>
+      )}
+      {hasFetched && error && <div className="text-red-600 mt-4">{error}</div>}
+      {hasFetched && !loading && !error && (
+        <div className="overflow-x-auto mt-6">
           <table className="min-w-full bg-white rounded-lg shadow text-sm">
             <thead>
               <tr className="bg-gray-100">
