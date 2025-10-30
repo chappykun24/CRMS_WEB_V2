@@ -487,9 +487,9 @@ const Assessments = () => {
             {activeTab === 'assessments' && (
               <div className="px-8 h-full">
             {/* Assessment Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
               {/* Main Content - Assessments Table */}
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-4">
                 {/* Search Bar and Create Button - Only show when subject is selected */}
                 {selectedClass && (
                   <div className="flex items-center gap-3 mb-3">
@@ -583,17 +583,10 @@ const Assessments = () => {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredAssessments.map((assessment) => (
                               <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                                <td className="px-8 py-4">
-                                  <div className="flex items-center">
-                                    <div className="flex-shrink-0 h-10 w-10">
-                                      <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                        <div className="h-5 w-5 bg-gray-300 rounded"></div>
-                                      </div>
-                                    </div>
-                                    <div className="ml-4">
-                                      <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
-                                      <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
-                                    </div>
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
+                                    <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
                                   </div>
                                 </td>
                                 <td className="px-8 py-4">
@@ -722,7 +715,7 @@ const Assessments = () => {
                         </div>
                       </div>
                     )}
-                  </div>image.png
+                  </div>
                 </div>
               </div>
             </div>

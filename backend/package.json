@@ -8,7 +8,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "echo 'No build step required'",
-    "test": "echo 'No tests specified'"
+    "test": "echo 'No tests specified'",
+    "create-assessments": "node scripts/create-assessments.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
