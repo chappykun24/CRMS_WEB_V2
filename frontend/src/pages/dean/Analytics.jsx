@@ -41,27 +41,29 @@ const Analytics = () => {
       )}
       {hasFetched && error && <div className="text-red-600 mt-4">{error}</div>}
       {hasFetched && !loading && !error && (
-        <div className="overflow-x-auto mt-6">
-          <table className="min-w-full bg-white rounded-lg shadow text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-4 py-2">Student Name</th>
-                <th className="px-4 py-2">Attendance %</th>
-                <th className="px-4 py-2">Average Score</th>
-                <th className="px-4 py-2">Avg Days Late</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row) => (
-                <tr key={row.student_id} className="border-b">
-                  <td className="px-4 py-2">{row.full_name}</td>
-                  <td className="px-4 py-2">{row.attendance_percentage ?? 'N/A'}</td>
-                  <td className="px-4 py-2">{row.average_score ?? 'N/A'}</td>
-                  <td className="px-4 py-2">{row.average_days_late ?? 'N/A'}</td>
+        <div className="mt-6 overflow-x-auto">
+          <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg shadow-sm">
+            <table className="min-w-full bg-white text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Student Name</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Attendance %</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Average Score</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Avg Days Late</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.map((row) => (
+                  <tr key={row.student_id} className="border-b last:border-b-0">
+                    <td className="px-4 py-2 whitespace-nowrap">{row.full_name}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{row.attendance_percentage ?? 'N/A'}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{row.average_score ?? 'N/A'}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">{row.average_days_late ?? 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
