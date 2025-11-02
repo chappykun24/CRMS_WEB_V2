@@ -375,7 +375,68 @@ router.get('/dean-analytics/sample', async (req, res) => {
       LIMIT 200;
     `;
     const result = await db.query(query);
-    res.json({ success: true, data: result.rows });
+
+    const students = result.rows;
+    const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || process.env.CLUSTER_API_URL;
+    let dataWithClusters = students;
+
+    if (clusterServiceUrl) {
+      const sanitizedPayload = students.map((row) => ({
+        ...row,
+        attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined
+          ? Number(row.attendance_percentage)
+          : null,
+        average_score: row.average_score !== null && row.average_score !== undefined
+          ? Number(row.average_score)
+          : null,
+        average_days_late: row.average_days_late !== null && row.average_days_late !== undefined
+          ? Number(row.average_days_late)
+          : null,
+      }));
+
+      try {
+        const normalizedUrl = clusterServiceUrl.endsWith('/')
+          ? clusterServiceUrl.slice(0, -1)
+          : clusterServiceUrl;
+
+        const response = await fetch(`${normalizedUrl}/api/cluster`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sanitizedPayload),
+        });
+
+        if (response.ok) {
+          const clusterResults = await response.json();
+          const clusterMap = new Map(
+            clusterResults.map((item) => [item.student_id, item])
+          );
+
+          dataWithClusters = students.map((row) => {
+            const clusterInfo = clusterMap.get(row.student_id);
+            return {
+              ...row,
+              cluster: clusterInfo?.cluster ?? null,
+              cluster_label: clusterInfo?.cluster_label ?? null,
+            };
+          });
+        } else {
+          const errorText = await response.text();
+          console.error('Dean analytics clustering request failed:', response.status, errorText);
+        }
+      } catch (clusterError) {
+        console.error('Dean analytics clustering error:', clusterError);
+      }
+    } else if (process.env.NODE_ENV !== 'production') {
+      console.warn('Dean analytics clustering disabled: CLUSTER_SERVICE_URL not set');
+    }
+
+    res.json({
+      success: true,
+      data: dataWithClusters,
+      clustering: {
+        enabled: Boolean(clusterServiceUrl),
+      },
+    });
   } catch (error) {
     console.error('Dean analytics error:', error);
     res.status(500).json({ success: false, error: error.message });
