@@ -8,21 +8,38 @@ const Analytics = () => {
   const [clusterMeta, setClusterMeta] = useState({ enabled: false });
 
   const handleFetch = () => {
+    console.log('🔍 [Analytics] Starting fetch...');
     setLoading(true);
     setError(null);
     fetch('/api/assessments/dean-analytics/sample')
-      .then((res) => res.json())
+      .then((res) => {
+        console.log('📡 [Analytics] Response status:', res.status);
+        return res.json();
+      })
       .then((json) => {
+        console.log('✅ [Analytics] Received data:', json);
+        console.log('🎯 [Analytics] Clustering enabled:', json.clustering?.enabled);
+        console.log('📊 [Analytics] Sample data:', json.data?.slice(0, 3));
+        
         if (json.success) {
           setData(json.data || []);
           setClusterMeta(json.clustering || { enabled: false });
+          
+          // Log cluster distribution
+          const clusterCounts = json.data?.reduce((acc, row) => {
+            const cluster = row.cluster_label || 'Not Clustered';
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('📈 [Analytics] Cluster distribution:', clusterCounts);
         } else {
           setError('Failed to load analytics');
         }
         setLoading(false);
         setHasFetched(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('❌ [Analytics] Fetch error:', err);
         setError('Unable to fetch analytics');
         setLoading(false);
         setHasFetched(true);

@@ -349,6 +349,7 @@ router.get('/:id/students', async (req, res) => {
 
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
+  console.log('🔍 [Backend] Dean analytics endpoint called');
   try {
     // Sample SQL for demo: fetch attendance rate, average score, average days late by student
     const query = `
@@ -375,15 +376,19 @@ router.get('/dean-analytics/sample', async (req, res) => {
       LIMIT 200;
     `;
     const result = await db.query(query);
+    console.log('✅ [Backend] Fetched', result.rows.length, 'students from database');
 
     const students = result.rows;
     // Default to localhost for development if not set
     const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || 
                                process.env.CLUSTER_API_URL || 
                                (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
+    console.log('🎯 [Backend] Cluster service URL:', clusterServiceUrl);
+    console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV);
     let dataWithClusters = students;
 
     if (clusterServiceUrl) {
+      console.log('🚀 [Backend] Attempting to call clustering API...');
       const sanitizedPayload = students.map((row) => ({
         ...row,
         attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined
@@ -396,20 +401,26 @@ router.get('/dean-analytics/sample', async (req, res) => {
           ? Number(row.average_days_late)
           : null,
       }));
+      console.log('📦 [Backend] Sending', sanitizedPayload.length, 'students to clustering API');
 
       try {
         const normalizedUrl = clusterServiceUrl.endsWith('/')
           ? clusterServiceUrl.slice(0, -1)
           : clusterServiceUrl;
+        const clusterEndpoint = `${normalizedUrl}/api/cluster`;
+        console.log('🌐 [Backend] Calling:', clusterEndpoint);
 
-        const response = await fetch(`${normalizedUrl}/api/cluster`, {
+        const response = await fetch(clusterEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sanitizedPayload),
         });
 
+        console.log('📡 [Backend] Clustering API response status:', response.status);
+
         if (response.ok) {
           const clusterResults = await response.json();
+          console.log('✅ [Backend] Received', clusterResults.length, 'clustered results');
           const clusterMap = new Map(
             clusterResults.map((item) => [item.student_id, item])
           );
@@ -422,15 +433,24 @@ router.get('/dean-analytics/sample', async (req, res) => {
               cluster_label: clusterInfo?.cluster_label ?? null,
             };
           });
+          
+          // Log cluster distribution
+          const clusterCounts = dataWithClusters.reduce((acc, row) => {
+            const cluster = row.cluster_label || 'Not Clustered';
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('📈 [Backend] Cluster distribution:', clusterCounts);
         } else {
           const errorText = await response.text();
-          console.error('Dean analytics clustering request failed:', response.status, errorText);
+          console.error('❌ [Backend] Clustering request failed:', response.status, errorText);
         }
       } catch (clusterError) {
-        console.error('Dean analytics clustering error:', clusterError);
+        console.error('❌ [Backend] Clustering error:', clusterError.message);
+        console.error('Stack:', clusterError.stack);
       }
-    } else if (process.env.NODE_ENV !== 'production') {
-      console.warn('Dean analytics clustering disabled: CLUSTER_SERVICE_URL not set');
+    } else {
+      console.warn('⚠️  [Backend] Clustering disabled: CLUSTER_SERVICE_URL not set');
     }
 
     res.json({
