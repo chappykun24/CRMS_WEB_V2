@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: crms-backend-api
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+  - type: web
+    name: crms-cluster-api
+    env: python3
+    plan: free
+    rootDir: python-cluster-api
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 10000
+

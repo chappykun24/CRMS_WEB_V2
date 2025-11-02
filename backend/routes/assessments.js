@@ -377,7 +377,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const result = await db.query(query);
 
     const students = result.rows;
-    const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || process.env.CLUSTER_API_URL;
+    // Default to localhost for development if not set
+    const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || 
+                               process.env.CLUSTER_API_URL || 
+                               (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
     let dataWithClusters = students;
 
     if (clusterServiceUrl) {

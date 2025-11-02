@@ -112,11 +112,13 @@ chmod +x setup-project.sh test-local.sh deploy-vercel.sh
 
 ### Deployment URLs (After Setup)
 - **Backend API**: `https://crms-backend-api.onrender.com`
+- **Cluster API**: `https://crms-cluster-api.onrender.com` (KMeans clustering)
 - **Frontend App**: `https://your-app.vercel.app`
 - **Database**: Neon PostgreSQL (managed)
 
 ## 📚 Documentation
 
+- **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** - Complete deployment guide with clustering
 - **[Deployment Summary](./RENDER_DEPLOYMENT_SUMMARY.md)** - Quick deployment overview
 - **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment guide
 - **[Setup Guide](./RENDER_SETUP_GUIDE.md)** - Detailed setup instructions
@@ -135,6 +137,12 @@ NEON_USER=your-username
 NEON_PASSWORD=your-password
 JWT_SECRET=your-jwt-secret
 FRONTEND_URL=https://your-frontend.vercel.app
+CLUSTER_SERVICE_URL=https://crms-cluster-api.onrender.com
+```
+
+### Cluster API (Render)
+```bash
+PORT=10000
 ```
 
 ### Frontend (Vercel)
