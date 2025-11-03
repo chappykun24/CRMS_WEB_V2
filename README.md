@@ -31,7 +31,7 @@ CRMS_WEB_V2/
 │   ├── middleware/             # Authentication, error handling
 │   ├── controllers/            # Business logic
 │   ├── routes/                 # API routes
-│   ├── server-render.js        # Optimized for Render
+│   ├── server.js               # Main server file
 │   └── package.json            # Backend dependencies
 ├── frontend/                   # React Frontend
 │   ├── src/                    # Source code
@@ -39,10 +39,11 @@ CRMS_WEB_V2/
 │   └── package.json            # Frontend dependencies
 ├── db/                         # Database schema
 │   └── crms_v2_database.sql    # Consolidated schema
-└── docs/                       # Documentation
-    ├── RENDER_DEPLOYMENT_SUMMARY.md   # Quick overview
-    ├── DEPLOYMENT_CHECKLIST.md        # Step-by-step guide
-    └── RENDER_SETUP_GUIDE.md          # Detailed setup
+├── python-cluster-api/         # Python clustering API
+│   ├── app.py                  # Flask API
+│   ├── requirements.txt        # Dependencies
+│   └── README.md               # Setup guide
+└── deploy-vercel.bat           # Deployment script
 ```
 
 ## 🚀 Quick Start
@@ -99,15 +100,7 @@ This guide covers:
 
 ```bash
 # Windows
-setup-project.bat
-test-local.bat
 deploy-vercel.bat
-
-# Linux/Mac
-chmod +x setup-project.sh test-local.sh deploy-vercel.sh
-./setup-project.sh
-./test-local.sh
-./deploy-vercel.sh
 ```
 
 ### Deployment URLs (After Setup)
@@ -119,11 +112,8 @@ chmod +x setup-project.sh test-local.sh deploy-vercel.sh
 ## 📚 Documentation
 
 - **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** - Complete deployment guide with clustering
-- **[Deployment Summary](./RENDER_DEPLOYMENT_SUMMARY.md)** - Quick deployment overview
-- **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment guide
-- **[Setup Guide](./RENDER_SETUP_GUIDE.md)** - Detailed setup instructions
-- **[Code Improvements](./CODE_STRUCTURE_IMPROVEMENTS.md)** - Code structure improvements
-- **[Database Schema](./db/DATABASE_CONSOLIDATION_SUMMARY.md)** - Database changes summary
+- **[Backend API](./backend/README.md)** - Backend API documentation
+- **[Python Cluster API](./python-cluster-api/README.md)** - Clustering API documentation
 
 ## 🔧 Environment Variables
 
