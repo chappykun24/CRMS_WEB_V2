@@ -1,11 +1,20 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChartBarIcon, UsersIcon, BookOpenIcon, AcademicCapIcon, ClockIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
+import { trackEvent } from '../../utils/analytics'
 
 const Analytics = () => {
   const [sidebarExpanded] = useState(true) // Default to expanded
   const [selectedPeriod, setSelectedPeriod] = useState('current')
   const [selectedProgram, setSelectedProgram] = useState('')
+
+  useEffect(() => {
+    trackEvent('pc_analytics_viewed')
+  }, [])
+
+  useEffect(() => {
+    trackEvent('pc_analytics_filter_changed', { selectedPeriod, selectedProgram })
+  }, [selectedPeriod, selectedProgram])
 
   return (
     <>
