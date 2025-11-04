@@ -140,11 +140,13 @@ def cluster_records(records):
     
     clustered_count = 0
     for record in result:
-        # Handle NaN values in cluster_label
-        if pd.isna(record.get('cluster_label')):
-            record['cluster_label'] = None
+        # Handle NaN values in ALL fields (pandas may leave NaN in numeric fields)
+        for key, value in record.items():
+            if pd.isna(value):
+                record[key] = None
+        
         # Ensure cluster_label is a string if it exists
-        elif record.get('cluster_label') is not None:
+        if record.get('cluster_label') is not None:
             record['cluster_label'] = str(record['cluster_label'])
             clustered_count += 1
     
@@ -204,7 +206,27 @@ def cluster_students():
     
     print(f'🚀 [Python API] Returning {len(results)} results')
     
-    response = jsonify(results)
+    # Final pass: ensure no NaN values remain (JSON doesn't support NaN)
+    import json
+    import math
+    
+    def clean_for_json(obj):
+        """Recursively clean NaN, Infinity values from dict/list for JSON serialization"""
+        if isinstance(obj, dict):
+            return {k: clean_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [clean_for_json(item) for item in obj]
+        elif isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return obj
+        elif pd.isna(obj):
+            return None
+        return obj
+    
+    cleaned_results = clean_for_json(results)
+    
+    response = jsonify(cleaned_results)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 

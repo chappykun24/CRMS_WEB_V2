@@ -433,16 +433,18 @@ router.get('/dean-analytics/sample', async (req, res) => {
       });
       console.log('📦 [Backend] Sending', sanitizedPayload.length, 'students to clustering API');
 
+      // Declare clusterEndpoint outside try block so it's available in catch
+      const normalizedUrl = clusterServiceUrl.endsWith('/')
+        ? clusterServiceUrl.slice(0, -1)
+        : clusterServiceUrl;
+      const clusterEndpoint = `${normalizedUrl}/api/cluster`;
+      
       try {
         // Respect configurable timeout to avoid hanging requests in serverless
         // Increased default timeout for Railway/cloud deployments which may be slower
         const timeoutMs = parseInt(process.env.CLUSTER_TIMEOUT_MS || '15000', 10);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        const normalizedUrl = clusterServiceUrl.endsWith('/')
-          ? clusterServiceUrl.slice(0, -1)
-          : clusterServiceUrl;
-        const clusterEndpoint = `${normalizedUrl}/api/cluster`;
         console.log('🌐 [Backend] Calling:', clusterEndpoint);
 
         const response = await fetch(clusterEndpoint, {
