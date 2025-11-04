@@ -117,7 +117,18 @@ def cluster_records(records):
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
 
     output = df.merge(df_clean[['student_id', 'cluster', 'cluster_label']], on='student_id', how='left')
-    return output.to_dict(orient='records')
+    
+    # Convert NaN to None (null in JSON) for proper serialization
+    result = output.to_dict(orient='records')
+    for record in result:
+        # Handle NaN values in cluster_label
+        if pd.isna(record.get('cluster_label')):
+            record['cluster_label'] = None
+        # Ensure cluster_label is a string if it exists
+        elif record.get('cluster_label') is not None:
+            record['cluster_label'] = str(record['cluster_label'])
+    
+    return result
 
 
 @app.route("/api/cluster", methods=["POST"])

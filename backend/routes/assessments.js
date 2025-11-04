@@ -444,16 +444,44 @@ router.get('/dean-analytics/sample', async (req, res) => {
         if (response.ok) {
           const clusterResults = await response.json();
           console.log('✅ [Backend] Received', clusterResults.length, 'clustered results');
-          const clusterMap = new Map(
-            clusterResults.map((item) => [item.student_id, item])
-          );
+          
+          // Create map with proper type handling for student_id (handle both string and number)
+          const clusterMap = new Map();
+          clusterResults.forEach((item) => {
+            // Normalize student_id to number for consistent matching
+            const studentId = typeof item.student_id === 'string' ? parseInt(item.student_id, 10) : item.student_id;
+            clusterMap.set(studentId, item);
+          });
+          
+          console.log('🔍 [Backend] Cluster map size:', clusterMap.size);
+          if (clusterResults.length > 0) {
+            console.log('📋 [Backend] Sample cluster result:', {
+              student_id: clusterResults[0].student_id,
+              cluster: clusterResults[0].cluster,
+              cluster_label: clusterResults[0].cluster_label
+            });
+          }
 
           dataWithClusters = students.map((row) => {
-            const clusterInfo = clusterMap.get(row.student_id);
+            // Normalize student_id for lookup (handle both string and number)
+            const studentId = typeof row.student_id === 'string' ? parseInt(row.student_id, 10) : row.student_id;
+            const clusterInfo = clusterMap.get(studentId);
+            
+            // Ensure cluster_label is always a string, handle null/NaN/undefined
+            let clusterLabel = clusterInfo?.cluster_label;
+            if (clusterLabel === null || clusterLabel === undefined || 
+                (typeof clusterLabel === 'number' && isNaN(clusterLabel)) ||
+                (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
+              clusterLabel = null; // Will be displayed as "Not Clustered" in frontend
+            } else {
+              // Ensure it's a string
+              clusterLabel = String(clusterLabel);
+            }
+            
             return {
               ...row,
               cluster: clusterInfo?.cluster ?? null,
-              cluster_label: clusterInfo?.cluster_label ?? null,
+              cluster_label: clusterLabel,
             };
           });
           

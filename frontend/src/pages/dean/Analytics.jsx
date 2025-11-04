@@ -45,13 +45,22 @@ const Analytics = () => {
           setData(json.data || []);
           setClusterMeta(json.clustering || { enabled: false });
           
-          // Log cluster distribution
+          // Log cluster distribution with detailed logging
           const clusterCounts = json.data?.reduce((acc, row) => {
-            const cluster = row.cluster_label || 'Not Clustered';
+            let cluster = row.cluster_label;
+            if (!cluster || 
+                cluster === null || 
+                cluster === undefined ||
+                (typeof cluster === 'number' && isNaN(cluster)) ||
+                (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+              cluster = 'Not Clustered';
+            }
             acc[cluster] = (acc[cluster] || 0) + 1;
             return acc;
           }, {});
           console.log('📈 [Analytics] Cluster distribution:', clusterCounts);
+          console.log('🔍 [Analytics] Sample row with cluster:', json.data?.[0]);
+          console.log('🔍 [Analytics] Clustering enabled status:', json.clustering?.enabled);
         } else {
           setError('Failed to load analytics');
         }
@@ -81,7 +90,12 @@ const Analytics = () => {
   };
 
   const getClusterStyle = (label) => {
-    if (!label || (typeof label === 'string' && label.toLowerCase() === 'nan')) {
+    // Handle null, undefined, NaN, empty string, or 'nan' string
+    if (!label || 
+        label === null || 
+        label === undefined ||
+        (typeof label === 'number' && isNaN(label)) ||
+        (typeof label === 'string' && (label.toLowerCase() === 'nan' || label.trim() === ''))) {
       return { text: 'Not Clustered', className: 'bg-gray-100 text-gray-600' };
     }
 
@@ -115,7 +129,15 @@ const Analytics = () => {
   const uniqueClusters = useMemo(() => {
     const clusters = new Set();
     data.forEach(row => {
-      const cluster = row.cluster_label || 'Not Clustered';
+      let cluster = row.cluster_label;
+      // Handle null, undefined, NaN, or 'nan' string
+      if (!cluster || 
+          cluster === null || 
+          cluster === undefined ||
+          (typeof cluster === 'number' && isNaN(cluster)) ||
+          (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+        cluster = 'Not Clustered';
+      }
       clusters.add(cluster);
     });
     return Array.from(clusters).sort();
@@ -128,7 +150,14 @@ const Analytics = () => {
     // Filter by cluster
     if (selectedCluster !== 'all') {
       filtered = filtered.filter(row => {
-        const cluster = row.cluster_label || 'Not Clustered';
+        let cluster = row.cluster_label;
+        if (!cluster || 
+            cluster === null || 
+            cluster === undefined ||
+            (typeof cluster === 'number' && isNaN(cluster)) ||
+            (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+          cluster = 'Not Clustered';
+        }
         return cluster === selectedCluster;
       });
     }
