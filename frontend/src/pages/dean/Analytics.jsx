@@ -29,13 +29,11 @@ const Analytics = () => {
       });
     }, 300);
 
-    {
-      const clusterUrl = import.meta.env.VITE_CLUSTER_API_URL;
-      const url = clusterUrl
-        ? `/api/assessments/dean-analytics/sample?clusterServiceUrl=${encodeURIComponent(clusterUrl)}`
-        : '/api/assessments/dean-analytics/sample';
-      fetch(url)
-    }
+    const clusterUrl = import.meta.env.VITE_CLUSTER_API_URL;
+    const url = clusterUrl
+      ? `/api/assessments/dean-analytics/sample?clusterServiceUrl=${encodeURIComponent(clusterUrl)}`
+      : '/api/assessments/dean-analytics/sample';
+    fetch(url)
       .then((res) => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
