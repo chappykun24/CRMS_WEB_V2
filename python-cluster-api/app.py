@@ -10,6 +10,10 @@ CORS(app)
 def cluster_records(records):
     df = pd.DataFrame(records)
     
+    # Ensure student_id is integer for consistent merging
+    if 'student_id' in df.columns:
+        df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
+    
     # Define features based on student behavior: grades, submissions, attendance
     # If submission_rate is not provided, calculate it or use a default
     if 'submission_rate' not in df.columns:
@@ -36,14 +40,23 @@ def cluster_records(records):
         mask = df['submission_rate'].isna()
         # Estimate submission rate: high attendance + low days late = high submission rate
         df.loc[mask, 'submission_rate'] = (
-            (df.loc[mask, 'attendance_percentage'] / 100) * 0.9 + 
-            (1 - (df.loc[mask, 'average_days_late'] / 10).clip(0, 1)) * 0.1
+            (df.loc[mask, 'attendance_percentage'].fillna(0) / 100) * 0.9 + 
+            (1 - (df.loc[mask, 'average_days_late'].fillna(0) / 10).clip(0, 1)) * 0.1
         ).clip(0, 1).fillna(0.8)
 
-    df_clean = df.dropna(subset=['attendance_percentage', 'average_score', 'average_days_late']).copy()
+    # Fill missing values with defaults instead of dropping students
+    # This ensures all students get clustered, even with incomplete data
+    df_clean = df.copy()
     
-    # Fill any remaining NaN in submission_rate
-    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)
+    # Fill null values with defaults (0 for scores/days late, 50% for attendance if completely missing)
+    df_clean['attendance_percentage'] = df_clean['attendance_percentage'].fillna(50.0)  # Default to 50% if null
+    df_clean['average_score'] = df_clean['average_score'].fillna(0.0)  # Default to 0 if null
+    df_clean['average_days_late'] = df_clean['average_days_late'].fillna(0.0)  # Default to 0 if null
+    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.5)  # Default to 50% if null
+    
+    # Ensure all values are numeric (handle any remaining edge cases)
+    for col in features:
+        df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0.0)
     
     if len(df_clean) == 0:
         output = df.copy()
@@ -116,10 +129,16 @@ def cluster_records(records):
     
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
 
+    # Ensure student_id types match for merge (both should be Int64)
+    df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
+    df_clean['student_id'] = pd.to_numeric(df_clean['student_id'], errors='coerce').astype('Int64')
+    
     output = df.merge(df_clean[['student_id', 'cluster', 'cluster_label']], on='student_id', how='left')
     
     # Convert NaN to None (null in JSON) for proper serialization
     result = output.to_dict(orient='records')
+    
+    clustered_count = 0
     for record in result:
         # Handle NaN values in cluster_label
         if pd.isna(record.get('cluster_label')):
@@ -127,6 +146,9 @@ def cluster_records(records):
         # Ensure cluster_label is a string if it exists
         elif record.get('cluster_label') is not None:
             record['cluster_label'] = str(record['cluster_label'])
+            clustered_count += 1
+    
+    print(f'📊 [Python API] Clustering summary: {clustered_count} students with cluster_label, {len(result) - clustered_count} without')
     
     return result
 
@@ -153,7 +175,21 @@ def cluster_students():
         return jsonify({'error': 'Data must be a list of student records'}), 400
     
     print(f'📦 [Python API] Received {len(data)} students')
+    
+    # Log sample input data
+    if len(data) > 0:
+        sample = data[0]
+        print(f'📋 [Python API] Sample input: student_id={sample.get("student_id")}, '
+              f'attendance={sample.get("attendance_percentage")}, '
+              f'score={sample.get("average_score")}, '
+              f'days_late={sample.get("average_days_late")}, '
+              f'submission_rate={sample.get("submission_rate")}')
+    
     results = cluster_records(data)
+    
+    # Log how many got clustered
+    clustered_count = sum(1 for r in results if r.get('cluster_label') and r.get('cluster_label') != 'Not Clustered')
+    print(f'✅ [Python API] Successfully clustered {clustered_count} out of {len(results)} students')
 
     # Log cluster distribution for visibility
     df_results = pd.DataFrame(results)

@@ -403,21 +403,34 @@ router.get('/dean-analytics/sample', async (req, res) => {
 
     if (clusterServiceUrl && process.env.DISABLE_CLUSTERING !== '1') {
       console.log('🚀 [Backend] Attempting to call clustering API...');
-      const sanitizedPayload = students.map((row) => ({
-        ...row,
-        attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined
-          ? Number(row.attendance_percentage)
-          : null,
-        average_score: row.average_score !== null && row.average_score !== undefined
-          ? Number(row.average_score)
-          : null,
-        average_days_late: row.average_days_late !== null && row.average_days_late !== undefined
-          ? Number(row.average_days_late)
-          : null,
-        submission_rate: row.submission_rate !== null && row.submission_rate !== undefined
-          ? Number(row.submission_rate)
-          : null,
-      }));
+      const sanitizedPayload = students.map((row) => {
+        // Log sample data being sent
+        if (students.indexOf(row) === 0) {
+          console.log('📤 [Backend] Sample student data being sent:', {
+            student_id: row.student_id,
+            attendance_percentage: row.attendance_percentage,
+            average_score: row.average_score,
+            average_days_late: row.average_days_late,
+            submission_rate: row.submission_rate
+          });
+        }
+        
+        return {
+          student_id: row.student_id,
+          attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined && !isNaN(row.attendance_percentage)
+            ? Number(row.attendance_percentage)
+            : null,
+          average_score: row.average_score !== null && row.average_score !== undefined && !isNaN(row.average_score)
+            ? Number(row.average_score)
+            : null,
+          average_days_late: row.average_days_late !== null && row.average_days_late !== undefined && !isNaN(row.average_days_late)
+            ? Number(row.average_days_late)
+            : null,
+          submission_rate: row.submission_rate !== null && row.submission_rate !== undefined && !isNaN(row.submission_rate)
+            ? Number(row.submission_rate)
+            : null,
+        };
+      });
       console.log('📦 [Backend] Sending', sanitizedPayload.length, 'students to clustering API');
 
       try {
@@ -559,13 +572,30 @@ router.get('/dean-analytics/sample', async (req, res) => {
       console.log(`📈 [Backend] Students with cluster_label: ${withCluster} / ${dataWithClusters.length}`);
     }
 
+    // Determine clustering API platform from the URL
+    let clusterPlatform = 'Unknown';
+    if (clusterServiceUrl) {
+      if (clusterServiceUrl.includes('railway')) {
+        clusterPlatform = 'Railway';
+      } else if (clusterServiceUrl.includes('render')) {
+        clusterPlatform = 'Render';
+      } else if (clusterServiceUrl.includes('fly.io')) {
+        clusterPlatform = 'Fly.io';
+      } else if (clusterServiceUrl.includes('vercel')) {
+        clusterPlatform = 'Vercel';
+      } else {
+        clusterPlatform = 'Custom';
+      }
+    }
+    
     res.json({
       success: true,
       data: dataWithClusters,
       clustering: {
         enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
-        platform,
-        serviceUrl: clusterServiceUrl ? 'configured' : 'not configured'
+        backendPlatform: platform,  // Where the backend is hosted
+        apiPlatform: clusterPlatform,  // Where the clustering API is hosted
+        serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
       },
     });
   } catch (error) {

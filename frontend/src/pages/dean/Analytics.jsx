@@ -61,6 +61,8 @@ const Analytics = () => {
           console.log('📈 [Analytics] Cluster distribution:', clusterCounts);
           console.log('🔍 [Analytics] Sample row with cluster:', json.data?.[0]);
           console.log('🔍 [Analytics] Clustering enabled status:', json.clustering?.enabled);
+          console.log('🔍 [Analytics] Backend platform:', json.clustering?.backendPlatform);
+          console.log('🔍 [Analytics] Clustering API platform:', json.clustering?.apiPlatform);
         } else {
           setError('Failed to load analytics');
         }
@@ -282,6 +284,9 @@ const Analytics = () => {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-green-800 text-sm">
                   <span className="font-semibold">✅ Clustering Active:</span> Student behavior analysis is enabled.
+                  {clusterMeta.apiPlatform && (
+                    <span className="ml-2 text-xs">(API hosted on {clusterMeta.apiPlatform})</span>
+                  )}
                 </p>
               </div>
             )}
