@@ -44,9 +44,36 @@ const Analytics = () => {
     }, 300);
 
     fetch('/api/assessments/dean-analytics/sample')
-      .then((res) => {
+      .then(async (res) => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
+        
+        // Check if response is OK (200-299)
+        if (!res.ok) {
+          // Try to parse as JSON first, but fallback to text for HTML error pages
+          let errorData;
+          const contentType = res.headers.get('content-type');
+          try {
+            if (contentType && contentType.includes('application/json')) {
+              errorData = await res.json();
+            } else {
+              const errorText = await res.text();
+              console.error('❌ [Analytics] Non-JSON error response:', errorText.substring(0, 200));
+              errorData = { 
+                success: false, 
+                error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable. The server may be down or the request timed out.' : errorText.substring(0, 100)}`
+              };
+            }
+          } catch (parseError) {
+            console.error('❌ [Analytics] Failed to parse error response:', parseError);
+            errorData = { 
+              success: false, 
+              error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable or request timed out.' : 'Unable to parse error response'}`
+            };
+          }
+          throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        
         return res.json();
       })
       .then((json) => {
@@ -94,7 +121,11 @@ const Analytics = () => {
       })
       .catch((err) => {
         console.error('❌ [Analytics] Fetch error:', err);
-        setError('Unable to fetch analytics');
+        // Display more specific error messages
+        const errorMessage = err?.message || 'Unable to fetch analytics';
+        setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
+          ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
+          : errorMessage);
         setProgress(0);
         setLoading(false);
         setHasFetched(true);

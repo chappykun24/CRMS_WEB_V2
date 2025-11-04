@@ -249,3 +249,7 @@ secrets/
 # END OF GITIGNORE
 # ==========================================
 .vercel
+backend/scripts/assessment_table_info.md
+backend/scripts/check_assessments_table.js
+backend/scripts/README_sample_data.md
+backend/scripts/generate_sample_assessment_data.js

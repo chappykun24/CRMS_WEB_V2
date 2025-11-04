@@ -350,6 +350,19 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
+  
+  // Set a timeout to prevent hanging requests
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error('❌ [Backend] Request timeout - taking too long');
+      res.status(504).json({ 
+        success: false, 
+        error: 'Request timeout - the query is taking too long to execute',
+        timeout: true
+      });
+    }
+  }, 25000); // 25 second timeout (before proxy timeout)
+  
   try {
     // Fetch student analytics: attendance, average score, average days late, and submission rate
     // Using subqueries for accurate calculations per student
@@ -632,6 +645,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
       }
     }
     
+    clearTimeout(timeout);
     res.json({
       success: true,
       data: dataWithClusters,
@@ -643,13 +657,34 @@ router.get('/dean-analytics/sample', async (req, res) => {
       },
     });
   } catch (error) {
+    clearTimeout(timeout);
     console.error('❌ [Backend] Dean analytics error:', error);
     console.error('❌ [Backend] Error stack:', error.stack);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to load analytics',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    
+    // Detect specific error types
+    let statusCode = 500;
+    let errorMessage = error.message || 'Failed to load analytics';
+    
+    // Database connection errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND') {
+      statusCode = 503; // Service Unavailable
+      errorMessage = 'Database connection failed. Please try again in a moment.';
+    } else if (error.code === '57P01' || error.message?.includes('terminating connection')) {
+      statusCode = 503;
+      errorMessage = 'Database connection was terminated. Please try again.';
+    } else if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+      statusCode = 504; // Gateway Timeout
+      errorMessage = 'Database query timeout. The request took too long to execute.';
+    }
+    
+    if (!res.headersSent) {
+      res.status(statusCode).json({ 
+        success: false, 
+        error: errorMessage,
+        errorCode: error.code,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
   }
 });
 
