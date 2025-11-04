@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import authService from '../services/authService'
+import { identifyUser, trackEvent } from '../services/analyticsService'
 
 const UnifiedAuthContext = createContext()
 
@@ -142,6 +143,12 @@ export const UnifiedAuthProvider = ({ children }) => {
           payload: { user: result.user, token: result.token } 
         })
         console.log('[UnifiedAuth] LOGIN_SUCCESS with basic data', { user: result.user, token: result.token })
+
+        try {
+          identifyUser(result.user)
+          const role = String(result.user?.role_name || result.user?.role || '')
+          trackEvent('login_success', { role })
+        } catch (_) {}
         
         // Try to fetch full user profile in the background (non-blocking)
         try {
@@ -157,6 +164,11 @@ export const UnifiedAuthProvider = ({ children }) => {
               payload: { user: profileResult.user } 
             })
             console.log('[UnifiedAuth] User profile updated with full data')
+            try {
+              identifyUser(profileResult.user)
+              const role = String(profileResult.user?.role_name || profileResult.user?.role || '')
+              trackEvent('profile_refreshed', { role })
+            } catch (_) {}
           } else {
             console.warn('[UnifiedAuth] Failed to fetch full profile, keeping basic login data')
           }
@@ -221,6 +233,7 @@ export const UnifiedAuthProvider = ({ children }) => {
     
     // Update state
     dispatch({ type: 'LOGOUT' })
+    try { trackEvent('logout') } catch (_) {}
   }
 
   const clearError = () => {
