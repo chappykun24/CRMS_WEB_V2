@@ -6,12 +6,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and startup script
 COPY app.py .
+COPY start.sh .
 
-# Expose port (Fly.io/Railway will set PORT)
+# Make startup script executable
+RUN chmod +x start.sh
+
+# Expose port (Railway will set PORT)
 EXPOSE 10000
 
-# Run the application (PORT from environment, defaults to 10000)
-CMD sh -c "gunicorn app:app --bind 0.0.0.0:${PORT:-10000}"
-
+# Run the application using the startup script
+CMD ./start.sh
