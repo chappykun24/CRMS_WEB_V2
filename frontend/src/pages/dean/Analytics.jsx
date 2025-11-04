@@ -328,9 +328,8 @@ const Analytics = () => {
         }
       `}</style>
       <div className="p-6 overflow-y-auto h-full">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          {!hasFetched && (
+        {!hasFetched && (
+          <div className="flex justify-end mb-6">
             <button
               className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 shadow-sm"
               onClick={() => { try { trackEvent('dean_analytics_load_clicked') } catch {}; handleFetch() }}
@@ -348,8 +347,8 @@ const Analytics = () => {
                 </>
               )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Progress Bar */}
         {loading && (
@@ -383,213 +382,219 @@ const Analytics = () => {
 
         {/* Main Content */}
         {hasFetched && !loading && !error && (
-          <div className="space-y-6">
-            {/* Statistics Cards */}
-            {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600 mb-1">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.avgAttendance}%</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600 mb-1">Avg Score</p>
-                  <p className="text-2xl font-bold text-emerald-600">{stats.avgScore}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600 mb-1">Avg Days Late</p>
-                  <p className="text-2xl font-bold text-orange-600">{stats.avgDaysLate}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <p className="text-sm text-gray-600 mb-1">Avg Submission Rate</p>
-                  <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
-                </div>
-              </div>
-            )}
-
-            {/* Charts Section */}
-            {chartData && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Cluster Distribution Pie Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Cluster Distribution</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie
-                        data={chartData.clusterData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={60}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {chartData.clusterData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Attendance Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Attendance Distribution</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={chartData.attendanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Bar dataKey="students" fill={COLORS.bar} name="Students" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Score Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Average Score Distribution</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={chartData.scoreData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Submission Rate Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Submission Rate Distribution</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={chartData.submissionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Bar dataKey="students" fill="#8b5cf6" name="Students" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {/* Filters */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                {/* Search */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by student name..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Cluster Filter */}
-                {uniqueClusters.length > 0 && (
-                  <div className="md:w-64">
+          <div className="flex gap-6">
+            {/* Main Content Area - Left Side */}
+            <div className="flex-1 space-y-6">
+              {/* Filters */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* Search */}
+                  <div className="flex-1">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={selectedCluster}
-                        onChange={(e) => setSelectedCluster(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
-                      >
-                        <option value="all">All Clusters ({data.length})</option>
-                        {uniqueClusters.map(cluster => (
-                          <option key={cluster} value={cluster}>
-                            {cluster} ({data.filter(d => (d.cluster_label || 'Not Clustered') === cluster).length})
-                          </option>
-                        ))}
-                      </select>
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by student name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                      />
                     </div>
                   </div>
+
+                  {/* Cluster Filter */}
+                  {uniqueClusters.length > 0 && (
+                    <div className="md:w-64">
+                      <div className="relative">
+                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <select
+                          value={selectedCluster}
+                          onChange={(e) => setSelectedCluster(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                        >
+                          <option value="all">All Clusters ({data.length})</option>
+                          {uniqueClusters.map(cluster => (
+                            <option key={cluster} value={cluster}>
+                              {cluster} ({data.filter(d => (d.cluster_label || 'Not Clustered') === cluster).length})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter Results Count */}
+                {filteredData.length !== data.length && (
+                  <p className="mt-3 text-sm text-gray-600">
+                    Showing {filteredData.length} of {data.length} students
+                  </p>
                 )}
               </div>
 
-              {/* Filter Results Count */}
-              {filteredData.length !== data.length && (
-                <p className="mt-3 text-sm text-gray-600">
-                  Showing {filteredData.length} of {data.length} students
-                </p>
-              )}
+              {/* Data Table */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                  {filteredData.length === 0 ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="text-center">
+                        <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No data found</h3>
+                        <p className="text-gray-500">Try adjusting your filters or search query.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="min-w-full bg-white text-sm">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance %</th>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Average Score</th>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Avg Days Late</th>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submission Rate</th>
+                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {filteredData.map((row) => {
+                          const clusterStyle = getClusterStyle(row.cluster_label);
+
+                          return (
+                            <tr key={row.student_id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                                {row.attendance_percentage !== null && row.attendance_percentage !== undefined 
+                                  ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                                {row.average_score !== null && row.average_score !== undefined 
+                                  ? parseFloat(row.average_score).toFixed(1) 
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                                {row.average_days_late !== null && row.average_days_late !== undefined 
+                                  ? parseFloat(row.average_days_late).toFixed(1) 
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                                {row.submission_rate !== null && row.submission_rate !== undefined 
+                                  ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                  {clusterStyle.text}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Data Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="max-h-96 overflow-y-auto">
-                {filteredData.length === 0 ? (
-                  <div className="flex items-center justify-center py-16">
-                    <div className="text-center">
-                      <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No data found</h3>
-                      <p className="text-gray-500">Try adjusting your filters or search query.</p>
-                    </div>
+            {/* Right Sidebar - Statistics and Charts */}
+            <div className="w-80 space-y-4 overflow-y-auto max-h-[calc(100vh-100px)]">
+              {/* Statistics Cards */}
+              {stats && (
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <p className="text-xs text-gray-500 mb-1">Total Students</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
                   </div>
-                ) : (
-                  <table className="min-w-full bg-white text-sm">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance %</th>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Average Score</th>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Avg Days Late</th>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submission Rate</th>
-                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredData.map((row) => {
-                        const clusterStyle = getClusterStyle(row.cluster_label);
+                  <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-4">
+                    <p className="text-xs text-blue-600 mb-1">Avg Attendance</p>
+                    <p className="text-3xl font-bold text-blue-600">{stats.avgAttendance}%</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg shadow-sm border border-emerald-200 p-4">
+                    <p className="text-xs text-emerald-600 mb-1">Avg Score</p>
+                    <p className="text-3xl font-bold text-emerald-600">{stats.avgScore}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-white rounded-lg shadow-sm border border-orange-200 p-4">
+                    <p className="text-xs text-orange-600 mb-1">Avg Days Late</p>
+                    <p className="text-3xl font-bold text-orange-600">{stats.avgDaysLate}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-4">
+                    <p className="text-xs text-purple-600 mb-1">Avg Submission Rate</p>
+                    <p className="text-3xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
+                  </div>
+                </div>
+              )}
 
-                        return (
-                          <tr key={row.student_id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                              {row.attendance_percentage !== null && row.attendance_percentage !== undefined 
-                                ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
-                                : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                              {row.average_score !== null && row.average_score !== undefined 
-                                ? parseFloat(row.average_score).toFixed(1) 
-                                : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                              {row.average_days_late !== null && row.average_days_late !== undefined 
-                                ? parseFloat(row.average_days_late).toFixed(1) 
-                                : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                              {row.submission_rate !== null && row.submission_rate !== undefined 
-                                ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
-                                : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${clusterStyle.className}`}>
-                                {clusterStyle.text}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              {/* Charts Section */}
+              {chartData && (
+                <div className="space-y-4">
+                  {/* Cluster Distribution Pie Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Cluster Distribution</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={chartData.clusterData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={70}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {chartData.clusterData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Attendance Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Attendance Distribution</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartData.attendanceData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 9 }} />
+                        <Tooltip />
+                        <Bar dataKey="students" fill={COLORS.bar} name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Score Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Average Score Distribution</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartData.scoreData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 9 }} />
+                        <Tooltip />
+                        <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Submission Rate Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Submission Rate Distribution</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartData.submissionData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 9 }} />
+                        <Tooltip />
+                        <Bar dataKey="students" fill="#8b5cf6" name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
