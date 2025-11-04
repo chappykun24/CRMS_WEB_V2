@@ -62,72 +62,72 @@ def get_db_connection():
 def fetch_student_data(limit: int = 200) -> List[Dict]:
     """Fetch student analytics data from the database."""
     query = """
-      WITH student_metrics AS (
-        SELECT
-          s.student_id,
-          s.full_name,
-          -- Attendance percentage: only count sessions where student is enrolled
-          COALESCE(
-            ROUND(
-              (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / 
-               NULLIF(COUNT(al.attendance_id), 0)) * 100, 
+      SELECT
+        s.student_id,
+        s.full_name,
+        -- Attendance percentage: count of present / total attendance sessions
+        COALESCE(
+          (
+            SELECT ROUND(
+              (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::NUMERIC / 
+               NULLIF(COUNT(al.attendance_id), 0)::NUMERIC) * 100, 
               2
-            ), 
-            0
-          ) AS attendance_percentage,
-          -- Average score: only from submissions that have scores
-          COALESCE(
-            ROUND(
-              AVG(CASE WHEN sub.total_score IS NOT NULL THEN sub.total_score END)::numeric,
-              2
-            ),
-            0
-          ) AS average_score,
-          -- Average days late: only calculate for submissions that are actually late
-          COALESCE(
-            ROUND(
-              AVG(
-                CASE 
-                  WHEN sub.submitted_at IS NOT NULL 
-                    AND ass.due_date IS NOT NULL 
-                    AND sub.submitted_at > ass.due_date
-                  THEN DATE_PART('day', sub.submitted_at - ass.due_date)
-                  ELSE NULL
-                END
-              )::numeric,
-              2
-            ),
-            0
-          ) AS average_days_late,
-          -- Submission rate: distinct submissions / distinct assessments
-          COALESCE(
-            ROUND(
-              (COUNT(DISTINCT sub.submission_id)::FLOAT / 
-               NULLIF(COUNT(DISTINCT ass.assessment_id), 0)),
+            )
+            FROM course_enrollments ce_att
+            LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
+            WHERE ce_att.student_id = s.student_id
+          ),
+          0
+        )::NUMERIC AS attendance_percentage,
+        -- Average score: average of all submission scores for this student
+        COALESCE(
+          (
+            SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
+            FROM course_enrollments ce_sub
+            INNER JOIN submissions sub ON ce_sub.enrollment_id = sub.enrollment_id
+            WHERE ce_sub.student_id = s.student_id
+              AND sub.total_score IS NOT NULL
+          ),
+          0
+        )::NUMERIC AS average_score,
+        -- Average days late: average of days late for submissions that were actually late
+        COALESCE(
+          (
+            SELECT ROUND(AVG(days_late)::NUMERIC, 2)
+            FROM (
+              SELECT EXTRACT(DAY FROM (sub.submitted_at - ass.due_date))::NUMERIC AS days_late
+              FROM course_enrollments ce_late
+              INNER JOIN submissions sub ON ce_late.enrollment_id = sub.enrollment_id
+              INNER JOIN assessments ass ON sub.assessment_id = ass.assessment_id
+              WHERE ce_late.student_id = s.student_id
+                AND sub.submitted_at IS NOT NULL
+                AND ass.due_date IS NOT NULL
+                AND sub.submitted_at > ass.due_date
+            ) late_submissions
+          ),
+          0
+        )::NUMERIC AS average_days_late,
+        -- Submission rate: distinct submissions / distinct assessments for this student
+        COALESCE(
+          (
+            SELECT ROUND(
+              (COUNT(DISTINCT sub.submission_id)::NUMERIC / 
+               NULLIF(COUNT(DISTINCT ass.assessment_id), 0)::NUMERIC),
               4
-            ),
-            0
-          ) AS submission_rate
-        FROM students s
-        LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
-        LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
-        LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
-        LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
-        LEFT JOIN submissions sub ON (
-          ce.enrollment_id = sub.enrollment_id 
-          AND sub.assessment_id = ass.assessment_id
-        )
-        GROUP BY s.student_id, s.full_name
-      )
-      SELECT 
-        student_id,
-        full_name,
-        attendance_percentage,
-        average_score,
-        average_days_late,
-        submission_rate
-      FROM student_metrics
-      ORDER BY full_name
+            )
+            FROM course_enrollments ce_rate
+            LEFT JOIN section_courses sc ON ce_rate.section_course_id = sc.section_course_id
+            LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
+            LEFT JOIN submissions sub ON (
+              ce_rate.enrollment_id = sub.enrollment_id 
+              AND sub.assessment_id = ass.assessment_id
+            )
+            WHERE ce_rate.student_id = s.student_id
+          ),
+          0
+        )::NUMERIC AS submission_rate
+      FROM students s
+      ORDER BY s.full_name
       LIMIT %s;
     """
     
