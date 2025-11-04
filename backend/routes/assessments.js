@@ -351,33 +351,75 @@ router.get('/:id/students', async (req, res) => {
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
   try {
-    // Sample SQL for demo: fetch attendance rate, average score, average days late, and submission rate by student
+    // Fetch student analytics: attendance, average score, average days late, and submission rate
+    // Using subqueries to ensure accurate calculations per student
     const query = `
-      SELECT
-        s.student_id,
-        s.full_name,
-        ROUND(CAST(COALESCE(AVG(sub.total_score), 0) AS numeric), 2) as average_score,
-        COUNT(al.attendance_id) as total_sessions,
-        COUNT(CASE WHEN al.status = 'present' THEN 1 END) as present_count,
-        ROUND(CAST(
-          (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / NULLIF(COUNT(al.attendance_id), 0)) * 100
-          AS numeric
-        ), 2) AS attendance_percentage,
-        ROUND(CAST(COALESCE(AVG(
-          GREATEST(0, DATE_PART('day', sub.submitted_at - ass.due_date))
-        ), 0) AS numeric), 2) as average_days_late,
-        ROUND(CAST(
-          (COUNT(DISTINCT sub.submission_id)::FLOAT / NULLIF(COUNT(DISTINCT ass.assessment_id), 0))
-          AS numeric
-        ), 4) as submission_rate
-      FROM students s
-      LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
-      LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
-      LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
-      LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
-      LEFT JOIN submissions sub ON (ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = ass.assessment_id)
-      GROUP BY s.student_id, s.full_name
-      ORDER BY s.full_name
+      WITH student_metrics AS (
+        SELECT
+          s.student_id,
+          s.full_name,
+          -- Attendance percentage: only count sessions where student is enrolled
+          COALESCE(
+            ROUND(
+              (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / 
+               NULLIF(COUNT(al.attendance_id), 0)) * 100, 
+              2
+            ), 
+            0
+          ) AS attendance_percentage,
+          -- Average score: only from submissions that have scores
+          COALESCE(
+            ROUND(
+              AVG(CASE WHEN sub.total_score IS NOT NULL THEN sub.total_score END)::numeric,
+              2
+            ),
+            0
+          ) AS average_score,
+          -- Average days late: only calculate for submissions that are actually late
+          COALESCE(
+            ROUND(
+              AVG(
+                CASE 
+                  WHEN sub.submitted_at IS NOT NULL 
+                    AND ass.due_date IS NOT NULL 
+                    AND sub.submitted_at > ass.due_date
+                  THEN DATE_PART('day', sub.submitted_at - ass.due_date)
+                  ELSE NULL
+                END
+              )::numeric,
+              2
+            ),
+            0
+          ) AS average_days_late,
+          -- Submission rate: distinct submissions / distinct assessments
+          COALESCE(
+            ROUND(
+              (COUNT(DISTINCT sub.submission_id)::FLOAT / 
+               NULLIF(COUNT(DISTINCT ass.assessment_id), 0)),
+              4
+            ),
+            0
+          ) AS submission_rate
+        FROM students s
+        LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
+        LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
+        LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+        LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
+        LEFT JOIN submissions sub ON (
+          ce.enrollment_id = sub.enrollment_id 
+          AND sub.assessment_id = ass.assessment_id
+        )
+        GROUP BY s.student_id, s.full_name
+      )
+      SELECT 
+        student_id,
+        full_name,
+        attendance_percentage,
+        average_score,
+        average_days_late,
+        submission_rate
+      FROM student_metrics
+      ORDER BY full_name
       LIMIT 200;
     `;
     const result = await db.query(query);

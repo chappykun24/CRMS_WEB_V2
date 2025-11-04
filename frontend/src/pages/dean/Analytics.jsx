@@ -2,6 +2,19 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 const Analytics = () => {
   const [data, setData] = useState([]);
@@ -197,6 +210,110 @@ const Analytics = () => {
     };
   }, [filteredData]);
 
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    if (filteredData.length === 0) return null;
+
+    // Cluster distribution for pie chart
+    const clusterDistribution = {};
+    filteredData.forEach(row => {
+      let cluster = row.cluster_label;
+      if (!cluster || 
+          cluster === null || 
+          cluster === undefined ||
+          (typeof cluster === 'number' && isNaN(cluster)) ||
+          (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+        cluster = 'Not Clustered';
+      }
+      clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
+    });
+
+    const clusterData = Object.entries(clusterDistribution).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Attendance distribution (bins: 0-20, 21-40, 41-60, 61-80, 81-100)
+    const attendanceBins = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    filteredData.forEach(row => {
+      const attendance = parseFloat(row.attendance_percentage) || 0;
+      if (attendance <= 20) attendanceBins['0-20%']++;
+      else if (attendance <= 40) attendanceBins['21-40%']++;
+      else if (attendance <= 60) attendanceBins['41-60%']++;
+      else if (attendance <= 80) attendanceBins['61-80%']++;
+      else attendanceBins['81-100%']++;
+    });
+
+    const attendanceData = Object.entries(attendanceBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    // Score distribution (bins: 0-20, 21-40, 41-60, 61-80, 81-100)
+    const scoreBins = {
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
+    };
+    filteredData.forEach(row => {
+      const score = parseFloat(row.average_score) || 0;
+      if (score <= 20) scoreBins['0-20']++;
+      else if (score <= 40) scoreBins['21-40']++;
+      else if (score <= 60) scoreBins['41-60']++;
+      else if (score <= 80) scoreBins['61-80']++;
+      else scoreBins['81-100']++;
+    });
+
+    const scoreData = Object.entries(scoreBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    // Submission rate distribution
+    const submissionBins = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    filteredData.forEach(row => {
+      const rate = (parseFloat(row.submission_rate) || 0) * 100; // Convert to percentage
+      if (rate <= 20) submissionBins['0-20%']++;
+      else if (rate <= 40) submissionBins['21-40%']++;
+      else if (rate <= 60) submissionBins['41-60%']++;
+      else if (rate <= 80) submissionBins['61-80%']++;
+      else submissionBins['81-100%']++;
+    });
+
+    const submissionData = Object.entries(submissionBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    return {
+      clusterData,
+      attendanceData,
+      scoreData,
+      submissionData
+    };
+  }, [filteredData]);
+
+  // Color palette for charts
+  const COLORS = {
+    pie: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'],
+    bar: '#3b82f6',
+    barSecondary: '#10b981'
+  };
+
   return (
     <>
       <style>{`
@@ -313,6 +430,80 @@ const Analytics = () => {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <p className="text-sm text-gray-600 mb-1">Avg Submission Rate</p>
                   <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
+                </div>
+              </div>
+            )}
+
+            {/* Charts Section */}
+            {chartData && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Cluster Distribution Pie Chart */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Cluster Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={chartData.clusterData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {chartData.clusterData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Attendance Distribution Bar Chart */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData.attendanceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="students" fill={COLORS.bar} name="Students" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Score Distribution Bar Chart */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Score Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData.scoreData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Submission Rate Distribution Bar Chart */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Submission Rate Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData.submissionData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="students" fill="#8b5cf6" name="Students" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}
