@@ -352,74 +352,66 @@ router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
   try {
     // Fetch student analytics: attendance, average score, average days late, and submission rate
-    // Using subqueries to ensure accurate calculations per student
+    // Using NUMERIC casting for ROUND compatibility
     const query = `
-      WITH student_metrics AS (
-        SELECT
-          s.student_id,
-          s.full_name,
-          -- Attendance percentage: only count sessions where student is enrolled
-          COALESCE(
-            ROUND(
-              (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / 
-               NULLIF(COUNT(al.attendance_id), 0)) * 100, 
-              2
-            ), 
-            0
-          ) AS attendance_percentage,
-          -- Average score: only from submissions that have scores
-          COALESCE(
-            ROUND(
-              AVG(CASE WHEN sub.total_score IS NOT NULL THEN sub.total_score END)::numeric,
-              2
-            ),
-            0
-          ) AS average_score,
-          -- Average days late: only calculate for submissions that are actually late
-          COALESCE(
-            ROUND(
-              AVG(
-                CASE 
-                  WHEN sub.submitted_at IS NOT NULL 
-                    AND ass.due_date IS NOT NULL 
-                    AND sub.submitted_at > ass.due_date
-                  THEN DATE_PART('day', sub.submitted_at - ass.due_date)
-                  ELSE NULL
-                END
-              )::numeric,
-              2
-            ),
-            0
-          ) AS average_days_late,
-          -- Submission rate: distinct submissions / distinct assessments
-          COALESCE(
-            ROUND(
-              (COUNT(DISTINCT sub.submission_id)::FLOAT / 
-               NULLIF(COUNT(DISTINCT ass.assessment_id), 0)),
-              4
-            ),
-            0
-          ) AS submission_rate
-        FROM students s
-        LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
-        LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
-        LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
-        LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
-        LEFT JOIN submissions sub ON (
-          ce.enrollment_id = sub.enrollment_id 
-          AND sub.assessment_id = ass.assessment_id
-        )
-        GROUP BY s.student_id, s.full_name
+      SELECT
+        s.student_id,
+        s.full_name,
+        -- Attendance percentage
+        CASE 
+          WHEN COUNT(al.attendance_id) > 0 
+          THEN ROUND(
+            (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::NUMERIC / 
+             COUNT(al.attendance_id)::NUMERIC) * 100, 
+            2
+          )::NUMERIC
+          ELSE 0
+        END AS attendance_percentage,
+        -- Average score: only from submissions with scores
+        COALESCE(
+          ROUND(
+            AVG(CASE WHEN sub.total_score IS NOT NULL THEN sub.total_score ELSE NULL END)::NUMERIC,
+            2
+          )::NUMERIC,
+          0
+        ) AS average_score,
+        -- Average days late: only for late submissions
+        COALESCE(
+          ROUND(
+            AVG(
+              CASE 
+                WHEN sub.submitted_at IS NOT NULL 
+                  AND ass.due_date IS NOT NULL 
+                  AND sub.submitted_at > ass.due_date
+                THEN EXTRACT(DAY FROM (sub.submitted_at - ass.due_date))
+                ELSE NULL
+              END
+            )::NUMERIC,
+            2
+          )::NUMERIC,
+          0
+        ) AS average_days_late,
+        -- Submission rate: distinct submissions / distinct assessments
+        CASE 
+          WHEN COUNT(DISTINCT ass.assessment_id) > 0
+          THEN ROUND(
+            (COUNT(DISTINCT sub.submission_id)::NUMERIC / 
+             COUNT(DISTINCT ass.assessment_id)::NUMERIC),
+            4
+          )::NUMERIC
+          ELSE 0
+        END AS submission_rate
+      FROM students s
+      LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
+      LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
+      LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
+      LEFT JOIN submissions sub ON (
+        ce.enrollment_id = sub.enrollment_id 
+        AND sub.assessment_id = ass.assessment_id
       )
-      SELECT 
-        student_id,
-        full_name,
-        attendance_percentage,
-        average_score,
-        average_days_late,
-        submission_rate
-      FROM student_metrics
-      ORDER BY full_name
+      GROUP BY s.student_id, s.full_name
+      ORDER BY s.full_name
       LIMIT 200;
     `;
     const result = await db.query(query);
@@ -643,8 +635,13 @@ router.get('/dean-analytics/sample', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Dean analytics error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ [Backend] Dean analytics error:', error);
+    console.error('❌ [Backend] Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Failed to load analytics',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
