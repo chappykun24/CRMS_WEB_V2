@@ -12,7 +12,7 @@ try:
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
-    print("Warning: Database connection not available. Install psycopg2-binary and python-dotenv to use --db option.", file=sys.stderr)
+    # Warning will be shown in main() if database is needed
 
 
 def load_input(path: str | None) -> List[Dict]:
@@ -20,21 +20,6 @@ def load_input(path: str | None) -> List[Dict]:
         return json.load(sys.stdin)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def demo_data() -> List[Dict]:
-    return [
-        {"student_id": 1, "attendance_percentage": 92, "average_score": 88, "average_days_late": 0.5, "submission_rate": 0.95},
-        {"student_id": 2, "attendance_percentage": 76, "average_score": 69, "average_days_late": 2.1, "submission_rate": 0.70},
-        {"student_id": 3, "attendance_percentage": 84, "average_score": 79, "average_days_late": 1.2, "submission_rate": 0.85},
-        {"student_id": 4, "attendance_percentage": 58, "average_score": 55, "average_days_late": 4.0, "submission_rate": 0.45},
-        {"student_id": 5, "attendance_percentage": 97, "average_score": 93, "average_days_late": 0.2, "submission_rate": 1.0},
-        {"student_id": 6, "attendance_percentage": 95, "average_score": 90, "average_days_late": 0.1, "submission_rate": 0.98},
-        {"student_id": 7, "attendance_percentage": 65, "average_score": 62, "average_days_late": 3.5, "submission_rate": 0.50},
-        {"student_id": 8, "attendance_percentage": 88, "average_score": 82, "average_days_late": 0.8, "submission_rate": 0.90},
-        {"student_id": 9, "attendance_percentage": 50, "average_score": 48, "average_days_late": 5.0, "submission_rate": 0.30},
-        {"student_id": 10, "attendance_percentage": 85, "average_score": 75, "average_days_late": 1.5, "submission_rate": 0.80},
-    ]
 
 
 def print_cluster_statistics(results: List[Dict]) -> None:
@@ -111,34 +96,45 @@ def print_cluster_statistics(results: List[Dict]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run clustering and print results to console")
-    group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument("--input", "-i", help="Path to JSON array of student records (or '-' for stdin)")
-    group.add_argument("--demo", action="store_true", help="Use built-in demo data")
-    group.add_argument("--db", action="store_true", help="Fetch real data from database")
+    parser = argparse.ArgumentParser(
+        description="Run clustering on real student data from database and print results to console",
+        epilog="By default, fetches real data from Neon database. Use --input to provide custom JSON data."
+    )
+    parser.add_argument("--input", "-i", help="Path to JSON array of student records (or '-' for stdin). If not provided, fetches from database.")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     parser.add_argument("--json-only", action="store_true", help="Only output JSON (no statistics)")
-    parser.add_argument("--limit", type=int, default=200, help="Limit number of students when using --db (default: 200)")
+    parser.add_argument("--limit", type=int, default=200, help="Limit number of students when fetching from database (default: 200)")
     args = parser.parse_args()
 
-    # Determine data source
-    if args.db:
-        if not DB_AVAILABLE:
-            print("Error: Database connection not available. Please install psycopg2-binary and python-dotenv.", file=sys.stderr)
-            return 1
+    # Determine data source - default to database if available
+    if args.input:
+        # User provided input file or stdin
+        records = load_input(args.input)
+    elif DB_AVAILABLE:
+        # Default: fetch from database
         print(f"Fetching real data from database (limit: {args.limit})...")
         try:
             records = fetch_student_data(limit=args.limit)
             if not records:
-                print("Warning: No student data found in database.", file=sys.stderr)
+                print("Error: No student data found in database.", file=sys.stderr)
+                print("Please ensure your database has student data and check your Neon credentials.", file=sys.stderr)
                 return 1
         except Exception as e:
             print(f"Error fetching from database: {e}", file=sys.stderr)
+            print("\nTo use database, ensure these environment variables are set:", file=sys.stderr)
+            print("  VITE_NEON_HOST or NEON_HOST", file=sys.stderr)
+            print("  VITE_NEON_DATABASE or NEON_DATABASE", file=sys.stderr)
+            print("  VITE_NEON_USER or NEON_USER", file=sys.stderr)
+            print("  VITE_NEON_PASSWORD or NEON_PASSWORD", file=sys.stderr)
+            print("\nAlternatively, provide data via --input option.", file=sys.stderr)
             return 1
-    elif args.demo or (args.input is None and not args.db):
-        records = demo_data()
     else:
-        records = load_input(args.input)
+        # Database not available and no input provided
+        print("Error: Database connection not available and no input file provided.", file=sys.stderr)
+        print("Options:", file=sys.stderr)
+        print("  1. Install psycopg2-binary and python-dotenv, then set Neon database credentials", file=sys.stderr)
+        print("  2. Provide data via --input option: python console_cluster.py --input data.json", file=sys.stderr)
+        return 1
     
     print(f"Processing {len(records)} student records...")
     
