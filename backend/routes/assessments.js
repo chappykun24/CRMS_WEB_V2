@@ -379,15 +379,22 @@ router.get('/dean-analytics/sample', async (req, res) => {
     console.log('✅ [Backend] Fetched', result.rows.length, 'students from database');
 
     const students = result.rows;
+    // Detect hosting platform for visibility
+    const platform = (
+      process.env.VERCEL ? 'Vercel' :
+      process.env.RENDER ? 'Render' :
+      process.env.RAILWAY_ENVIRONMENT ? 'Railway' :
+      'Unknown'
+    );
     // Default to localhost for development if not set
     const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || 
                                process.env.CLUSTER_API_URL || 
                                (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
     console.log('🎯 [Backend] Cluster service URL:', clusterServiceUrl);
-    console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV);
+    console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
     let dataWithClusters = students;
 
-    if (clusterServiceUrl) {
+    if (clusterServiceUrl && process.env.DISABLE_CLUSTERING !== '1') {
       console.log('🚀 [Backend] Attempting to call clustering API...');
       const sanitizedPayload = students.map((row) => ({
         ...row,
@@ -404,6 +411,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
       console.log('📦 [Backend] Sending', sanitizedPayload.length, 'students to clustering API');
 
       try {
+        // Respect configurable timeout to avoid hanging requests in serverless
+        const timeoutMs = parseInt(process.env.CLUSTER_TIMEOUT_MS || '8000', 10);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const normalizedUrl = clusterServiceUrl.endsWith('/')
           ? clusterServiceUrl.slice(0, -1)
           : clusterServiceUrl;
@@ -414,7 +425,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sanitizedPayload),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         console.log('📡 [Backend] Clustering API response status:', response.status);
 
@@ -446,7 +459,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           console.error('❌ [Backend] Clustering request failed:', response.status, errorText);
         }
       } catch (clusterError) {
-        console.error('❌ [Backend] Clustering error:', clusterError.message);
+        console.error('❌ [Backend] Clustering error:', clusterError.name === 'AbortError' ? `Timeout after ${process.env.CLUSTER_TIMEOUT_MS || 8000}ms` : clusterError.message);
         console.error('Stack:', clusterError.stack);
       }
     } else {
@@ -457,7 +470,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
       success: true,
       data: dataWithClusters,
       clustering: {
-        enabled: Boolean(clusterServiceUrl),
+        enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
+        platform,
       },
     });
   } catch (error) {
