@@ -131,10 +131,27 @@ def cluster_records(records):
     return result
 
 
-@app.route("/api/cluster", methods=["POST"])
+@app.route("/api/cluster", methods=["POST", "OPTIONS"])
 def cluster_students():
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
     print('🔍 [Python API] Received clustering request')
     data = request.get_json()
+    
+    if not data:
+        print('❌ [Python API] No data received in request')
+        return jsonify({'error': 'No data provided'}), 400
+    
+    if not isinstance(data, list):
+        print('❌ [Python API] Invalid data format. Expected list, got:', type(data))
+        return jsonify({'error': 'Data must be a list of student records'}), 400
+    
     print(f'📦 [Python API] Received {len(data)} students')
     results = cluster_records(data)
 
@@ -143,8 +160,17 @@ def cluster_students():
     if 'cluster_label' in df_results.columns:
         cluster_counts = df_results['cluster_label'].fillna('Not Clustered').value_counts().to_dict()
         print(f'📈 [Python API] Cluster distribution: {cluster_counts}')
+    
+    # Log sample result for debugging
+    if len(results) > 0:
+        sample = results[0]
+        print(f'📋 [Python API] Sample result: student_id={sample.get("student_id")}, cluster_label={sample.get("cluster_label")}')
+    
     print(f'🚀 [Python API] Returning {len(results)} results')
-    return jsonify(results)
+    
+    response = jsonify(results)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 @app.route("/", methods=["GET"])
 def health():

@@ -269,7 +269,19 @@ const Analytics = () => {
             {!clusterMeta.enabled && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-yellow-800 text-sm">
-                  <span className="font-semibold">Note:</span> Clustering service not configured. Displaying raw analytics only.
+                  <span className="font-semibold">⚠️ Warning:</span> Clustering service not configured. 
+                  Students will show "Not Clustered" until the clustering API is properly configured.
+                </p>
+                <p className="text-yellow-700 text-xs mt-2">
+                  To enable clustering, set <code className="bg-yellow-100 px-1 rounded">VITE_CLUSTER_API_URL</code> or 
+                  <code className="bg-yellow-100 px-1 rounded">CLUSTER_SERVICE_URL</code> environment variable in your backend.
+                </p>
+              </div>
+            )}
+            {clusterMeta.enabled && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-green-800 text-sm">
+                  <span className="font-semibold">✅ Clustering Active:</span> Student behavior analysis is enabled.
                 </p>
               </div>
             )}

@@ -422,7 +422,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
 
       try {
         // Respect configurable timeout to avoid hanging requests in serverless
-        const timeoutMs = parseInt(process.env.CLUSTER_TIMEOUT_MS || '8000', 10);
+        // Increased default timeout for Railway/cloud deployments which may be slower
+        const timeoutMs = parseInt(process.env.CLUSTER_TIMEOUT_MS || '15000', 10);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const normalizedUrl = clusterServiceUrl.endsWith('/')
@@ -433,7 +434,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
 
         const response = await fetch(clusterEndpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify(sanitizedPayload),
           signal: controller.signal,
         });
@@ -444,6 +448,15 @@ router.get('/dean-analytics/sample', async (req, res) => {
         if (response.ok) {
           const clusterResults = await response.json();
           console.log('✅ [Backend] Received', clusterResults.length, 'clustered results');
+          
+          if (!Array.isArray(clusterResults)) {
+            console.error('❌ [Backend] Invalid response format from clustering API. Expected array, got:', typeof clusterResults);
+            throw new Error('Invalid response format from clustering API');
+          }
+          
+          if (clusterResults.length === 0) {
+            console.warn('⚠️ [Backend] Clustering API returned empty array');
+          }
           
           // Create map with proper type handling for student_id (handle both string and number)
           const clusterMap = new Map();
@@ -462,10 +475,16 @@ router.get('/dean-analytics/sample', async (req, res) => {
             });
           }
 
-          dataWithClusters = students.map((row) => {
+          dataWithClusters = students.map((row, index) => {
             // Normalize student_id for lookup (handle both string and number)
             const studentId = typeof row.student_id === 'string' ? parseInt(row.student_id, 10) : row.student_id;
             const clusterInfo = clusterMap.get(studentId);
+            
+            // Debug: Log first few unmatched students
+            if (!clusterInfo && index < 3) {
+              console.log(`⚠️ [Backend] No cluster found for student_id: ${row.student_id} (normalized: ${studentId}), available IDs in map:`, 
+                Array.from(clusterMap.keys()).slice(0, 5));
+            }
             
             // Ensure cluster_label is always a string, handle null/NaN/undefined
             let clusterLabel = clusterInfo?.cluster_label;
@@ -492,16 +511,52 @@ router.get('/dean-analytics/sample', async (req, res) => {
             return acc;
           }, {});
           console.log('📈 [Backend] Cluster distribution:', clusterCounts);
+          console.log('📊 [Backend] Total students processed:', dataWithClusters.length);
+          console.log('📊 [Backend] Students with valid cluster_label:', 
+            dataWithClusters.filter(r => r.cluster_label && r.cluster_label !== null && r.cluster_label !== 'Not Clustered').length);
         } else {
           const errorText = await response.text();
-          console.error('❌ [Backend] Clustering request failed:', response.status, errorText);
+          console.error('❌ [Backend] Clustering request failed:', response.status);
+          console.error('❌ [Backend] Error response:', errorText.substring(0, 500));
+          console.error('❌ [Backend] Cluster endpoint called:', clusterEndpoint);
+          // Don't throw - continue without clustering, but log the error
         }
       } catch (clusterError) {
-        console.error('❌ [Backend] Clustering error:', clusterError.name === 'AbortError' ? `Timeout after ${process.env.CLUSTER_TIMEOUT_MS || 8000}ms` : clusterError.message);
-        console.error('Stack:', clusterError.stack);
+        const errorMessage = clusterError.name === 'AbortError' 
+          ? `Timeout after ${timeoutMs}ms - the clustering API may be slow or unreachable` 
+          : clusterError.message;
+        console.error('❌ [Backend] Clustering error:', errorMessage);
+        console.error('❌ [Backend] Cluster endpoint:', clusterEndpoint);
+        console.error('❌ [Backend] Error type:', clusterError.name);
+        if (clusterError.stack) {
+          console.error('Stack:', clusterError.stack);
+        }
+        // Continue without clustering - students will show "Not Clustered"
       }
     } else {
       console.warn('⚠️  [Backend] Clustering disabled: CLUSTER_SERVICE_URL not set');
+      console.warn('⚠️  [Backend] Environment check:', {
+        VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL ? 'SET' : 'NOT SET',
+        CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL ? 'SET' : 'NOT SET',
+        CLUSTER_API_URL: process.env.CLUSTER_API_URL ? 'SET' : 'NOT SET',
+        NODE_ENV: process.env.NODE_ENV,
+        DISABLE_CLUSTERING: process.env.DISABLE_CLUSTERING
+      });
+    }
+
+    // Log final data sample to verify cluster_label is present
+    if (dataWithClusters.length > 0) {
+      console.log('📊 [Backend] Final data sample (first student):', {
+        student_id: dataWithClusters[0].student_id,
+        full_name: dataWithClusters[0].full_name,
+        cluster: dataWithClusters[0].cluster,
+        cluster_label: dataWithClusters[0].cluster_label,
+        attendance_percentage: dataWithClusters[0].attendance_percentage
+      });
+      
+      // Count how many students have cluster_label
+      const withCluster = dataWithClusters.filter(row => row.cluster_label && row.cluster_label !== null).length;
+      console.log(`📈 [Backend] Students with cluster_label: ${withCluster} / ${dataWithClusters.length}`);
     }
 
     res.json({
@@ -510,6 +565,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
       clustering: {
         enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
         platform,
+        serviceUrl: clusterServiceUrl ? 'configured' : 'not configured'
       },
     });
   } catch (error) {
