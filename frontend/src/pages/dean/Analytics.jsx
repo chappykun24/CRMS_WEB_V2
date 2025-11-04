@@ -29,7 +29,13 @@ const Analytics = () => {
       });
     }, 300);
 
-    fetch('/api/assessments/dean-analytics/sample')
+    {
+      const clusterUrl = import.meta.env.VITE_CLUSTER_API_URL;
+      const url = clusterUrl
+        ? `/api/assessments/dean-analytics/sample?clusterServiceUrl=${encodeURIComponent(clusterUrl)}`
+        : '/api/assessments/dean-analytics/sample';
+      fetch(url)
+    }
       .then((res) => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
@@ -67,6 +73,14 @@ const Analytics = () => {
         setHasFetched(true);
       });
   };
+
+  // Auto-fetch on mount so clusters load without manual click
+  useEffect(() => {
+    if (!hasFetched && !loading) {
+      handleFetch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getClusterStyle = (label) => {
     if (!label) {

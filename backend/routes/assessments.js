@@ -379,11 +379,13 @@ router.get('/dean-analytics/sample', async (req, res) => {
     console.log('✅ [Backend] Fetched', result.rows.length, 'students from database');
 
     const students = result.rows;
-    // Default to localhost for development if not set
-    const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || 
-                               process.env.CLUSTER_API_URL || 
+    // Allow override via query/header, then fall back to envs, then dev default
+    const overrideUrl = req.query.clusterServiceUrl || req.headers['x-cluster-service-url'];
+    const clusterServiceUrl = overrideUrl ||
+                               process.env.CLUSTER_SERVICE_URL ||
+                               process.env.CLUSTER_API_URL ||
                                (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
-    console.log('🎯 [Backend] Cluster service URL:', clusterServiceUrl);
+    console.log('🎯 [Backend] Cluster service URL (resolved):', clusterServiceUrl);
     console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV);
     let dataWithClusters = students;
 
