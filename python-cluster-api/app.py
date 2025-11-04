@@ -15,17 +15,33 @@ def cluster_students():
     
     df = pd.DataFrame(data)
     features = ['attendance_percentage', 'average_score', 'average_days_late']
-    df_clean = df.dropna(subset=features)
+    # Ensure numeric types
+    for col in features:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    df_clean = df.dropna(subset=features).copy()
     print(f'✅ [Python API] {len(df_clean)} students have valid features')
-    
+
+    # Handle small datasets safely
+    if len(df_clean) == 0:
+        print('⚠️  [Python API] No valid students to cluster; returning original data')
+        output = df.copy()
+        output['cluster'] = None
+        output['cluster_label'] = None
+        return jsonify(output.to_dict(orient='records'))
+
+    n_clusters_requested = 3
+    n_clusters = min(n_clusters_requested, len(df_clean))
+    if n_clusters < 1:
+        n_clusters = 1
+
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df_clean[features])
-    n_clusters = 3
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
     clusters = kmeans.fit_predict(X_scaled)
-    df_clean['cluster'] = clusters
+    df_clean.loc[:, 'cluster'] = clusters
     cluster_labels = {0: "Needs Guidance", 1: "On Track", 2: "Excellent"}
-    df_clean['cluster_label'] = df_clean['cluster'].map(cluster_labels).fillna(df_clean['cluster'].astype(str))
+    df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(cluster_labels).fillna(df_clean['cluster'].astype(str))
     
     # Log cluster distribution
     cluster_counts = df_clean['cluster_label'].value_counts().to_dict()
