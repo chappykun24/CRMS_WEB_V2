@@ -327,7 +327,7 @@ const Analytics = () => {
           cursor: pointer !important;
         }
       `}</style>
-      <div className="p-6">
+      <div className="p-6 overflow-y-auto h-full">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
           {!hasFetched && (
@@ -384,30 +384,6 @@ const Analytics = () => {
         {/* Main Content */}
         {hasFetched && !loading && !error && (
           <div className="space-y-6">
-            {/* Clustering Status */}
-            {!clusterMeta.enabled && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-yellow-800 text-sm">
-                  <span className="font-semibold">⚠️ Warning:</span> Clustering service not configured. 
-                  Students will show "Not Clustered" until the clustering API is properly configured.
-                </p>
-                <p className="text-yellow-700 text-xs mt-2">
-                  To enable clustering, set <code className="bg-yellow-100 px-1 rounded">VITE_CLUSTER_API_URL</code> or 
-                  <code className="bg-yellow-100 px-1 rounded">CLUSTER_SERVICE_URL</code> environment variable in your backend.
-                </p>
-              </div>
-            )}
-            {clusterMeta.enabled && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-green-800 text-sm">
-                  <span className="font-semibold">✅ Clustering Active:</span> Student behavior analysis is enabled.
-                  {clusterMeta.apiPlatform && (
-                    <span className="ml-2 text-xs">(API hosted on {clusterMeta.apiPlatform})</span>
-                  )}
-                </p>
-              </div>
-            )}
-
             {/* Statistics Cards */}
             {stats && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -436,11 +412,11 @@ const Analytics = () => {
 
             {/* Charts Section */}
             {chartData && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Cluster Distribution Pie Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Cluster Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Cluster Distribution</h3>
+                  <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       <Pie
                         data={chartData.clusterData}
@@ -448,7 +424,7 @@ const Analytics = () => {
                         cy="50%"
                         labelLine={false}
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
+                        outerRadius={60}
                         fill="#8884d8"
                         dataKey="value"
                       >
@@ -462,45 +438,42 @@ const Analytics = () => {
                 </div>
 
                 {/* Attendance Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Attendance Distribution</h3>
+                  <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={chartData.attendanceData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend />
                       <Bar dataKey="students" fill={COLORS.bar} name="Students" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Score Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Score Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Average Score Distribution</h3>
+                  <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={chartData.scoreData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend />
                       <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Submission Rate Distribution Bar Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Submission Rate Distribution</h3>
-                  <ResponsiveContainer width="100%" height={300}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Submission Rate Distribution</h3>
+                  <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={chartData.submissionData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend />
                       <Bar dataKey="students" fill="#8b5cf6" name="Students" />
                     </BarChart>
                   </ResponsiveContainer>
