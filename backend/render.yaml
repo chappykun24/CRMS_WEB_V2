@@ -11,3 +11,9 @@ services:
         value: production
       - key: PORT
         value: 3001
+      - key: FRONTEND_URL
+        value: https://crms-web-v2-frontend.vercel.app
+      - key: CLUSTER_SERVICE_URL
+        sync: false
+      - key: CLUSTER_TIMEOUT_MS
+        value: 8000
