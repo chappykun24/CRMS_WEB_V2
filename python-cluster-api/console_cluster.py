@@ -6,6 +6,14 @@ from collections import Counter, defaultdict
 
 from app import cluster_records
 
+# Try to import database fetching function
+try:
+    from fetch_from_db import fetch_student_data
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
+    print("Warning: Database connection not available. Install psycopg2-binary and python-dotenv to use --db option.", file=sys.stderr)
+
 
 def load_input(path: str | None) -> List[Dict]:
     if path is None or path == "-":
@@ -16,46 +24,61 @@ def load_input(path: str | None) -> List[Dict]:
 
 def demo_data() -> List[Dict]:
     return [
-        {"student_id": 1, "attendance_percentage": 92, "average_score": 88, "average_days_late": 0.5},
-        {"student_id": 2, "attendance_percentage": 76, "average_score": 69, "average_days_late": 2.1},
-        {"student_id": 3, "attendance_percentage": 84, "average_score": 79, "average_days_late": 1.2},
-        {"student_id": 4, "attendance_percentage": 58, "average_score": 55, "average_days_late": 4.0},
-        {"student_id": 5, "attendance_percentage": 97, "average_score": 93, "average_days_late": 0.2},
-        {"student_id": 6, "attendance_percentage": 95, "average_score": 90, "average_days_late": 0.1},
-        {"student_id": 7, "attendance_percentage": 65, "average_score": 62, "average_days_late": 3.5},
-        {"student_id": 8, "attendance_percentage": 88, "average_score": 82, "average_days_late": 0.8},
+        {"student_id": 1, "attendance_percentage": 92, "average_score": 88, "average_days_late": 0.5, "submission_rate": 0.95},
+        {"student_id": 2, "attendance_percentage": 76, "average_score": 69, "average_days_late": 2.1, "submission_rate": 0.70},
+        {"student_id": 3, "attendance_percentage": 84, "average_score": 79, "average_days_late": 1.2, "submission_rate": 0.85},
+        {"student_id": 4, "attendance_percentage": 58, "average_score": 55, "average_days_late": 4.0, "submission_rate": 0.45},
+        {"student_id": 5, "attendance_percentage": 97, "average_score": 93, "average_days_late": 0.2, "submission_rate": 1.0},
+        {"student_id": 6, "attendance_percentage": 95, "average_score": 90, "average_days_late": 0.1, "submission_rate": 0.98},
+        {"student_id": 7, "attendance_percentage": 65, "average_score": 62, "average_days_late": 3.5, "submission_rate": 0.50},
+        {"student_id": 8, "attendance_percentage": 88, "average_score": 82, "average_days_late": 0.8, "submission_rate": 0.90},
+        {"student_id": 9, "attendance_percentage": 50, "average_score": 48, "average_days_late": 5.0, "submission_rate": 0.30},
+        {"student_id": 10, "attendance_percentage": 85, "average_score": 75, "average_days_late": 1.5, "submission_rate": 0.80},
     ]
 
 
 def print_cluster_statistics(results: List[Dict]) -> None:
     """Print detailed cluster statistics to console."""
     print("\n" + "="*70)
-    print("📊 CLUSTERING RESULTS SUMMARY")
+    print("CLUSTERING RESULTS SUMMARY")
     print("="*70)
     
     # Group by cluster label
     clusters = defaultdict(list)
     for record in results:
-        label = record.get("cluster_label") or "Not Clustered"
+        label = record.get("cluster_label")
+        # Handle None and NaN values
+        if label is None or (isinstance(label, float) and str(label) == 'nan'):
+            label = "Not Clustered"
         clusters[label].append(record)
     
     # Overall distribution
-    labels = [r.get("cluster_label") or "Not Clustered" for r in results]
+    labels = []
+    for r in results:
+        label = r.get("cluster_label")
+        if label is None or (isinstance(label, float) and str(label) == 'nan'):
+            labels.append("Not Clustered")
+        else:
+            labels.append(str(label))
     counts = Counter(labels)
-    print(f"\n📈 Cluster Distribution:")
+    print(f"\nCluster Distribution:")
     for label, count in counts.most_common():
         percentage = (count / len(results)) * 100
         print(f"   {label}: {count} students ({percentage:.1f}%)")
     
     # Statistics per cluster
-    print(f"\n📋 Detailed Statistics by Cluster:")
+    print(f"\nDetailed Statistics by Cluster:")
     print("-"*70)
     
-    features = ['attendance_percentage', 'average_score', 'average_days_late']
+    features = ['attendance_percentage', 'average_score', 'average_days_late', 'submission_rate']
     
-    for label in sorted(clusters.keys()):
+    # Sort clusters by label, handling None/NaN values
+    sorted_labels = sorted(clusters.keys(), key=lambda x: (x is None or (isinstance(x, float) and str(x) == 'nan'), str(x) if x is not None else 'Not Clustered'))
+    
+    for label in sorted_labels:
         cluster_data = clusters[label]
-        print(f"\n🏷️  {label} ({len(cluster_data)} students):")
+        label_display = 'Not Clustered' if (label is None or (isinstance(label, float) and str(label) == 'nan')) else label
+        print(f"\n{label_display} ({len(cluster_data)} students):")
         
         for feature in features:
             values = [r.get(feature) for r in cluster_data if r.get(feature) is not None]
@@ -68,16 +91,21 @@ def print_cluster_statistics(results: List[Dict]) -> None:
                 print(f"      Average: {avg:.2f} | Min: {min_val:.2f} | Max: {max_val:.2f}")
     
     # Show individual student assignments
-    print(f"\n👥 Individual Student Assignments:")
+    print(f"\nIndividual Student Assignments:")
     print("-"*70)
     for record in sorted(results, key=lambda x: x.get('student_id', 0)):
         sid = record.get('student_id', 'N/A')
-        label = record.get('cluster_label', 'Not Clustered')
-        att = record.get('attendance_percentage', 0)
-        score = record.get('average_score', 0)
-        late = record.get('average_days_late', 0)
+        label = record.get('cluster_label')
+        if label is None or (isinstance(label, float) and str(label) == 'nan'):
+            label = 'Not Clustered'
+        else:
+            label = str(label)
+        att = record.get('attendance_percentage', 0) or 0
+        score = record.get('average_score', 0) or 0
+        late = record.get('average_days_late', 0) or 0
+        sub_rate = record.get('submission_rate', 0) or 0
         print(f"   Student {sid}: {label} | "
-              f"Attendance: {att}% | Score: {score} | Days Late: {late}")
+              f"Attendance: {att}% | Score: {score} | Days Late: {late:.1f} | Submission Rate: {sub_rate:.1%}")
     
     print("\n" + "="*70)
 
@@ -87,20 +115,40 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("--input", "-i", help="Path to JSON array of student records (or '-' for stdin)")
     group.add_argument("--demo", action="store_true", help="Use built-in demo data")
+    group.add_argument("--db", action="store_true", help="Fetch real data from database")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     parser.add_argument("--json-only", action="store_true", help="Only output JSON (no statistics)")
+    parser.add_argument("--limit", type=int, default=200, help="Limit number of students when using --db (default: 200)")
     args = parser.parse_args()
 
-    records = demo_data() if args.demo or args.input is None else load_input(args.input)
-    print(f"🔍 Processing {len(records)} student records...")
+    # Determine data source
+    if args.db:
+        if not DB_AVAILABLE:
+            print("Error: Database connection not available. Please install psycopg2-binary and python-dotenv.", file=sys.stderr)
+            return 1
+        print(f"Fetching real data from database (limit: {args.limit})...")
+        try:
+            records = fetch_student_data(limit=args.limit)
+            if not records:
+                print("Warning: No student data found in database.", file=sys.stderr)
+                return 1
+        except Exception as e:
+            print(f"Error fetching from database: {e}", file=sys.stderr)
+            return 1
+    elif args.demo or (args.input is None and not args.db):
+        records = demo_data()
+    else:
+        records = load_input(args.input)
+    
+    print(f"Processing {len(records)} student records...")
     
     results = cluster_records(records)
-    print(f"✅ Clustering complete! {len(results)} results generated.\n")
+    print(f"Clustering complete! {len(results)} results generated.\n")
 
     # Always print statistics unless --json-only is specified
     if not args.json_only:
         print_cluster_statistics(results)
-        print("\n📄 JSON Output:")
+        print("\nJSON Output:")
         print("-"*70)
     
     if args.pretty:

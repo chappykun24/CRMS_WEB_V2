@@ -35,7 +35,6 @@ CRMS_WEB_V2/
 │   └── package.json            # Backend dependencies
 ├── frontend/                   # React Frontend
 │   ├── src/                    # Source code
-│   ├── dist/                   # Built files (ready for Vercel)
 │   └── package.json            # Frontend dependencies
 ├── db/                         # Database schema
 │   └── crms_v2_database.sql    # Consolidated schema
@@ -43,7 +42,6 @@ CRMS_WEB_V2/
 │   ├── app.py                  # Flask API
 │   ├── requirements.txt        # Dependencies
 │   └── README.md               # Setup guide
-└── deploy-vercel.bat           # Deployment script
 ```
 
 ## 🚀 Quick Start

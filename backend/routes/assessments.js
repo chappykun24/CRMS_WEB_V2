@@ -351,7 +351,7 @@ router.get('/:id/students', async (req, res) => {
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
   try {
-    // Sample SQL for demo: fetch attendance rate, average score, average days late by student
+    // Sample SQL for demo: fetch attendance rate, average score, average days late, and submission rate by student
     const query = `
       SELECT
         s.student_id,
@@ -365,12 +365,17 @@ router.get('/dean-analytics/sample', async (req, res) => {
         ), 2) AS attendance_percentage,
         ROUND(CAST(COALESCE(AVG(
           GREATEST(0, DATE_PART('day', sub.submitted_at - ass.due_date))
-        ), 0) AS numeric), 2) as average_days_late
+        ), 0) AS numeric), 2) as average_days_late,
+        ROUND(CAST(
+          (COUNT(DISTINCT sub.submission_id)::FLOAT / NULLIF(COUNT(DISTINCT ass.assessment_id), 0))
+          AS numeric
+        ), 4) as submission_rate
       FROM students s
       LEFT JOIN course_enrollments ce ON s.student_id = ce.student_id
       LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id
-      LEFT JOIN submissions sub ON ce.enrollment_id = sub.enrollment_id
-      LEFT JOIN assessments ass ON sub.assessment_id = ass.assessment_id
+      LEFT JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
+      LEFT JOIN submissions sub ON (ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = ass.assessment_id)
       GROUP BY s.student_id, s.full_name
       ORDER BY s.full_name
       LIMIT 200;
@@ -387,9 +392,11 @@ router.get('/dean-analytics/sample', async (req, res) => {
       'Unknown'
     );
     // Default to localhost for development if not set
-    const clusterServiceUrl = process.env.CLUSTER_SERVICE_URL || 
-                               process.env.CLUSTER_API_URL || 
-                               (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
+    // Check VITE_ prefixed vars first (for Vercel compatibility), then regular vars
+    const clusterServiceUrl = process.env.VITE_CLUSTER_API_URL ||
+                             process.env.CLUSTER_SERVICE_URL || 
+                             process.env.CLUSTER_API_URL || 
+                             (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
     console.log('🎯 [Backend] Cluster service URL:', clusterServiceUrl);
     console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
     let dataWithClusters = students;
@@ -406,6 +413,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
           : null,
         average_days_late: row.average_days_late !== null && row.average_days_late !== undefined
           ? Number(row.average_days_late)
+          : null,
+        submission_rate: row.submission_rate !== null && row.submission_rate !== undefined
+          ? Number(row.submission_rate)
           : null,
       }));
       console.log('📦 [Backend] Sending', sanitizedPayload.length, 'students to clustering API');

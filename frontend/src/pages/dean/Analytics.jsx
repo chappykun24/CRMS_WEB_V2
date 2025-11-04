@@ -81,21 +81,34 @@ const Analytics = () => {
   };
 
   const getClusterStyle = (label) => {
-    if (!label) {
+    if (!label || (typeof label === 'string' && label.toLowerCase() === 'nan')) {
       return { text: 'Not Clustered', className: 'bg-gray-100 text-gray-600' };
     }
 
-    const normalized = label.toLowerCase();
+    const normalized = String(label).toLowerCase();
 
-    if (normalized.includes('guidance') || normalized.includes('risk')) {
+    // At Risk - Red
+    if (normalized.includes('risk') || normalized.includes('at risk')) {
       return { text: label, className: 'bg-red-100 text-red-700' };
     }
 
-    if (normalized.includes('excellent') || normalized.includes('high')) {
+    // Needs Improvement/Needs Guidance - Orange/Yellow
+    if (normalized.includes('improvement') || normalized.includes('guidance') || normalized.includes('needs')) {
+      return { text: label, className: 'bg-orange-100 text-orange-700' };
+    }
+
+    // Excellent Performance - Green
+    if (normalized.includes('excellent') || normalized.includes('high') || normalized.includes('performance')) {
       return { text: label, className: 'bg-emerald-100 text-emerald-700' };
     }
 
-    return { text: label, className: 'bg-blue-100 text-blue-700' };
+    // On Track/Performing Well - Blue
+    if (normalized.includes('track') || normalized.includes('performing') || normalized.includes('on track')) {
+      return { text: label, className: 'bg-blue-100 text-blue-700' };
+    }
+
+    // Default - Gray
+    return { text: label, className: 'bg-gray-100 text-gray-600' };
   };
 
   // Get unique clusters from data
@@ -139,12 +152,17 @@ const Analytics = () => {
     const avgAttendance = filteredData.reduce((sum, row) => sum + (parseFloat(row.attendance_percentage) || 0), 0) / total;
     const avgScore = filteredData.reduce((sum, row) => sum + (parseFloat(row.average_score) || 0), 0) / total;
     const avgDaysLate = filteredData.reduce((sum, row) => sum + (parseFloat(row.average_days_late) || 0), 0) / total;
+    const avgSubmissionRate = filteredData.reduce((sum, row) => {
+      const rate = parseFloat(row.submission_rate) || 0;
+      return sum + rate;
+    }, 0) / total * 100; // Convert to percentage
     
     return {
       total,
       avgAttendance: avgAttendance.toFixed(2),
       avgScore: avgScore.toFixed(2),
-      avgDaysLate: avgDaysLate.toFixed(1)
+      avgDaysLate: avgDaysLate.toFixed(1),
+      avgSubmissionRate: avgSubmissionRate.toFixed(1)
     };
   }, [filteredData]);
 
@@ -229,7 +247,7 @@ const Analytics = () => {
 
             {/* Statistics Cards */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <p className="text-sm text-gray-600 mb-1">Total Students</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -245,6 +263,10 @@ const Analytics = () => {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                   <p className="text-sm text-gray-600 mb-1">Avg Days Late</p>
                   <p className="text-2xl font-bold text-orange-600">{stats.avgDaysLate}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <p className="text-sm text-gray-600 mb-1">Avg Submission Rate</p>
+                  <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
                 </div>
               </div>
             )}
@@ -315,6 +337,7 @@ const Analytics = () => {
                         <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance %</th>
                         <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Average Score</th>
                         <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Avg Days Late</th>
+                        <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submission Rate</th>
                         <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
                       </tr>
                     </thead>
@@ -338,6 +361,11 @@ const Analytics = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                               {row.average_days_late !== null && row.average_days_late !== undefined 
                                 ? parseFloat(row.average_days_late).toFixed(1) 
+                                : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                              {row.submission_rate !== null && row.submission_rate !== undefined 
+                                ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
                                 : 'N/A'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">

@@ -3,3 +3,5 @@ flask-cors
 pandas
 scikit-learn
 gunicorn
+psycopg2-binary
+python-dotenv

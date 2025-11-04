@@ -221,6 +221,19 @@ dev-start.sh
 !db/*.sql
 
 # ==========================================
+# PYTHON
+# ==========================================
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# ==========================================
 # SECURITY & SENSITIVE DATA
 # ==========================================
 # Never commit these
