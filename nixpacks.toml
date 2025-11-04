@@ -1,0 +1,23 @@
+﻿# Nixpacks configuration for Python Clustering API ONLY
+# This tells Railway to ignore Node.js and only build Python
+
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = [
+    "pip install --upgrade pip setuptools wheel",
+    "cd python-cluster-api && pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "cd python-cluster-api && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
+
+[providers]
+python = "3.11"
+
+# Explicitly ignore Node.js workspace detection
+[staticAssets]
