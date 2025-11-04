@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
+import { trackEvent } from '../../utils/analytics';
 
 const Analytics = () => {
   const [data, setData] = useState([]);
@@ -58,6 +59,14 @@ const Analytics = () => {
         setProgress(100);
         setTimeout(() => setLoading(false), 500);
         setHasFetched(true);
+        try {
+          trackEvent('dean_analytics_loaded', {
+            success: Boolean(json.success),
+            count: Array.isArray(json.data) ? json.data.length : 0,
+            clustering_enabled: Boolean(json?.clustering?.enabled),
+            platform: json?.clustering?.platform || 'Unknown',
+          });
+        } catch {}
       })
       .catch((err) => {
         console.error('❌ [Analytics] Fetch error:', err);
@@ -65,6 +74,9 @@ const Analytics = () => {
         setProgress(0);
         setLoading(false);
         setHasFetched(true);
+        try {
+          trackEvent('dean_analytics_error', { message: String(err?.message || err) });
+        } catch {}
       });
   };
 
@@ -155,7 +167,7 @@ const Analytics = () => {
           {!hasFetched && (
             <button
               className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 shadow-sm"
-              onClick={handleFetch}
+              onClick={() => { try { trackEvent('dean_analytics_load_clicked') } catch {}; handleFetch() }}
               disabled={loading}
             >
               {loading ? (
