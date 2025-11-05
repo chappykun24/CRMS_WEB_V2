@@ -3,6 +3,142 @@ import db from '../config/database.js';
 
 const router = express.Router();
 
+// ==========================================
+// CLUSTER CACHING HELPER FUNCTIONS
+// ==========================================
+
+/**
+ * Get cached clusters from database
+ * @param {number|null} termId - School term ID (null for all terms)
+ * @param {number} maxAgeHours - Maximum cache age in hours (default: 24)
+ * @returns {Promise<Array>} Array of cached cluster records
+ */
+const getCachedClusters = async (termId, maxAgeHours = 24) => {
+  try {
+    const maxAge = new Date();
+    maxAge.setHours(maxAge.getHours() - maxAgeHours);
+    
+    let query, params;
+    
+    if (termId) {
+      query = `
+        SELECT student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
+        FROM analytics_clusters
+        WHERE term_id = $1 AND generated_at > $2 AND student_id IS NOT NULL
+        ORDER BY student_id
+      `;
+      params = [termId, maxAge];
+    } else {
+      // For all terms, get the most recent clusters per student
+      query = `
+        SELECT DISTINCT ON (student_id) 
+          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
+        FROM analytics_clusters
+        WHERE generated_at > $1 AND student_id IS NOT NULL
+        ORDER BY student_id, generated_at DESC
+      `;
+      params = [maxAge];
+    }
+    
+    const result = await db.query(query, params);
+    console.log(`📦 [Cache] Retrieved ${result.rows.length} cached clusters (term: ${termId || 'all'}, max age: ${maxAgeHours}h)`);
+    return result.rows;
+  } catch (error) {
+    console.error('❌ [Cache] Error fetching cached clusters:', error);
+    return [];
+  }
+};
+
+/**
+ * Save clusters to database cache
+ * @param {Array} clusters - Array of cluster results from ML API
+ * @param {number|null} termId - School term ID
+ * @param {string} algorithm - Algorithm name (default: 'kmeans')
+ * @param {string} version - Model version (default: '1.0')
+ * @returns {Promise<void>}
+ */
+const saveClusters = async (clusters, termId, algorithm = 'kmeans', version = '1.0') => {
+  if (!clusters || clusters.length === 0) {
+    console.warn('⚠️ [Cache] No clusters to save');
+    return;
+  }
+  
+  try {
+    // Delete old clusters for this term (if term specified)
+    if (termId) {
+      await db.query('DELETE FROM analytics_clusters WHERE term_id = $1 AND student_id IS NOT NULL', [termId]);
+    } else {
+      // For all terms, delete clusters older than 48 hours
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
+      await db.query('DELETE FROM analytics_clusters WHERE generated_at < $1 AND student_id IS NOT NULL', [twoDaysAgo]);
+    }
+    
+    // Prepare batch insert
+    let savedCount = 0;
+    for (const cluster of clusters) {
+      if (!cluster.student_id) continue;
+      
+      const studentId = typeof cluster.student_id === 'string' ? parseInt(cluster.student_id, 10) : cluster.student_id;
+      
+      // Prepare based_on JSONB object with metrics
+      const basedOn = {
+        attendance: cluster.attendance_percentage || null,
+        score: cluster.average_score || null,
+        submission_rate: cluster.submission_rate || null,
+        average_days_late: cluster.average_days_late || null
+      };
+      
+      // Get cluster number (0, 1, 2, etc.)
+      const clusterNumber = cluster.cluster !== undefined && cluster.cluster !== null 
+        ? (typeof cluster.cluster === 'string' ? parseInt(cluster.cluster, 10) : cluster.cluster)
+        : null;
+      
+      // Get cluster label (string)
+      let clusterLabel = cluster.cluster_label;
+      if (clusterLabel === null || clusterLabel === undefined ||
+          (typeof clusterLabel === 'number' && isNaN(clusterLabel)) ||
+          (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
+        clusterLabel = null;
+      } else {
+        clusterLabel = String(clusterLabel);
+      }
+      
+      // Use INSERT ... ON CONFLICT to update if exists
+      // Note: The unique index is on (student_id, term_id) WHERE both are NOT NULL
+      await db.query(`
+        INSERT INTO analytics_clusters 
+          (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        ON CONFLICT (student_id, term_id) 
+        WHERE student_id IS NOT NULL AND term_id IS NOT NULL
+        DO UPDATE SET 
+          cluster_label = EXCLUDED.cluster_label,
+          cluster_number = EXCLUDED.cluster_number,
+          based_on = EXCLUDED.based_on,
+          algorithm_used = EXCLUDED.algorithm_used,
+          model_version = EXCLUDED.model_version,
+          generated_at = NOW()
+      `, [
+        studentId,
+        termId,
+        clusterLabel,
+        clusterNumber,
+        JSON.stringify(basedOn),
+        algorithm,
+        version
+      ]);
+      
+      savedCount++;
+    }
+    
+    console.log(`💾 [Cache] Saved ${savedCount} clusters to database (term: ${termId || 'all'})`);
+  } catch (error) {
+    console.error('❌ [Cache] Error saving clusters:', error);
+    // Don't throw - clustering should still work even if cache save fails
+  }
+};
+
 // Test endpoint
 router.get('/test', (req, res) => {
   res.json({ message: 'Assessments router is working!' });
@@ -479,12 +615,82 @@ router.get('/dean-analytics/sample', async (req, res) => {
                              process.env.CLUSTER_SERVICE_URL || 
                              process.env.CLUSTER_API_URL || 
                              (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
-    console.log('🎯 [Backend] Cluster service URL:', clusterServiceUrl);
-    console.log('🌍 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
+    console.log('🔗 [Backend] Cluster service URL:', clusterServiceUrl);
+    console.log('🌐 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
+    
+    // Get cache max age from environment (default: 24 hours)
+    const cacheMaxAgeHours = parseInt(process.env.CLUSTER_CACHE_MAX_AGE_HOURS || '24', 10);
+    
     let dataWithClusters = students;
+    let cacheUsed = false;
+    let clusterResultsFromAPI = null;
 
+    // Step 1: Try to get cached clusters first (FAST PATH)
     if (clusterServiceUrl && process.env.DISABLE_CLUSTERING !== '1') {
-      console.log('🚀 [Backend] Attempting to call clustering API...');
+      console.log('📦 [Cache] Checking for cached clusters...');
+      const cachedClusters = await getCachedClusters(termIdValue, cacheMaxAgeHours);
+      
+      if (cachedClusters.length > 0) {
+        // Create a map of cached clusters
+        const cachedClusterMap = new Map();
+        cachedClusters.forEach((cached) => {
+          const studentId = typeof cached.student_id === 'string' ? parseInt(cached.student_id, 10) : cached.student_id;
+          cachedClusterMap.set(studentId, cached);
+        });
+        
+        // Check if we have clusters for all students (or majority)
+        const studentsWithCachedClusters = students.filter(s => {
+          const studentId = typeof s.student_id === 'string' ? parseInt(s.student_id, 10) : s.student_id;
+          return cachedClusterMap.has(studentId);
+        });
+        
+        // Use cache if we have clusters for at least 80% of students
+        const cacheHitRatio = students.length > 0 ? studentsWithCachedClusters.length / students.length : 0;
+        
+        if (cacheHitRatio >= 0.8) {
+          console.log(`✅ [Cache] Cache hit! Found clusters for ${studentsWithCachedClusters.length}/${students.length} students (${Math.round(cacheHitRatio * 100)}%)`);
+          
+          // Merge cached clusters with student data
+          dataWithClusters = students.map((row) => {
+            const studentId = typeof row.student_id === 'string' ? parseInt(row.student_id, 10) : row.student_id;
+            const cachedCluster = cachedClusterMap.get(studentId);
+            
+            let clusterLabel = cachedCluster?.cluster_label;
+            if (clusterLabel === null || clusterLabel === undefined ||
+                (typeof clusterLabel === 'number' && isNaN(clusterLabel)) ||
+                (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
+              clusterLabel = null;
+            } else {
+              clusterLabel = String(clusterLabel);
+            }
+            
+            return {
+              ...row,
+              cluster: cachedCluster?.cluster_number ?? null,
+              cluster_label: clusterLabel,
+            };
+          });
+          
+          cacheUsed = true;
+          
+          // Log cluster distribution from cache
+          const clusterCounts = dataWithClusters.reduce((acc, row) => {
+            const cluster = row.cluster_label || 'Not Clustered';
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('📊 [Cache] Cluster distribution from cache:', clusterCounts);
+        } else {
+          console.log(`⚠️ [Cache] Cache miss! Only found clusters for ${studentsWithCachedClusters.length}/${students.length} students (${Math.round(cacheHitRatio * 100)}%). Will fetch fresh clusters.`);
+        }
+      } else {
+        console.log('❌ [Cache] No cached clusters found. Will fetch fresh clusters.');
+      }
+    }
+
+    // Step 2: If cache miss, call clustering API (SLOW PATH)
+    if (!cacheUsed && clusterServiceUrl && process.env.DISABLE_CLUSTERING !== '1') {
+      console.log('🔄 [Backend] Attempting to call clustering API...');
       const sanitizedPayload = students.map((row) => {
         // Log sample data being sent
         if (students.indexOf(row) === 0) {
@@ -543,32 +749,32 @@ router.get('/dean-analytics/sample', async (req, res) => {
         console.log('📡 [Backend] Clustering API response status:', response.status);
 
         if (response.ok) {
-          const clusterResults = await response.json();
-          console.log('✅ [Backend] Received', clusterResults.length, 'clustered results');
+          clusterResultsFromAPI = await response.json();
+          console.log('✅ [Backend] Received', clusterResultsFromAPI.length, 'clustered results');
           
-          if (!Array.isArray(clusterResults)) {
-            console.error('❌ [Backend] Invalid response format from clustering API. Expected array, got:', typeof clusterResults);
+          if (!Array.isArray(clusterResultsFromAPI)) {
+            console.error('❌ [Backend] Invalid response format from clustering API. Expected array, got:', typeof clusterResultsFromAPI);
             throw new Error('Invalid response format from clustering API');
           }
           
-          if (clusterResults.length === 0) {
+          if (clusterResultsFromAPI.length === 0) {
             console.warn('⚠️ [Backend] Clustering API returned empty array');
           }
           
           // Create map with proper type handling for student_id (handle both string and number)
           const clusterMap = new Map();
-          clusterResults.forEach((item) => {
+          clusterResultsFromAPI.forEach((item) => {
             // Normalize student_id to number for consistent matching
             const studentId = typeof item.student_id === 'string' ? parseInt(item.student_id, 10) : item.student_id;
             clusterMap.set(studentId, item);
           });
           
           console.log('🔍 [Backend] Cluster map size:', clusterMap.size);
-          if (clusterResults.length > 0) {
+          if (clusterResultsFromAPI.length > 0) {
             console.log('📋 [Backend] Sample cluster result:', {
-              student_id: clusterResults[0].student_id,
-              cluster: clusterResults[0].cluster,
-              cluster_label: clusterResults[0].cluster_label
+              student_id: clusterResultsFromAPI[0].student_id,
+              cluster: clusterResultsFromAPI[0].cluster,
+              cluster_label: clusterResultsFromAPI[0].cluster_label
             });
           }
 
@@ -599,10 +805,35 @@ router.get('/dean-analytics/sample', async (req, res) => {
               cluster: clusterInfo?.cluster ?? null,
               cluster_label: clusterLabel,
             };
-          });
-          
-          // Log cluster distribution
-          const clusterCounts = dataWithClusters.reduce((acc, row) => {
+                      });
+            
+            // Step 3: Save clusters to cache for next time (non-blocking)
+            if (clusterResultsFromAPI && clusterResultsFromAPI.length > 0) {
+              // Merge student data with cluster results for saving
+              const clustersToSave = clusterResultsFromAPI.map(clusterResult => {
+                const studentData = students.find(s => {
+                  const studentId = typeof s.student_id === 'string' ? parseInt(s.student_id, 10) : s.student_id;
+                  const clusterId = typeof clusterResult.student_id === 'string' ? parseInt(clusterResult.student_id, 10) : clusterResult.student_id;
+                  return studentId === clusterId;
+                });
+                
+                return {
+                  ...clusterResult,
+                  attendance_percentage: studentData?.attendance_percentage || null,
+                  average_score: studentData?.average_score || null,
+                  submission_rate: studentData?.submission_rate || null,
+                  average_days_late: studentData?.average_days_late || null
+                };
+              });
+              
+              // Save to cache asynchronously (don't wait for it to complete)
+              saveClusters(clustersToSave, termIdValue, 'kmeans', '1.0').catch(err => {
+                console.error('⚠️ [Cache] Failed to save clusters (non-blocking):', err.message);
+              });
+            }
+            
+            // Log cluster distribution
+            const clusterCounts = dataWithClusters.reduce((acc, row) => {
             const cluster = row.cluster_label || 'Not Clustered';
             acc[cluster] = (acc[cluster] || 0) + 1;
             return acc;
@@ -672,17 +903,18 @@ router.get('/dean-analytics/sample', async (req, res) => {
       }
     }
     
-    clearTimeout(timeout);
-    res.json({
-      success: true,
-      data: dataWithClusters,
-      clustering: {
-        enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
-        backendPlatform: platform,  // Where the backend is hosted
-        apiPlatform: clusterPlatform,  // Where the clustering API is hosted
-        serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
-      },
-    });
+          clearTimeout(timeout);
+      res.json({
+        success: true,
+        data: dataWithClusters,
+        clustering: {
+          enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
+          cached: cacheUsed,  // Indicates if cached clusters were used
+          backendPlatform: platform,  // Where the backend is hosted
+          apiPlatform: clusterPlatform,  // Where the clustering API is hosted
+          serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
+        },
+      });
   } catch (error) {
     clearTimeout(timeout);
     console.error('❌ [Backend] Dean analytics error:', error);
