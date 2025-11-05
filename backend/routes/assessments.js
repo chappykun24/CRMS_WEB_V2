@@ -370,6 +370,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
       SELECT
         s.student_id,
         s.full_name,
+        s.student_number,
+        s.student_photo,
+        s.contact_email,
         -- Attendance percentage: count of present / total attendance sessions
         COALESCE(
           (

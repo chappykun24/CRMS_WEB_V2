@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import {
@@ -25,6 +25,8 @@ const Analytics = () => {
   const [clusterMeta, setClusterMeta] = useState({ enabled: false });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCluster, setSelectedCluster] = useState('all');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleFetch = () => {
     console.log('🔍 [Analytics] Starting fetch...');
@@ -491,7 +493,14 @@ const Analytics = () => {
                           const clusterStyle = getClusterStyle(row.cluster_label);
 
                           return (
-                            <tr key={row.student_id} className="hover:bg-gray-50 transition-colors">
+                            <tr 
+                              key={row.student_id} 
+                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedStudent(row);
+                                setIsModalOpen(true);
+                              }}
+                            >
                               <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                                 {row.attendance_percentage !== null && row.attendance_percentage !== undefined 
@@ -630,6 +639,218 @@ const Analytics = () => {
           </div>
         )}
       </div>
+
+      {/* Student Details Modal */}
+      {isModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {/* Student Header Info */}
+              <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
+                {/* Student Image */}
+                <div className="flex-shrink-0">
+                  {selectedStudent.student_photo ? (
+                    <img
+                      src={selectedStudent.student_photo}
+                      alt={selectedStudent.full_name}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : null}
+                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${selectedStudent.student_photo ? 'hidden' : ''}`} />
+                </div>
+
+                {/* Student Basic Info */}
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Student Number:</span>{' '}
+                      <span className="text-gray-900">{selectedStudent.student_number || 'N/A'}</span>
+                    </p>
+                    {selectedStudent.contact_email && (
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">Email:</span>{' '}
+                        <span className="text-gray-900">{selectedStudent.contact_email}</span>
+                      </p>
+                    )}
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getClusterStyle(selectedStudent.cluster_label).className}`}>
+                        {getClusterStyle(selectedStudent.cluster_label).text}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analytics with Progress Bars */}
+              <div className="space-y-6">
+                <h4 className="text-lg font-semibold text-gray-900">Performance Analytics</h4>
+
+                {/* Attendance Rate */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Attendance Rate</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {selectedStudent.attendance_percentage !== null && selectedStudent.attendance_percentage !== undefined
+                        ? `${parseFloat(selectedStudent.attendance_percentage).toFixed(1)}%`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(selectedStudent.attendance_percentage) || 0) >= 80
+                          ? 'bg-emerald-500'
+                          : (parseFloat(selectedStudent.attendance_percentage) || 0) >= 60
+                          ? 'bg-blue-500'
+                          : (parseFloat(selectedStudent.attendance_percentage) || 0) >= 40
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(parseFloat(selectedStudent.attendance_percentage) || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Average Score */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Average Score</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {selectedStudent.average_score !== null && selectedStudent.average_score !== undefined
+                        ? parseFloat(selectedStudent.average_score).toFixed(1)
+                        : 'N/A'}
+                      {selectedStudent.average_score !== null && selectedStudent.average_score !== undefined && (
+                        <span className="text-gray-500 ml-1">/ 100</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(selectedStudent.average_score) || 0) >= 80
+                          ? 'bg-emerald-500'
+                          : (parseFloat(selectedStudent.average_score) || 0) >= 60
+                          ? 'bg-blue-500'
+                          : (parseFloat(selectedStudent.average_score) || 0) >= 40
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(parseFloat(selectedStudent.average_score) || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Submission Rate */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Submission Rate</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {selectedStudent.submission_rate !== null && selectedStudent.submission_rate !== undefined
+                        ? `${(parseFloat(selectedStudent.submission_rate) * 100).toFixed(1)}%`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 80
+                          ? 'bg-emerald-500'
+                          : (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 60
+                          ? 'bg-blue-500'
+                          : (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 40
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min((parseFloat(selectedStudent.submission_rate) || 0) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Average Days Late */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Average Days Late</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {selectedStudent.average_days_late !== null && selectedStudent.average_days_late !== undefined
+                        ? `${parseFloat(selectedStudent.average_days_late).toFixed(1)} days`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    {/* Days late progress bar (inverse - lower is better) */}
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(selectedStudent.average_days_late) || 0) <= 2
+                          ? 'bg-emerald-500'
+                          : (parseFloat(selectedStudent.average_days_late) || 0) <= 5
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          ((parseFloat(selectedStudent.average_days_late) || 0) / 10) * 100,
+                          100
+                        )}%`
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(parseFloat(selectedStudent.average_days_late) || 0) <= 2
+                      ? 'Excellent timeliness'
+                      : (parseFloat(selectedStudent.average_days_late) || 0) <= 5
+                      ? 'Moderate delays'
+                      : 'Needs improvement in timeliness'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Additional Info Section */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 mb-1">Student ID</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedStudent.student_id}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {getClusterStyle(selectedStudent.cluster_label).text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
