@@ -350,6 +350,8 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
+  const { term_id } = req.query;
+  console.log('📋 [Backend] Filter term_id:', term_id);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -364,7 +366,13 @@ router.get('/dean-analytics/sample', async (req, res) => {
   }, 25000); // 25 second timeout (before proxy timeout)
   
   try {
-    // Fetch student analytics: attendance, average score, average days late, and submission rate
+    // Build WHERE clause for term filtering
+    const termIdValue = term_id && !isNaN(parseInt(term_id)) ? parseInt(term_id) : null;
+    if (termIdValue) {
+      console.log('🔍 [Backend] Applying term filter:', termIdValue);
+    }
+    
+    // Fetch student analytics: attendance, average score, and submission rate
     // Using subqueries for accurate calculations per student
     const query = `
       SELECT
@@ -382,8 +390,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
               2
             )
             FROM course_enrollments ce_att
+            LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
             LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
             WHERE ce_att.student_id = s.student_id
+              ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
           ),
           0
         )::NUMERIC AS attendance_percentage,
@@ -392,9 +402,11 @@ router.get('/dean-analytics/sample', async (req, res) => {
           (
             SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
             FROM course_enrollments ce_sub
+            INNER JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
             INNER JOIN submissions sub ON ce_sub.enrollment_id = sub.enrollment_id
             WHERE ce_sub.student_id = s.student_id
               AND sub.total_score IS NOT NULL
+              ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
           ),
           0
         )::NUMERIC AS average_score,
@@ -424,13 +436,14 @@ router.get('/dean-analytics/sample', async (req, res) => {
               4
             )
             FROM course_enrollments ce_rate
-            LEFT JOIN section_courses sc ON ce_rate.section_course_id = sc.section_course_id
-            LEFT JOIN assessments ass ON sc.section_course_id = ass.section_course_id
+            LEFT JOIN section_courses sc_rate ON ce_rate.section_course_id = sc_rate.section_course_id
+            LEFT JOIN assessments ass ON sc_rate.section_course_id = ass.section_course_id
             LEFT JOIN submissions sub ON (
               ce_rate.enrollment_id = sub.enrollment_id 
               AND sub.assessment_id = ass.assessment_id
             )
             WHERE ce_rate.student_id = s.student_id
+              ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
           ),
           0
         )::NUMERIC AS submission_rate

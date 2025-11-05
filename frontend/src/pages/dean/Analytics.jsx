@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
@@ -27,6 +27,38 @@ const Analytics = () => {
   const [selectedCluster, setSelectedCluster] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [schoolTerms, setSchoolTerms] = useState([]);
+  const [selectedTermId, setSelectedTermId] = useState('');
+
+  // Fetch school terms on component mount
+  useEffect(() => {
+    fetch('/api/school-terms')
+      .then(res => res.json())
+      .then(terms => {
+        setSchoolTerms(terms);
+        // Set the active term as default if available
+        const activeTerm = terms.find(t => t.is_active);
+        if (activeTerm) {
+          setSelectedTermId(activeTerm.term_id.toString());
+        }
+      })
+      .catch(err => console.error('Failed to fetch school terms:', err));
+  }, []);
+
+  // Track if this is the initial term selection (from active term)
+  const isInitialTermLoadRef = useRef(true);
+
+  // Auto-refetch when term filter changes (only after initial load)
+  useEffect(() => {
+    if (hasFetched && !isInitialTermLoadRef.current && selectedTermId !== '') {
+      handleFetch();
+    }
+    // Mark initial load as complete once we have a term selected
+    if (selectedTermId) {
+      isInitialTermLoadRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTermId]);
 
   const handleFetch = () => {
     console.log('🔍 [Analytics] Starting fetch...');
@@ -45,7 +77,11 @@ const Analytics = () => {
       });
     }, 300);
 
-    fetch('/api/assessments/dean-analytics/sample')
+    const url = selectedTermId 
+      ? `/api/assessments/dean-analytics/sample?term_id=${selectedTermId}`
+      : '/api/assessments/dean-analytics/sample';
+    
+    fetch(url)
       .then(async (res) => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
@@ -228,7 +264,6 @@ const Analytics = () => {
     const total = filteredData.length;
     const avgAttendance = filteredData.reduce((sum, row) => sum + (parseFloat(row.attendance_percentage) || 0), 0) / total;
     const avgScore = filteredData.reduce((sum, row) => sum + (parseFloat(row.average_score) || 0), 0) / total;
-    const avgDaysLate = filteredData.reduce((sum, row) => sum + (parseFloat(row.average_days_late) || 0), 0) / total;
     const avgSubmissionRate = filteredData.reduce((sum, row) => {
       const rate = parseFloat(row.submission_rate) || 0;
       return sum + rate;
@@ -238,7 +273,6 @@ const Analytics = () => {
       total,
       avgAttendance: avgAttendance.toFixed(2),
       avgScore: avgScore.toFixed(2),
-      avgDaysLate: avgDaysLate.toFixed(1),
       avgSubmissionRate: avgSubmissionRate.toFixed(1)
     };
   }, [filteredData]);
@@ -435,6 +469,25 @@ const Analytics = () => {
                     </div>
                   </div>
 
+                  {/* School Term Filter */}
+                  <div className="md:w-64">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedTermId}
+                        onChange={(e) => setSelectedTermId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                      >
+                        <option value="">All Terms</option>
+                        {schoolTerms.map(term => (
+                          <option key={term.term_id} value={term.term_id.toString()}>
+                            {term.school_year} - {term.semester}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Cluster Filter */}
                   {uniqueClusters.length > 0 && (
                     <div className="md:w-64">
@@ -458,9 +511,14 @@ const Analytics = () => {
                 </div>
 
                 {/* Filter Results Count */}
-                {filteredData.length !== data.length && (
+                {(filteredData.length !== data.length || selectedTermId) && (
                   <p className="mt-3 text-sm text-gray-600">
                     Showing {filteredData.length} of {data.length} students
+                    {selectedTermId && (
+                      <span className="ml-2">
+                        (Filtered by: {schoolTerms.find(t => t.term_id.toString() === selectedTermId)?.school_year} - {schoolTerms.find(t => t.term_id.toString() === selectedTermId)?.semester})
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
@@ -483,7 +541,6 @@ const Analytics = () => {
                           <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
                           <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance %</th>
                           <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Average Score</th>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Avg Days Late</th>
                           <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submission Rate</th>
                           <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
                         </tr>
@@ -510,11 +567,6 @@ const Analytics = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                                 {row.average_score !== null && row.average_score !== undefined 
                                   ? parseFloat(row.average_score).toFixed(1) 
-                                  : 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                {row.average_days_late !== null && row.average_days_late !== undefined 
-                                  ? parseFloat(row.average_days_late).toFixed(1) 
                                   : 'N/A'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-gray-600">
@@ -553,10 +605,6 @@ const Analytics = () => {
                   <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg shadow-sm border border-emerald-200 p-4">
                     <p className="text-xs text-emerald-600 mb-1">Avg Score</p>
                     <p className="text-3xl font-bold text-emerald-600">{stats.avgScore}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-white rounded-lg shadow-sm border border-orange-200 p-4">
-                    <p className="text-xs text-orange-600 mb-1">Avg Days Late</p>
-                    <p className="text-3xl font-bold text-orange-600">{stats.avgDaysLate}</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-4">
                     <p className="text-xs text-purple-600 mb-1">Avg Submission Rate</p>
@@ -680,7 +728,7 @@ const Analytics = () => {
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-600">
-                      <span className="font-medium">Student Number:</span>{' '}
+                      <span className="font-medium">SR-code:</span>{' '}
                       <span className="text-gray-900">{selectedStudent.student_number || 'N/A'}</span>
                     </p>
                     {selectedStudent.contact_email && (
@@ -787,11 +835,7 @@ const Analytics = () => {
               {/* Additional Info Section */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Student ID</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedStudent.student_id}</p>
-                  </div>
+                <div className="grid grid-cols-1 gap-4">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
                     <p className="text-sm font-medium text-gray-900">
