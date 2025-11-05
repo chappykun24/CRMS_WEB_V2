@@ -373,9 +373,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
     }
     
     // Fetch student analytics: attendance, average score, and submission rate
-    // Using subqueries for accurate calculations per student
+    // Only show students enrolled in the selected term (or all enrolled students if no term selected)
     const query = `
-      SELECT
+      SELECT DISTINCT
         s.student_id,
         s.full_name,
         s.student_number,
@@ -393,6 +393,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
             LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
             WHERE ce_att.student_id = s.student_id
+              AND ce_att.status = 'enrolled'
               ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
           ),
           0
@@ -405,6 +406,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             INNER JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
             INNER JOIN submissions sub ON ce_sub.enrollment_id = sub.enrollment_id
             WHERE ce_sub.student_id = s.student_id
+              AND ce_sub.status = 'enrolled'
               AND sub.total_score IS NOT NULL
               ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
           ),
@@ -417,12 +419,15 @@ router.get('/dean-analytics/sample', async (req, res) => {
             FROM (
               SELECT EXTRACT(DAY FROM (sub.submitted_at - ass.due_date))::NUMERIC AS days_late
               FROM course_enrollments ce_late
+              INNER JOIN section_courses sc_late ON ce_late.section_course_id = sc_late.section_course_id
               INNER JOIN submissions sub ON ce_late.enrollment_id = sub.enrollment_id
               INNER JOIN assessments ass ON sub.assessment_id = ass.assessment_id
               WHERE ce_late.student_id = s.student_id
+                AND ce_late.status = 'enrolled'
                 AND sub.submitted_at IS NOT NULL
                 AND ass.due_date IS NOT NULL
                 AND sub.submitted_at > ass.due_date
+                ${termIdValue ? `AND sc_late.term_id = ${termIdValue}` : ''}
             ) late_submissions
           ),
           0
@@ -443,11 +448,17 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND sub.assessment_id = ass.assessment_id
             )
             WHERE ce_rate.student_id = s.student_id
+              AND ce_rate.status = 'enrolled'
               ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
           ),
           0
         )::NUMERIC AS submission_rate
       FROM students s
+      INNER JOIN course_enrollments ce ON s.student_id = ce.student_id
+      INNER JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      WHERE ce.status = 'enrolled'
+        ${termIdValue ? `AND sc.term_id = ${termIdValue}` : ''}
+      GROUP BY s.student_id, s.full_name, s.student_number, s.student_photo, s.contact_email
       ORDER BY s.full_name
       LIMIT 200;
     `;
