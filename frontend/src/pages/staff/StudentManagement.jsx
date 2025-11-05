@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { prefetchStaffData } from '../../services/dataPrefetchService'
 import { 
   UserPlusIcon, 
   MagnifyingGlassIcon, 
@@ -166,6 +167,11 @@ const StudentManagement = () => {
       }
     }
     loadStudents()
+    
+    // Prefetch data for other staff pages in the background
+    setTimeout(() => {
+      prefetchStaffData()
+    }, 1000)
   }, [])
 
   // Reset pagination when filters change

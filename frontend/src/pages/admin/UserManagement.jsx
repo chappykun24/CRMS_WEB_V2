@@ -3,6 +3,7 @@ import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbol
 // Removed SidebarContext import - using local state instead
 import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
+import { prefetchAdminData } from '../../services/dataPrefetchService'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -103,6 +104,11 @@ const UserManagement = () => {
       }
     }
     loadUsers()
+    
+    // Prefetch data for other admin pages in the background
+    setTimeout(() => {
+      prefetchAdminData()
+    }, 1000)
   }, [])
 
   const facultyRoleId = useMemo(() => {

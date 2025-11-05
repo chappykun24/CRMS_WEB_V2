@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
+import { prefetchStaffData } from '../../services/dataPrefetchService'
 
 
 
@@ -320,6 +321,12 @@ const AssignFaculty = () => {
         if (isMounted) setLoadingClasses(false)
       }
     })()
+    
+    // Prefetch data for other staff pages in the background
+    setTimeout(() => {
+      prefetchStaffData()
+    }, 1000)
+    
     return () => {
       isMounted = false
     }

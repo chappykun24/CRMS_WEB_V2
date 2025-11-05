@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import UserManagement from './UserManagement'
 import FacultyApproval from './FacultyApproval'
@@ -6,9 +6,20 @@ import SystemSettings from './SystemSettings'
 import SchoolConfiguration from './SchoolConfiguration'
 import Home from './Home'
 import { CardGridSkeleton } from '../../components/skeletons'
+import { prefetchAdminData } from '../../services/dataPrefetchService'
 
 const AdminDashboard = ({ user }) => {
   const location = useLocation()
+
+  // Prefetch data for other pages in the background
+  useEffect(() => {
+    // Wait 1 second after dashboard mounts to start prefetching
+    const timer = setTimeout(() => {
+      prefetchAdminData()
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // Default admin dashboard content with skeleton loading
   const defaultContent = (

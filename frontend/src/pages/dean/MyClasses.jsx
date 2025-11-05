@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
+import { getPrefetchedClasses } from '../../services/dataPrefetchService'
 
 const MyClasses = () => {
   const [query, setQuery] = useState('')
@@ -34,14 +35,42 @@ const MyClasses = () => {
     }
   }
 
-  // Load existing section courses when component mounts
+  // Load existing section courses when component mounts (check prefetch first)
   useEffect(() => {
     let isMounted = true
+    
+    // Check prefetch cache first
+    const prefetchedClasses = getPrefetchedClasses()
+    if (prefetchedClasses && Array.isArray(prefetchedClasses)) {
+      console.log('📦 [MyClasses] Using prefetched classes data')
+      const formattedClasses = prefetchedClasses.map(item => ({
+        id: String(item.section_course_id),
+        title: item.course_title,
+        code: item.course_code,
+        section: item.section_code,
+        instructor: item.faculty_name,
+        bannerType: item.banner_type || 'color',
+        bannerColor: item.banner_color || '#3B82F6',
+        bannerImage: item.banner_image,
+        avatarUrl: item.faculty_avatar
+      }))
+      setClasses(formattedClasses)
+      setLoadingClasses(false)
+      return
+    }
+    
+    // Fallback to fetch if not in cache
     ;(async () => {
       try {
         setLoadingClasses(true)
         const response = await fetch(`${API_BASE_URL}/section-courses/assigned`)
         if (!response.ok) throw new Error(`Failed to fetch assigned courses: ${response.status}`)
+        
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON')
+        }
+        
         const data = await response.json()
         if (isMounted) {
           const formattedClasses = data.map(item => ({

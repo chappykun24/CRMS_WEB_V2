@@ -903,18 +903,64 @@ router.get('/dean-analytics/sample', async (req, res) => {
       }
     }
     
-          clearTimeout(timeout);
-      res.json({
-        success: true,
-        data: dataWithClusters,
-        clustering: {
-          enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
-          cached: cacheUsed,  // Indicates if cached clusters were used
-          backendPlatform: platform,  // Where the backend is hosted
-          apiPlatform: clusterPlatform,  // Where the clustering API is hosted
-          serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
-        },
-      });
+    // Sanitize data to ensure JSON-safe values (handle null, undefined, NaN, Infinity)
+    const sanitizeForJSON = (obj) => {
+      if (obj === null || obj === undefined) {
+        return null;
+      }
+      if (typeof obj === 'number') {
+        if (isNaN(obj) || !isFinite(obj)) {
+          return null;
+        }
+        return obj;
+      }
+      if (typeof obj === 'string') {
+        // Ensure string is valid and doesn't contain problematic characters
+        // PostgreSQL can return strings with null bytes or other control chars
+        return obj.replace(/\0/g, '').trim();
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(sanitizeForJSON);
+      }
+      if (typeof obj === 'object') {
+        const sanitized = {};
+        for (const [key, value] of Object.entries(obj)) {
+          sanitized[key] = sanitizeForJSON(value);
+        }
+        return sanitized;
+      }
+      return obj;
+    };
+    
+    const sanitizedData = sanitizeForJSON(dataWithClusters);
+    
+    clearTimeout(timeout);
+    
+    // Ensure response is sent only once
+    if (!res.headersSent) {
+      try {
+        res.json({
+          success: true,
+          data: sanitizedData,
+          clustering: {
+            enabled: Boolean(clusterServiceUrl) && process.env.DISABLE_CLUSTERING !== '1',
+            cached: cacheUsed,  // Indicates if cached clusters were used
+            backendPlatform: platform,  // Where the backend is hosted
+            apiPlatform: clusterPlatform,  // Where the clustering API is hosted
+            serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
+          },
+        });
+      } catch (jsonError) {
+        console.error('❌ [Backend] JSON serialization error:', jsonError);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            error: 'Failed to serialize response data. Data may contain invalid characters.',
+            details: process.env.NODE_ENV === 'development' ? jsonError.message : undefined
+          });
+        }
+      }
+    }
   } catch (error) {
     clearTimeout(timeout);
     console.error('❌ [Backend] Dean analytics error:', error);

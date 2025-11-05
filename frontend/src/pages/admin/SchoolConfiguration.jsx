@@ -3,6 +3,7 @@ import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, Aca
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 // Removed SidebarContext import - using local state instead
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
+import { prefetchAdminData } from '../../services/dataPrefetchService';
 
 const SchoolConfiguration = () => {
   const [sidebarExpanded] = useState(true); // Default to expanded
@@ -66,6 +67,11 @@ const SchoolConfiguration = () => {
   // Load data from database
   useEffect(() => {
     loadData();
+    
+    // Prefetch data for other admin pages in the background
+    setTimeout(() => {
+      prefetchAdminData();
+    }, 1000);
   }, []);
 
   const loadData = async () => {

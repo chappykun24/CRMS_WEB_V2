@@ -1,11 +1,23 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import MyClasses from './MyClasses'
 import Assessments from './Assessments'
 import Grades from './Grades'
 import Syllabi from './Syllabi'
+import { prefetchFacultyData } from '../../services/dataPrefetchService'
 
 const FacultyDashboard = ({ user }) => {
+  // Prefetch data for other pages in the background
+  useEffect(() => {
+    if (user?.user_id) {
+      // Wait 1 second after dashboard mounts to start prefetching
+      const timer = setTimeout(() => {
+        prefetchFacultyData(user.user_id)
+      }, 1000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [user])
   // Default faculty dashboard content
   const defaultContent = (
     <div className="p-6">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import facultyCacheService from '../../services/facultyCacheService'
 import { Loader2 } from 'lucide-react'
+import { prefetchFacultyData } from '../../services/dataPrefetchService'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -613,6 +614,11 @@ const MyClasses = () => {
     console.log('🔍 [FACULTY] useEffect triggered - facultyId:', facultyId, 'loading:', loading, 'initialLoad:', initialLoad)
     if (facultyId) {
       fetchClasses()
+      
+      // Prefetch data for other faculty pages in the background
+      setTimeout(() => {
+        prefetchFacultyData(facultyId)
+      }, 1000)
     } else {
       // If no facultyId, stop loading after a delay
       console.log('🔍 [FACULTY] No facultyId, stopping loading after delay')

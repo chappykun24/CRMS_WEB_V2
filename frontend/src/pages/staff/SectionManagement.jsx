@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
+import { prefetchStaffData } from '../../services/dataPrefetchService'
 
 const SectionManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -56,6 +57,12 @@ const SectionManagement = () => {
         if (isMounted) setIsLoadingTerms(false)
       }
     })()
+    
+    // Prefetch data for other staff pages in the background
+    setTimeout(() => {
+      prefetchStaffData()
+    }, 1000)
+    
     return () => { isMounted = false }
   }, [])
 

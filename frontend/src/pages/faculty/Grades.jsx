@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
+import { prefetchFacultyData } from '../../services/dataPrefetchService'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -31,6 +32,11 @@ const Grades = () => {
     
     if (user?.user_id) {
       loadClasses()
+      
+      // Prefetch data for other faculty pages in the background
+      setTimeout(() => {
+        prefetchFacultyData(user.user_id)
+      }, 1000)
     }
   }, [user])
 

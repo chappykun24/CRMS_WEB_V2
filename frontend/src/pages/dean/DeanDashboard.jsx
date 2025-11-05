@@ -11,6 +11,7 @@ import {
 import Analytics from './Analytics'
 import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
+import { prefetchDeanData } from '../../services/dataPrefetchService'
 
 const Home = () => {
   const navigate = useNavigate()
@@ -42,19 +43,51 @@ const Home = () => {
       ])
 
       // Process classes
-      const classesData = await classesRes.json()
+      let classesData = []
+      try {
+        const contentType = classesRes.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          classesData = await classesRes.json()
+        }
+      } catch (e) {
+        console.error('Error parsing classes data:', e)
+      }
       const classesCount = Array.isArray(classesData) ? classesData.length : 0
 
       // Process students (enrolled)
-      const studentsData = await studentsRes.json()
+      let studentsData = []
+      try {
+        const contentType = studentsRes.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          studentsData = await studentsRes.json()
+        }
+      } catch (e) {
+        console.error('Error parsing students data:', e)
+      }
       const studentsCount = Array.isArray(studentsData) ? studentsData.length : 0
 
       // Process faculty
-      const facultyData = await facultyRes.json()
+      let facultyData = []
+      try {
+        const contentType = facultyRes.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          facultyData = await facultyRes.json()
+        }
+      } catch (e) {
+        console.error('Error parsing faculty data:', e)
+      }
       const facultyCount = Array.isArray(facultyData) ? facultyData.filter(f => f.is_active !== false).length : 0
 
       // Process active term
-      const termsData = await termsRes.json()
+      let termsData = []
+      try {
+        const contentType = termsRes.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          termsData = await termsRes.json()
+        }
+      } catch (e) {
+        console.error('Error parsing terms data:', e)
+      }
       const activeTerm = Array.isArray(termsData) ? termsData.find(t => t.is_active) : null
 
       // Process analytics for performance metrics
@@ -63,30 +96,47 @@ const Home = () => {
       let studentsAtRisk = 0
 
       if (analyticsRes.ok) {
-        const analyticsData = await analyticsRes.json()
-        if (analyticsData.success && Array.isArray(analyticsData.data) && analyticsData.data.length > 0) {
-          const students = analyticsData.data
-          const totalStudents = students.length
+        try {
+          const contentType = analyticsRes.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const analyticsData = await analyticsRes.json()
+            if (analyticsData.success && Array.isArray(analyticsData.data) && analyticsData.data.length > 0) {
+              const students = analyticsData.data
+              const totalStudents = students.length
 
-          // Calculate average attendance
-          const totalAttendance = students.reduce((sum, s) => {
-            return sum + (parseFloat(s.attendance_percentage) || 0)
-          }, 0)
-          avgAttendance = totalAttendance / totalStudents
+              // Calculate average attendance
+              const totalAttendance = students.reduce((sum, s) => {
+                return sum + (parseFloat(s.attendance_percentage) || 0)
+              }, 0)
+              avgAttendance = totalAttendance / totalStudents
 
-          // Calculate average score
-          const totalScore = students.reduce((sum, s) => {
-            return sum + (parseFloat(s.average_score) || 0)
-          }, 0)
-          avgScore = totalScore / totalStudents
+              // Calculate average score
+              const totalScore = students.reduce((sum, s) => {
+                return sum + (parseFloat(s.average_score) || 0)
+              }, 0)
+              avgScore = totalScore / totalStudents
 
-          // Count students at risk (cluster labels containing "risk" or low attendance/score)
-          studentsAtRisk = students.filter(s => {
-            const cluster = String(s.cluster_label || '').toLowerCase()
-            const attendance = parseFloat(s.attendance_percentage) || 0
-            const score = parseFloat(s.average_score) || 0
-            return cluster.includes('risk') || attendance < 60 || score < 60
-          }).length
+              // Count students at risk (cluster labels containing "risk" or low attendance/score)
+              studentsAtRisk = students.filter(s => {
+                const cluster = String(s.cluster_label || '').toLowerCase()
+                const attendance = parseFloat(s.attendance_percentage) || 0
+                const score = parseFloat(s.average_score) || 0
+                return cluster.includes('risk') || attendance < 60 || score < 60
+              }).length
+            }
+          } else {
+            const errorText = await analyticsRes.text()
+            console.error('Analytics response is not JSON:', errorText.substring(0, 200))
+          }
+        } catch (jsonError) {
+          console.error('Error parsing analytics JSON:', jsonError)
+          // Try to get error text for debugging
+          try {
+            const errorText = await analyticsRes.clone().text()
+            console.error('Analytics response text:', errorText.substring(0, 500))
+          } catch (e) {
+            console.error('Could not read analytics response as text:', e)
+          }
         }
       }
 
@@ -99,6 +149,12 @@ const Home = () => {
         studentsAtRisk: studentsAtRisk,
         activeTerm: activeTerm
       })
+      
+      // Prefetch data for other pages in the background (non-blocking)
+      // Use setTimeout to ensure it doesn't block the current page render
+      setTimeout(() => {
+        prefetchDeanData()
+      }, 1000) // Wait 1 second after home page loads
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
     } finally {

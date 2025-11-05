@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { prefetchFacultyData } from '../../services/dataPrefetchService'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -86,6 +87,11 @@ const Assessments = () => {
     
     if (user?.user_id) {
       loadClasses()
+      
+      // Prefetch data for other faculty pages in the background
+      setTimeout(() => {
+        prefetchFacultyData(user.user_id)
+      }, 1000)
     }
   }, [user, location.state])
 

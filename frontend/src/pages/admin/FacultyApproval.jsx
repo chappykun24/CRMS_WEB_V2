@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ShieldCheckIcon, NoSymbolIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/solid'
 import { enhancedApi } from '../../utils/api'
+import { prefetchAdminData } from '../../services/dataPrefetchService'
 
 const FacultyApproval = () => {
   const [faculty, setFaculty] = useState([])
@@ -38,6 +39,11 @@ const FacultyApproval = () => {
       }
     }
     loadFaculty()
+    
+    // Prefetch data for other admin pages in the background
+    setTimeout(() => {
+      prefetchAdminData()
+    }, 1000)
   }, [])
 
   const filteredFaculty = faculty.filter(user => {

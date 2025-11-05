@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
+import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
 import {
   PieChart,
   Pie,
@@ -30,19 +31,42 @@ const Analytics = () => {
   const [schoolTerms, setSchoolTerms] = useState([]);
   const [selectedTermId, setSelectedTermId] = useState('');
 
-  // Fetch school terms on component mount
+  // Fetch school terms on component mount (check prefetch first)
   useEffect(() => {
-    fetch('/api/school-terms')
-      .then(res => res.json())
-      .then(terms => {
-        setSchoolTerms(terms);
-        // Set the active term as default if available
-        const activeTerm = terms.find(t => t.is_active);
-        if (activeTerm) {
-          setSelectedTermId(activeTerm.term_id.toString());
-        }
-      })
-      .catch(err => console.error('Failed to fetch school terms:', err));
+    // Check prefetch cache first
+    const prefetchedTerms = getPrefetchedSchoolTerms();
+    if (prefetchedTerms && Array.isArray(prefetchedTerms)) {
+      console.log('📦 [Analytics] Using prefetched school terms');
+      setSchoolTerms(prefetchedTerms);
+      const activeTerm = prefetchedTerms.find(t => t.is_active);
+      if (activeTerm) {
+        setSelectedTermId(activeTerm.term_id.toString());
+      }
+    } else {
+      // Fallback to fetch if not in cache
+      fetch('/api/school-terms')
+        .then(res => {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            return res.json();
+          }
+          throw new Error('Response is not JSON');
+        })
+        .then(terms => {
+          setSchoolTerms(terms);
+          // Set the active term as default if available
+          const activeTerm = terms.find(t => t.is_active);
+          if (activeTerm) {
+            setSelectedTermId(activeTerm.term_id.toString());
+          }
+        })
+        .catch(err => console.error('Failed to fetch school terms:', err));
+    }
+    
+    // Prefetch data for other dean pages in the background
+    setTimeout(() => {
+      prefetchDeanData()
+    }, 1000)
   }, []);
 
   // Auto-load analytics when component mounts or when school terms are loaded
@@ -76,6 +100,40 @@ const Analytics = () => {
 
   const handleFetch = () => {
     console.log('🔍 [Analytics] Starting fetch...');
+    
+    // Check prefetch cache first
+    const prefetchedData = getPrefetchedAnalytics(selectedTermId || null);
+    if (prefetchedData) {
+      console.log('📦 [Analytics] Using prefetched data');
+      setLoading(false);
+      setProgress(100);
+      setError(null);
+      
+      if (prefetchedData.success) {
+        setData(prefetchedData.data || []);
+        setClusterMeta(prefetchedData.clustering || { enabled: false });
+        setHasFetched(true);
+        
+        // Log cluster distribution
+        const clusterCounts = (prefetchedData.data || []).reduce((acc, row) => {
+          let cluster = row.cluster_label;
+          if (!cluster || 
+              cluster === null || 
+              cluster === undefined ||
+              (typeof cluster === 'number' && isNaN(cluster)) ||
+              (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+            cluster = 'Not Clustered';
+          }
+          acc[cluster] = (acc[cluster] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('📈 [Analytics] Cluster distribution (from cache):', clusterCounts);
+      }
+      
+      setTimeout(() => setLoading(false), 100);
+      return;
+    }
+    
     setLoading(true);
     setProgress(0);
     setError(null);

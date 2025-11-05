@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { DocumentTextIcon, MagnifyingGlassIcon, EyeIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
+import { prefetchDeanData } from '../../services/dataPrefetchService'
 // Removed SidebarContext import - using local state instead
 
 const Reports = () => {
@@ -13,6 +14,13 @@ const Reports = () => {
   // Sample reports data structure (no mock data as requested)
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(false)
+
+  // Prefetch data for other program chair pages in the background
+  useEffect(() => {
+    setTimeout(() => {
+      prefetchDeanData()
+    }, 1000)
+  }, [])
 
   const handleGenerateReport = (e) => {
     e.preventDefault()

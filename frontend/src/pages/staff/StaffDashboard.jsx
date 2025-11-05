@@ -1,10 +1,20 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import StudentManagement from './StudentManagement'
 import AssignFaculty from './AssignFaculty'
 import SectionManagement from './SectionManagement'
+import { prefetchStaffData } from '../../services/dataPrefetchService'
 
 const StaffDashboard = ({ user }) => {
+  // Prefetch data for other pages in the background
+  useEffect(() => {
+    // Wait 1 second after dashboard mounts to start prefetching
+    const timer = setTimeout(() => {
+      prefetchStaffData()
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [])
   // Default staff dashboard content
   const defaultContent = (
     <div className="p-6">
