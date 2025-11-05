@@ -51,9 +51,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       case 'DEAN':
         return [
           { name: 'Home', icon: HomeIcon, href: '/dean' },
-          { name: 'Analytics', icon: ChartBarIcon, href: '/dean/analytics' },
-          { name: 'My Classes', icon: BookOpenIcon, href: '/dean/classes' },
-          { name: 'Reports', icon: DocumentTextIcon, href: '/dean/reports' },
+          { name: 'Reports and Analytics', icon: ChartBarIcon, href: '/dean/analytics' },
+          { name: 'Classes', icon: BookOpenIcon, href: '/dean/classes' },
           { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dean/syllabus-approval' }
         ]
       

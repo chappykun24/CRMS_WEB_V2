@@ -187,9 +187,8 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/syllabi') return 'Syllabi'
         break
       case 'DEAN':
-        if (path === '/dashboard/analytics') return 'Analytics'
-        if (path === '/dashboard/classes') return 'My Classes'
-        if (path === '/dashboard/reports') return 'Reports'
+        if (path === '/dashboard/analytics' || path === '/dean/analytics') return 'Reports and Analytics'
+        if (path === '/dashboard/classes' || path === '/dean/classes') return 'Classes'
         if (path === '/dashboard/syllabus-approval') return 'Syllabus Approval'
         break
       case 'STAFF':
