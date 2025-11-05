@@ -45,6 +45,20 @@ const Analytics = () => {
       .catch(err => console.error('Failed to fetch school terms:', err));
   }, []);
 
+  // Auto-load analytics when component mounts or when school terms are loaded
+  useEffect(() => {
+    // Only auto-load on initial mount if we have school terms loaded
+    // This ensures we have the term selection available
+    if (!hasFetched && schoolTerms.length > 0 && !loading) {
+      // Small delay to ensure state is ready
+      const timer = setTimeout(() => {
+        handleFetch();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolTerms.length]);
+
   // Track if this is the initial term selection (from active term)
   const isInitialTermLoadRef = useRef(true);
 
@@ -395,28 +409,6 @@ const Analytics = () => {
         }
       `}</style>
       <div className="p-6 overflow-y-auto h-full">
-        {!hasFetched && (
-          <div className="flex justify-end mb-6">
-            <button
-              className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 shadow-sm"
-              onClick={() => { try { trackEvent('dean_analytics_load_clicked') } catch {}; handleFetch() }}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <ChartBarIcon className="h-5 w-5 mr-2 animate-pulse" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <ChartBarIcon className="h-5 w-5 mr-2" />
-                  Load Analytics
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
         {/* Progress Bar */}
         {loading && (
           <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
