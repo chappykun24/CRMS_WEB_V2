@@ -782,43 +782,6 @@ const Analytics = () => {
                     />
                   </div>
                 </div>
-
-                {/* Average Days Late */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Average Days Late</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {selectedStudent.average_days_late !== null && selectedStudent.average_days_late !== undefined
-                        ? `${parseFloat(selectedStudent.average_days_late).toFixed(1)} days`
-                        : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    {/* Days late progress bar (inverse - lower is better) */}
-                    <div
-                      className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(selectedStudent.average_days_late) || 0) <= 2
-                          ? 'bg-emerald-500'
-                          : (parseFloat(selectedStudent.average_days_late) || 0) <= 5
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
-                      }`}
-                      style={{
-                        width: `${Math.min(
-                          ((parseFloat(selectedStudent.average_days_late) || 0) / 10) * 100,
-                          100
-                        )}%`
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(parseFloat(selectedStudent.average_days_late) || 0) <= 2
-                      ? 'Excellent timeliness'
-                      : (parseFloat(selectedStudent.average_days_late) || 0) <= 5
-                      ? 'Moderate delays'
-                      : 'Needs improvement in timeliness'}
-                  </p>
-                </div>
               </div>
 
               {/* Additional Info Section */}
