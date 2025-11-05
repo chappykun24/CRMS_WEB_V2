@@ -43,7 +43,7 @@ const LoginPage = () => {
       const defaultPath = role === 'faculty'
         ? '/faculty/classes'
         : role === 'dean'
-          ? '/dean/analytics'
+          ? '/dean'
           : role === 'staff'
             ? '/dashboard/students'
             : role === 'programchair'
@@ -84,7 +84,7 @@ const LoginPage = () => {
         const roleDefaultPath = (() => {
           if (role === 'admin') return '/dashboard'
           if (role === 'faculty') return '/faculty/classes'
-          if (role === 'dean') return '/dashboard/analytics'
+          if (role === 'dean') return '/dean'
           if (role === 'staff') return '/dashboard/students'
           if (role === 'programchair') return '/dashboard/courses'
           return '/dashboard'

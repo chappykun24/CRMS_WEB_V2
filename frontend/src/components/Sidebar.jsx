@@ -129,7 +129,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       <nav className="flex-1 py-4 md:py-6 px-2 md:px-3 space-y-2 md:space-y-3">
         {navigationItems.map((item, index) => {
           const isActive = location.pathname === item.href || 
-                         (item.href === '/dashboard' && location.pathname === '/dashboard/')
+                         (item.href === '/dashboard' && location.pathname === '/dashboard/') ||
+                         (item.href === '/dean' && location.pathname === '/dean')
           return (
             <Link
               key={item.name}

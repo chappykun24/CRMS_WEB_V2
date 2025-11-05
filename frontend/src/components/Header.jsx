@@ -187,9 +187,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/syllabi') return 'Syllabi'
         break
       case 'DEAN':
+        if (path === '/dean' || path === '/dean/') return 'Home'
         if (path === '/dashboard/analytics' || path === '/dean/analytics') return 'Reports and Analytics'
         if (path === '/dashboard/classes' || path === '/dean/classes') return 'Classes'
-        if (path === '/dashboard/syllabus-approval') return 'Syllabus Approval'
+        if (path === '/dashboard/syllabus-approval' || path === '/dean/syllabus-approval') return 'Syllabus Approval'
         break
       case 'STAFF':
         if (path === '/dashboard/students') return 'Student Management'
