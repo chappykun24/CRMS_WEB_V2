@@ -40,14 +40,14 @@ const LoginPage = () => {
         const user = storedUser ? JSON.parse(storedUser) : null
         role = String(user?.role_name || user?.role || '').toLowerCase().replace(/\s|_/g, '')
       } catch (_) {}
-      const defaultPath = role === 'faculty'
+              const defaultPath = role === 'faculty'
         ? '/faculty/classes'
         : role === 'dean'
           ? '/dean'
           : role === 'staff'
             ? '/dashboard/students'
             : role === 'programchair'
-              ? '/dashboard/courses'
+              ? '/program-chair'
               : '/dashboard'
       navigate(defaultPath, { replace: true })
     }
@@ -86,7 +86,7 @@ const LoginPage = () => {
           if (role === 'faculty') return '/faculty/classes'
           if (role === 'dean') return '/dean'
           if (role === 'staff') return '/dashboard/students'
-          if (role === 'programchair') return '/dashboard/courses'
+          if (role === 'programchair') return '/program-chair'
           return '/dashboard'
         })()
         console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)

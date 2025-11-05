@@ -198,13 +198,11 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/assign-faculty') return 'Assign Faculty'
         break
       case 'PROGRAMCHAIR':
-        if (path === '/dashboard/courses' || path === '/dashboard/program-chair/courses') {
-          // Return "Course Management" as the main section
-          return 'Course Management'
-        }
-        if (path === '/dashboard/analytics' || path === '/dashboard/program-chair/analytics') return 'Analytics'
-        if (path === '/dashboard/reports' || path === '/dashboard/program-chair/reports') return 'Reports'
-        if (path === '/dashboard/submissions' || path === '/dashboard/program-chair/submissions') return 'Submissions'
+        if (path === '/program-chair' || path === '/program-chair/') return 'Home'
+        if (path === '/dashboard/courses' || path === '/program-chair/courses') return 'Course Management'
+        if (path === '/dashboard/analytics' || path === '/program-chair/analytics') return 'Reports and Analytics'
+        if (path === '/dashboard/reports' || path === '/program-chair/reports') return 'Reports'
+        if (path === '/program-chair/syllabus-review') return 'Syllabus Review'
         break
       default:
         break

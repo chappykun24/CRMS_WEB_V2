@@ -68,9 +68,9 @@ const Sidebar = ({ isExpanded, onToggle }) => {
         return [
           { name: 'Home', icon: HomeIcon, href: '/program-chair' },
           { name: 'Course Management', icon: BookOpenIcon, href: '/program-chair/courses' },
-          { name: 'Analytics', icon: ChartBarIcon, href: '/program-chair/analytics' },
+          { name: 'Reports and Analytics', icon: ChartBarIcon, href: '/program-chair/analytics' },
           { name: 'Reports', icon: DocumentTextIcon, href: '/program-chair/reports' },
-          { name: 'Submissions', icon: ClipboardDocumentListIcon, href: '/program-chair/submissions' }
+          { name: 'Syllabus Review', icon: ClipboardDocumentListIcon, href: '/program-chair/syllabus-review' }
         ]
       
       default:
@@ -130,7 +130,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
         {navigationItems.map((item, index) => {
           const isActive = location.pathname === item.href || 
                          (item.href === '/dashboard' && location.pathname === '/dashboard/') ||
-                         (item.href === '/dean' && location.pathname === '/dean')
+                         (item.href === '/dean' && location.pathname === '/dean') ||
+                         (item.href === '/program-chair' && location.pathname === '/program-chair')
           return (
             <Link
               key={item.name}
