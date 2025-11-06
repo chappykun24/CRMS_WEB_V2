@@ -4,7 +4,6 @@ import UserManagement from './UserManagement'
 import FacultyApproval from './FacultyApproval'
 import SystemSettings from './SystemSettings'
 import SchoolConfiguration from './SchoolConfiguration'
-import SystemEvaluation from './SystemEvaluation'
 import Home from './Home'
 import { CardGridSkeleton } from '../../components/skeletons'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
@@ -42,7 +41,6 @@ const AdminDashboard = ({ user }) => {
       <Route path="/faculty-approval" element={<FacultyApproval />} />
       <Route path="/school-config" element={<SchoolConfiguration />} />
       <Route path="/settings" element={<SystemSettings />} />
-      <Route path="/system-evaluation" element={<SystemEvaluation />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
   )
