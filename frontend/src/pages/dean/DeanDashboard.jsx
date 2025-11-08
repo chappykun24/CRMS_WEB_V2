@@ -14,10 +14,59 @@ import SyllabusApproval from './SyllabusApproval'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 
+// Cache key for localStorage
+const DEAN_DASHBOARD_CACHE_KEY = 'dean_dashboard_stats'
+const CACHE_MAX_AGE = 30 * 60 * 1000 // 30 minutes
+
+// Cache utility functions
+const getCachedStats = () => {
+  try {
+    const cached = localStorage.getItem(DEAN_DASHBOARD_CACHE_KEY)
+    if (!cached) return null
+    
+    const { stats, timestamp } = JSON.parse(cached)
+    const age = Date.now() - timestamp
+    
+    // Return cached data if it's not too old
+    if (age < CACHE_MAX_AGE) {
+      console.log('📦 [DeanDashboard] Loading cached stats (age:', Math.round(age / 1000), 'seconds)')
+      return stats
+    } else {
+      console.log('⏰ [DeanDashboard] Cached stats expired, removing from cache')
+      localStorage.removeItem(DEAN_DASHBOARD_CACHE_KEY)
+      return null
+    }
+  } catch (error) {
+    console.error('❌ [DeanDashboard] Error reading cache:', error)
+    return null
+  }
+}
+
+const setCachedStats = (stats) => {
+  try {
+    const cacheData = {
+      stats,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(DEAN_DASHBOARD_CACHE_KEY, JSON.stringify(cacheData))
+    console.log('💾 [DeanDashboard] Stats cached successfully')
+  } catch (error) {
+    console.error('❌ [DeanDashboard] Error caching stats:', error)
+    // If localStorage is full, try to clear old cache entries
+    try {
+      localStorage.removeItem(DEAN_DASHBOARD_CACHE_KEY)
+      localStorage.setItem(DEAN_DASHBOARD_CACHE_KEY, JSON.stringify({ stats, timestamp: Date.now() }))
+    } catch (e) {
+      console.error('❌ [DeanDashboard] Failed to update cache:', e)
+    }
+  }
+}
+
 const Home = () => {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -32,15 +81,37 @@ const Home = () => {
   useEffect(() => {
     // Only fetch if authenticated
     if (isAuthenticated && !authLoading) {
-      fetchDashboardStats()
+      // Try to load from cache first
+      const cachedStats = getCachedStats()
+      
+      if (cachedStats) {
+        // We have cached data - show it immediately
+        console.log('✅ [DeanDashboard] Loading cached stats, showing immediately')
+        setStats(cachedStats)
+        setLoading(false) // Hide loading spinner since we have cached data
+        
+        // Fetch fresh data in background
+        setRefreshing(true)
+        fetchDashboardStats(true) // Pass true to indicate background refresh
+      } else {
+        // No cache available, fetch normally with loading spinner
+        console.log('🔄 [DeanDashboard] No cache found, fetching fresh data')
+        fetchDashboardStats(false)
+      }
     } else if (!authLoading && !isAuthenticated) {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authLoading])
 
-  const fetchDashboardStats = async () => {
-    setLoading(true)
+  const fetchDashboardStats = async (isBackgroundRefresh = false) => {
+    // Only show loading spinner if this is the initial load (not a background refresh)
+    if (!isBackgroundRefresh) {
+      setLoading(true)
+    }
+    
     try {
+      console.log('🔄 [DeanDashboard] Fetching fresh dashboard stats...')
       // Fetch all data in parallel
       const [classesRes, studentsRes, facultyRes, termsRes, analyticsRes] = await Promise.all([
         fetch('/api/section-courses/assigned'),
@@ -148,7 +219,7 @@ const Home = () => {
         }
       }
 
-      setStats({
+      const newStats = {
         totalStudents: studentsCount,
         totalClasses: classesCount,
         totalFaculty: facultyCount,
@@ -156,9 +227,20 @@ const Home = () => {
         avgScore: avgScore.toFixed(1),
         studentsAtRisk: studentsAtRisk,
         activeTerm: activeTerm
-      })
+      }
+      
+      // Update stats with fresh data
+      setStats(newStats)
+      
+      // Cache the fresh data
+      setCachedStats(newStats)
       
       setInitialLoadComplete(true)
+      
+      if (isBackgroundRefresh) {
+        console.log('✅ [DeanDashboard] Background refresh completed')
+        setRefreshing(false)
+      }
       
       // Prefetch data for other pages in the background (non-blocking)
       // Use setTimeout to ensure it doesn't block the current page render
@@ -167,9 +249,16 @@ const Home = () => {
         prefetchDeanData()
       }, 500) // Wait 500ms after main data loads to start prefetching
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
+      console.error('❌ [DeanDashboard] Error fetching dashboard stats:', error)
+      // If this is a background refresh and it fails, we keep showing cached data
+      if (isBackgroundRefresh) {
+        console.warn('⚠️ [DeanDashboard] Background refresh failed, keeping cached data')
+        setRefreshing(false)
+      }
     } finally {
-      setLoading(false)
+      if (!isBackgroundRefresh) {
+        setLoading(false)
+      }
     }
   }
 
@@ -258,6 +347,14 @@ const Home = () => {
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Background refresh indicator */}
+        {refreshing && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="text-sm text-blue-700">Refreshing data in the background...</span>
+          </div>
+        )}
+        
         {/* Key Statistics Cards (Top Row) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           {/* Total Students */}
