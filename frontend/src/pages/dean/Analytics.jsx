@@ -3,6 +3,7 @@ import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIco
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
+import { API_BASE_URL } from '../../utils/api';
 import {
   PieChart,
   Pie,
@@ -44,7 +45,7 @@ const Analytics = () => {
       }
     } else {
       // Fallback to fetch if not in cache
-      fetch('/api/school-terms')
+      fetch(`${API_BASE_URL}/school-terms`)
         .then(res => {
           const contentType = res.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
@@ -150,8 +151,8 @@ const Analytics = () => {
     }, 300);
 
     const url = selectedTermId 
-      ? `/api/assessments/dean-analytics/sample?term_id=${selectedTermId}`
-      : '/api/assessments/dean-analytics/sample';
+      ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${selectedTermId}`
+      : `${API_BASE_URL}/assessments/dean-analytics/sample`;
     
     fetch(url)
       .then(async (res) => {

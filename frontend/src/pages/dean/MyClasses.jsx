@@ -3,6 +3,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 import { getPrefetchedClasses } from '../../services/dataPrefetchService'
+import { API_BASE_URL } from '../../utils/api'
 
 const MyClasses = () => {
   const [query, setQuery] = useState('')
@@ -13,9 +14,6 @@ const MyClasses = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
-
-  // Compute API base URL
-  const API_BASE_URL = '/api'
 
   // Handle class selection
   const handleClassSelect = async (classItem) => {

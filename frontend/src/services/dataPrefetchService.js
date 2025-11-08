@@ -3,6 +3,8 @@
  * Prefetches data for sidebar pages in the background to improve navigation performance
  */
 
+import { API_BASE_URL } from '../utils/api';
+
 // In-memory cache for prefetched data
 const prefetchCache = new Map();
 
@@ -51,8 +53,8 @@ const prefetchAnalytics = async (termId = null) => {
     
     console.log('🔄 [Prefetch] Fetching analytics data...');
     const url = termId 
-      ? `/api/assessments/dean-analytics/sample?term_id=${termId}`
-      : '/api/assessments/dean-analytics/sample';
+      ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${termId}`
+      : `${API_BASE_URL}/assessments/dean-analytics/sample`;
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -89,7 +91,7 @@ const prefetchClasses = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching classes data...');
-    const response = await fetch('/api/section-courses/assigned');
+    const response = await fetch(`${API_BASE_URL}/section-courses/assigned`);
     if (!response.ok) {
       throw new Error(`Classes fetch failed: ${response.status}`);
     }
@@ -124,7 +126,7 @@ const prefetchSchoolTerms = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching school terms...');
-    const response = await fetch('/api/school-terms');
+    const response = await fetch(`${API_BASE_URL}/school-terms`);
     if (!response.ok) {
       throw new Error(`School terms fetch failed: ${response.status}`);
     }
@@ -157,7 +159,7 @@ const prefetchUsers = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching users...');
-    const response = await fetch('/api/users');
+    const response = await fetch(`${API_BASE_URL}/users`);
     if (!response.ok) throw new Error(`Users fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -188,7 +190,7 @@ const prefetchRoles = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching roles...');
-    const response = await fetch('/api/roles');
+    const response = await fetch(`${API_BASE_URL}/roles`);
     if (!response.ok) throw new Error(`Roles fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -219,7 +221,7 @@ const prefetchDepartments = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching departments...');
-    const response = await fetch('/api/departments');
+    const response = await fetch(`${API_BASE_URL}/departments`);
     if (!response.ok) throw new Error(`Departments fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -250,7 +252,7 @@ const prefetchStudents = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching students...');
-    const response = await fetch('/api/students');
+    const response = await fetch(`${API_BASE_URL}/students`);
     if (!response.ok) throw new Error(`Students fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -281,7 +283,7 @@ const prefetchPrograms = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching programs...');
-    const response = await fetch('/api/programs');
+    const response = await fetch(`${API_BASE_URL}/programs`);
     if (!response.ok) throw new Error(`Programs fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -312,7 +314,7 @@ const prefetchCourses = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching courses...');
-    const response = await fetch('/api/courses');
+    const response = await fetch(`${API_BASE_URL}/courses`);
     if (!response.ok) throw new Error(`Courses fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -343,7 +345,7 @@ const prefetchSections = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching sections...');
-    const response = await fetch('/api/section-courses/sections');
+    const response = await fetch(`${API_BASE_URL}/section-courses/sections`);
     if (!response.ok) throw new Error(`Sections fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -374,7 +376,7 @@ const prefetchFaculty = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching faculty...');
-    const response = await fetch('/api/section-courses/faculty');
+    const response = await fetch(`${API_BASE_URL}/section-courses/faculty`);
     if (!response.ok) throw new Error(`Faculty fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -407,7 +409,7 @@ const prefetchFacultyClasses = async (facultyId) => {
     }
     
     console.log('🔄 [Prefetch] Fetching faculty classes...');
-    const response = await fetch(`/api/section-courses/faculty/${facultyId}`);
+    const response = await fetch(`${API_BASE_URL}/section-courses/faculty/${facultyId}`);
     if (!response.ok) throw new Error(`Faculty classes fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');

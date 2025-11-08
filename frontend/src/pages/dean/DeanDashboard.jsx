@@ -14,6 +14,7 @@ import SyllabusApproval from './SyllabusApproval'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { setLocalStorageItem, getLocalStorageItem, removeLocalStorageItem } from '../../utils/localStorageManager'
+import { API_BASE_URL } from '../../utils/api'
 
 // Cache key for localStorage
 const DEAN_DASHBOARD_CACHE_KEY = 'dean_dashboard_stats'
@@ -108,11 +109,11 @@ const Home = () => {
       console.log('🔄 [DeanDashboard] Fetching fresh dashboard stats...')
       // Fetch all data in parallel
       const [classesRes, studentsRes, facultyRes, termsRes, analyticsRes] = await Promise.all([
-        fetch('/api/section-courses/assigned'),
-        fetch('/api/students'),
-        fetch('/api/users?role=FACULTY'),
-        fetch('/api/school-terms'),
-        fetch('/api/assessments/dean-analytics/sample')
+        fetch(`${API_BASE_URL}/section-courses/assigned`),
+        fetch(`${API_BASE_URL}/students`),
+        fetch(`${API_BASE_URL}/users?role=FACULTY`),
+        fetch(`${API_BASE_URL}/school-terms`),
+        fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`)
       ])
 
       // Process classes

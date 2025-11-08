@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 // API Configuration - always use Render backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api';
+// Export this so other files can use it for fetch() calls
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://crms-backend-api.onrender.com/api';
+
+// Log the API base URL in development for debugging
+if (import.meta.env.DEV) {
+  console.log('🔗 [API] Base URL:', API_BASE_URL);
+  console.log('🔗 [API] VITE_API_BASE_URL env:', import.meta.env.VITE_API_BASE_URL || '(not set, using fallback)');
+}
 
 // Helpers
 const safeParseJson = (value, fallback) => {
