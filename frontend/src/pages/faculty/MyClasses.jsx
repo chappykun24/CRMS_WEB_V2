@@ -110,6 +110,20 @@ const MyClasses = () => {
     return tokens[tokens.length - 1].toLowerCase()
   }
 
+  // Helper function to format name as "Last name, First name Middle"
+  const formatName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }
+
   // Load existing attendance data for a specific date
   const loadExistingAttendanceForDate = useCallback(async (date) => {
     if (!selectedClass || !date) return
@@ -918,7 +932,7 @@ const MyClasses = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {student.full_name}
+                            {formatName(student.full_name)}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {student.student_number}

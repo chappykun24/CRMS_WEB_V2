@@ -345,6 +345,20 @@ const Assessments = () => {
     setShowCreateModal(true)
   }
 
+  // Helper function to format name as "Last name, First name Middle"
+  const formatName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }
+
   const filteredAssessments = assessments.filter(assessment =>
     assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -867,7 +881,7 @@ const Assessments = () => {
                                       className="border border-gray-200"
                                     />
                                     <div className="flex-1">
-                                      <div className="text-sm font-medium text-gray-900">{gradeData.student_name || 'Student'}</div>
+                                      <div className="text-sm font-medium text-gray-900">{formatName(gradeData.student_name) || 'Student'}</div>
                                       <div className="text-xs text-gray-500">SR Code: {gradeData.student_number || 'N/A'}</div>
                                     </div>
                                   </div>

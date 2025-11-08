@@ -213,10 +213,43 @@ const Grades = () => {
     }
   }
 
-  const filteredStudents = students.filter(student =>
-    student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.student_number?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Helper function to extract surname (last word) for alphabetical sorting
+  const extractSurname = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }
+
+  // Helper function to format name as "Last name, First name Middle"
+  const formatName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }
+
+  // Filter and sort students alphabetically by last name
+  const filteredStudents = students
+    .filter(student =>
+      student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.student_number?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aLast = extractSurname(a.full_name)
+      const bLast = extractSurname(b.full_name)
+      if (aLast === bLast) {
+        // If last names are the same, sort by full name
+        return (a.full_name || '').localeCompare(b.full_name || '')
+      }
+      return aLast.localeCompare(bLast)
+    })
 
   return (
     <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
@@ -234,12 +267,12 @@ const Grades = () => {
 
         {/* Content */}
         <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-          <div className="px-8 h-full">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-full">
+          <div className="px-8 h-full flex flex-col">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 flex-1 min-h-0">
               {/* Main Content - Students List */}
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-3 flex flex-col min-h-0">
                 {/* Search Bar */}
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-6 flex-shrink-0">
                   <div className="relative flex-1">
                     <div className="relative">
                       <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -256,14 +289,14 @@ const Grades = () => {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
                     <p className="text-red-800">{error}</p>
                   </div>
                 )}
 
                 {/* Students Grades Table */}
                 {selectedClass ? (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                     {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
@@ -282,7 +315,7 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="overflow-x-auto">
+                      <div className="flex-1 overflow-auto min-h-0">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
@@ -335,7 +368,7 @@ const Grades = () => {
                                       />
                                       <div className="min-w-0">
                                         <p className="text-sm font-medium text-gray-900 truncate">
-                                          {student.full_name || 'Unknown Student'}
+                                          {formatName(student.full_name)}
                                         </p>
                                         <p className="text-xs text-gray-500 truncate">
                                           {student.student_number || 'N/A'}
