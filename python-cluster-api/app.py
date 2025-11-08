@@ -17,16 +17,22 @@ def cluster_records(records):
     # Define features based on student behavior: grades, submissions, attendance
     # If submission_rate is not provided, calculate it or use a default
     if 'submission_rate' not in df.columns:
-        # Try to calculate from available data or set default based on average_days_late
-        # Students with low days_late likely have high submission rate
-        df['submission_rate'] = df.get('average_days_late', pd.Series([0] * len(df)))
-        df['submission_rate'] = (1 - (df['submission_rate'] / 10).clip(0, 1)).fillna(0.8)
+        # Calculate from average_days_late: lower days late = higher submission rate
+        df['submission_rate'] = (1 - (df['average_days_late'].fillna(3) / 10).clip(0, 1)).fillna(0.8)
     else:
         # Convert percentage to decimal if needed (e.g., 95 -> 0.95)
         df['submission_rate'] = pd.to_numeric(df['submission_rate'], errors='coerce')
-        # If values are > 1, assume they're percentages and convert
-        if df['submission_rate'].max() > 1:
-            df['submission_rate'] = df['submission_rate'] / 100
+        # Check if values are percentages (0-100) or decimals (0-1)
+        max_rate = df['submission_rate'].max()
+        if not pd.isna(max_rate):
+            if max_rate > 1 and max_rate <= 100:
+                # Values are percentages, convert to decimal
+                df['submission_rate'] = df['submission_rate'] / 100
+            elif max_rate > 100:
+                # Invalid values, recalculate from days late
+                print('⚠️ WARNING: Invalid submission_rate values detected. Recalculating from average_days_late.')
+                df['submission_rate'] = (1 - (df['average_days_late'].fillna(3) / 10).clip(0, 1)).fillna(0.8)
+        # If max_rate <= 1, values are already in decimal form (0-1), use as-is
     
     # Core behavior features: attendance, grades, submission timeliness, submission rate
     features = ['attendance_percentage', 'average_score', 'average_days_late', 'submission_rate']
@@ -38,31 +44,54 @@ def cluster_records(records):
     # Fill missing submission_rate with reasonable defaults based on other behavior
     if df['submission_rate'].isna().any():
         mask = df['submission_rate'].isna()
-        # Estimate submission rate: high attendance + low days late = high submission rate
-        df.loc[mask, 'submission_rate'] = (
-            (df.loc[mask, 'attendance_percentage'].fillna(0) / 100) * 0.9 + 
-            (1 - (df.loc[mask, 'average_days_late'].fillna(0) / 10).clip(0, 1)) * 0.1
-        ).clip(0, 1).fillna(0.8)
+        # Estimate submission rate from attendance and days late
+        # Higher attendance + lower days late = higher submission rate
+        estimated_rate = (
+            (df.loc[mask, 'attendance_percentage'].fillna(75) / 100) * 0.7 +  # 70% weight on attendance
+            (1 - (df.loc[mask, 'average_days_late'].fillna(3) / 10).clip(0, 1)) * 0.3  # 30% weight on timeliness
+        ).clip(0.5, 1.0)  # Ensure between 50% and 100%
+        df.loc[mask, 'submission_rate'] = estimated_rate.fillna(0.8)
 
     # Fill missing values with defaults instead of dropping students
     # This ensures all students get clustered, even with incomplete data
     df_clean = df.copy()
     
-    # Fill null values with defaults (0 for scores/days late, 50% for attendance if completely missing)
-    df_clean['attendance_percentage'] = df_clean['attendance_percentage'].fillna(50.0)  # Default to 50% if null
-    df_clean['average_score'] = df_clean['average_score'].fillna(0.0)  # Default to 0 if null
-    df_clean['average_days_late'] = df_clean['average_days_late'].fillna(0.0)  # Default to 0 if null
-    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.5)  # Default to 50% if null
-    
-    # Ensure all values are numeric (handle any remaining edge cases)
+    # Ensure all values are numeric first (handle any remaining edge cases)
     for col in features:
-        df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0.0)
+        df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+    
+    # Fill null values with reasonable defaults based on typical student behavior
+    # These defaults are more realistic and prevent all students from clustering together
+    df_clean['attendance_percentage'] = df_clean['attendance_percentage'].fillna(75.0)  # Default to 75% (typical attendance)
+    df_clean['average_score'] = df_clean['average_score'].fillna(50.0)  # Default to 50 (average score, NOT 0!)
+    df_clean['average_days_late'] = df_clean['average_days_late'].fillna(3.0)  # Default to 3 days (typical delay)
+    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)  # Default to 80% (typical submission rate)
     
     if len(df_clean) == 0:
         output = df.copy()
         output['cluster'] = None
         output['cluster_label'] = None
         return output.to_dict(orient='records')
+
+    # Check data variation to detect potential issues before clustering
+    attendance_range = df_clean['attendance_percentage'].max() - df_clean['attendance_percentage'].min()
+    score_range = df_clean['average_score'].max() - df_clean['average_score'].min()
+    days_late_range = df_clean['average_days_late'].max() - df_clean['average_days_late'].min()
+    submission_range = df_clean['submission_rate'].max() - df_clean['submission_rate'].min()
+    
+    print(f'📊 [Python API] Data variation check:')
+    print(f'  Attendance range: {attendance_range:.2f}%')
+    print(f'  Score range: {score_range:.2f}')
+    print(f'  Days late range: {days_late_range:.2f}')
+    print(f'  Submission rate range: {submission_range:.2f}')
+    
+    # Warn if variation is too low (may cause clustering issues)
+    if attendance_range < 10:
+        print(f'⚠️ WARNING: Low attendance variation ({attendance_range:.2f}%). Clustering may not distinguish students well.')
+    if score_range < 10:
+        print(f'⚠️ WARNING: Low score variation ({score_range:.2f}). Clustering may not distinguish students well.')
+    if days_late_range < 1:
+        print(f'⚠️ WARNING: Low days late variation ({days_late_range:.2f}). Clustering may not distinguish students well.')
 
     n_clusters_requested = 4  # More clusters for better behavior differentiation
     n_clusters = min(n_clusters_requested, len(df_clean))
@@ -128,6 +157,26 @@ def cluster_records(records):
         labels = {0: "Students"}
     
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
+    
+    # Validate cluster distribution to detect issues
+    cluster_counts = df_clean['cluster_label'].value_counts()
+    total_students = len(df_clean)
+    max_cluster_ratio = cluster_counts.max() / total_students if total_students > 0 else 0
+    
+    print(f'📈 [Python API] Cluster distribution:')
+    for label, count in cluster_counts.items():
+        percentage = (count / total_students) * 100
+        print(f'  {label}: {count} students ({percentage:.1f}%)')
+    
+    # Check for clustering issues
+    if max_cluster_ratio > 0.8:
+        print(f'⚠️ WARNING: One cluster contains {max_cluster_ratio*100:.1f}% of students. This may indicate a clustering issue.')
+    if len(cluster_counts) == 1:
+        print(f'⚠️ WARNING: All students are in the same cluster ({cluster_counts.index[0]}). This suggests a data quality issue.')
+        print('  Possible causes:')
+        print('    - All students have similar metrics')
+        print('    - Missing data replaced with same default values')
+        print('    - Data not properly normalized')
 
     # Ensure student_id types match for merge (both should be Int64)
     df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
