@@ -631,20 +631,32 @@ router.get('/dean-analytics/sample', async (req, res) => {
     };
     
     // Debug: Log raw environment variables before processing
+    const rawEnvVars = {
+      VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL,
+      CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL,
+      CLUSTER_API_URL: process.env.CLUSTER_API_URL,
+    };
+    
     console.log('🔍 [Backend] Raw environment variables:', {
-      VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL ? `"${process.env.VITE_CLUSTER_API_URL}"` : '(undefined)',
-      CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL ? `"${process.env.CLUSTER_SERVICE_URL}"` : '(undefined)',
-      CLUSTER_API_URL: process.env.CLUSTER_API_URL ? `"${process.env.CLUSTER_API_URL}"` : '(undefined)',
+      VITE_CLUSTER_API_URL: rawEnvVars.VITE_CLUSTER_API_URL ? `"${rawEnvVars.VITE_CLUSTER_API_URL}" (type: ${typeof rawEnvVars.VITE_CLUSTER_API_URL}, length: ${String(rawEnvVars.VITE_CLUSTER_API_URL).length})` : '(undefined)',
+      CLUSTER_SERVICE_URL: rawEnvVars.CLUSTER_SERVICE_URL ? `"${rawEnvVars.CLUSTER_SERVICE_URL}" (type: ${typeof rawEnvVars.CLUSTER_SERVICE_URL}, length: ${String(rawEnvVars.CLUSTER_SERVICE_URL).length})` : '(undefined)',
+      CLUSTER_API_URL: rawEnvVars.CLUSTER_API_URL ? `"${rawEnvVars.CLUSTER_API_URL}" (type: ${typeof rawEnvVars.CLUSTER_API_URL}, length: ${String(rawEnvVars.CLUSTER_API_URL).length})` : '(undefined)',
     });
     
-    const url1 = getClusterUrl(process.env.VITE_CLUSTER_API_URL, 'VITE_CLUSTER_API_URL');
-    const url2 = getClusterUrl(process.env.CLUSTER_SERVICE_URL, 'CLUSTER_SERVICE_URL');
-    const url3 = getClusterUrl(process.env.CLUSTER_API_URL, 'CLUSTER_API_URL');
+    // IMPORTANT: VITE_ prefixed vars are ONLY available in frontend, not backend!
+    // On the backend, we should check CLUSTER_SERVICE_URL first (without VITE_ prefix)
+    // Only check VITE_CLUSTER_API_URL as a fallback (won't work in production backend)
+    const url1 = getClusterUrl(process.env.CLUSTER_SERVICE_URL, 'CLUSTER_SERVICE_URL');
+    const url2 = getClusterUrl(process.env.CLUSTER_API_URL, 'CLUSTER_API_URL');
+    const url3 = getClusterUrl(process.env.VITE_CLUSTER_API_URL, 'VITE_CLUSTER_API_URL');
     
     const clusterServiceUrl = url1 || url2 || url3 || 
                              (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
     
     console.log('🔗 [Backend] Final cluster service URL:', clusterServiceUrl || '(not set or empty)');
+    console.log('🔗 [Backend] URL1 (CLUSTER_SERVICE_URL):', url1 || '(null)');
+    console.log('🔗 [Backend] URL2 (CLUSTER_API_URL):', url2 || '(null)');
+    console.log('🔗 [Backend] URL3 (VITE_CLUSTER_API_URL):', url3 || '(null)');
     console.log('🌐 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
     
     // Get cache max age from environment (default: 24 hours)
