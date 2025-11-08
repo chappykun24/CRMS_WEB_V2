@@ -310,4 +310,47 @@ router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
   }
 });
 
+// GET /api/grading/class/:sectionCourseId/assessment-scores - Get all students with their scores for each assessment
+router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
+  const { sectionCourseId } = req.params;
+  
+  try {
+    const query = `
+      SELECT 
+        ce.enrollment_id,
+        ce.student_id,
+        s.student_number,
+        s.full_name,
+        s.student_photo,
+        a.assessment_id,
+        a.title as assessment_title,
+        a.type as assessment_type,
+        a.total_points,
+        a.weight_percentage,
+        a.due_date,
+        sub.submission_id,
+        sub.total_score,
+        sub.raw_score,
+        sub.adjusted_score,
+        sub.late_penalty,
+        sub.status as submission_status,
+        sub.submitted_at,
+        sub.graded_at
+      FROM course_enrollments ce
+      JOIN students s ON ce.student_id = s.student_id
+      JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      LEFT JOIN assessments a ON sc.section_course_id = a.section_course_id
+      LEFT JOIN submissions sub ON (ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = a.assessment_id)
+      WHERE ce.section_course_id = $1 AND ce.status = 'enrolled'
+      ORDER BY s.full_name, a.due_date ASC
+    `;
+    
+    const result = await db.query(query, [sectionCourseId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching assessment scores for class:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -8,6 +8,8 @@ const Grades = () => {
   const { user } = useAuth()
   const [students, setStudents] = useState([])
   const [studentGrades, setStudentGrades] = useState({}) // Map of enrollment_id to total grade
+  const [assessmentScores, setAssessmentScores] = useState({}) // Map of enrollment_id to array of assessment scores
+  const [assessments, setAssessments] = useState([]) // List of all assessments for the class
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,7 @@ const Grades = () => {
       }
     }
     
-    loadClasses()
+      loadClasses()
   }, [user])
 
   // Load section-specific data ONLY when class is selected (lazy loading)
@@ -58,6 +60,8 @@ const Grades = () => {
       // Clear data when no class is selected
       setStudents([])
       setStudentGrades({})
+      setAssessments([])
+      setAssessmentScores({})
       return
     }
     
@@ -65,9 +69,11 @@ const Grades = () => {
     const sectionId = selectedClass.section_course_id
     const studentsCacheKey = `students_${sectionId}`
     const gradesCacheKey = `grades_${sectionId}`
+    const scoresCacheKey = `assessment_scores_${sectionId}`
     
     const cachedStudents = safeGetItem(studentsCacheKey)
     const cachedGrades = safeGetItem(gradesCacheKey)
+    const cachedScores = safeGetItem(scoresCacheKey)
     
     // Show cached data immediately if available
     if (cachedStudents) {
@@ -78,12 +84,17 @@ const Grades = () => {
       setStudentGrades(cachedGrades)
     }
     
+    if (cachedScores) {
+      setAssessmentScores(cachedScores.scores || {})
+      setAssessments(cachedScores.assessments || [])
+    }
+    
     // Fetch fresh data in background (non-blocking if cache exists)
-    loadSectionData(sectionId, studentsCacheKey, gradesCacheKey, !cachedStudents || !cachedGrades)
+    loadSectionData(sectionId, studentsCacheKey, gradesCacheKey, scoresCacheKey, !cachedStudents || !cachedGrades || !cachedScores)
   }, [selectedClass])
 
   // Load all data for a specific section (lazy load on class selection)
-  const loadSectionData = async (sectionCourseId, studentsCacheKey, gradesCacheKey, showLoading = true) => {
+  const loadSectionData = async (sectionCourseId, studentsCacheKey, gradesCacheKey, scoresCacheKey, showLoading = true) => {
     if (!sectionCourseId) return
     
     try {
@@ -92,10 +103,11 @@ const Grades = () => {
         setLoadingGrades(true)
       }
       
-      // Fetch students and grades in parallel for the selected section only
-      const [studentsResponse, gradesResponse] = await Promise.all([
+      // Fetch students, grades, and assessment scores in parallel
+      const [studentsResponse, gradesResponse, scoresResponse] = await Promise.all([
         fetch(`/api/section-courses/${sectionCourseId}/students`),
-        fetch(`/api/grading/class/${sectionCourseId}/student-grades`)
+        fetch(`/api/grading/class/${sectionCourseId}/student-grades`),
+        fetch(`/api/grading/class/${sectionCourseId}/assessment-scores`)
       ])
       
       // Process students
@@ -128,12 +140,70 @@ const Grades = () => {
         console.error('Failed to load student grades')
         if (showLoading) setStudentGrades({})
       }
+      
+      // Process assessment scores
+      if (scoresResponse.ok) {
+        const scoresData = await scoresResponse.json()
+        
+        // Extract unique assessments
+        const assessmentsMap = new Map()
+        const scoresByStudent = {}
+        
+        scoresData.forEach(row => {
+          // Collect assessments
+          if (row.assessment_id && !assessmentsMap.has(row.assessment_id)) {
+            assessmentsMap.set(row.assessment_id, {
+              assessment_id: row.assessment_id,
+              title: row.assessment_title,
+              type: row.assessment_type,
+              total_points: row.total_points,
+              weight_percentage: row.weight_percentage,
+              due_date: row.due_date
+            })
+          }
+          
+          // Collect scores by student
+          if (!scoresByStudent[row.enrollment_id]) {
+            scoresByStudent[row.enrollment_id] = []
+          }
+          
+          if (row.assessment_id) {
+            scoresByStudent[row.enrollment_id].push({
+              assessment_id: row.assessment_id,
+              total_score: row.total_score,
+              raw_score: row.raw_score,
+              adjusted_score: row.adjusted_score,
+              late_penalty: row.late_penalty,
+              submission_status: row.submission_status
+            })
+          }
+        })
+        
+        setAssessments(Array.from(assessmentsMap.values()).sort((a, b) => 
+          new Date(a.due_date || 0) - new Date(b.due_date || 0)
+        ))
+        setAssessmentScores(scoresByStudent)
+        
+        // Cache assessment scores
+        safeSetItem(scoresCacheKey, {
+          assessments: Array.from(assessmentsMap.values()),
+          scores: scoresByStudent
+        })
+      } else {
+        console.error('Failed to load assessment scores')
+        if (showLoading) {
+          setAssessments([])
+          setAssessmentScores({})
+        }
+      }
     } catch (error) {
       console.error('Error loading section data:', error)
       if (showLoading) {
         setError('Failed to load section data')
         setStudents([])
         setStudentGrades({})
+        setAssessments([])
+        setAssessmentScores({})
       }
     } finally {
       if (showLoading) {
@@ -191,7 +261,7 @@ const Grades = () => {
                   </div>
                 )}
 
-                {/* Students List */}
+                {/* Students Grades Table */}
                 {selectedClass ? (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
                     {loading || loadingStudents ? (
@@ -212,51 +282,116 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="space-y-3">
-                        {filteredStudents.map((student, index) => (
-                          <div key={student.enrollment_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-shrink-0 w-6 text-center">
-                              <span className="text-xs font-medium text-gray-500">
-                                {index + 1}
-                              </span>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <ImageSkeleton
-                                src={student.student_photo}
-                                alt={student.full_name}
-                                size="md"
-                                shape="circle"
-                                className="border border-gray-200"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {student.full_name || 'Unknown Student'}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                SR Code: {student.student_number || 'N/A'}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0 text-right">
-                              {loadingGrades ? (
-                                <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
-                              ) : studentGrades[student.enrollment_id] ? (
-                                <div className="text-right">
-                                  <p className="text-sm font-semibold text-gray-900">
-                                    {studentGrades[student.enrollment_id].total_grade !== null 
-                                      ? `${parseFloat(studentGrades[student.enrollment_id].total_grade).toFixed(2)}%`
-                                      : 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {studentGrades[student.enrollment_id].graded_assessments || 0} / {studentGrades[student.enrollment_id].total_assessments || 0} graded
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="text-xs text-gray-400">No grades</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-r border-gray-200">
+                                #
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-20 border-r border-gray-200 min-w-[200px]">
+                                Student
+                              </th>
+                              {assessments.map((assessment) => (
+                                <th 
+                                  key={assessment.assessment_id} 
+                                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]"
+                                  title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="truncate">{assessment.title}</span>
+                                    <span className="text-xs text-gray-400 font-normal">
+                                      {assessment.total_points}pts
+                                    </span>
+                                  </div>
+                                </th>
+                              ))}
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-l border-gray-200 min-w-[100px]">
+                                Total Grade
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredStudents.map((student, index) => {
+                              const studentScores = assessmentScores[student.enrollment_id] || []
+                              const scoreMap = new Map()
+                              studentScores.forEach(score => {
+                                scoreMap.set(score.assessment_id, score)
+                              })
+                              
+                              return (
+                                <tr key={student.enrollment_id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-10 border-r border-gray-100">
+                                    {index + 1}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-10 border-r border-gray-100">
+                                    <div className="flex items-center space-x-3">
+                                      <ImageSkeleton
+                                        src={student.student_photo}
+                                        alt={student.full_name}
+                                        size="md"
+                                        shape="circle"
+                                        className="border border-gray-200"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                          {student.full_name || 'Unknown Student'}
+                                        </p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                          {student.student_number || 'N/A'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  {assessments.map((assessment) => {
+                                    const score = scoreMap.get(assessment.assessment_id)
+                                    const percentage = score && assessment.total_points > 0 
+                                      ? ((score.total_score || 0) / assessment.total_points * 100).toFixed(1)
+                                      : null
+                                    
+                                    return (
+                                      <td 
+                                        key={assessment.assessment_id} 
+                                        className="px-4 py-3 whitespace-nowrap text-center text-sm"
+                                      >
+                                        {score && score.total_score !== null ? (
+                                          <div className="flex flex-col items-center">
+                                            <span className="font-semibold text-gray-900">
+                                              {score.total_score}/{assessment.total_points}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                              {percentage}%
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-gray-400 text-xs">-</span>
+                                        )}
+                                      </td>
+                                    )
+                                  })}
+                                  <td className="px-4 py-3 whitespace-nowrap text-center sticky right-0 bg-white z-10 border-l border-gray-100">
+                                    {loadingGrades ? (
+                                      <div className="h-4 w-12 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                                    ) : studentGrades[student.enrollment_id] ? (
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-sm font-semibold text-gray-900">
+                                          {studentGrades[student.enrollment_id].total_grade !== null 
+                                            ? `${parseFloat(studentGrades[student.enrollment_id].total_grade).toFixed(2)}%`
+                                            : 'N/A'}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {studentGrades[student.enrollment_id].graded_assessments || 0}/{studentGrades[student.enrollment_id].total_assessments || 0}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">N/A</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
                       <div className="p-6 text-center">

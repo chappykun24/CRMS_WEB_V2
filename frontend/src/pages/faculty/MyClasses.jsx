@@ -476,7 +476,7 @@ const MyClasses = () => {
       console.log('📦 [FACULTY] Using session cached classes data')
       setClasses(sessionCached)
       setLoading(false)
-      setInitialLoad(false)
+    setInitialLoad(false)
       // Continue to fetch fresh data in background
     } else {
       setLoading(true)
@@ -550,8 +550,8 @@ const MyClasses = () => {
       }
       console.error('❌ [FACULTY] Error fetching classes:', error)
       if (!sessionCached && !cachedData) {
-        setError(error.message)
-        setClasses([])
+      setError(error.message)
+      setClasses([])
       }
     } finally {
       setLoading(false)
@@ -603,7 +603,7 @@ const MyClasses = () => {
     
     // Only show loading if no cache available
     if (!sessionCached && !cachedStudents) {
-      setLoadingStudents(true)
+    setLoadingStudents(true)
     }
     
     try {
@@ -639,7 +639,7 @@ const MyClasses = () => {
     } catch (error) {
       console.error('Error fetching students:', error)
       if (!sessionCached && !cachedStudents) {
-        setStudents([])
+      setStudents([])
       }
     } finally {
       setLoadingStudents(false)
@@ -909,8 +909,8 @@ const MyClasses = () => {
                         </div>
                         <div className="flex-shrink-0">
                           <ImageSkeleton
-                            src={student.student_photo}
-                            alt={student.full_name}
+                              src={student.student_photo} 
+                              alt={student.full_name}
                             size="md"
                             shape="circle"
                             className="border border-gray-200"

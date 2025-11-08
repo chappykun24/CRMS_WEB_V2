@@ -111,7 +111,7 @@ const Assessments = () => {
       }
     }
     
-    loadClasses()
+      loadClasses()
   }, [user, location.state])
 
   // Load assessments ONLY when class is selected (lazy loading)
@@ -860,7 +860,7 @@ const Assessments = () => {
                                 <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50">
                                   <div className="w-48 flex-shrink-0 flex items-center space-x-3">
                                     <ImageSkeleton
-                                      src={gradeData.student_photo}
+                                          src={gradeData.student_photo} 
                                       alt={gradeData.student_name || 'Student'}
                                       size="md"
                                       shape="circle"
