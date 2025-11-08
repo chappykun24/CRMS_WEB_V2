@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
 import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -17,16 +18,20 @@ const TabButton = ({ isActive, onClick, children }) => (
 )
 
 const UserManagement = () => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [sidebarExpanded] = useState(true) // Default to expanded
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('userMgmtActiveTab') || 'all')
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [isApproving, setIsApproving] = useState({})
   const [isRejecting, setIsRejecting] = useState({})
   const [roles, setRoles] = useState([])
+  const [rolesLoading, setRolesLoading] = useState(false)
   const [departments, setDepartments] = useState([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(false)
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('') // '', 'approved', 'pending'
   const [departmentFilter, setDepartmentFilter] = useState('')
@@ -48,6 +53,9 @@ const UserManagement = () => {
   const [isUpdatingDepartment, setIsUpdatingDepartment] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
   const formatDateTime = (value) => {
     if (!value) return '—'
@@ -91,25 +99,169 @@ const UserManagement = () => {
     resetPagination()
   }, [query, roleFilter, statusFilter, departmentFilter, sortOption])
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        setLoading(true)
-        const data = await enhancedApi.getUsers()
-        setUsers(Array.isArray(data) ? data : [])
-      } catch (e) {
-        setError(e.message || 'Failed to load users')
-      } finally {
-        setLoading(false)
-      }
+  // Load users with pagination - only fetch when authenticated
+  const loadUsers = useCallback(async (page = 1, append = false) => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated || authLoading) {
+      return
     }
-    loadUsers()
-    
-    // Prefetch data for other admin pages in the background
-    setTimeout(() => {
-      prefetchAdminData()
-    }, 1000)
-  }, [])
+
+    try {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+        setUsers([]) // Clear existing users when loading fresh
+      }
+      
+      setError('')
+      
+      // Build query parameters
+      const params = {
+        page,
+        limit: itemsPerPage
+      }
+      
+      // Add filters based on active tab
+      if (activeTab === 'faculty') {
+        // Filter for faculty users - try to find faculty role, but don't block if roles aren't loaded yet
+        if (roles && roles.length > 0) {
+          const facultyRole = roles.find(r => String(r.name).toUpperCase() === 'FACULTY')
+          if (facultyRole) {
+            params.role_id = facultyRole.role_id
+          }
+        } else {
+          // Fallback: use common faculty role_id (usually 2, but this is a fallback)
+          // The server-side filtering will handle this better
+          params.role_id = 2 // This might need adjustment based on your database
+        }
+        // Add status filter for faculty tab
+        if (statusFilter === 'approved') {
+          params.status = 'active' // Adjust based on backend
+        } else if (statusFilter === 'pending') {
+          // Pending users might need special handling
+        }
+      } else if (activeTab === 'all') {
+        if (roleFilter && roleFilter !== 'faculty') {
+          params.role_id = parseInt(roleFilter, 10)
+        }
+        if (departmentFilter) {
+          params.department_id = parseInt(departmentFilter, 10)
+        }
+      }
+      
+      // Add search query if provided
+      if (query.trim()) {
+        params.search = query.trim()
+      }
+      
+      const response = await enhancedApi.getUsers(params)
+      
+      // Handle response format - backend returns { success: true, data: { users: [], pagination: {} } }
+      // enhancedApi.getUsers returns response.data from axios, so response is already unwrapped
+      let responseData
+      if (response?.success && response?.data) {
+        // Backend format: { success: true, data: { users: [], pagination: {} } }
+        responseData = response.data
+      } else if (response?.data) {
+        // Alternative format: { data: { users: [], pagination: {} } }
+        responseData = response.data
+      } else {
+        // Fallback: assume response is already the data object
+        responseData = response
+      }
+      
+      const usersList = Array.isArray(responseData?.users) ? responseData.users : Array.isArray(responseData) ? responseData : []
+      const pagination = responseData?.pagination || {}
+      
+      if (append) {
+        setUsers(prev => [...prev, ...usersList])
+      } else {
+        setUsers(usersList)
+      }
+      
+      // Update pagination info
+      setTotalUsers(pagination.total || usersList.length)
+      setHasMore(pagination.pages ? page < pagination.pages : usersList.length === itemsPerPage)
+      setCurrentPage(page)
+      setInitialLoadComplete(true)
+      
+    } catch (e) {
+      setError(e.message || 'Failed to load users')
+      console.error('Error loading users:', e)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [isAuthenticated, authLoading, activeTab, roleFilter, statusFilter, departmentFilter, query, itemsPerPage, roles])
+
+  // Load initial users when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && !initialLoadComplete) {
+      loadUsers(1, false)
+    }
+  }, [isAuthenticated, authLoading, initialLoadComplete, loadUsers])
+
+  // Reload users when filters change
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && initialLoadComplete) {
+      // Debounce search query
+      const timer = setTimeout(() => {
+        loadUsers(1, false)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [query, activeTab, roleFilter, statusFilter, departmentFilter])
+
+  // Load roles and departments asynchronously after initial users load
+  useEffect(() => {
+    if (initialLoadComplete && isAuthenticated && !authLoading) {
+      // Load roles asynchronously
+      const loadRoles = async () => {
+        try {
+          setRolesLoading(true)
+          const res = await api.get(endpoints.roles)
+          const rolesData = Array.isArray(res.data) ? res.data : []
+          setRoles(rolesData)
+          
+          // If we're on faculty tab and roles just loaded, reload users with proper faculty filter
+          if (activeTab === 'faculty' && rolesData.length > 0) {
+            // Small delay to ensure state is updated
+            setTimeout(() => {
+              loadUsers(1, false)
+            }, 100)
+          }
+        } catch (e) {
+          console.error('Error loading roles:', e)
+        } finally {
+          setRolesLoading(false)
+        }
+      }
+      
+      // Load departments asynchronously
+      const loadDepartments = async () => {
+        try {
+          setDepartmentsLoading(true)
+          const res = await api.get(endpoints.departments)
+          setDepartments(Array.isArray(res.data) ? res.data : [])
+        } catch (e) {
+          console.error('Error loading departments:', e)
+        } finally {
+          setDepartmentsLoading(false)
+        }
+      }
+      
+      // Load both in parallel after a short delay
+      setTimeout(() => {
+        Promise.all([loadRoles(), loadDepartments()])
+      }, 300)
+      
+      // Prefetch data for other admin pages in the background
+      setTimeout(() => {
+        prefetchAdminData()
+      }, 1000)
+    }
+  }, [initialLoadComplete, isAuthenticated, authLoading, activeTab, loadUsers])
 
   const facultyRoleId = useMemo(() => {
     const r = roles.find((r) => String(r.name).toUpperCase() === 'FACULTY')
@@ -117,29 +269,12 @@ const UserManagement = () => {
   }, [roles])
 
 
-  useEffect(() => {
-    const loadRoles = async () => {
-      try {
-        const res = await api.get(endpoints.roles)
-        setRoles(Array.isArray(res.data) ? res.data : [])
-      } catch (_) {
-        // silently ignore
-      }
+  // Load more users handler
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore && isAuthenticated) {
+      loadUsers(currentPage + 1, true)
     }
-    loadRoles()
-  }, [])
-
-  useEffect(() => {
-    const loadDepartments = async () => {
-      try {
-        const res = await api.get(endpoints.departments)
-        setDepartments(Array.isArray(res.data) ? res.data : [])
-      } catch (_) {
-        // silently ignore
-      }
-    }
-    loadDepartments()
-  }, [])
+  }, [loadingMore, hasMore, isAuthenticated, currentPage, loadUsers])
 
   // If currently selected role is FACULTY, clear it from filter
   useEffect(() => {
@@ -150,132 +285,56 @@ const UserManagement = () => {
     }
   }, [roles])
 
+  // Client-side filtering and sorting for displayed users
   const filteredUsers = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    let list = users
-    // When on Faculty Approval tab, always show only Faculty users
-    if (activeTab === 'faculty') {
-      list = list.filter(u => {
-        const roleName = (u.role_name || '').toString().toUpperCase()
-        const isFacultyByName = roleName === 'FACULTY'
-        const facultyId = facultyRoleId ?? 2
-        const isFacultyById = Number(u.role_id) === Number(facultyId)
-        return isFacultyByName || isFacultyById
-      })
-    }
-    // Exclude faculty by default on All Users tab
-    if (activeTab === 'all') {
-      list = list.filter(u => {
-        const roleName = (u.role_name || '').toString().toUpperCase()
-        const isFacultyByName = roleName === 'FACULTY'
-        const facultyId = facultyRoleId ?? 2
-        const isFacultyById = Number(u.role_id) === Number(facultyId)
-        
-        // If it's a faculty user, only show if approved
-        if (isFacultyByName || isFacultyById) {
-          return !!u.is_approved
-        }
-        
-        // Show all non-faculty users
-        return true
-      })
-    }
-    // Status filter (only on Faculty Approval tab)
-    if (activeTab === 'faculty' && statusFilter) {
-      if (statusFilter === 'approved') {
-        list = list.filter(u => !!u.is_approved)
-      } else if (statusFilter === 'pending') {
-        list = list.filter(u => !u.is_approved)
-      }
-    }
-    // Role filter (only on All Users tab)
-    if (activeTab === 'all' && roleFilter) {
-      if (roleFilter === 'faculty') {
-        // Filter for Faculty users only
-        list = list.filter(u => {
-          const roleName = (u.role_name || '').toString().toUpperCase()
-          const isFacultyByName = roleName === 'FACULTY'
-          const facultyId = facultyRoleId ?? 2
-          const isFacultyById = Number(u.role_id) === Number(facultyId)
-          return (isFacultyByName || isFacultyById) && !!u.is_approved
-        })
-      } else {
-        // Filter by specific role ID
-        const roleId = parseInt(roleFilter, 10)
-        list = list.filter(u => Number(u.role_id) === roleId)
-      }
-    }
+    let list = [...users]
     
-    // Department filter (only on All Users tab)
-    if (activeTab === 'all' && departmentFilter) {
-      const deptId = parseInt(departmentFilter, 10)
-      list = list.filter(u => Number(u.department_id) === deptId)
-    }
-    // Text query
-    if (q) {
-      list = list.filter(u => (
-        (u.name || '').toLowerCase().includes(q) ||
-        (u.email || '').toLowerCase().includes(q)
-      ))
-    }
-    // Sorting
-    const sorted = [...list]
+    // Apply client-side sorting (server handles filtering)
     switch (sortOption) {
       case 'created_asc':
-        sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        list.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
         break
       case 'name_asc':
-        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim()
+        const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim()
+        list.sort((a, b) => nameA.localeCompare(nameB))
         break
       case 'name_desc':
-        sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+        const nameA2 = `${a.first_name || ''} ${a.last_name || ''}`.trim()
+        const nameB2 = `${b.first_name || ''} ${b.last_name || ''}`.trim()
+        list.sort((a, b) => nameB2.localeCompare(nameA2))
         break
       case 'approved_first':
-        sorted.sort((a, b) => Number(b.is_approved) - Number(a.is_approved))
+        list.sort((a, b) => Number(b.is_approved || 0) - Number(a.is_approved || 0))
         break
       case 'pending_first':
-        sorted.sort((a, b) => Number(a.is_approved) - Number(b.is_approved))
+        list.sort((a, b) => Number(a.is_approved || 0) - Number(b.is_approved || 0))
         break
       case 'created_desc':
       default:
-        sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
         break
     }
-    return sorted
-  }, [users, query, activeTab, roleFilter, statusFilter, departmentFilter, facultyRoleId, sortOption])
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentUsers = filteredUsers.slice(startIndex, endIndex)
-  
-  // Debug pagination values
-  console.log('Pagination Debug:', {
-    filteredUsersLength: filteredUsers.length,
-    totalPages,
-    currentPage,
-    startIndex,
-    endIndex,
-    currentUsersLength: currentUsers.length
-  })
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page)
-  }
+    return list
+  }, [users, sortOption])
 
   const resetPagination = () => {
     setCurrentPage(1)
+    setUsers([])
+    setInitialLoadComplete(false)
   }
 
   const handleApprove = async (userId) => {
     try {
       setIsApproving(prev => ({ ...prev, [userId]: true }))
       await api.patch(endpoints.userApprove(userId))
+      
+      // Update local state immediately for better UX
       setUsers(prev => prev.map(u => (u.user_id === userId ? { ...u, is_approved: true } : u)))
       if (selectedUser && selectedUser.user_id === userId) {
         setSelectedUser(prev => ({ ...prev, is_approved: true }))
       }
+      
       setSuccessMessage('User approved successfully')
       setShowSuccessModal(true)
     } catch (e) {
@@ -289,10 +348,13 @@ const UserManagement = () => {
     try {
       setIsRejecting(prev => ({ ...prev, [userId]: true }))
       await api.patch(endpoints.userReject(userId))
+      
+      // Update local state immediately for better UX
       setUsers(prev => prev.map(u => (u.user_id === userId ? { ...u, is_approved: false } : u)))
       if (selectedUser && selectedUser.user_id === userId) {
         setSelectedUser(prev => ({ ...prev, is_approved: false }))
       }
+      
       setSuccessMessage('User rejected successfully')
       setShowSuccessModal(true)
     } catch (e) {
@@ -373,14 +435,14 @@ const UserManagement = () => {
       // Call API to create user
       const response = await api.post(endpoints.users, userData)
       
-      // Add new user to the list
-      if (response.data) {
-        setUsers(prev => [response.data, ...prev])
-        setSuccessMessage('User created successfully')
-        setShowSuccessModal(true)
-        setShowCreateModal(false)
-        resetCreateForm()
-      }
+      // Reload users to get fresh data with proper pagination
+      setSuccessMessage('User created successfully')
+      setShowSuccessModal(true)
+      setShowCreateModal(false)
+      resetCreateForm()
+      
+      // Reload users list
+      await loadUsers(1, false)
     } catch (e) {
       setCreateError(e.message || 'Failed to create user')
     } finally {
@@ -398,6 +460,29 @@ const UserManagement = () => {
       confirmPassword: ''
     })
     setCreateError('')
+  }
+
+  // Show loading or auth check
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
+          <p className="text-gray-600">Please log in to access user management.</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -651,59 +736,24 @@ const UserManagement = () => {
                     <option value="pending_first">Pending First</option>
                   </select>
                   
-                  {/* Pagination and user count on the right side of filters */}
+                  {/* User count display */}
                   <div className="flex items-center space-x-3 ml-4">
-                    {/* User count display */}
-                    {filteredUsers.length > 0 && (
+                    {users.length > 0 && (
                       <div className="text-sm text-red-600 font-medium">
-                        {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length}
-                      </div>
-                    )}
-                    
-                    {/* Pagination controls */}
-                    {filteredUsers.length > 0 && totalPages > 1 && (
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="px-2 py-1 text-sm text-gray-500 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
-                        >
-                          ‹
-                        </button>
-                        
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
-                            className={`px-2 py-1 text-sm rounded ${
-                              page === currentPage
-                                ? 'bg-red-600 text-white'
-                                : 'text-gray-500 hover:text-red-600'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                        
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="px-2 py-1 text-sm text-gray-500 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
-                        >
-                          ›
-                        </button>
+                        Showing {filteredUsers.length} of {totalUsers} users
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                  {currentUsers.length > 0 ? (
-                    <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {filteredUsers.length > 0 ? (
+                    <>
+                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Profile
                               </th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -723,70 +773,102 @@ const UserManagement = () => {
                               </th>
                             </tr>
                           </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {currentUsers.map(u => (
-                            <tr
-                              key={u.user_id}
-                              onClick={() => setSelectedUser(u)}
-                              className={`hover:bg-gray-50 cursor-pointer ${selectedUser?.user_id === u.user_id ? 'bg-red-50' : ''}`}
-                            >
-                              <td className="px-6 py-3">
-                                <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
-                                  {u.profile_pic ? (
-                                    <img src={u.profile_pic} alt={`${u.name || 'User'} avatar`} className="h-full w-full object-cover" />
-                                  ) : (
-                                    <span className="text-sm font-semibold text-gray-500">
-                                      {(u.name || u.email || '?').toString().trim().charAt(0).toUpperCase()}
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredUsers.map(u => {
+                              const userName = `${u.first_name || ''} ${u.last_name || ''} ${u.middle_name || ''}`.trim() || u.email || 'Unnamed User'
+                              const userInitial = userName.charAt(0).toUpperCase()
+                              return (
+                                <tr
+                                  key={u.user_id}
+                                  onClick={() => setSelectedUser(u)}
+                                  className={`hover:bg-gray-50 cursor-pointer ${selectedUser?.user_id === u.user_id ? 'bg-red-50' : ''}`}
+                                >
+                                  <td className="px-6 py-3">
+                                    <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
+                                      {u.profile_pic ? (
+                                        <img src={u.profile_pic} alt={`${userName} avatar`} className="h-full w-full object-cover" />
+                                      ) : (
+                                        <span className="text-sm font-semibold text-gray-500">
+                                          {userInitial}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm font-medium text-gray-900 break-words">{userName}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{u.email}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">{formatRoleName(u.role_name) || u.role_id || '—'}</div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <div className="text-sm text-gray-700">
+                                      {u.department_name ? (
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                          {u.department_abbreviation || u.department_name}
+                                        </span>
+                                      ) : (
+                                        '—'
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-3">
+                                    <span className={`text-xs font-semibold ${u.is_approved ? 'text-green-600' : 'text-yellow-600'}`}>
+                                      {u.is_approved ? 'Approved' : 'Pending'}
                                     </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm font-medium text-gray-900 break-words">{u.name}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">{u.email}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">{formatRoleName(u.role_name) || u.role_id || '—'}</div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <div className="text-sm text-gray-700">
-                                  {u.department_name ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                      {u.department_abbreviation || u.department_name}
-                                    </span>
-                                  ) : (
-                                    '—'
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-8 py-3">
-                                <span className={`text-xs font-semibold ${u.is_approved ? 'text-green-600' : 'text-yellow-600'}`}>
-                                  {u.is_approved ? 'Approved' : 'Pending'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Load More Button */}
+                      {hasMore && (
+                        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                          <button
+                            onClick={handleLoadMore}
+                            disabled={loadingMore}
+                            className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                          >
+                            {loadingMore ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Loading...</span>
+                              </>
+                            ) : (
+                              <span>Load More Users</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="flex-1 flex items-center justify-center py-16">
                       <div className="text-center">
-                        {activeTab === 'pending' ? (
-                          <UserPlusIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Loading users...</h3>
+                            <p className="text-gray-500">Please wait while we fetch the data.</p>
+                          </>
                         ) : (
-                          <UsersIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <>
+                            {activeTab === 'pending' ? (
+                              <UserPlusIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                            ) : (
+                              <UsersIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                            )}
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+                            <p className="text-gray-500">Try adjusting your filters or {hasMore && 'load more users'}.</p>
+                          </>
                         )}
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                        <p className="text-gray-500">Try adjusting your filters.</p>
                       </div>
                     </div>
                   )}
-                  
-
                 </div>
               </div>
 
@@ -796,20 +878,29 @@ const UserManagement = () => {
                   {selectedUser ? (
                     <div className="space-y-4 pb-8">
                       <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
-                          {selectedUser.profile_pic ? (
-                            <img src={selectedUser.profile_pic} alt={`${selectedUser.name || 'User'} avatar`} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-base font-semibold text-gray-500">
-                              {(selectedUser.name || selectedUser.email || '?').toString().trim().charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-semibold text-gray-900">{selectedUser.name || 'Unnamed User'}</h4>
-                          <p className="text-sm text-gray-600">{selectedUser.email}</p>
-                          <p className="text-xs text-gray-500">Role: {formatRoleName(selectedUser.role_name) || selectedUser.role_id || '—'}</p>
-                          {selectedUser.department_name ? (
+                        {(() => {
+                          const selectedUserName = `${selectedUser.first_name || ''} ${selectedUser.last_name || ''} ${selectedUser.middle_name || ''}`.trim() || selectedUser.email || 'Unnamed User'
+                          const selectedUserInitial = selectedUserName.charAt(0).toUpperCase()
+                          return (
+                            <>
+                              <div className="h-16 w-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
+                                {selectedUser.profile_pic ? (
+                                  <img src={selectedUser.profile_pic} alt={`${selectedUserName} avatar`} className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="text-base font-semibold text-gray-500">
+                                    {selectedUserInitial}
+                                  </span>
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-900">{selectedUserName}</h4>
+                                <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                                <p className="text-xs text-gray-500">Role: {formatRoleName(selectedUser.role_name) || selectedUser.role_id || '—'}</p>
+                              </div>
+                            </>
+                          )
+                        })()}
+                        {selectedUser.department_name ? (
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-500">Department:</span>
                               <span className="text-xs text-gray-700 font-medium">

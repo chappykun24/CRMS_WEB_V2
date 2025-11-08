@@ -12,10 +12,13 @@ import Analytics from './Analytics'
 import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
 
 const Home = () => {
   const navigate = useNavigate()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalClasses: 0,
@@ -27,8 +30,13 @@ const Home = () => {
   })
 
   useEffect(() => {
-    fetchDashboardStats()
-  }, [])
+    // Only fetch if authenticated
+    if (isAuthenticated && !authLoading) {
+      fetchDashboardStats()
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false)
+    }
+  }, [isAuthenticated, authLoading])
 
   const fetchDashboardStats = async () => {
     setLoading(true)
@@ -150,16 +158,42 @@ const Home = () => {
         activeTerm: activeTerm
       })
       
+      setInitialLoadComplete(true)
+      
       // Prefetch data for other pages in the background (non-blocking)
       // Use setTimeout to ensure it doesn't block the current page render
       setTimeout(() => {
+        console.log('🚀 [DeanDashboard] Starting async prefetch after initial data load')
         prefetchDeanData()
-      }, 1000) // Wait 1 second after home page loads
+      }, 500) // Wait 500ms after main data loads to start prefetching
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading or auth check
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
+          <p className="text-gray-600">Please log in to access the dean dashboard.</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

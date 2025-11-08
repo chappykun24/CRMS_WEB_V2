@@ -1,23 +1,34 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import MyClasses from './MyClasses'
 import Assessments from './Assessments'
 import Grades from './Grades'
 import Syllabi from './Syllabi'
 import { prefetchFacultyData } from '../../services/dataPrefetchService'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
 
 const FacultyDashboard = ({ user }) => {
-  // Prefetch data for other pages in the background
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+
+  // Prefetch data for other pages in the background - only after authentication and initial load
   useEffect(() => {
-    if (user?.user_id) {
-      // Wait 1 second after dashboard mounts to start prefetching
-      const timer = setTimeout(() => {
-        prefetchFacultyData(user.user_id)
-      }, 1000)
-      
-      return () => clearTimeout(timer)
+    // Don't prefetch if not authenticated
+    if (!isAuthenticated || authLoading) {
+      return
     }
-  }, [user])
+
+    // Wait for initial page load, then prefetch other interface data
+    const timer = setTimeout(() => {
+      if (user?.user_id) {
+        console.log('🚀 [FacultyDashboard] Starting async prefetch after initial load')
+        prefetchFacultyData(user.user_id)
+        setInitialLoadComplete(true)
+      }
+    }, 1000) // Wait 1 second after dashboard mounts to start prefetching
+    
+    return () => clearTimeout(timer)
+  }, [user, isAuthenticated, authLoading])
   // Default faculty dashboard content
   const defaultContent = (
     <div className="p-6">

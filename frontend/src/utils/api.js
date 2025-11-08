@@ -125,8 +125,20 @@ export const endpoints = {
 // Simple API helper methods (API only)
 export const enhancedApi = {
   // User management methods
-  async getUsers() {
-    const response = await api.get(endpoints.users);
+  async getUsers(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.role_id) queryParams.append('role_id', params.role_id);
+    if (params.department_id) queryParams.append('department_id', params.department_id);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.status) queryParams.append('status', params.status);
+    
+    const url = queryParams.toString() 
+      ? `${endpoints.users}?${queryParams.toString()}`
+      : endpoints.users;
+    
+    const response = await api.get(url);
     return response.data;
   },
 

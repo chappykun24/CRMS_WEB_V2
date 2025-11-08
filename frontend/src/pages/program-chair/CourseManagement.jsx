@@ -3,7 +3,7 @@ import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24
 // Removed SidebarContext import - using local state instead
 import { enhancedApi } from '../../utils/api'
 import { TableSkeleton, ListSkeleton, StudentListSkeleton, SidebarSkeleton } from '../../components/skeletons'
-import { prefetchDeanData } from '../../services/dataPrefetchService'
+import { prefetchProgramChairData } from '../../services/dataPrefetchService'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -396,7 +396,7 @@ const CourseManagement = () => {
     
     // Prefetch data for other program chair pages in the background
     setTimeout(() => {
-      prefetchDeanData()
+      prefetchProgramChairData()
     }, 1000)
   }, [])
 

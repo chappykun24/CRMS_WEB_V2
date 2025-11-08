@@ -539,6 +539,43 @@ export const prefetchFacultyData = async (facultyId) => {
 };
 
 /**
+ * Prefetch all data for program chair dashboard pages
+ */
+export const prefetchProgramChairData = async () => {
+  console.log('🚀 [Prefetch] Starting program chair data prefetch...');
+  
+  try {
+    // Fetch school terms first (needed for analytics and courses)
+    const terms = await prefetchSchoolTerms();
+    
+    // Get active term ID for analytics
+    let activeTermId = null;
+    if (Array.isArray(terms)) {
+      const activeTerm = terms.find(t => t.is_active);
+      if (activeTerm) {
+        activeTermId = activeTerm.term_id;
+      }
+    }
+    
+    // Prefetch all data in parallel (non-blocking)
+    Promise.all([
+      prefetchAnalytics(activeTermId),
+      prefetchClasses(),
+      prefetchPrograms(),
+      prefetchCourses(),
+      prefetchDepartments(),
+    ]).then(() => {
+      console.log('✅ [Prefetch] All program chair data prefetched');
+    }).catch(error => {
+      console.error('❌ [Prefetch] Error in parallel prefetch:', error);
+    });
+    
+  } catch (error) {
+    console.error('❌ [Prefetch] Error prefetching program chair data:', error);
+  }
+};
+
+/**
  * Get prefetched analytics data
  */
 export const getPrefetchedAnalytics = (termId = null) => {

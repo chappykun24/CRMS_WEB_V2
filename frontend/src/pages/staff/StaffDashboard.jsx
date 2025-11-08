@@ -1,20 +1,31 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import StudentManagement from './StudentManagement'
 import AssignFaculty from './AssignFaculty'
 import SectionManagement from './SectionManagement'
 import { prefetchStaffData } from '../../services/dataPrefetchService'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
 
 const StaffDashboard = ({ user }) => {
-  // Prefetch data for other pages in the background
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+
+  // Prefetch data for other pages in the background - only after authentication and initial load
   useEffect(() => {
-    // Wait 1 second after dashboard mounts to start prefetching
+    // Don't prefetch if not authenticated
+    if (!isAuthenticated || authLoading) {
+      return
+    }
+
+    // Wait for initial page load, then prefetch other interface data
     const timer = setTimeout(() => {
+      console.log('🚀 [StaffDashboard] Starting async prefetch after initial load')
       prefetchStaffData()
-    }, 1000)
+      setInitialLoadComplete(true)
+    }, 1000) // Wait 1 second after dashboard mounts to start prefetching
     
     return () => clearTimeout(timer)
-  }, [])
+  }, [isAuthenticated, authLoading])
   // Default staff dashboard content
   const defaultContent = (
     <div className="p-6">
