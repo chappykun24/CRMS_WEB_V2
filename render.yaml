@@ -15,6 +15,7 @@ services:
       - key: FRONTEND_URL
         value: https://crms-web-v2-frontend.vercel.app
       - key: CLUSTER_SERVICE_URL
+        value: https://crms-cluster-api-production.up.railway.app
         sync: false
       - key: CLUSTER_TIMEOUT_MS
         value: 8000

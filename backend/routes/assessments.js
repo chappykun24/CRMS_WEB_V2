@@ -611,11 +611,19 @@ router.get('/dean-analytics/sample', async (req, res) => {
     );
     // Default to localhost for development if not set
     // Check VITE_ prefixed vars first (for Vercel compatibility), then regular vars
-    const clusterServiceUrl = process.env.VITE_CLUSTER_API_URL ||
-                             process.env.CLUSTER_SERVICE_URL || 
-                             process.env.CLUSTER_API_URL || 
+    // Trim and validate the URLs to ensure they're not empty strings
+    const getClusterUrl = (url) => {
+      if (!url) return null;
+      const trimmed = String(url).trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+    
+    const clusterServiceUrl = getClusterUrl(process.env.VITE_CLUSTER_API_URL) ||
+                             getClusterUrl(process.env.CLUSTER_SERVICE_URL) || 
+                             getClusterUrl(process.env.CLUSTER_API_URL) || 
                              (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
-    console.log('🔗 [Backend] Cluster service URL:', clusterServiceUrl);
+    
+    console.log('🔗 [Backend] Cluster service URL:', clusterServiceUrl || '(not set or empty)');
     console.log('🌐 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
     
     // Get cache max age from environment (default: 24 hours)
@@ -862,14 +870,33 @@ router.get('/dean-analytics/sample', async (req, res) => {
         // Continue without clustering - students will show "Not Clustered"
       }
     } else {
-      console.warn('⚠️  [Backend] Clustering disabled: CLUSTER_SERVICE_URL not set');
-      console.warn('⚠️  [Backend] Environment check:', {
-        VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL ? 'SET' : 'NOT SET',
-        CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL ? 'SET' : 'NOT SET',
-        CLUSTER_API_URL: process.env.CLUSTER_API_URL ? 'SET' : 'NOT SET',
+      // More detailed logging to help debug the issue
+      const envVars = {
+        VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL || '(empty)',
+        CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL || '(empty)',
+        CLUSTER_API_URL: process.env.CLUSTER_API_URL || '(empty)',
         NODE_ENV: process.env.NODE_ENV,
-        DISABLE_CLUSTERING: process.env.DISABLE_CLUSTERING
-      });
+        DISABLE_CLUSTERING: process.env.DISABLE_CLUSTERING || '(not set)'
+      };
+      
+      // Check if any of the variables exist but are empty
+      const hasEmptyVar = (
+        (process.env.VITE_CLUSTER_API_URL !== undefined && !process.env.VITE_CLUSTER_API_URL?.trim()) ||
+        (process.env.CLUSTER_SERVICE_URL !== undefined && !process.env.CLUSTER_SERVICE_URL?.trim()) ||
+        (process.env.CLUSTER_API_URL !== undefined && !process.env.CLUSTER_API_URL?.trim())
+      );
+      
+      if (process.env.DISABLE_CLUSTERING === '1') {
+        console.warn('⚠️  [Backend] Clustering disabled: DISABLE_CLUSTERING=1');
+      } else if (hasEmptyVar) {
+        console.warn('⚠️  [Backend] Clustering disabled: One or more cluster URL environment variables are set but empty');
+        console.warn('⚠️  [Backend] Environment variables:', envVars);
+        console.warn('💡 [Backend] Tip: Make sure your CLUSTER_SERVICE_URL contains a valid URL, not just an empty string');
+      } else {
+        console.warn('⚠️  [Backend] Clustering disabled: No cluster service URL found in environment variables');
+        console.warn('⚠️  [Backend] Environment variables:', envVars);
+        console.warn('💡 [Backend] Tip: Set one of these environment variables: VITE_CLUSTER_API_URL, CLUSTER_SERVICE_URL, or CLUSTER_API_URL');
+      }
     }
 
     // Log final data sample to verify cluster_label is present
