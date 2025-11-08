@@ -904,18 +904,18 @@ const UserManagement = () => {
                             </>
                           )
                         })()}
-                        {selectedUser.department_name ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">Department:</span>
-                              <span className="text-xs text-gray-700 font-medium">
-                                {selectedUser.department_abbreviation || selectedUser.department_name}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-gray-400 italic">No department assigned</p>
-                          )}
-                        </div>
                       </div>
+                      
+                      {selectedUser.department_name ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">Department:</span>
+                          <span className="text-xs text-gray-700 font-medium">
+                            {selectedUser.department_abbreviation || selectedUser.department_name}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No department assigned</p>
+                      )}
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">

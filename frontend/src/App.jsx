@@ -14,6 +14,7 @@ import ProgramChairDashboard from './pages/program-chair/ProgramChairDashboard'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import ManageAccount from './components/ManageAccount'
+import { initializeStorageCleanup } from './utils/localStorageManager'
 import './App.css'
 
 class ErrorBoundary extends React.Component {
@@ -53,13 +54,12 @@ function App() {
 
   // Initialize localStorage cleanup on app start
   useEffect(() => {
-    // Import and initialize storage cleanup
-    import('./utils/localStorageManager').then(({ initializeStorageCleanup }) => {
+    try {
       initializeStorageCleanup()
       console.log('✅ [App] LocalStorage cleanup initialized')
-    }).catch(error => {
+    } catch (error) {
       console.warn('⚠️ [App] Failed to initialize storage cleanup:', error)
-    })
+    }
   }, [])
 
   useEffect(() => {
