@@ -232,8 +232,13 @@ const MyClasses = () => {
   const loadFullAttendanceList = useCallback(async () => {
     if (!selectedClass) return
     
+    // Show modal immediately with skeleton loading
+    setShowFullAttendanceModal(true)
+    setLoadingFullAttendance(true)
+    setFullAttendanceList([])
+    setActiveSessionTab(0)
+    
     try {
-      setLoadingFullAttendance(true)
       console.log('🔍 [MYCLASSES] Loading full attendance list for class:', selectedClass.section_course_id)
       
       const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}`, {
@@ -257,8 +262,8 @@ const MyClasses = () => {
           groupedBySession[sessionKey] = {
             session_date: record.session_date,
             title: record.title || 'Untitled Session',
-            session_type: record.session_type,
-            meeting_type: record.meeting_type,
+            session_type: record.session_type || 'Lecture',
+            meeting_type: record.meeting_type || 'Face-to-Face',
             records: []
           }
         }
@@ -286,15 +291,14 @@ const MyClasses = () => {
       })
       
       setFullAttendanceList(sessionsArray)
-      setActiveSessionTab(0) // Reset to first tab
-      setShowFullAttendanceModal(true)
     } catch (error) {
       console.error('❌ [MYCLASSES] Error loading full attendance list:', error)
       alert('Failed to load attendance list. Please try again.')
+      setShowFullAttendanceModal(false)
     } finally {
       setLoadingFullAttendance(false)
     }
-  }, [selectedClass])
+  }, [selectedClass, extractSurname])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
@@ -1360,7 +1364,31 @@ const MyClasses = () => {
                   
                   {/* Active Session Content */}
                   <div className="flex-1 overflow-auto p-4">
-                    {fullAttendanceList[activeSessionTab] && (() => {
+                    {loadingFullAttendance ? (
+                      // Skeleton Loading State
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                          <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                        </div>
+                        <div className="p-4">
+                          <div className="grid grid-cols-3 gap-3">
+                            {[...Array(12)].map((_, index) => (
+                              <div key={index} className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg">
+                                <div className="flex items-center gap-2.5 flex-1">
+                                  <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse mb-1"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                                  </div>
+                                </div>
+                                <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : fullAttendanceList[activeSessionTab] && (() => {
                       const session = fullAttendanceList[activeSessionTab]
                       const formatDate = (dateString) => {
                         if (!dateString) return 'N/A'
@@ -1386,9 +1414,23 @@ const MyClasses = () => {
                                 <h3 className="text-sm font-semibold text-gray-900">
                                   {session.title}
                                 </h3>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  {formatDate(session.session_date)} • {session.records.length} students
-                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <p className="text-xs text-gray-500">
+                                    {formatDate(session.session_date)} • {session.records.length} students
+                                  </p>
+                                  {session.session_type && (
+                                    <>
+                                      <span className="text-xs text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500">{session.session_type}</span>
+                                    </>
+                                  )}
+                                  {session.meeting_type && (
+                                    <>
+                                      <span className="text-xs text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500">{session.meeting_type}</span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex items-center gap-2 text-xs">
                                 {statusCounts.present && (
@@ -1415,9 +1457,9 @@ const MyClasses = () => {
                             </div>
                           </div>
                           
-                          {/* Students Table - 2 Columns */}
+                          {/* Students Grid - 3 Columns */}
                           <div className="overflow-x-auto p-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-3">
                               {session.records.map((record, recordIndex) => {
                                 const statusColors = {
                                   present: 'bg-green-100 text-green-800',
@@ -1429,9 +1471,9 @@ const MyClasses = () => {
                                 return (
                                   <div 
                                     key={`record-${recordIndex}`} 
-                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                                   >
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                       <div className="flex-shrink-0">
                                         <ImageSkeleton
                                           src={record.student_photo}
@@ -1450,18 +1492,18 @@ const MyClasses = () => {
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full whitespace-nowrap ${
                                         statusColors[record.status] || 'bg-gray-100 text-gray-800'
                                       }`}>
                                         {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
                                       </span>
                                       {record.remarks && (
                                         <span 
-                                          className="text-xs text-gray-400 cursor-help" 
+                                          className="text-xs text-gray-400 cursor-help flex-shrink-0" 
                                           title={record.remarks}
                                         >
-                                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                           </svg>
                                         </span>
