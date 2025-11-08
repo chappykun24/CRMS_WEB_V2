@@ -45,7 +45,7 @@ const Dashboard = () => {
           navigate('/dean', { replace: true })
           break
         case 'staff':
-          navigate('/staff', { replace: true })
+          navigate('/staff/students', { replace: true })
           break
         case 'programchair':
         case 'program_chair':

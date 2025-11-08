@@ -57,7 +57,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       
       case 'STAFF':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/staff' },
           { name: 'Student Management', icon: UserGroupIcon, href: '/staff/students' },
           { name: 'Class Management', icon: UserPlusIcon, href: '/staff/assign-faculty' },
           { name: 'Section Management', icon: ClipboardDocumentListIcon, href: '/staff/sections' }

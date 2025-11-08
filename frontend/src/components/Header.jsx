@@ -200,9 +200,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/syllabus-approval' || path === '/dean/syllabus-approval') return 'Syllabus Approval'
         break
       case 'STAFF':
-        if (path === '/dashboard/students') return 'Student Management'
+        if (path === '/staff/students' || path === '/dashboard/students') return 'Student Management'
+        if (path === '/staff/assign-faculty' || path === '/dashboard/assign-faculty') return 'Class Management'
+        if (path === '/staff/sections' || path === '/dashboard/sections') return 'Section Management'
         if (path === '/dashboard/records') return 'Academic Records'
-        if (path === '/dashboard/assign-faculty') return 'Assign Faculty'
         break
       case 'PROGRAMCHAIR':
         if (path === '/program-chair' || path === '/program-chair/') return 'Home'
@@ -290,11 +291,36 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         subtitle: 'Dean management',
         path: '/dashboard/dean'
       }
+    } else if (path.startsWith('/staff/')) {
+      if (path === '/staff/students') {
+        return {
+          title: 'Student Management',
+          subtitle: 'Manage student records',
+          path: '/staff/students'
+        }
+      } else if (path === '/staff/assign-faculty') {
+        return {
+          title: 'Class Management',
+          subtitle: 'Assign faculty to classes',
+          path: '/staff/assign-faculty'
+        }
+      } else if (path === '/staff/sections') {
+        return {
+          title: 'Section Management',
+          subtitle: 'Manage class sections',
+          path: '/staff/sections'
+        }
+      }
+      return { 
+        title: 'Staff Dashboard', 
+        subtitle: 'Staff management',
+        path: '/staff/students'
+      }
     } else if (path.startsWith('/dashboard/staff/')) {
       return { 
         title: 'Staff Dashboard', 
         subtitle: 'Staff management',
-        path: '/dashboard/staff'
+        path: '/staff/students'
       }
     } else if (path.startsWith('/dashboard/program-chair/')) {
       if (path === '/dashboard/program-chair/courses') {
