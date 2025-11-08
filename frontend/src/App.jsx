@@ -51,6 +51,17 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Initialize localStorage cleanup on app start
+  useEffect(() => {
+    // Import and initialize storage cleanup
+    import('./utils/localStorageManager').then(({ initializeStorageCleanup }) => {
+      initializeStorageCleanup()
+      console.log('✅ [App] LocalStorage cleanup initialized')
+    }).catch(error => {
+      console.warn('⚠️ [App] Failed to initialize storage cleanup:', error)
+    })
+  }, [])
+
   useEffect(() => {
     const onPageShow = (event) => {
       if (event.persisted || (performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {

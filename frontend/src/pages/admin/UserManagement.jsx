@@ -5,6 +5,7 @@ import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager'
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -20,7 +21,10 @@ const TabButton = ({ isActive, onClick, children }) => (
 const UserManagement = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [sidebarExpanded] = useState(true) // Default to expanded
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('userMgmtActiveTab') || 'all')
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = getLocalStorageItem('userMgmtActiveTab')
+    return saved || 'all'
+  })
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -75,7 +79,7 @@ const UserManagement = () => {
   }
 
   useEffect(() => {
-    localStorage.setItem('userMgmtActiveTab', activeTab)
+    setLocalStorageItem('userMgmtActiveTab', activeTab)
     const event = new CustomEvent('userMgmtTabChanged', { detail: { activeTab } })
     window.dispatchEvent(event)
     // Remove role filter when on Faculty Approval tab

@@ -9,6 +9,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/solid'
 import logo from '../images/logo.png'
+import { getSelectedClass } from '../utils/localStorageManager'
 
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useAuth()
@@ -33,15 +34,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   // Listen for localStorage changes to update selected class
   useEffect(() => {
     const handleStorageChange = () => {
-      const classData = localStorage.getItem('selectedClass')
-      if (classData) {
+      try {
+        const classData = getSelectedClass()
+        setSelectedClass(classData)
+      } catch (e) {
+        // Fallback to direct localStorage access if manager fails
         try {
-          setSelectedClass(JSON.parse(classData))
-        } catch (e) {
+          const classData = localStorage.getItem('selectedClass')
+          if (classData) {
+            setSelectedClass(JSON.parse(classData))
+          } else {
+            setSelectedClass(null)
+          }
+        } catch (parseError) {
           setSelectedClass(null)
         }
-      } else {
-        setSelectedClass(null)
       }
     }
     

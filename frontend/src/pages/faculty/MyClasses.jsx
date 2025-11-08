@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/UnifiedAuthContext'
 import facultyCacheService from '../../services/facultyCacheService'
 import { Loader2 } from 'lucide-react'
 import { prefetchFacultyData } from '../../services/dataPrefetchService'
+import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -395,7 +396,7 @@ const MyClasses = () => {
   useEffect(() => {
     return () => {
       if (!selectedClass) {
-        localStorage.removeItem('selectedClass')
+        removeLocalStorageItem('selectedClass')
         window.dispatchEvent(new CustomEvent('selectedClassChanged'))
       }
     }
@@ -410,7 +411,7 @@ const MyClasses = () => {
         if (!isClassCard) {
           setSelectedClass(null)
           setIsAttendanceMode(false)
-          localStorage.removeItem('selectedClass')
+          removeLocalStorageItem('selectedClass')
           window.dispatchEvent(new CustomEvent('selectedClassChanged'))
         }
       }
@@ -547,8 +548,8 @@ const MyClasses = () => {
       meeting_type: 'Face-to-Face'
     })
     
-    // Save selected class to localStorage for Header breadcrumb
-    localStorage.setItem('selectedClass', JSON.stringify(classItem))
+    // Save selected class to localStorage for Header breadcrumb (using safe storage)
+    saveSelectedClass(classItem)
     
     // Dispatch custom event to notify Header of change
     window.dispatchEvent(new CustomEvent('selectedClassChanged'))

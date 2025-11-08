@@ -4,12 +4,14 @@ import { departmentService, schoolTermService } from '../../services/schoolConfi
 // Removed SidebarContext import - using local state instead
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
 import { prefetchAdminData } from '../../services/dataPrefetchService';
+import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager';
 
 const SchoolConfiguration = () => {
   const [sidebarExpanded] = useState(true); // Default to expanded
   const [activeTab, setActiveTab] = useState(() => {
     // Get the active tab from localStorage or default to departments
-    return localStorage.getItem('schoolConfigActiveTab') || 'departments'
+    const saved = getLocalStorageItem('schoolConfigActiveTab')
+    return saved || 'departments'
   });
   
   // Database state
@@ -55,7 +57,7 @@ const SchoolConfiguration = () => {
 
   // Update localStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem('schoolConfigActiveTab', activeTab)
+    setLocalStorageItem('schoolConfigActiveTab', activeTab)
     
     // Dispatch custom event to notify Header component
     const event = new CustomEvent('schoolConfigTabChanged', { 

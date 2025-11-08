@@ -13,6 +13,7 @@ import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { setLocalStorageItem, getLocalStorageItem, removeLocalStorageItem } from '../../utils/localStorageManager'
 
 // Cache key for localStorage
 const DEAN_DASHBOARD_CACHE_KEY = 'dean_dashboard_stats'
@@ -21,10 +22,10 @@ const CACHE_MAX_AGE = 30 * 60 * 1000 // 30 minutes
 // Cache utility functions
 const getCachedStats = () => {
   try {
-    const cached = localStorage.getItem(DEAN_DASHBOARD_CACHE_KEY)
+    const cached = getLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY)
     if (!cached) return null
     
-    const { stats, timestamp } = JSON.parse(cached)
+    const { stats, timestamp } = cached
     const age = Date.now() - timestamp
     
     // Return cached data if it's not too old
@@ -33,7 +34,7 @@ const getCachedStats = () => {
       return stats
     } else {
       console.log('⏰ [DeanDashboard] Cached stats expired, removing from cache')
-      localStorage.removeItem(DEAN_DASHBOARD_CACHE_KEY)
+      removeLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY)
       return null
     }
   } catch (error) {
@@ -43,22 +44,15 @@ const getCachedStats = () => {
 }
 
 const setCachedStats = (stats) => {
-  try {
-    const cacheData = {
-      stats,
-      timestamp: Date.now()
-    }
-    localStorage.setItem(DEAN_DASHBOARD_CACHE_KEY, JSON.stringify(cacheData))
+  const cacheData = {
+    stats,
+    timestamp: Date.now()
+  }
+  const success = setLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY, cacheData)
+  if (success) {
     console.log('💾 [DeanDashboard] Stats cached successfully')
-  } catch (error) {
-    console.error('❌ [DeanDashboard] Error caching stats:', error)
-    // If localStorage is full, try to clear old cache entries
-    try {
-      localStorage.removeItem(DEAN_DASHBOARD_CACHE_KEY)
-      localStorage.setItem(DEAN_DASHBOARD_CACHE_KEY, JSON.stringify({ stats, timestamp: Date.now() }))
-    } catch (e) {
-      console.error('❌ [DeanDashboard] Failed to update cache:', e)
-    }
+  } else {
+    console.warn('⚠️ [DeanDashboard] Failed to cache stats (quota exceeded)')
   }
 }
 
