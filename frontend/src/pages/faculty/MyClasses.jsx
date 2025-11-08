@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import facultyCacheService from '../../services/facultyCacheService'
 import { Loader2 } from 'lucide-react'
-import { prefetchFacultyData } from '../../services/dataPrefetchService'
+// Removed prefetchFacultyData - data is now fetched per section
 import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
 
 import ClassCard from '../../components/ClassCard'
@@ -614,12 +614,8 @@ const MyClasses = () => {
   useEffect(() => {
     console.log('🔍 [FACULTY] useEffect triggered - facultyId:', facultyId, 'loading:', loading, 'initialLoad:', initialLoad)
     if (facultyId) {
+      // Only fetch classes list - no bulk data prefetching
       fetchClasses()
-      
-      // Prefetch data for other faculty pages in the background
-      setTimeout(() => {
-        prefetchFacultyData(facultyId)
-      }, 1000)
     } else {
       // If no facultyId, stop loading after a delay
       console.log('🔍 [FACULTY] No facultyId, stopping loading after delay')
@@ -644,32 +640,8 @@ const MyClasses = () => {
     console.log('🔄 [FACULTY] Cache refreshed')
   }, [fetchClasses])
 
-  // Preload faculty data for better performance
-  const preloadFacultyData = useCallback(async () => {
-    if (!facultyId) return
-    
-    try {
-      console.log('🚀 [FACULTY] Preloading faculty data...')
-      
-      // Preload classes
-      const classesData = await fetch(`/api/section-courses/faculty/${facultyId}`)
-        .then(r => r.json())
-        .then(data => Array.isArray(data) ? data : [])
-      
-      setCachedData('classes', `classes_${facultyId}`, classesData)
-      
-      // Preload departments
-      const departmentsData = await fetch('/api/departments')
-        .then(r => r.json())
-        .then(data => Array.isArray(data) ? data : [])
-      
-      setCachedData('departments', 'all_departments', departmentsData)
-      
-      console.log('✅ [FACULTY] Preloading completed')
-    } catch (error) {
-      console.error('❌ [FACULTY] Preloading failed:', error)
-    }
-  }, [facultyId, setCachedData])
+  // Removed preloadFacultyData - data is now fetched per section on demand
+  // No bulk data prefetching to improve performance and reduce unnecessary API calls
 
   const getCacheStats = useCallback(() => {
     const stats = facultyCacheService.getStats()

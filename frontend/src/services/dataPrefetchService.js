@@ -549,29 +549,24 @@ export const prefetchStaffData = async () => {
 
 /**
  * Prefetch all data for faculty dashboard pages
+ * 
+ * @deprecated This function is deprecated. Data is now fetched per section on demand.
+ * Faculty pages now only fetch the classes list initially, and fetch section-specific
+ * data (students, assessments, grades) only when a class is selected.
+ * 
+ * This change improves performance by:
+ * - Reducing initial page load time
+ * - Reducing unnecessary API calls
+ * - Only fetching data the user is actively viewing
+ * - Better scalability with many classes
+ * 
+ * See FACULTY_DATA_FETCHING_STRUCTURE.json for the new data fetching pattern.
  */
 export const prefetchFacultyData = async (facultyId) => {
-  console.log('🚀 [Prefetch] Starting faculty data prefetch...');
-  
-  if (!facultyId) {
-    console.warn('⚠️ [Prefetch] No facultyId provided, skipping faculty prefetch');
-    return;
-  }
-  
-  try {
-    // Prefetch all data in parallel (non-blocking)
-    Promise.all([
-      prefetchFacultyClasses(facultyId),
-      prefetchDepartments(),
-    ]).then(() => {
-      console.log('✅ [Prefetch] All faculty data prefetched');
-    }).catch(error => {
-      console.error('❌ [Prefetch] Error in parallel prefetch:', error);
-    });
-    
-  } catch (error) {
-    console.error('❌ [Prefetch] Error prefetching faculty data:', error);
-  }
+  console.warn('⚠️ [Prefetch] prefetchFacultyData is deprecated. Data is now fetched per section.');
+  // This function is kept for backward compatibility but does nothing
+  // Data fetching is now handled per section in each faculty page component
+  return;
 };
 
 /**

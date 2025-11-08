@@ -1,0 +1,282 @@
+{
+  "faculty_data_fetching_structure": {
+    "overview": "This document describes the refactored data fetching structure for faculty pages. Data is now fetched per section/course instead of loading all data at once.",
+    "principle": "Fetch only data related to the selected section/course. No bulk data loading.",
+    
+    "pages": {
+      "MyClasses": {
+        "initial_load": {
+          "description": "When page loads, fetch only the list of classes assigned to the faculty",
+          "endpoint": "/api/section-courses/faculty/{facultyId}",
+          "data_fetched": [
+            "section_course_id",
+            "course_code",
+            "course_title",
+            "section_code",
+            "instructor_id",
+            "term_id",
+            "banner_type",
+            "banner_color",
+            "banner_image"
+          ],
+          "when": "On component mount, only if facultyId exists",
+          "caching": "Cache for 5 minutes or until class selection changes"
+        },
+        "on_class_selection": {
+          "description": "When a class is selected, fetch ONLY data for that specific section",
+          "data_to_fetch": {
+            "students": {
+              "endpoint": "/api/section-courses/{sectionCourseId}/students",
+              "when": "When selectedClass changes",
+              "data": [
+                "enrollment_id",
+                "student_id",
+                "student_number",
+                "full_name",
+                "student_photo",
+                "contact_email"
+              ],
+              "cache_key": "students_{sectionCourseId}"
+            },
+            "attendance_sessions": {
+              "endpoint": "/api/attendance/sessions?section_course_id={sectionCourseId}",
+              "when": "When selectedClass changes AND attendance mode is active",
+              "data": [
+                "session_id",
+                "section_course_id",
+                "session_date",
+                "session_title",
+                "session_type",
+                "meeting_type"
+              ],
+              "cache_key": "attendance_sessions_{sectionCourseId}"
+            },
+            "attendance_records": {
+              "endpoint": "/api/attendance/class/{sectionCourseId}?date={date}",
+              "when": "When selectedClass changes AND date is selected",
+              "data": [
+                "enrollment_id",
+                "session_id",
+                "status",
+                "remarks",
+                "session_date"
+              ],
+              "cache_key": "attendance_{sectionCourseId}_{date}"
+            }
+          },
+          "no_prefetch": "Do NOT prefetch data for other classes. Only fetch for selected class."
+        }
+      },
+      
+      "Assessments": {
+        "initial_load": {
+          "description": "When page loads, fetch only the list of classes assigned to the faculty",
+          "endpoint": "/api/section-courses/faculty/{facultyId}",
+          "data_fetched": [
+            "section_course_id",
+            "course_code",
+            "course_title",
+            "section_code"
+          ],
+          "when": "On component mount, only if facultyId exists"
+        },
+        "on_class_selection": {
+          "description": "When a class is selected, fetch ONLY assessments for that specific section",
+          "assessments": {
+            "endpoint": "/api/assessments/class/{sectionCourseId}",
+            "when": "When selectedClass changes",
+            "data": [
+              "assessment_id",
+              "title",
+              "type",
+              "category",
+              "total_points",
+              "weight_percentage",
+              "due_date",
+              "status",
+              "is_published",
+              "is_graded"
+            ],
+            "cache_key": "assessments_{sectionCourseId}"
+          },
+          "no_prefetch": "Do NOT prefetch assessments for other classes. Only fetch for selected class."
+        },
+        "on_assessment_selection": {
+          "description": "When an assessment is selected for grading, fetch ONLY grades for that assessment",
+          "grades": {
+            "endpoint": "/api/grading/assessment/{assessmentId}/grades",
+            "when": "When selectedAssessment changes",
+            "data": [
+              "enrollment_id",
+              "student_id",
+              "student_name",
+              "student_number",
+              "raw_score",
+              "late_penalty",
+              "total_score",
+              "adjusted_score",
+              "feedback"
+            ],
+            "cache_key": "grades_{assessmentId}"
+          }
+        }
+      },
+      
+      "Grades": {
+        "initial_load": {
+          "description": "When page loads, fetch only the list of classes assigned to the faculty",
+          "endpoint": "/api/section-courses/faculty/{facultyId}",
+          "data_fetched": [
+            "section_course_id",
+            "course_code",
+            "course_title",
+            "section_code"
+          ],
+          "when": "On component mount, only if facultyId exists"
+        },
+        "on_class_selection": {
+          "description": "When a class is selected, fetch ONLY data for that specific section",
+          "data_to_fetch": {
+            "students": {
+              "endpoint": "/api/section-courses/{sectionCourseId}/students",
+              "when": "When selectedClass changes",
+              "data": [
+                "enrollment_id",
+                "student_id",
+                "student_number",
+                "full_name",
+                "student_photo"
+              ],
+              "cache_key": "students_{sectionCourseId}"
+            },
+            "student_grades": {
+              "endpoint": "/api/grading/class/{sectionCourseId}/student-grades",
+              "when": "When selectedClass changes",
+              "data": [
+                "enrollment_id",
+                "student_id",
+                "total_grade",
+                "total_assessments",
+                "graded_assessments"
+              ],
+              "cache_key": "student_grades_{sectionCourseId}"
+            }
+          },
+          "no_prefetch": "Do NOT prefetch data for other classes. Only fetch for selected class."
+        }
+      },
+      
+      "Syllabi": {
+        "initial_load": {
+          "description": "Currently a placeholder page. Will follow same pattern when implemented.",
+          "endpoint": "TBD",
+          "data_fetched": []
+        }
+      }
+    },
+    
+    "removed_prefetching": {
+      "prefetchFacultyData": {
+        "description": "This function previously fetched data for ALL classes. It is now removed/replaced with section-specific fetching.",
+        "old_behavior": "Fetched classes, departments, and other data for all classes at once",
+        "new_behavior": "No bulk prefetching. Data is fetched on-demand per section."
+      }
+    },
+    
+    "caching_strategy": {
+      "section_level_cache": {
+        "description": "Cache data per section/course",
+        "cache_keys": {
+          "classes": "classes_{facultyId}",
+          "students": "students_{sectionCourseId}",
+          "assessments": "assessments_{sectionCourseId}",
+          "grades": "grades_{assessmentId}",
+          "student_grades": "student_grades_{sectionCourseId}",
+          "attendance_sessions": "attendance_sessions_{sectionCourseId}",
+          "attendance_records": "attendance_{sectionCourseId}_{date}"
+        },
+        "cache_duration": "5 minutes for classes list, 2 minutes for section-specific data",
+        "cache_invalidation": "Invalidate when data is modified (create, update, delete)"
+      }
+    },
+    
+    "api_endpoints_used": {
+      "classes_list": {
+        "endpoint": "/api/section-courses/faculty/{facultyId}",
+        "method": "GET",
+        "purpose": "Get list of classes assigned to faculty",
+        "returns": "Array of section courses with minimal data"
+      },
+      "section_students": {
+        "endpoint": "/api/section-courses/{sectionCourseId}/students",
+        "method": "GET",
+        "purpose": "Get students enrolled in a specific section",
+        "returns": "Array of students with enrollment info"
+      },
+      "section_assessments": {
+        "endpoint": "/api/assessments/class/{sectionCourseId}",
+        "method": "GET",
+        "purpose": "Get assessments for a specific section",
+        "returns": "Array of assessments"
+      },
+      "assessment_grades": {
+        "endpoint": "/api/grading/assessment/{assessmentId}/grades",
+        "method": "GET",
+        "purpose": "Get grades for a specific assessment",
+        "returns": "Array of student grades for that assessment"
+      },
+      "section_student_grades": {
+        "endpoint": "/api/grading/class/{sectionCourseId}/student-grades",
+        "method": "GET",
+        "purpose": "Get total grades for all students in a section",
+        "returns": "Array of student total grades"
+      },
+      "attendance_sessions": {
+        "endpoint": "/api/attendance/sessions?section_course_id={sectionCourseId}",
+        "method": "GET",
+        "purpose": "Get attendance sessions for a specific section",
+        "returns": "Array of attendance sessions"
+      },
+      "attendance_records": {
+        "endpoint": "/api/attendance/class/{sectionCourseId}?date={date}",
+        "method": "GET",
+        "purpose": "Get attendance records for a specific section and date",
+        "returns": "Array of attendance records"
+      }
+    },
+    
+    "data_flow": {
+      "step_1": "User navigates to faculty page",
+      "step_2": "Fetch ONLY list of classes (minimal data)",
+      "step_3": "User selects a class",
+      "step_4": "Fetch ONLY data for selected section (students, assessments, etc.)",
+      "step_5": "User interacts with section data",
+      "step_6": "If user switches class, clear previous section data and fetch new section data",
+      "step_7": "Cache section data for quick access if user returns to same section"
+    },
+    
+    "benefits": {
+      "performance": "Faster initial page load - only fetch minimal class list",
+      "efficiency": "Reduced database queries - only fetch needed data",
+      "scalability": "Better performance with many classes - doesn't load all data at once",
+      "user_experience": "Faster interactions - data loads quickly when section is selected",
+      "network": "Reduced bandwidth - only fetch data user is viewing"
+    },
+    
+    "migration_notes": {
+      "removed": [
+        "prefetchFacultyData() calls from all faculty pages",
+        "Bulk data prefetching on page load",
+        "Loading all students for all classes at once",
+        "Loading all assessments for all classes at once"
+      ],
+      "added": [
+        "Section-specific data fetching hooks",
+        "Section-level caching",
+        "Conditional data loading based on selected class",
+        "Cache invalidation on data modification"
+      ]
+    }
+  }
+}
+

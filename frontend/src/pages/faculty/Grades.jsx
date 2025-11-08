@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
-import { prefetchFacultyData } from '../../services/dataPrefetchService'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -11,18 +10,23 @@ const Grades = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadingGrades, setLoadingGrades] = useState(false)
+  const [loadingStudents, setLoadingStudents] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
 
-  // Load faculty classes
+  // Load faculty classes - ONLY the list, no bulk data
   useEffect(() => {
     const loadClasses = async () => {
+      if (!user?.user_id) return
+      
       try {
         setLoading(true)
         const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
         if (response.ok) {
           const data = await response.json()
           setClasses(Array.isArray(data) ? data : [])
+        } else {
+          setError('Failed to load classes')
         }
       } catch (error) {
         console.error('Error loading classes:', error)
@@ -32,55 +36,50 @@ const Grades = () => {
       }
     }
     
-    if (user?.user_id) {
-      loadClasses()
-      
-      // Prefetch data for other faculty pages in the background
-      setTimeout(() => {
-        prefetchFacultyData(user.user_id)
-      }, 1000)
-    }
+    loadClasses()
   }, [user])
 
-  // Load students for selected class
+  // Load section-specific data when class is selected
   useEffect(() => {
-    if (selectedClass) {
-      loadStudents()
-      loadStudentGrades()
+    if (!selectedClass) {
+      // Clear data when no class is selected
+      setStudents([])
+      setStudentGrades({})
+      return
     }
+    
+    // Fetch ONLY data for the selected section
+    loadSectionData(selectedClass.section_course_id)
   }, [selectedClass])
 
-  const loadStudents = async () => {
-    if (!selectedClass) return
+  // Load all data for a specific section
+  const loadSectionData = async (sectionCourseId) => {
+    if (!sectionCourseId) return
     
     try {
-      setLoading(true)
-      const response = await fetch(`/api/section-courses/${selectedClass.section_course_id}/students`)
-      if (response.ok) {
-        const data = await response.json()
-        setStudents(Array.isArray(data) ? data : [])
-      } else {
-        setError('Failed to load students')
-      }
-    } catch (error) {
-      console.error('Error loading students:', error)
-      setError('Failed to load students')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadStudentGrades = async () => {
-    if (!selectedClass) return
-    
-    try {
+      setLoadingStudents(true)
       setLoadingGrades(true)
-      const response = await fetch(`/api/grading/class/${selectedClass.section_course_id}/student-grades`)
-      if (response.ok) {
-        const data = await response.json()
-        // Create a map of enrollment_id to total grade
+      
+      // Fetch students and grades in parallel for the selected section only
+      const [studentsResponse, gradesResponse] = await Promise.all([
+        fetch(`/api/section-courses/${sectionCourseId}/students`),
+        fetch(`/api/grading/class/${sectionCourseId}/student-grades`)
+      ])
+      
+      // Process students
+      if (studentsResponse.ok) {
+        const studentsData = await studentsResponse.json()
+        setStudents(Array.isArray(studentsData) ? studentsData : [])
+      } else {
+        console.error('Failed to load students')
+        setStudents([])
+      }
+      
+      // Process grades
+      if (gradesResponse.ok) {
+        const gradesData = await gradesResponse.json()
         const gradesMap = {}
-        data.forEach(item => {
+        gradesData.forEach(item => {
           gradesMap[item.enrollment_id] = {
             total_grade: item.total_grade,
             total_assessments: item.total_assessments,
@@ -88,11 +87,17 @@ const Grades = () => {
           }
         })
         setStudentGrades(gradesMap)
+      } else {
+        console.error('Failed to load student grades')
+        setStudentGrades({})
       }
     } catch (error) {
-      console.error('Error loading student grades:', error)
-      // Don't set error here, just log it - grades are optional
+      console.error('Error loading section data:', error)
+      setError('Failed to load section data')
+      setStudents([])
+      setStudentGrades({})
     } finally {
+      setLoadingStudents(false)
       setLoadingGrades(false)
     }
   }
@@ -148,7 +153,7 @@ const Grades = () => {
                 {/* Students List */}
                 {selectedClass ? (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    {loading ? (
+                    {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
                           {Array.from({ length: 5 }).map((_, i) => (

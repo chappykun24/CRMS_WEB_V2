@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
-import { prefetchFacultyData } from '../../services/dataPrefetchService'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -60,9 +59,11 @@ const Assessments = () => {
     instructions: ''
   })
 
-  // Load faculty classes
+  // Load faculty classes - ONLY the list, no bulk data
   useEffect(() => {
     const loadClasses = async () => {
+      if (!user?.user_id) return
+      
       try {
         setLoading(true)
         const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
@@ -77,46 +78,52 @@ const Assessments = () => {
               setSelectedClass(classToSelect)
             }
           }
+        } else {
+          setError('Failed to load classes')
         }
       } catch (error) {
         console.error('Error loading classes:', error)
+        setError('Failed to load classes')
       } finally {
         setLoading(false)
       }
     }
     
-    if (user?.user_id) {
-      loadClasses()
-      
-      // Prefetch data for other faculty pages in the background
-      setTimeout(() => {
-        prefetchFacultyData(user.user_id)
-      }, 1000)
-    }
+    loadClasses()
   }, [user, location.state])
 
-  // Load assessments for selected class
+  // Load assessments ONLY for selected class
   useEffect(() => {
-    if (selectedClass) {
-      loadAssessments()
+    if (!selectedClass) {
+      // Clear assessments when no class is selected
+      setAssessments([])
+      setSelectedAssessment(null)
+      setGrades({})
+      return
     }
+    
+    // Fetch ONLY assessments for the selected section
+    loadAssessments(selectedClass.section_course_id)
   }, [selectedClass])
 
-  const loadAssessments = async () => {
-    if (!selectedClass) return
+  const loadAssessments = async (sectionCourseId) => {
+    if (!sectionCourseId) return
     
     try {
       setLoading(true)
-      const response = await fetch(`/api/assessments/class/${selectedClass.section_course_id}`)
+      const response = await fetch(`/api/assessments/class/${sectionCourseId}`)
       if (response.ok) {
         const data = await response.json()
         setAssessments(Array.isArray(data) ? data : [])
+        setError('')
       } else {
         setError('Failed to load assessments')
+        setAssessments([])
       }
     } catch (error) {
       console.error('Error loading assessments:', error)
       setError('Failed to load assessments')
+      setAssessments([])
     } finally {
       setLoading(false)
     }
@@ -153,7 +160,7 @@ const Assessments = () => {
         const result = await response.json()
         setShowCreateModal(false)
         resetForm()
-        loadAssessments()
+        loadAssessments(selectedClass.section_course_id)
         alert('Assessment created successfully!')
       } else {
         const error = await response.json()
@@ -186,7 +193,7 @@ const Assessments = () => {
         setShowEditModal(false)
         setEditingAssessment(null)
         resetForm()
-        loadAssessments()
+        loadAssessments(selectedClass.section_course_id)
         alert('Assessment updated successfully!')
       } else {
         const error = await response.json()
@@ -210,7 +217,7 @@ const Assessments = () => {
       })
 
       if (response.ok) {
-        loadAssessments()
+        loadAssessments(selectedClass.section_course_id)
         alert('Assessment published successfully!')
       } else {
         alert('Failed to publish assessment')
@@ -231,7 +238,7 @@ const Assessments = () => {
       })
 
       if (response.ok) {
-        loadAssessments()
+        loadAssessments(selectedClass.section_course_id)
         alert('Assessment unpublished successfully!')
       } else {
         alert('Failed to unpublish assessment')
@@ -254,7 +261,7 @@ const Assessments = () => {
       })
 
       if (response.ok) {
-        loadAssessments()
+        loadAssessments(selectedClass.section_course_id)
         alert('Assessment deleted successfully!')
       } else {
         alert('Failed to delete assessment')

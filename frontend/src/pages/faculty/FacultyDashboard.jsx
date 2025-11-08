@@ -1,34 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import MyClasses from './MyClasses'
 import Assessments from './Assessments'
 import Grades from './Grades'
 import Syllabi from './Syllabi'
-import { prefetchFacultyData } from '../../services/dataPrefetchService'
-import { useAuth } from '../../contexts/UnifiedAuthContext'
 
 const FacultyDashboard = ({ user }) => {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
-
-  // Prefetch data for other pages in the background - only after authentication and initial load
-  useEffect(() => {
-    // Don't prefetch if not authenticated
-    if (!isAuthenticated || authLoading) {
-      return
-    }
-
-    // Wait for initial page load, then prefetch other interface data
-    const timer = setTimeout(() => {
-      if (user?.user_id) {
-        console.log('🚀 [FacultyDashboard] Starting async prefetch after initial load')
-        prefetchFacultyData(user.user_id)
-        setInitialLoadComplete(true)
-      }
-    }, 1000) // Wait 1 second after dashboard mounts to start prefetching
-    
-    return () => clearTimeout(timer)
-  }, [user, isAuthenticated, authLoading])
+  // Removed bulk data prefetching - data is now fetched per section on each page
+  // This improves performance and reduces unnecessary API calls
   // Default faculty dashboard content
   const defaultContent = (
     <div className="p-6">
