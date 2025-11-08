@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/solid'
 import logo from '../images/logo.png'
 import { getSelectedClass } from '../utils/localStorageManager'
+import { ImageSkeleton } from './skeletons'
 
 const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   const { user, logout } = useAuth()
@@ -471,23 +472,14 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
               style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
             >
               {/* User Photo */}
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-gray-200 relative">
-                {(user?.profilePic || user?.profile_pic) ? (
-                  <img 
-                    src={user.profilePic || user.profile_pic} 
-                    alt={user?.name || 'User'} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      console.log('🔍 [HEADER] Image load error, falling back to default avatar');
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div className={`w-full h-full bg-primary-600 flex items-center justify-center ${(user?.profilePic || user?.profile_pic) ? 'hidden' : ''}`}>
-                  <UserIcon className="h-5 w-5 text-white" />
-                </div>
-              </div>
+              <ImageSkeleton
+                src={user?.profilePic || user?.profile_pic}
+                alt={user?.name || 'User'}
+                size="md"
+                shape="circle"
+                className="border-2 border-gray-200"
+                fallbackIcon={UserIcon}
+              />
             </button>
 
             {/* Profile Modal */}
@@ -510,22 +502,15 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 {/* Profile Section */}
                 <div className="p-4 text-center bg-white">
                   {/* Large Profile Picture */}
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-gray-200 mx-auto mb-3 relative shadow-lg">
-                    {(user?.profilePic || user?.profile_pic) ? (
-                      <img 
-                        src={user.profilePic || user.profile_pic} 
-                        alt={user?.name || 'User'} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.log('🔍 [HEADER MODAL] Image load error, falling back to default avatar');
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full bg-primary-600 flex items-center justify-center ${(user?.profilePic || user?.profile_pic) ? 'hidden' : ''}`}>
-                      <UserIcon className="h-6 w-6 text-white" />
-                    </div>
+                  <div className="mx-auto mb-3">
+                    <ImageSkeleton
+                      src={user?.profilePic || user?.profile_pic}
+                      alt={user?.name || 'User'}
+                      size="xl"
+                      shape="circle"
+                      className="border-4 border-gray-200 shadow-lg"
+                      fallbackIcon={UserIcon}
+                    />
                   </div>
                   
                   {/* Greeting */}

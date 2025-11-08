@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { ImageSkeleton } from '../../components/skeletons'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -858,18 +859,13 @@ const Assessments = () => {
                               {Object.entries(grades).map(([enrollmentId, gradeData]) => (
                                 <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50">
                                   <div className="w-48 flex-shrink-0 flex items-center space-x-3">
-                                    <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                                      {gradeData.student_photo ? (
-                                        <img 
-                                          src={gradeData.student_photo} 
-                                          alt={gradeData.student_name} 
-                                          className="h-full w-full object-cover"
-                                          onError={(e) => e.target.src = '/src/images/bsu-logo.png'}
-                                        />
-                                      ) : (
-                                        <img src="/src/images/bsu-logo.png" alt="Default Avatar" className="h-full w-full object-cover" />
-                                      )}
-                                    </div>
+                                    <ImageSkeleton
+                                      src={gradeData.student_photo}
+                                      alt={gradeData.student_name || 'Student'}
+                                      size="md"
+                                      shape="circle"
+                                      className="border border-gray-200"
+                                    />
                                     <div className="flex-1">
                                       <div className="text-sm font-medium text-gray-900">{gradeData.student_name || 'Student'}</div>
                                       <div className="text-xs text-gray-500">SR Code: {gradeData.student_number || 'N/A'}</div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
+import { ImageSkeleton } from '../../components/skeletons'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -220,20 +221,13 @@ const Grades = () => {
                               </span>
                             </div>
                             <div className="flex-shrink-0">
-                              {student.student_photo ? (
-                                <img 
-                                  src={student.student_photo} 
-                                  alt={student.full_name}
-                                  className="h-10 w-10 rounded-full object-cover"
-                                  onError={(e) => e.target.src = '/src/images/bsu-logo.png'}
-                                />
-                              ) : (
-                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                  <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                </div>
-                              )}
+                              <ImageSkeleton
+                                src={student.student_photo}
+                                alt={student.full_name}
+                                size="md"
+                                shape="circle"
+                                className="border border-gray-200"
+                              />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
