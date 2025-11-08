@@ -10,7 +10,6 @@ import {
 } from '@heroicons/react/24/solid'
 import CourseManagement from './CourseManagement'
 import Analytics from '../dean/Analytics'
-import Reports from './Reports'
 import SyllabusReview from './SyllabusReview'
 import Syllabi from './Syllabi'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
@@ -415,22 +414,6 @@ const Home = () => {
               <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
             </button>
 
-            {/* Reports */}
-            <button
-              onClick={() => navigate('/program-chair/reports')}
-              className="flex items-center justify-between p-4 bg-gradient-to-br from-orange-50 to-white rounded-lg border border-orange-200 hover:border-orange-300 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="bg-orange-100 rounded-lg p-2">
-                  <DocumentTextIcon className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-900">Reports</p>
-                  <p className="text-xs text-gray-600">View reports</p>
-                </div>
-              </div>
-              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
-            </button>
           </div>
         </div>
       </div>
@@ -444,7 +427,6 @@ const ProgramChairDashboard = ({ user }) => {
       <Route path="/" element={<Home />} />
       <Route path="/courses" element={<CourseManagement />} />
       <Route path="/analytics" element={<Analytics />} />
-      <Route path="/reports" element={<Reports />} />
       <Route path="/syllabus-review" element={<SyllabusReview />} />
       <Route path="/syllabi" element={<Syllabi />} />
       <Route path="*" element={<Navigate to="/program-chair" replace />} />

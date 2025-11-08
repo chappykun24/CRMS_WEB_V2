@@ -67,7 +67,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Home', icon: HomeIcon, href: '/program-chair' },
           { name: 'Course Management', icon: BookOpenIcon, href: '/program-chair/courses' },
           { name: 'Reports and Analytics', icon: ChartBarIcon, href: '/program-chair/analytics' },
-          { name: 'Reports', icon: DocumentTextIcon, href: '/program-chair/reports' },
           { name: 'Syllabus Review', icon: ClipboardDocumentListIcon, href: '/program-chair/syllabus-review' }
         ]
       

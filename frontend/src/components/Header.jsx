@@ -209,7 +209,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/program-chair' || path === '/program-chair/') return 'Home'
         if (path === '/dashboard/courses' || path === '/program-chair/courses') return 'Course Management'
         if (path === '/dashboard/analytics' || path === '/program-chair/analytics') return 'Reports and Analytics'
-        if (path === '/dashboard/reports' || path === '/program-chair/reports') return 'Reports'
         if (path === '/program-chair/syllabus-review') return 'Syllabus Review'
         break
       default:
