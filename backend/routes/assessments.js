@@ -612,18 +612,39 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Default to localhost for development if not set
     // Check VITE_ prefixed vars first (for Vercel compatibility), then regular vars
     // Trim and validate the URLs to ensure they're not empty strings
-    const getClusterUrl = (url) => {
-      if (!url) return null;
-      const trimmed = String(url).trim();
-      return trimmed.length > 0 ? trimmed : null;
+    // Also remove surrounding quotes if present
+    const getClusterUrl = (url, varName) => {
+      if (!url) {
+        console.log(`🔍 [Backend] ${varName}: (falsy or undefined)`);
+        return null;
+      }
+      let trimmed = String(url).trim();
+      // Remove surrounding quotes if present (single or double)
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+          (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        trimmed = trimmed.slice(1, -1).trim();
+        console.log(`🔍 [Backend] ${varName}: Removed surrounding quotes`);
+      }
+      const result = trimmed.length > 0 ? trimmed : null;
+      console.log(`🔍 [Backend] ${varName}: "${String(url)}" -> "${result}" (length: ${trimmed.length})`);
+      return result;
     };
     
-    const clusterServiceUrl = getClusterUrl(process.env.VITE_CLUSTER_API_URL) ||
-                             getClusterUrl(process.env.CLUSTER_SERVICE_URL) || 
-                             getClusterUrl(process.env.CLUSTER_API_URL) || 
+    // Debug: Log raw environment variables before processing
+    console.log('🔍 [Backend] Raw environment variables:', {
+      VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL ? `"${process.env.VITE_CLUSTER_API_URL}"` : '(undefined)',
+      CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL ? `"${process.env.CLUSTER_SERVICE_URL}"` : '(undefined)',
+      CLUSTER_API_URL: process.env.CLUSTER_API_URL ? `"${process.env.CLUSTER_API_URL}"` : '(undefined)',
+    });
+    
+    const url1 = getClusterUrl(process.env.VITE_CLUSTER_API_URL, 'VITE_CLUSTER_API_URL');
+    const url2 = getClusterUrl(process.env.CLUSTER_SERVICE_URL, 'CLUSTER_SERVICE_URL');
+    const url3 = getClusterUrl(process.env.CLUSTER_API_URL, 'CLUSTER_API_URL');
+    
+    const clusterServiceUrl = url1 || url2 || url3 || 
                              (process.env.NODE_ENV === 'production' ? null : 'http://localhost:10000');
     
-    console.log('🔗 [Backend] Cluster service URL:', clusterServiceUrl || '(not set or empty)');
+    console.log('🔗 [Backend] Final cluster service URL:', clusterServiceUrl || '(not set or empty)');
     console.log('🌐 [Backend] NODE_ENV:', process.env.NODE_ENV, '| Platform:', platform);
     
     // Get cache max age from environment (default: 24 hours)
