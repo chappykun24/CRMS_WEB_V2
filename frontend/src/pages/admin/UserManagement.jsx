@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
 import api, { enhancedApi, endpoints } from '../../utils/api'
@@ -82,8 +82,8 @@ const UserManagement = () => {
     setLocalStorageItem('userMgmtActiveTab', activeTab)
     const event = new CustomEvent('userMgmtTabChanged', { detail: { activeTab } })
     window.dispatchEvent(event)
-    // Remove role filter when on Faculty Approval tab
-    if (activeTab === 'pending' && roleFilter) {
+    // Remove role filter when on Faculty Approval tab (faculty tab doesn't use role filter)
+    if (activeTab === 'faculty' && roleFilter) {
       setRoleFilter('')
     }
     // Ensure default status is All when switching tabs
@@ -217,9 +217,24 @@ const UserManagement = () => {
     }
   }, [query, activeTab, roleFilter, statusFilter, departmentFilter])
 
-  // Load roles and departments asynchronously after initial users load
+  // Load roles and departments asynchronously after initial users load (only once)
+  const rolesLoadedRef = useRef(false)
+  const activeTabRef = useRef(activeTab)
+  const loadUsersRef = useRef(loadUsers)
+  
+  // Keep refs in sync
   useEffect(() => {
-    if (initialLoadComplete && isAuthenticated && !authLoading) {
+    activeTabRef.current = activeTab
+  }, [activeTab])
+  
+  useEffect(() => {
+    loadUsersRef.current = loadUsers
+  }, [loadUsers])
+  
+  useEffect(() => {
+    if (initialLoadComplete && isAuthenticated && !authLoading && !rolesLoadedRef.current) {
+      rolesLoadedRef.current = true // Mark as loading to prevent multiple loads
+      
       // Load roles asynchronously
       const loadRoles = async () => {
         try {
@@ -229,14 +244,16 @@ const UserManagement = () => {
           setRoles(rolesData)
           
           // If we're on faculty tab and roles just loaded, reload users with proper faculty filter
-          if (activeTab === 'faculty' && rolesData.length > 0) {
-            // Small delay to ensure state is updated
+          // Use ref to get current activeTab and loadUsers to avoid dependency issues
+          if (activeTabRef.current === 'faculty' && rolesData.length > 0) {
+            // Small delay to ensure state is updated, then reload users
             setTimeout(() => {
-              loadUsers(1, false)
+              loadUsersRef.current(1, false)
             }, 100)
           }
         } catch (e) {
           console.error('Error loading roles:', e)
+          rolesLoadedRef.current = false // Reset on error so it can retry
         } finally {
           setRolesLoading(false)
         }
@@ -265,7 +282,7 @@ const UserManagement = () => {
         prefetchAdminData()
       }, 1000)
     }
-  }, [initialLoadComplete, isAuthenticated, authLoading, activeTab, loadUsers])
+  }, [initialLoadComplete, isAuthenticated, authLoading])
 
   const facultyRoleId = useMemo(() => {
     const r = roles.find((r) => String(r.name).toUpperCase() === 'FACULTY')
@@ -861,7 +878,7 @@ const UserManagement = () => {
                           </>
                         ) : (
                           <>
-                            {activeTab === 'pending' ? (
+                            {activeTab === 'faculty' ? (
                               <UserPlusIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                             ) : (
                               <UsersIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
