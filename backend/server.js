@@ -2793,6 +2793,10 @@ app.get('/api/section-courses/faculty/:facultyId', async (req, res) => {
 
 app.get('/api/section-courses/assigned', async (req, res) => {
   try {
+    // Set CORS headers explicitly
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
     const result = await pool.query(`
       SELECT sc.section_course_id,
              sc.section_id,
@@ -2816,8 +2820,30 @@ app.get('/api/section-courses/assigned', async (req, res) => {
       LEFT JOIN school_terms st ON sc.term_id = st.term_id
       ORDER BY st.term_id DESC, s.section_code, c.title
     `);
-    res.json(result.rows);
+    
+    // Sanitize data to ensure JSON safety
+    const sanitizeForJSON = (obj) => {
+      if (obj === null || obj === undefined) return null;
+      if (typeof obj === 'string') {
+        return obj.replace(/\0/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '').trim();
+      }
+      if (Array.isArray(obj)) return obj.map(sanitizeForJSON);
+      if (typeof obj === 'object') {
+        const sanitized = {};
+        for (const [key, value] of Object.entries(obj)) {
+          sanitized[key] = sanitizeForJSON(value);
+        }
+        return sanitized;
+      }
+      return obj;
+    };
+    
+    const sanitizedRows = result.rows.map(sanitizeForJSON);
+    res.json(sanitizedRows);
   } catch (error) {
+    // Set CORS headers even on error
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.status(500).json({ error: error.message });
   }
 });

@@ -63,13 +63,30 @@ const prefetchAnalytics = async (termId = null) => {
     
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
+      // Try to read as text to see what we got
+      const text = await response.text();
+      console.error('❌ [Prefetch] Analytics response is not JSON:', text.substring(0, 200));
       throw new Error('Analytics response is not JSON');
     }
     
-    const data = await response.json();
-    setCachedData(cacheKey, data);
-    console.log('✅ [Prefetch] Analytics data cached');
-    return data;
+    // Clone response before parsing to allow error handling
+    const clonedResponse = response.clone();
+    try {
+      const data = await response.json();
+      setCachedData(cacheKey, data);
+      console.log('✅ [Prefetch] Analytics data cached');
+      return data;
+    } catch (jsonError) {
+      console.error('❌ [Prefetch] Error parsing analytics JSON:', jsonError);
+      // Try to read error text from cloned response
+      try {
+        const errorText = await clonedResponse.text();
+        console.error('❌ [Prefetch] Analytics response text (first 500 chars):', errorText.substring(0, 500));
+      } catch (e) {
+        console.error('❌ [Prefetch] Could not read response as text:', e);
+      }
+      throw jsonError;
+    }
   } catch (error) {
     console.error('❌ [Prefetch] Error prefetching analytics:', error);
     return null;
@@ -98,13 +115,30 @@ const prefetchClasses = async () => {
     
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
+      // Try to read as text to see what we got
+      const text = await response.text();
+      console.error('❌ [Prefetch] Classes response is not JSON:', text.substring(0, 200));
       throw new Error('Classes response is not JSON');
     }
     
-    const data = await response.json();
-    setCachedData(cacheKey, data);
-    console.log('✅ [Prefetch] Classes data cached');
-    return data;
+    // Clone response before parsing to allow error handling
+    const clonedResponse = response.clone();
+    try {
+      const data = await response.json();
+      setCachedData(cacheKey, data);
+      console.log('✅ [Prefetch] Classes data cached');
+      return data;
+    } catch (jsonError) {
+      console.error('❌ [Prefetch] Error parsing classes JSON:', jsonError);
+      // Try to read error text from cloned response
+      try {
+        const errorText = await clonedResponse.text();
+        console.error('❌ [Prefetch] Classes response text (first 500 chars):', errorText.substring(0, 500));
+      } catch (e) {
+        console.error('❌ [Prefetch] Could not read response as text:', e);
+      }
+      throw jsonError;
+    }
   } catch (error) {
     console.error('❌ [Prefetch] Error prefetching classes:', error);
     return null;

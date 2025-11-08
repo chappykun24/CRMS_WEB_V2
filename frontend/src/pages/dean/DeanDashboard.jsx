@@ -173,44 +173,56 @@ const Home = () => {
         try {
           const contentType = analyticsRes.headers.get('content-type')
           if (contentType && contentType.includes('application/json')) {
-            const analyticsData = await analyticsRes.json()
-            if (analyticsData.success && Array.isArray(analyticsData.data) && analyticsData.data.length > 0) {
-              const students = analyticsData.data
-              const totalStudents = students.length
+            // Clone response before consuming to allow error handling
+            const clonedRes = analyticsRes.clone()
+            try {
+              const analyticsData = await analyticsRes.json()
+              if (analyticsData.success && Array.isArray(analyticsData.data) && analyticsData.data.length > 0) {
+                const students = analyticsData.data
+                const totalStudents = students.length
 
-              // Calculate average attendance
-              const totalAttendance = students.reduce((sum, s) => {
-                return sum + (parseFloat(s.attendance_percentage) || 0)
-              }, 0)
-              avgAttendance = totalAttendance / totalStudents
+                // Calculate average attendance
+                const totalAttendance = students.reduce((sum, s) => {
+                  return sum + (parseFloat(s.attendance_percentage) || 0)
+                }, 0)
+                avgAttendance = totalAttendance / totalStudents
 
-              // Calculate average score
-              const totalScore = students.reduce((sum, s) => {
-                return sum + (parseFloat(s.average_score) || 0)
-              }, 0)
-              avgScore = totalScore / totalStudents
+                // Calculate average score
+                const totalScore = students.reduce((sum, s) => {
+                  return sum + (parseFloat(s.average_score) || 0)
+                }, 0)
+                avgScore = totalScore / totalStudents
 
-              // Count students at risk (cluster labels containing "risk" or low attendance/score)
-              studentsAtRisk = students.filter(s => {
-                const cluster = String(s.cluster_label || '').toLowerCase()
-                const attendance = parseFloat(s.attendance_percentage) || 0
-                const score = parseFloat(s.average_score) || 0
-                return cluster.includes('risk') || attendance < 60 || score < 60
-              }).length
+                // Count students at risk (cluster labels containing "risk" or low attendance/score)
+                studentsAtRisk = students.filter(s => {
+                  const cluster = String(s.cluster_label || '').toLowerCase()
+                  const attendance = parseFloat(s.attendance_percentage) || 0
+                  const score = parseFloat(s.average_score) || 0
+                  return cluster.includes('risk') || attendance < 60 || score < 60
+                }).length
+              }
+            } catch (jsonError) {
+              console.error('Error parsing analytics JSON:', jsonError)
+              // Try to get error text from cloned response
+              try {
+                const errorText = await clonedRes.text()
+                console.error('Analytics response text (first 500 chars):', errorText.substring(0, 500))
+              } catch (e) {
+                console.error('Could not read analytics response as text:', e)
+              }
             }
           } else {
-            const errorText = await analyticsRes.text()
-            console.error('Analytics response is not JSON:', errorText.substring(0, 200))
+            // Clone before consuming
+            const clonedRes = analyticsRes.clone()
+            try {
+              const errorText = await analyticsRes.text()
+              console.error('Analytics response is not JSON:', errorText.substring(0, 200))
+            } catch (e) {
+              console.error('Could not read analytics response as text:', e)
+            }
           }
-        } catch (jsonError) {
-          console.error('Error parsing analytics JSON:', jsonError)
-          // Try to get error text for debugging
-          try {
-            const errorText = await analyticsRes.clone().text()
-            console.error('Analytics response text:', errorText.substring(0, 500))
-          } catch (e) {
-            console.error('Could not read analytics response as text:', e)
-          }
+        } catch (error) {
+          console.error('Error processing analytics response:', error)
         }
       }
 

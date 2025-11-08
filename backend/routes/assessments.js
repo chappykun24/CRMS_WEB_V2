@@ -902,7 +902,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
         }
         // Continue without clustering - students will show "Not Clustered"
       }
-    } else {
+    } else if (!cacheUsed) {
+      // Only log warning if cache wasn't used AND clustering API wasn't called
+      // This means clustering is truly disabled (no URL or DISABLE_CLUSTERING=1)
       // More detailed logging to help debug the issue
       const envVars = {
         VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL || '(empty)',
@@ -930,6 +932,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
         console.warn('⚠️  [Backend] Environment variables:', envVars);
         console.warn('💡 [Backend] Tip: Set one of these environment variables: VITE_CLUSTER_API_URL, CLUSTER_SERVICE_URL, or CLUSTER_API_URL');
       }
+    } else {
+      // Cache was used successfully - no need to log warnings
+      console.log('✅ [Backend] Using cached clusters - clustering is enabled and working');
     }
 
     // Log final data sample to verify cluster_label is present
@@ -976,8 +981,22 @@ router.get('/dean-analytics/sample', async (req, res) => {
       }
       if (typeof obj === 'string') {
         // Ensure string is valid and doesn't contain problematic characters
-        // PostgreSQL can return strings with null bytes or other control chars
-        return obj.replace(/\0/g, '').trim();
+        // Remove null bytes and other control characters that can break JSON
+        // Also handle very long strings that might cause issues
+        let sanitized = obj
+          .replace(/\0/g, '') // Remove null bytes
+          .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters except \t, \n, \r
+          .trim();
+        
+        // Truncate extremely long strings to prevent JSON parsing issues
+        // PostgreSQL TEXT fields can be very large, but we'll limit to 10KB per field
+        const MAX_STRING_LENGTH = 10000;
+        if (sanitized.length > MAX_STRING_LENGTH) {
+          console.warn(`⚠️ [Backend] Truncating long string field (${sanitized.length} chars -> ${MAX_STRING_LENGTH} chars)`);
+          sanitized = sanitized.substring(0, MAX_STRING_LENGTH) + '...';
+        }
+        
+        return sanitized;
       }
       if (Array.isArray(obj)) {
         return obj.map(sanitizeForJSON);
@@ -999,7 +1018,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Ensure response is sent only once
     if (!res.headersSent) {
       try {
-        res.json({
+        // Set CORS headers explicitly to ensure they're always sent
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        
+        // Try to serialize the response to catch any JSON errors early
+        const responseData = {
           success: true,
           data: sanitizedData,
           clustering: {
@@ -1009,10 +1033,25 @@ router.get('/dean-analytics/sample', async (req, res) => {
             apiPlatform: clusterPlatform,  // Where the clustering API is hosted
             serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
           },
-        });
+        };
+        
+        // Validate JSON serialization before sending
+        JSON.stringify(responseData);
+        
+        res.json(responseData);
       } catch (jsonError) {
         console.error('❌ [Backend] JSON serialization error:', jsonError);
+        console.error('❌ [Backend] Error details:', {
+          message: jsonError.message,
+          name: jsonError.name,
+          stack: jsonError.stack?.substring(0, 500)
+        });
+        
         if (!res.headersSent) {
+          // Set CORS headers even on error
+          res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+          
           res.status(500).json({
             success: false,
             error: 'Failed to serialize response data. Data may contain invalid characters.',
@@ -1043,6 +1082,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
     }
     
     if (!res.headersSent) {
+      // Set CORS headers even on error
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      
       res.status(statusCode).json({ 
         success: false, 
         error: errorMessage,

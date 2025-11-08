@@ -159,6 +159,9 @@ const Analytics = () => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
         
+        // Clone response before consuming to allow error handling
+        const clonedRes = res.clone();
+        
         // Check if response is OK (200-299)
         if (!res.ok) {
           // Try to parse as JSON first, but fallback to text for HTML error pages
@@ -177,6 +180,13 @@ const Analytics = () => {
             }
           } catch (parseError) {
             console.error('❌ [Analytics] Failed to parse error response:', parseError);
+            // Try to read from cloned response
+            try {
+              const errorText = await clonedRes.text();
+              console.error('❌ [Analytics] Error response text (first 500 chars):', errorText.substring(0, 500));
+            } catch (e) {
+              console.error('❌ [Analytics] Could not read error response:', e);
+            }
             errorData = { 
               success: false, 
               error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable or request timed out.' : 'Unable to parse error response'}`
@@ -185,7 +195,25 @@ const Analytics = () => {
           throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
         }
         
-        return res.json();
+        // Clone again for error handling in JSON parsing
+        const jsonClonedRes = res.clone();
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error('❌ [Analytics] Error parsing JSON:', jsonError);
+          // Try to read response as text to see what we got
+          try {
+            const responseText = await jsonClonedRes.text();
+            console.error('❌ [Analytics] Response text (first 1000 chars):', responseText.substring(0, 1000));
+            // Check if response looks truncated
+            if (responseText.length > 1000 && !responseText.endsWith('}') && !responseText.endsWith(']')) {
+              console.error('❌ [Analytics] Response appears to be truncated!');
+            }
+          } catch (e) {
+            console.error('❌ [Analytics] Could not read response as text:', e);
+          }
+          throw jsonError;
+        }
       })
       .then((json) => {
         console.log('✅ [Analytics] Received data:', json);
