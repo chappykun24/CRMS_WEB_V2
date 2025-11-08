@@ -68,6 +68,7 @@ const MyClasses = () => {
   const [showFullAttendanceModal, setShowFullAttendanceModal] = useState(false)
   const [fullAttendanceList, setFullAttendanceList] = useState([])
   const [loadingFullAttendance, setLoadingFullAttendance] = useState(false)
+  const [activeSessionTab, setActiveSessionTab] = useState(0)
 
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
@@ -271,12 +272,21 @@ const MyClasses = () => {
         return dateB - dateA // Most recent first
       })
       
-      // Sort students within each session alphabetically
+      // Sort students within each session alphabetically by last name
       sessionsArray.forEach(session => {
-        session.records.sort((a, b) => a.full_name.localeCompare(b.full_name))
+        session.records.sort((a, b) => {
+          const lastNameA = extractSurname(a.full_name)
+          const lastNameB = extractSurname(b.full_name)
+          if (lastNameA !== lastNameB) {
+            return lastNameA.localeCompare(lastNameB)
+          }
+          // If last names are the same, sort by full name
+          return a.full_name.localeCompare(b.full_name)
+        })
       })
       
       setFullAttendanceList(sessionsArray)
+      setActiveSessionTab(0) // Reset to first tab
       setShowFullAttendanceModal(true)
     } catch (error) {
       console.error('❌ [MYCLASSES] Error loading full attendance list:', error)
@@ -1297,36 +1307,81 @@ const MyClasses = () => {
               </button>
             </div>
 
-            {/* Modal Body - Grouped by Session */}
-            <div className="flex-1 overflow-auto p-4">
+            {/* Modal Body - Tabs for Sessions */}
+            <div className="flex-1 flex flex-col min-h-0">
               {fullAttendanceList.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="flex-1 flex items-center justify-center text-gray-500">
                   <p>No attendance records found.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {fullAttendanceList.map((session, sessionIndex) => {
-                    const formatDate = (dateString) => {
-                      if (!dateString) return 'N/A'
-                      const date = new Date(dateString)
-                      return date.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      })
-                    }
-                    
-                    const statusCounts = session.records.reduce((acc, record) => {
-                      acc[record.status] = (acc[record.status] || 0) + 1
-                      return acc
-                    }, {})
-                    
-                    return (
-                      <div key={`session-${sessionIndex}`} className="border border-gray-200 rounded-lg overflow-hidden">
-                        {/* Session Header */}
-                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                <>
+                  {/* Session Tabs */}
+                  <div className="border-b border-gray-200 px-4 pt-2">
+                    <div className="flex space-x-1 overflow-x-auto">
+                      {fullAttendanceList.map((session, sessionIndex) => {
+                        const formatDate = (dateString) => {
+                          if (!dateString) return 'N/A'
+                          const date = new Date(dateString)
+                          return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric'
+                          })
+                        }
+                        
+                        const statusCounts = session.records.reduce((acc, record) => {
+                          acc[record.status] = (acc[record.status] || 0) + 1
+                          return acc
+                        }, {})
+                        
+                        const totalAbsent = statusCounts.absent || 0
+                        
+                        return (
+                          <button
+                            key={`tab-${sessionIndex}`}
+                            onClick={() => setActiveSessionTab(sessionIndex)}
+                            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                              activeSessionTab === sessionIndex
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{formatDate(session.session_date)}</span>
+                              <span className="text-xs text-gray-400">({session.records.length})</span>
+                              {totalAbsent > 0 && (
+                                <span className="w-2 h-2 bg-red-500 rounded-full" title={`${totalAbsent} absent`}></span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Active Session Content */}
+                  <div className="flex-1 overflow-auto p-4">
+                    {fullAttendanceList[activeSessionTab] && (() => {
+                      const session = fullAttendanceList[activeSessionTab]
+                      const formatDate = (dateString) => {
+                        if (!dateString) return 'N/A'
+                        const date = new Date(dateString)
+                        return date.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      }
+                      
+                      const statusCounts = session.records.reduce((acc, record) => {
+                        acc[record.status] = (acc[record.status] || 0) + 1
+                        return acc
+                      }, {})
+                      
+                      return (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Session Header */}
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
                               <div>
                                 <h3 className="text-sm font-semibold text-gray-900">
                                   {session.title}
@@ -1335,106 +1390,106 @@ const MyClasses = () => {
                                   {formatDate(session.session_date)} • {session.records.length} students
                                 </p>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              {statusCounts.present && (
-                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
-                                  {statusCounts.present} Present
-                                </span>
-                              )}
-                              {statusCounts.absent && (
-                                <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
-                                  {statusCounts.absent} Absent
-                                </span>
-                              )}
-                              {statusCounts.late && (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                  {statusCounts.late} Late
-                                </span>
-                              )}
-                              {statusCounts.excuse && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                  {statusCounts.excuse} Excuse
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2 text-xs">
+                                {statusCounts.present && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                                    {statusCounts.present} Present
+                                  </span>
+                                )}
+                                {statusCounts.absent && (
+                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
+                                    {statusCounts.absent} Absent
+                                  </span>
+                                )}
+                                {statusCounts.late && (
+                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                    {statusCounts.late} Late
+                                  </span>
+                                )}
+                                {statusCounts.excuse && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                    {statusCounts.excuse} Excuse
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        {/* Students Table */}
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Student
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Status
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Remarks
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {session.records.map((record, recordIndex) => {
-                                const statusColors = {
-                                  present: 'bg-green-100 text-green-800',
-                                  absent: 'bg-red-100 text-red-800',
-                                  late: 'bg-yellow-100 text-yellow-800',
-                                  excuse: 'bg-blue-100 text-blue-800'
-                                }
-                                
-                                return (
-                                  <tr key={`record-${recordIndex}`} className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 whitespace-nowrap">
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex-shrink-0">
-                                          <ImageSkeleton
-                                            src={record.student_photo}
-                                            alt={record.full_name}
-                                            size="xs"
-                                            shape="circle"
-                                            className="border border-gray-200"
-                                          />
-                                        </div>
-                                        <div>
-                                          <div className="text-sm font-medium text-gray-900">
-                                            {formatName(record.full_name)}
+                          
+                          {/* Students Table */}
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Student
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Remarks
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {session.records.map((record, recordIndex) => {
+                                  const statusColors = {
+                                    present: 'bg-green-100 text-green-800',
+                                    absent: 'bg-red-100 text-red-800',
+                                    late: 'bg-yellow-100 text-yellow-800',
+                                    excuse: 'bg-blue-100 text-blue-800'
+                                  }
+                                  
+                                  return (
+                                    <tr key={`record-${recordIndex}`} className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-shrink-0">
+                                            <ImageSkeleton
+                                              src={record.student_photo}
+                                              alt={record.full_name}
+                                              size="xs"
+                                              shape="circle"
+                                              className="border border-gray-200"
+                                            />
                                           </div>
-                                          <div className="text-xs text-gray-500">
-                                            {record.student_number}
+                                          <div>
+                                            <div className="text-sm font-medium text-gray-900">
+                                              {formatName(record.full_name)}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {record.student_number}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
-                                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
-                                        statusColors[record.status] || 'bg-gray-100 text-gray-800'
-                                      }`}>
-                                        {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-sm text-gray-500">
-                                      {record.remarks ? (
-                                        <span className="truncate block max-w-xs" title={record.remarks}>
-                                          {record.remarks}
+                                      </td>
+                                      <td className="px-3 py-2 whitespace-nowrap">
+                                        <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                                          statusColors[record.status] || 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
                                         </span>
-                                      ) : (
-                                        <span className="text-gray-400">-</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
+                                      </td>
+                                      <td className="px-3 py-2 text-sm text-gray-500">
+                                        {record.remarks ? (
+                                          <span className="truncate block max-w-xs" title={record.remarks}>
+                                            {record.remarks}
+                                          </span>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })()}
+                  </div>
+                </>
               )}
             </div>
 
