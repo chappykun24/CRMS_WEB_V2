@@ -34,7 +34,6 @@ const Sidebar = ({ isExpanded, onToggle }) => {
     switch (userRole) {
       case 'ADMIN':
         return [
-          { name: 'Home', icon: HomeIcon, href: '/admin' },
           { name: 'User Management', icon: UserGroupIcon, href: '/admin/users' },
           { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/admin/school-config' },
           { name: 'System Settings', icon: Cog6ToothIcon, href: '/admin/settings' }

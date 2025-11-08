@@ -36,7 +36,7 @@ const Dashboard = () => {
       
       switch (role) {
         case 'admin':
-          navigate('/admin', { replace: true })
+          navigate('/admin/users', { replace: true })
           break
         case 'faculty':
           navigate('/faculty/classes', { replace: true })
