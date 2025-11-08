@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -66,23 +67,18 @@ const Assessments = () => {
       
       // Show classes immediately if we have cached data
       const cacheKey = `classes_${user.user_id}`
-      const cached = sessionStorage.getItem(cacheKey)
+      const cached = safeGetItem(cacheKey)
       if (cached) {
-        try {
-          const cachedData = JSON.parse(cached)
-          const classesData = Array.isArray(cachedData) ? cachedData : []
-          setClasses(classesData)
-          setLoading(false) // Show cached data immediately
-          
-          // Auto-select class if provided in location state
-          if (location.state?.selectedClassId) {
-            const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
-            if (classToSelect) {
-              setSelectedClass(classToSelect)
-            }
+        const classesData = Array.isArray(cached) ? cached : []
+        setClasses(classesData)
+        setLoading(false) // Show cached data immediately
+        
+        // Auto-select class if provided in location state
+        if (location.state?.selectedClassId) {
+          const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
+          if (classToSelect) {
+            setSelectedClass(classToSelect)
           }
-        } catch (e) {
-          // Invalid cache, continue to fetch
         }
       }
       
@@ -93,8 +89,8 @@ const Assessments = () => {
           const data = await response.json()
           const classesData = Array.isArray(data) ? data : []
           setClasses(classesData)
-          // Cache for next time
-          sessionStorage.setItem(cacheKey, JSON.stringify(classesData))
+          // Cache minimized data for next time (excludes large images)
+          safeSetItem(cacheKey, classesData, minimizeClassData)
           
           // Auto-select class if provided in location state
           if (location.state?.selectedClassId && !selectedClass) {
@@ -130,16 +126,11 @@ const Assessments = () => {
     // Check cache first for instant display
     const sectionId = selectedClass.section_course_id
     const assessmentsCacheKey = `assessments_${sectionId}`
-    const cached = sessionStorage.getItem(assessmentsCacheKey)
+    const cached = safeGetItem(assessmentsCacheKey)
     
     // Show cached data immediately if available
     if (cached) {
-      try {
-        const cachedData = JSON.parse(cached)
-        setAssessments(Array.isArray(cachedData) ? cachedData : [])
-      } catch (e) {
-        // Invalid cache
-      }
+      setAssessments(Array.isArray(cached) ? cached : [])
     }
     
     // Fetch fresh data in background (non-blocking if cache exists)
@@ -158,8 +149,8 @@ const Assessments = () => {
         const assessmentsData = Array.isArray(data) ? data : []
         setAssessments(assessmentsData)
         setError('')
-        // Cache for next time
-        sessionStorage.setItem(cacheKey, JSON.stringify(assessmentsData))
+        // Cache for next time (assessments are typically small)
+        safeSetItem(cacheKey, assessmentsData)
       } else {
         setError('Failed to load assessments')
         if (showLoading) setAssessments([])
@@ -383,16 +374,11 @@ const Assessments = () => {
     
     // Check cache first for instant display
     const gradesCacheKey = `assessment_grades_${assessmentId}`
-    const cached = sessionStorage.getItem(gradesCacheKey)
+    const cached = safeGetItem(gradesCacheKey)
     
     // Show cached data immediately if available
     if (cached) {
-      try {
-        const cachedData = JSON.parse(cached)
-        setGrades(cachedData)
-      } catch (e) {
-        // Invalid cache
-      }
+      setGrades(cached)
     }
     
     try {
@@ -414,8 +400,8 @@ const Assessments = () => {
           }
         })
         setGrades(gradesMap)
-        // Cache for next time
-        sessionStorage.setItem(gradesCacheKey, JSON.stringify(gradesMap))
+        // Cache for next time (grades are small)
+        safeSetItem(gradesCacheKey, gradesMap)
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Failed to load grades')

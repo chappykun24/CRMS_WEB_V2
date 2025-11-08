@@ -5,6 +5,7 @@ import facultyCacheService from '../../services/facultyCacheService'
 import { Loader2 } from 'lucide-react'
 // Removed prefetchFacultyData - data is now fetched per section
 import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
+import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -469,19 +470,14 @@ const MyClasses = () => {
     
     // Check sessionStorage first for instant display
     const sessionCacheKey = `classes_${facultyId}`
-    const sessionCached = sessionStorage.getItem(sessionCacheKey)
+    const sessionCached = safeGetItem(sessionCacheKey)
     
     if (sessionCached) {
-      try {
-        const cachedData = JSON.parse(sessionCached)
-        console.log('📦 [FACULTY] Using session cached classes data')
-        setClasses(cachedData)
-        setLoading(false)
-        setInitialLoad(false)
-        // Continue to fetch fresh data in background
-      } catch (e) {
-        // Invalid cache, continue to fetch
-      }
+      console.log('📦 [FACULTY] Using session cached classes data')
+      setClasses(sessionCached)
+      setLoading(false)
+      setInitialLoad(false)
+      // Continue to fetch fresh data in background
     } else {
       setLoading(true)
       setInitialLoad(false)
@@ -495,8 +491,8 @@ const MyClasses = () => {
       setClasses(cachedData)
       setLoading(false)
       setInitialLoad(false)
-      // Cache in sessionStorage for next time
-      sessionStorage.setItem(sessionCacheKey, JSON.stringify(cachedData))
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData, minimizeClassData)
       // Continue to fetch fresh data in background
     }
     
@@ -532,10 +528,13 @@ const MyClasses = () => {
       const classesData = Array.isArray(data) ? data : []
       setClasses(classesData)
       
-      // Store in sessionStorage for instant next load
-      sessionStorage.setItem(sessionCacheKey, JSON.stringify(classesData))
+      // Store minimized data in sessionStorage for instant next load (excludes large images)
+      // Only store if we don't already have cached data (to avoid quota issues)
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, classesData, minimizeClassData)
+      }
       
-      // Store in enhanced cache
+      // Store full data in enhanced cache (can handle larger data)
       setCachedData('classes', cacheKey, classesData)
       
       // Also store in legacy cache for compatibility
@@ -582,17 +581,12 @@ const MyClasses = () => {
     // Check sessionStorage first for instant display
     const sectionId = classItem.section_course_id
     const sessionCacheKey = `students_${sectionId}`
-    const sessionCached = sessionStorage.getItem(sessionCacheKey)
+    const sessionCached = safeGetItem(sessionCacheKey)
     
     if (sessionCached) {
-      try {
-        const cachedData = JSON.parse(sessionCached)
-        console.log('📦 [FACULTY] Using session cached students data')
-        setStudents(cachedData)
-        // Continue to fetch fresh data in background
-      } catch (e) {
-        // Invalid cache
-      }
+      console.log('📦 [FACULTY] Using session cached students data')
+      setStudents(sessionCached)
+      // Continue to fetch fresh data in background
     }
     
     // Check enhanced cache
@@ -602,8 +596,8 @@ const MyClasses = () => {
     if (cachedStudents && !sessionCached) {
       console.log('📦 [FACULTY] Using enhanced cached students data')
       setStudents(cachedStudents)
-      // Cache in sessionStorage for next time
-      sessionStorage.setItem(sessionCacheKey, JSON.stringify(cachedStudents))
+      // Cache minimized data in sessionStorage for next time (excludes photos)
+      safeSetItem(sessionCacheKey, cachedStudents, minimizeStudentData)
       // Continue to fetch fresh data in background
     }
     
@@ -630,10 +624,10 @@ const MyClasses = () => {
       
       setStudents(sortedStudents)
       
-      // Store in sessionStorage for instant next load
-      sessionStorage.setItem(sessionCacheKey, JSON.stringify(sortedStudents))
+      // Store minimized data in sessionStorage for instant next load (excludes photos)
+      safeSetItem(sessionCacheKey, sortedStudents, minimizeStudentData)
       
-      // Store in enhanced cache
+      // Store full data in enhanced cache
       setCachedData('students', studentsCacheKey, sortedStudents)
       
       // Also store in legacy cache for compatibility

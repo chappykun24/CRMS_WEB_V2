@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
+import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -21,15 +22,10 @@ const Grades = () => {
       
       // Show classes immediately if we have cached data
       const cacheKey = `classes_${user.user_id}`
-      const cached = sessionStorage.getItem(cacheKey)
+      const cached = safeGetItem(cacheKey)
       if (cached) {
-        try {
-          const cachedData = JSON.parse(cached)
-          setClasses(Array.isArray(cachedData) ? cachedData : [])
-          setLoading(false) // Show cached data immediately
-        } catch (e) {
-          // Invalid cache, continue to fetch
-        }
+        setClasses(Array.isArray(cached) ? cached : [])
+        setLoading(false) // Show cached data immediately
       }
       
       // Fetch fresh data in background (non-blocking)
@@ -39,8 +35,8 @@ const Grades = () => {
           const data = await response.json()
           const classesData = Array.isArray(data) ? data : []
           setClasses(classesData)
-          // Cache for next time
-          sessionStorage.setItem(cacheKey, JSON.stringify(classesData))
+          // Cache minimized data for next time (excludes large images)
+          safeSetItem(cacheKey, classesData, minimizeClassData)
         } else {
           if (!cached) setError('Failed to load classes')
         }
@@ -69,26 +65,16 @@ const Grades = () => {
     const studentsCacheKey = `students_${sectionId}`
     const gradesCacheKey = `grades_${sectionId}`
     
-    const cachedStudents = sessionStorage.getItem(studentsCacheKey)
-    const cachedGrades = sessionStorage.getItem(gradesCacheKey)
+    const cachedStudents = safeGetItem(studentsCacheKey)
+    const cachedGrades = safeGetItem(gradesCacheKey)
     
     // Show cached data immediately if available
     if (cachedStudents) {
-      try {
-        const studentsData = JSON.parse(cachedStudents)
-        setStudents(Array.isArray(studentsData) ? studentsData : [])
-      } catch (e) {
-        // Invalid cache
-      }
+      setStudents(Array.isArray(cachedStudents) ? cachedStudents : [])
     }
     
     if (cachedGrades) {
-      try {
-        const gradesData = JSON.parse(cachedGrades)
-        setStudentGrades(gradesData)
-      } catch (e) {
-        // Invalid cache
-      }
+      setStudentGrades(cachedGrades)
     }
     
     // Fetch fresh data in background (non-blocking if cache exists)
@@ -116,8 +102,8 @@ const Grades = () => {
         const studentsData = await studentsResponse.json()
         const studentsList = Array.isArray(studentsData) ? studentsData : []
         setStudents(studentsList)
-        // Cache for next time
-        sessionStorage.setItem(studentsCacheKey, JSON.stringify(studentsList))
+        // Cache minimized data for next time (excludes photos)
+        safeSetItem(studentsCacheKey, studentsList, minimizeStudentData)
       } else {
         console.error('Failed to load students')
         if (showLoading) setStudents([])
@@ -135,8 +121,8 @@ const Grades = () => {
           }
         })
         setStudentGrades(gradesMap)
-        // Cache for next time
-        sessionStorage.setItem(gradesCacheKey, JSON.stringify(gradesMap))
+        // Cache for next time (grades are small, no need to minimize)
+        safeSetItem(gradesCacheKey, gradesMap)
       } else {
         console.error('Failed to load student grades')
         if (showLoading) setStudentGrades({})
