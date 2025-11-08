@@ -258,4 +258,56 @@ router.get('/class/:sectionCourseId/summary', async (req, res) => {
   }
 });
 
+// GET /api/grading/class/:sectionCourseId/student-grades - Get all students with their total grades for a class
+router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
+  const { sectionCourseId } = req.params;
+  
+  try {
+    const query = `
+      WITH student_assessments AS (
+        SELECT 
+          ce.enrollment_id,
+          ce.student_id,
+          s.student_number,
+          s.full_name,
+          s.student_photo,
+          a.assessment_id,
+          a.title as assessment_title,
+          a.total_points,
+          a.weight_percentage,
+          COALESCE(sub.total_score, 0) as score,
+          CASE 
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 
+            THEN (sub.total_score / a.total_points) * COALESCE(a.weight_percentage, 0)
+            ELSE 0
+          END as weighted_score
+        FROM course_enrollments ce
+        JOIN students s ON ce.student_id = s.student_id
+        JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+        LEFT JOIN assessments a ON sc.section_course_id = a.section_course_id
+        LEFT JOIN submissions sub ON (ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = a.assessment_id AND sub.status = 'graded')
+        WHERE ce.section_course_id = $1 AND ce.status = 'enrolled'
+      )
+      SELECT 
+        enrollment_id,
+        student_id,
+        student_number,
+        full_name,
+        student_photo,
+        ROUND(SUM(weighted_score)::NUMERIC, 2) as total_grade,
+        COUNT(DISTINCT assessment_id) as total_assessments,
+        COUNT(DISTINCT CASE WHEN score > 0 THEN assessment_id END) as graded_assessments
+      FROM student_assessments
+      GROUP BY enrollment_id, student_id, student_number, full_name, student_photo
+      ORDER BY full_name
+    `;
+    
+    const result = await db.query(query, [sectionCourseId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching student grades for class:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -6,9 +6,11 @@ import { prefetchFacultyData } from '../../services/dataPrefetchService'
 const Grades = () => {
   const { user } = useAuth()
   const [students, setStudents] = useState([])
+  const [studentGrades, setStudentGrades] = useState({}) // Map of enrollment_id to total grade
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadingGrades, setLoadingGrades] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
 
@@ -44,6 +46,7 @@ const Grades = () => {
   useEffect(() => {
     if (selectedClass) {
       loadStudents()
+      loadStudentGrades()
     }
   }, [selectedClass])
 
@@ -64,6 +67,33 @@ const Grades = () => {
       setError('Failed to load students')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadStudentGrades = async () => {
+    if (!selectedClass) return
+    
+    try {
+      setLoadingGrades(true)
+      const response = await fetch(`/api/grading/class/${selectedClass.section_course_id}/student-grades`)
+      if (response.ok) {
+        const data = await response.json()
+        // Create a map of enrollment_id to total grade
+        const gradesMap = {}
+        data.forEach(item => {
+          gradesMap[item.enrollment_id] = {
+            total_grade: item.total_grade,
+            total_assessments: item.total_assessments,
+            graded_assessments: item.graded_assessments
+          }
+        })
+        setStudentGrades(gradesMap)
+      }
+    } catch (error) {
+      console.error('Error loading student grades:', error)
+      // Don't set error here, just log it - grades are optional
+    } finally {
+      setLoadingGrades(false)
     }
   }
 
@@ -167,6 +197,24 @@ const Grades = () => {
                               <p className="text-xs text-gray-500 truncate">
                                 SR Code: {student.student_number || 'N/A'}
                               </p>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              {loadingGrades ? (
+                                <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
+                              ) : studentGrades[student.enrollment_id] ? (
+                                <div className="text-right">
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {studentGrades[student.enrollment_id].total_grade !== null 
+                                      ? `${parseFloat(studentGrades[student.enrollment_id].total_grade).toFixed(2)}%`
+                                      : 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {studentGrades[student.enrollment_id].graded_assessments || 0} / {studentGrades[student.enrollment_id].total_assessments || 0} graded
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400">No grades</p>
+                              )}
                             </div>
                           </div>
                         ))}

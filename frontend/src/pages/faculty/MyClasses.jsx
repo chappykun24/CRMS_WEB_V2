@@ -799,13 +799,6 @@ const MyClasses = () => {
                   {/* Session Details Inputs in the middle space - Only in attendance mode */}
                   {isAttendanceMode && (
                     <div className="flex items-center gap-3 mt-2">
-                      <input
-                        type="text"
-                        value={sessionDetails.title}
-                        onChange={(e) => updateSessionDetails('title', e.target.value)}
-                        placeholder="Session Title"
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                      />
                       <div className="flex items-center gap-2">
                         <input
                           type="date"
@@ -827,6 +820,13 @@ const MyClasses = () => {
                           <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                         )}
                       </div>
+                      <input
+                        type="text"
+                        value={sessionDetails.title}
+                        onChange={(e) => updateSessionDetails('title', e.target.value)}
+                        placeholder="Session Title"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                      />
                       <input
                         type="text"
                         value={sessionDetails.session_type}
