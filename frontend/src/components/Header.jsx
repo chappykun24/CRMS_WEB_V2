@@ -500,12 +500,12 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                 </div>
 
                 {/* Profile Section */}
-                <div className="p-4 text-center bg-white">
-                  {/* Large Profile Picture */}
-                  <div className="mx-auto mb-3">
+                <div className="p-4 bg-white">
+                  {/* Large Profile Picture - Centered */}
+                  <div className="flex justify-center mb-3">
                     <ImageSkeleton
                       src={user?.profilePic || user?.profile_pic}
-                        alt={user?.name || 'User'} 
+                      alt={user?.name || 'User'} 
                       size="xl"
                       shape="circle"
                       className="border-4 border-gray-200 shadow-lg"
@@ -513,8 +513,8 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                     />
                   </div>
                   
-                  {/* Greeting */}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  {/* Greeting - Centered */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 text-center">
                     Hi, {user?.name?.split(' ')[0] || user?.first_name || 'User'}!
                   </h3>
                   
