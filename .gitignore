@@ -253,3 +253,5 @@ backend/scripts/assessment_table_info.md
 backend/scripts/check_assessments_table.js
 backend/scripts/README_sample_data.md
 backend/scripts/generate_sample_assessment_data.js
+backend/scripts/add_attendance_october.js
+backend/scripts/README_add_attendance_october.md
