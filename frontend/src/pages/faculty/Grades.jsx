@@ -14,23 +14,39 @@ const Grades = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
 
-  // Load faculty classes - ONLY the list, no bulk data
+  // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
     const loadClasses = async () => {
       if (!user?.user_id) return
       
+      // Show classes immediately if we have cached data
+      const cacheKey = `classes_${user.user_id}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached)
+          setClasses(Array.isArray(cachedData) ? cachedData : [])
+          setLoading(false) // Show cached data immediately
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
+      }
+      
+      // Fetch fresh data in background (non-blocking)
       try {
-        setLoading(true)
         const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
         if (response.ok) {
           const data = await response.json()
-          setClasses(Array.isArray(data) ? data : [])
+          const classesData = Array.isArray(data) ? data : []
+          setClasses(classesData)
+          // Cache for next time
+          sessionStorage.setItem(cacheKey, JSON.stringify(classesData))
         } else {
-          setError('Failed to load classes')
+          if (!cached) setError('Failed to load classes')
         }
       } catch (error) {
         console.error('Error loading classes:', error)
-        setError('Failed to load classes')
+        if (!cached) setError('Failed to load classes')
       } finally {
         setLoading(false)
       }
@@ -39,7 +55,7 @@ const Grades = () => {
     loadClasses()
   }, [user])
 
-  // Load section-specific data when class is selected
+  // Load section-specific data ONLY when class is selected (lazy loading)
   useEffect(() => {
     if (!selectedClass) {
       // Clear data when no class is selected
@@ -48,17 +64,46 @@ const Grades = () => {
       return
     }
     
-    // Fetch ONLY data for the selected section
-    loadSectionData(selectedClass.section_course_id)
+    // Check cache first for instant display
+    const sectionId = selectedClass.section_course_id
+    const studentsCacheKey = `students_${sectionId}`
+    const gradesCacheKey = `grades_${sectionId}`
+    
+    const cachedStudents = sessionStorage.getItem(studentsCacheKey)
+    const cachedGrades = sessionStorage.getItem(gradesCacheKey)
+    
+    // Show cached data immediately if available
+    if (cachedStudents) {
+      try {
+        const studentsData = JSON.parse(cachedStudents)
+        setStudents(Array.isArray(studentsData) ? studentsData : [])
+      } catch (e) {
+        // Invalid cache
+      }
+    }
+    
+    if (cachedGrades) {
+      try {
+        const gradesData = JSON.parse(cachedGrades)
+        setStudentGrades(gradesData)
+      } catch (e) {
+        // Invalid cache
+      }
+    }
+    
+    // Fetch fresh data in background (non-blocking if cache exists)
+    loadSectionData(sectionId, studentsCacheKey, gradesCacheKey, !cachedStudents || !cachedGrades)
   }, [selectedClass])
 
-  // Load all data for a specific section
-  const loadSectionData = async (sectionCourseId) => {
+  // Load all data for a specific section (lazy load on class selection)
+  const loadSectionData = async (sectionCourseId, studentsCacheKey, gradesCacheKey, showLoading = true) => {
     if (!sectionCourseId) return
     
     try {
-      setLoadingStudents(true)
-      setLoadingGrades(true)
+      if (showLoading) {
+        setLoadingStudents(true)
+        setLoadingGrades(true)
+      }
       
       // Fetch students and grades in parallel for the selected section only
       const [studentsResponse, gradesResponse] = await Promise.all([
@@ -69,10 +114,13 @@ const Grades = () => {
       // Process students
       if (studentsResponse.ok) {
         const studentsData = await studentsResponse.json()
-        setStudents(Array.isArray(studentsData) ? studentsData : [])
+        const studentsList = Array.isArray(studentsData) ? studentsData : []
+        setStudents(studentsList)
+        // Cache for next time
+        sessionStorage.setItem(studentsCacheKey, JSON.stringify(studentsList))
       } else {
         console.error('Failed to load students')
-        setStudents([])
+        if (showLoading) setStudents([])
       }
       
       // Process grades
@@ -87,18 +135,24 @@ const Grades = () => {
           }
         })
         setStudentGrades(gradesMap)
+        // Cache for next time
+        sessionStorage.setItem(gradesCacheKey, JSON.stringify(gradesMap))
       } else {
         console.error('Failed to load student grades')
-        setStudentGrades({})
+        if (showLoading) setStudentGrades({})
       }
     } catch (error) {
       console.error('Error loading section data:', error)
-      setError('Failed to load section data')
-      setStudents([])
-      setStudentGrades({})
+      if (showLoading) {
+        setError('Failed to load section data')
+        setStudents([])
+        setStudentGrades({})
+      }
     } finally {
-      setLoadingStudents(false)
-      setLoadingGrades(false)
+      if (showLoading) {
+        setLoadingStudents(false)
+        setLoadingGrades(false)
+      }
     }
   }
 

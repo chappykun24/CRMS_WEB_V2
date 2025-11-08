@@ -59,31 +59,56 @@ const Assessments = () => {
     instructions: ''
   })
 
-  // Load faculty classes - ONLY the list, no bulk data
+  // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
     const loadClasses = async () => {
       if (!user?.user_id) return
       
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
-        if (response.ok) {
-          const data = await response.json()
-          setClasses(Array.isArray(data) ? data : [])
+      // Show classes immediately if we have cached data
+      const cacheKey = `classes_${user.user_id}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached)
+          const classesData = Array.isArray(cachedData) ? cachedData : []
+          setClasses(classesData)
+          setLoading(false) // Show cached data immediately
           
           // Auto-select class if provided in location state
           if (location.state?.selectedClassId) {
-            const classToSelect = data.find(cls => cls.section_course_id === location.state.selectedClassId)
+            const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
+            if (classToSelect) {
+              setSelectedClass(classToSelect)
+            }
+          }
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
+      }
+      
+      // Fetch fresh data in background (non-blocking)
+      try {
+        const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
+        if (response.ok) {
+          const data = await response.json()
+          const classesData = Array.isArray(data) ? data : []
+          setClasses(classesData)
+          // Cache for next time
+          sessionStorage.setItem(cacheKey, JSON.stringify(classesData))
+          
+          // Auto-select class if provided in location state
+          if (location.state?.selectedClassId && !selectedClass) {
+            const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
             if (classToSelect) {
               setSelectedClass(classToSelect)
             }
           }
         } else {
-          setError('Failed to load classes')
+          if (!cached) setError('Failed to load classes')
         }
       } catch (error) {
         console.error('Error loading classes:', error)
-        setError('Failed to load classes')
+        if (!cached) setError('Failed to load classes')
       } finally {
         setLoading(false)
       }
@@ -92,7 +117,7 @@ const Assessments = () => {
     loadClasses()
   }, [user, location.state])
 
-  // Load assessments ONLY for selected class
+  // Load assessments ONLY when class is selected (lazy loading)
   useEffect(() => {
     if (!selectedClass) {
       // Clear assessments when no class is selected
@@ -102,30 +127,49 @@ const Assessments = () => {
       return
     }
     
-    // Fetch ONLY assessments for the selected section
-    loadAssessments(selectedClass.section_course_id)
+    // Check cache first for instant display
+    const sectionId = selectedClass.section_course_id
+    const assessmentsCacheKey = `assessments_${sectionId}`
+    const cached = sessionStorage.getItem(assessmentsCacheKey)
+    
+    // Show cached data immediately if available
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached)
+        setAssessments(Array.isArray(cachedData) ? cachedData : [])
+      } catch (e) {
+        // Invalid cache
+      }
+    }
+    
+    // Fetch fresh data in background (non-blocking if cache exists)
+    loadAssessments(sectionId, assessmentsCacheKey, !cached)
   }, [selectedClass])
 
-  const loadAssessments = async (sectionCourseId) => {
+  const loadAssessments = async (sectionCourseId, cacheKey, showLoading = true) => {
     if (!sectionCourseId) return
     
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
+      
       const response = await fetch(`/api/assessments/class/${sectionCourseId}`)
       if (response.ok) {
         const data = await response.json()
-        setAssessments(Array.isArray(data) ? data : [])
+        const assessmentsData = Array.isArray(data) ? data : []
+        setAssessments(assessmentsData)
         setError('')
+        // Cache for next time
+        sessionStorage.setItem(cacheKey, JSON.stringify(assessmentsData))
       } else {
         setError('Failed to load assessments')
-        setAssessments([])
+        if (showLoading) setAssessments([])
       }
     } catch (error) {
       console.error('Error loading assessments:', error)
       setError('Failed to load assessments')
-      setAssessments([])
+      if (showLoading) setAssessments([])
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
@@ -333,14 +377,27 @@ const Assessments = () => {
     }
   }
 
-  // Grading functions
+  // Grading functions - lazy load grades ONLY when assessment is selected
   const loadGrades = async (assessmentId) => {
+    if (!assessmentId) return
+    
+    // Check cache first for instant display
+    const gradesCacheKey = `assessment_grades_${assessmentId}`
+    const cached = sessionStorage.getItem(gradesCacheKey)
+    
+    // Show cached data immediately if available
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached)
+        setGrades(cachedData)
+      } catch (e) {
+        // Invalid cache
+      }
+    }
+    
     try {
       setGradingLoading(true)
       setError('') // Clear previous errors
-      
-      // Add a small delay to make skeleton loading visible
-      await new Promise(resolve => setTimeout(resolve, 500))
       
       const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
@@ -357,6 +414,8 @@ const Assessments = () => {
           }
         })
         setGrades(gradesMap)
+        // Cache for next time
+        sessionStorage.setItem(gradesCacheKey, JSON.stringify(gradesMap))
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Failed to load grades')

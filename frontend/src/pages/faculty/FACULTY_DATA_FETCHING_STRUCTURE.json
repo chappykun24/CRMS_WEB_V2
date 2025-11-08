@@ -1,12 +1,13 @@
 {
   "faculty_data_fetching_structure": {
-    "overview": "This document describes the refactored data fetching structure for faculty pages. Data is now fetched per section/course instead of loading all data at once.",
-    "principle": "Fetch only data related to the selected section/course. No bulk data loading.",
+    "overview": "This document describes the refactored data fetching structure for faculty pages. Data is now fetched progressively - fast initial load with minimal data, then lazy loading on user interaction.",
+    "principle": "Progressive loading: Show classes immediately (fast), then fetch section-specific data only when user clicks/selects. Use sessionStorage for instant cached display.",
+    "loading_strategy": "Progressive/Lazy Loading",
     
     "pages": {
       "MyClasses": {
         "initial_load": {
-          "description": "When page loads, fetch only the list of classes assigned to the faculty",
+          "description": "FAST initial load - show classes immediately from sessionStorage cache if available, then fetch fresh data in background",
           "endpoint": "/api/section-courses/faculty/{facultyId}",
           "data_fetched": [
             "section_course_id",
@@ -20,14 +21,16 @@
             "banner_image"
           ],
           "when": "On component mount, only if facultyId exists",
-          "caching": "Cache for 5 minutes or until class selection changes"
+          "caching": "sessionStorage for instant display, enhanced cache for 5 minutes",
+          "loading_behavior": "Show cached data immediately (if available), fetch fresh data in background (non-blocking)"
         },
         "on_class_selection": {
-          "description": "When a class is selected, fetch ONLY data for that specific section",
+          "description": "LAZY LOAD - When a class is clicked, fetch ONLY data for that specific section. Show cached data immediately if available.",
+          "trigger": "User clicks on a class card",
           "data_to_fetch": {
             "students": {
               "endpoint": "/api/section-courses/{sectionCourseId}/students",
-              "when": "When selectedClass changes",
+              "when": "When user clicks/selects a class",
               "data": [
                 "enrollment_id",
                 "student_id",
@@ -36,7 +39,8 @@
                 "student_photo",
                 "contact_email"
               ],
-              "cache_key": "students_{sectionCourseId}"
+              "cache_key": "sessionStorage: students_{sectionCourseId}",
+              "loading_behavior": "Show cached data immediately (if available), fetch fresh data in background"
             },
             "attendance_sessions": {
               "endpoint": "/api/attendance/sessions?section_course_id={sectionCourseId}",
@@ -184,19 +188,26 @@
     },
     
     "caching_strategy": {
-      "section_level_cache": {
-        "description": "Cache data per section/course",
-        "cache_keys": {
-          "classes": "classes_{facultyId}",
-          "students": "students_{sectionCourseId}",
-          "assessments": "assessments_{sectionCourseId}",
-          "grades": "grades_{assessmentId}",
-          "student_grades": "student_grades_{sectionCourseId}",
-          "attendance_sessions": "attendance_sessions_{sectionCourseId}",
-          "attendance_records": "attendance_{sectionCourseId}_{date}"
+      "dual_cache_system": {
+        "description": "Two-tier caching: sessionStorage for instant display, enhanced cache for persistence",
+        "sessionStorage": {
+          "purpose": "Instant display on page load - shows cached data immediately",
+          "cache_keys": {
+            "classes": "classes_{facultyId}",
+            "students": "students_{sectionCourseId}",
+            "assessments": "assessments_{sectionCourseId}",
+            "grades": "grades_{sectionCourseId}",
+            "assessment_grades": "assessment_grades_{assessmentId}",
+            "student_grades": "student_grades_{sectionCourseId}"
+          },
+          "duration": "Session-based (cleared on browser close)",
+          "behavior": "Show immediately if available, fetch fresh data in background"
         },
-        "cache_duration": "5 minutes for classes list, 2 minutes for section-specific data",
-        "cache_invalidation": "Invalidate when data is modified (create, update, delete)"
+        "enhanced_cache": {
+          "purpose": "Persistent cache across sessions",
+          "cache_duration": "5 minutes for classes list, 10 minutes for section-specific data",
+          "cache_invalidation": "Invalidate when data is modified (create, update, delete)"
+        }
       }
     },
     
@@ -247,20 +258,23 @@
     
     "data_flow": {
       "step_1": "User navigates to faculty page",
-      "step_2": "Fetch ONLY list of classes (minimal data)",
-      "step_3": "User selects a class",
-      "step_4": "Fetch ONLY data for selected section (students, assessments, etc.)",
-      "step_5": "User interacts with section data",
-      "step_6": "If user switches class, clear previous section data and fetch new section data",
-      "step_7": "Cache section data for quick access if user returns to same section"
+      "step_2": "Show classes IMMEDIATELY from sessionStorage cache (if available) - instant display",
+      "step_3": "Fetch fresh classes list in background (non-blocking)",
+      "step_4": "User clicks/selects a class",
+      "step_5": "Show cached section data IMMEDIATELY (if available) - instant display",
+      "step_6": "Fetch fresh section data in background (students, assessments, etc.)",
+      "step_7": "User interacts with section data",
+      "step_8": "If user switches class, show cached data immediately, then fetch fresh data",
+      "step_9": "Cache all data in sessionStorage for instant next access"
     },
     
     "benefits": {
-      "performance": "Faster initial page load - only fetch minimal class list",
-      "efficiency": "Reduced database queries - only fetch needed data",
+      "performance": "INSTANT initial page load - show cached classes immediately, fetch fresh data in background",
+      "efficiency": "Reduced database queries - only fetch needed data when user interacts",
       "scalability": "Better performance with many classes - doesn't load all data at once",
-      "user_experience": "Faster interactions - data loads quickly when section is selected",
-      "network": "Reduced bandwidth - only fetch data user is viewing"
+      "user_experience": "Instant display from cache, smooth interactions - no waiting for API calls",
+      "network": "Reduced bandwidth - only fetch data user is viewing, use cache when possible",
+      "perceived_speed": "Users see content immediately, fresh data loads seamlessly in background"
     },
     
     "migration_notes": {

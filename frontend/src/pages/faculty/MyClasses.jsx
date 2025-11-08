@@ -457,7 +457,7 @@ const MyClasses = () => {
     return facultyCacheService.clear(cacheType, key)
   }, [])
 
-  // Fetch faculty's assigned classes with enhanced caching
+  // Fetch faculty's assigned classes - FAST initial load, show immediately
   const fetchClasses = useCallback(async () => {
     if (!facultyId) {
       console.log('🔍 [FACULTY] fetchClasses called but no facultyId')
@@ -465,19 +465,39 @@ const MyClasses = () => {
     }
     
     console.log('🔍 [FACULTY] fetchClasses starting - facultyId:', facultyId)
-    setLoading(true)
     setError(null)
-    setInitialLoad(false)
     
-    // Check enhanced cache first
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = `classes_${facultyId}`
+    const sessionCached = sessionStorage.getItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      try {
+        const cachedData = JSON.parse(sessionCached)
+        console.log('📦 [FACULTY] Using session cached classes data')
+        setClasses(cachedData)
+        setLoading(false)
+        setInitialLoad(false)
+        // Continue to fetch fresh data in background
+      } catch (e) {
+        // Invalid cache, continue to fetch
+      }
+    } else {
+      setLoading(true)
+      setInitialLoad(false)
+    }
+    
+    // Check enhanced cache
     const cacheKey = `classes_${facultyId}`
     const cachedData = getCachedData('classes', cacheKey, 300000) // 5 minute cache
-    if (cachedData) {
+    if (cachedData && !sessionCached) {
       console.log('📦 [FACULTY] Using enhanced cached classes data')
       setClasses(cachedData)
       setLoading(false)
       setInitialLoad(false)
-      return
+      // Cache in sessionStorage for next time
+      sessionStorage.setItem(sessionCacheKey, JSON.stringify(cachedData))
+      // Continue to fetch fresh data in background
     }
     
     // Cancel previous request if still pending
@@ -512,6 +532,9 @@ const MyClasses = () => {
       const classesData = Array.isArray(data) ? data : []
       setClasses(classesData)
       
+      // Store in sessionStorage for instant next load
+      sessionStorage.setItem(sessionCacheKey, JSON.stringify(classesData))
+      
       // Store in enhanced cache
       setCachedData('classes', cacheKey, classesData)
       
@@ -527,15 +550,17 @@ const MyClasses = () => {
         return
       }
       console.error('❌ [FACULTY] Error fetching classes:', error)
-      setError(error.message)
-      setClasses([])
+      if (!sessionCached && !cachedData) {
+        setError(error.message)
+        setClasses([])
+      }
     } finally {
       setLoading(false)
       setInitialLoad(false)
     }
   }, [facultyId])
 
-  // Handle class selection with enhanced caching
+  // Handle class selection - lazy load students ONLY when class is clicked
   const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
@@ -554,19 +579,41 @@ const MyClasses = () => {
     // Dispatch custom event to notify Header of change
     window.dispatchEvent(new CustomEvent('selectedClassChanged'))
     
-    // Check enhanced cache for students
-    const studentsCacheKey = `students_${classItem.section_course_id}`
-    const cachedStudents = getCachedData('students', studentsCacheKey, 600000) // 10 minute cache
+    // Check sessionStorage first for instant display
+    const sectionId = classItem.section_course_id
+    const sessionCacheKey = `students_${sectionId}`
+    const sessionCached = sessionStorage.getItem(sessionCacheKey)
     
-    if (cachedStudents) {
-      console.log('📦 [FACULTY] Using enhanced cached students data')
-      setStudents(cachedStudents)
-      return
+    if (sessionCached) {
+      try {
+        const cachedData = JSON.parse(sessionCached)
+        console.log('📦 [FACULTY] Using session cached students data')
+        setStudents(cachedData)
+        // Continue to fetch fresh data in background
+      } catch (e) {
+        // Invalid cache
+      }
     }
     
-    setLoadingStudents(true)
+    // Check enhanced cache
+    const studentsCacheKey = `students_${sectionId}`
+    const cachedStudents = getCachedData('students', studentsCacheKey, 600000) // 10 minute cache
+    
+    if (cachedStudents && !sessionCached) {
+      console.log('📦 [FACULTY] Using enhanced cached students data')
+      setStudents(cachedStudents)
+      // Cache in sessionStorage for next time
+      sessionStorage.setItem(sessionCacheKey, JSON.stringify(cachedStudents))
+      // Continue to fetch fresh data in background
+    }
+    
+    // Only show loading if no cache available
+    if (!sessionCached && !cachedStudents) {
+      setLoadingStudents(true)
+    }
+    
     try {
-      const response = await fetch(`/api/section-courses/${classItem.section_course_id}/students`)
+      const response = await fetch(`/api/section-courses/${sectionId}/students`)
       if (!response.ok) throw new Error('Failed to fetch students')
       const data = await response.json()
       const list = Array.isArray(data) ? data : []
@@ -583,6 +630,9 @@ const MyClasses = () => {
       
       setStudents(sortedStudents)
       
+      // Store in sessionStorage for instant next load
+      sessionStorage.setItem(sessionCacheKey, JSON.stringify(sortedStudents))
+      
       // Store in enhanced cache
       setCachedData('students', studentsCacheKey, sortedStudents)
       
@@ -594,7 +644,9 @@ const MyClasses = () => {
       
     } catch (error) {
       console.error('Error fetching students:', error)
-      setStudents([])
+      if (!sessionCached && !cachedStudents) {
+        setStudents([])
+      }
     } finally {
       setLoadingStudents(false)
     }
