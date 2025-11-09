@@ -44,6 +44,7 @@ const MyClasses = () => {
   const selectedClassRef = useRef(null) // Ref to track selectedClass for closures
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
+  const cachedClassIdRef = useRef(null) // Ref to track which class ID is cached (prevents loops)
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -85,30 +86,37 @@ const MyClasses = () => {
   // IMPORTANT: Only cache students that belong to the currently selected class
   // This ensures we don't show stale data from a different class
   useEffect(() => {
-    if (isAttendanceMode && selectedClass && students && students.length > 0) {
-      // Check if cached students belong to current class
-      const cachedClassId = cachedStudentsList?.[0]?.section_course_id || cachedStudentsList?.classId
-      const currentClassId = selectedClass.section_course_id
-      
-      // Only cache if:
-      // 1. No cache exists, OR
-      // 2. Cache exists but belongs to a different class (should be cleared first, but double-check)
-      if (!cachedStudentsList || cachedClassId !== currentClassId) {
-        console.log('💾 [MYCLASSES] Caching students list from attendance form:', students.length, 'students')
-        console.log('  Class ID:', currentClassId, selectedClass?.course_title)
-        console.log('  Previous cache class ID:', cachedClassId || 'none')
-        
-        // Store students with class ID for verification
-        const studentsWithClassId = students.map(student => ({
-          ...student,
-          classId: currentClassId // Add class ID to each student for verification
-        }))
-        setCachedStudentsList(studentsWithClassId)
-      } else {
-        console.log('✅ [MYCLASSES] Students already cached for this class:', currentClassId)
+    // Only run if attendance mode is enabled and we have students
+    if (!isAttendanceMode || !selectedClass || !students || students.length === 0) {
+      // If attendance mode is disabled, clear the cached class ID ref
+      if (!isAttendanceMode) {
+        cachedClassIdRef.current = null
       }
+      return
     }
-  }, [isAttendanceMode, students, cachedStudentsList, selectedClass])
+    
+    const currentClassId = selectedClass.section_course_id
+    
+    // Use ref to prevent infinite loops - only cache if we haven't cached for this class yet
+    if (cachedClassIdRef.current === currentClassId) {
+      // Already cached for this class - skip to prevent infinite loops
+      return
+    }
+    
+    console.log('💾 [MYCLASSES] Caching students list from attendance form:', students.length, 'students')
+    console.log('  Class ID:', currentClassId, selectedClass?.course_title)
+    console.log('  Previous cache class ID (ref):', cachedClassIdRef.current || 'none')
+    
+    // Update ref IMMEDIATELY before setting state to prevent re-running
+    cachedClassIdRef.current = currentClassId
+    
+    // Store students with class ID for verification
+    const studentsWithClassId = students.map(student => ({
+      ...student,
+      classId: currentClassId // Add class ID to each student for verification
+    }))
+    setCachedStudentsList(studentsWithClassId)
+  }, [isAttendanceMode, selectedClass?.section_course_id, students?.length]) // Use students.length instead of students array to prevent loops
 
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
@@ -1200,6 +1208,9 @@ const MyClasses = () => {
       
       // Clear loading sessions ref
       loadingSessionsRef.current.clear()
+      
+      // Clear cached class ID ref to allow caching for new class
+      cachedClassIdRef.current = null
       
       console.log('✅ [FACULTY] Attendance cache reset complete - all cached data cleared for new class')
     }
