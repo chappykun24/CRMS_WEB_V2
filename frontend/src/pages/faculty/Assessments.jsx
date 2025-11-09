@@ -38,6 +38,7 @@ const Assessments = () => {
   // Grading states
   const [selectedAssessment, setSelectedAssessment] = useState(null)
   const [grades, setGrades] = useState({})
+  const [originalGrades, setOriginalGrades] = useState({}) // Store original grades for change detection
   const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [gradingLoading, setGradingLoading] = useState(false)
@@ -399,6 +400,8 @@ const Assessments = () => {
     // Show cached data immediately if available
     if (cached) {
       setGrades(cached)
+      // Store original grades from cache
+      setOriginalGrades(JSON.parse(JSON.stringify(cached)))
       // Load images for cached grades immediately
       requestAnimationFrame(() => {
         setImagesReady(true)
@@ -433,6 +436,8 @@ const Assessments = () => {
           }
         })
         setGrades(gradesMap)
+        // Store original grades as deep copy for change detection
+        setOriginalGrades(JSON.parse(JSON.stringify(gradesMap)))
         
         // Load images immediately after essential data is displayed
         requestAnimationFrame(() => {
@@ -510,6 +515,8 @@ const Assessments = () => {
         setTimeout(() => setSuccessMessage(''), 3000)
         // Clear error message
         setError('')
+        // Update original grades to reflect saved state
+        setOriginalGrades(JSON.parse(JSON.stringify(grades)))
       } else {
         const error = await response.json()
         setError(error.error || 'Failed to save grades')
@@ -522,8 +529,16 @@ const Assessments = () => {
     }
   }
 
+  // Check if there are any changes
+  const hasChanges = () => {
+    const currentStr = JSON.stringify(grades)
+    const originalStr = JSON.stringify(originalGrades)
+    return currentStr !== originalStr
+  }
+
   const handleAssessmentSelect = (assessment) => {
     setSelectedAssessment(assessment)
+    setOriginalGrades({}) // Reset original grades when selecting new assessment
     loadGrades(assessment.assessment_id)
   }
 
@@ -843,21 +858,21 @@ const Assessments = () => {
                     )}
 
                     {selectedAssessment ? (
-                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
                         <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
                           <h2 className="text-base font-semibold text-gray-900">
                             Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
                         {gradingLoading ? (
-                          <div className="flex-1 overflow-y-auto">
+                          <div className="flex-1 overflow-y-auto min-h-0">
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
-                              <div className="w-32 flex-shrink-0">Status / Percent</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
                               <div className="w-20 flex-shrink-0">Penalty</div>
                               <div className="w-20 flex-shrink-0">Adjusted</div>
                               <div className="w-56 flex-shrink-0">Feedback</div>
+                              <div className="w-32 flex-shrink-0">Status / Percent</div>
                             </div>
                             <ul className="divide-y divide-gray-200">
                               {Array.from({ length: 5 }).map((_, i) => (
@@ -867,16 +882,6 @@ const Assessments = () => {
                                     <div className="flex-1 min-w-0">
                                       <div className="h-4 bg-gray-200 rounded w-24 skeleton mb-1"></div>
                                       <div className="h-3 bg-gray-100 rounded w-16 skeleton"></div>
-                                    </div>
-                                  </div>
-                                  <div className="w-32 flex-shrink-0 ml-2">
-                                    <div className="flex flex-col gap-1.5">
-                                      <div className="flex gap-1">
-                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
-                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
-                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
-                                      </div>
-                                      <div className="h-3 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
                                     </div>
                                   </div>
                                   <div className="w-20 flex-shrink-0 ml-2">
@@ -891,19 +896,29 @@ const Assessments = () => {
                                   <div className="w-56 flex-shrink-0 ml-2">
                                     <div className="h-12 bg-gray-200 rounded skeleton"></div>
                                   </div>
+                                  <div className="w-32 flex-shrink-0 ml-2">
+                                    <div className="flex flex-col gap-1.5">
+                                      <div className="flex gap-1">
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                      </div>
+                                      <div className="h-3 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
+                                    </div>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
                           </div>
                         ) : Object.keys(grades).length > 0 ? (
-                          <div className="flex-1 overflow-y-auto">
+                          <div className="flex-1 overflow-y-auto min-h-0">
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
-                              <div className="w-32 flex-shrink-0">Status / Percent</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
                               <div className="w-20 flex-shrink-0">Penalty</div>
                               <div className="w-20 flex-shrink-0">Adjusted</div>
                               <div className="w-56 flex-shrink-0">Feedback</div>
+                              <div className="w-32 flex-shrink-0">Status / Percent</div>
                             </div>
                             <ul className="divide-y divide-gray-200">
                               {Object.entries(grades).map(([enrollmentId, gradeData]) => (
@@ -922,6 +937,40 @@ const Assessments = () => {
                                       <div className="text-sm font-medium text-gray-900 truncate">{formatName(gradeData.student_name) || 'Student'}</div>
                                       <div className="text-xs text-gray-500 truncate">SR: {gradeData.student_number || 'N/A'}</div>
                                     </div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <input
+                                      type="number"
+                                      value={gradeData.raw_score || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
+                                      className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                      min="0"
+                                      max={selectedAssessment.total_points}
+                                      disabled={gradeData.submission_status === 'missing'}
+                                    />
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <input
+                                      type="number"
+                                      value={gradeData.late_penalty || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
+                                      className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                      min="0"
+                                      disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
+                                    />
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900 text-center">
+                                    {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
+                                  </div>
+                                  <div className="w-56 flex-shrink-0 ml-2">
+                                    <textarea
+                                      value={gradeData.feedback || ''}
+                                      onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
+                                      className="w-full p-1.5 text-xs rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none"
+                                      rows="2"
+                                      placeholder="Feedback..."
+                                      maxLength={200}
+                                    />
                                   </div>
                                   <div className="w-32 flex-shrink-0 ml-2">
                                     <div className="flex flex-col gap-1.5">
@@ -965,40 +1014,6 @@ const Assessments = () => {
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <input
-                                      type="number"
-                                      value={gradeData.raw_score || ''}
-                                      onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                      className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                                      min="0"
-                                      max={selectedAssessment.total_points}
-                                      disabled={gradeData.submission_status === 'missing'}
-                                    />
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <input
-                                      type="number"
-                                      value={gradeData.late_penalty || ''}
-                                      onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                      className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                                      min="0"
-                                      disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
-                                    />
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900 text-center">
-                                    {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
-                                  </div>
-                                  <div className="w-56 flex-shrink-0 ml-2">
-                                    <textarea
-                                      value={gradeData.feedback || ''}
-                                      onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                                      className="w-full p-1.5 text-xs rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none"
-                                      rows="2"
-                                      placeholder="Feedback..."
-                                      maxLength={200}
-                                    />
-                                  </div>
                                 </li>
                               ))}
                             </ul>
@@ -1016,10 +1031,10 @@ const Assessments = () => {
                           <div className="flex-shrink-0 bg-white px-6 py-3 border-t border-gray-200 flex justify-end shadow-sm z-10">
                             <button
                               onClick={handleSubmitGrades}
-                              disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0}
+                              disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0 || !hasChanges()}
                               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-300 ${
-                                isSubmittingGrades
-                                  ? 'bg-red-400 cursor-not-allowed'
+                                isSubmittingGrades || !hasChanges()
+                                  ? 'bg-gray-400 cursor-not-allowed'
                                   : 'bg-red-600 hover:bg-red-700'
                               } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
                             >
@@ -1058,17 +1073,17 @@ const Assessments = () => {
                   </div>
 
                   {/* Right Sidebar - Subjects and Assessments */}
-                  <div className="lg:col-span-1">
+                  <div className="lg:col-span-1 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
                     <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
                       {/* Header */}
                       {selectedClass && (
-                        <div className="px-6 py-4 border-b border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                           <p className="text-sm text-gray-500">{selectedClass.course_title}</p>
                         </div>
                       )}
 
                       {/* Content */}
-                      <div className="flex-1 overflow-hidden">
+                      <div className="flex-1 overflow-y-auto min-h-0">
                         {!selectedClass ? (
                           // Classes Selection
                           <div className="h-full flex flex-col">
@@ -1125,6 +1140,7 @@ const Assessments = () => {
                                   setSelectedClass(null)
                                   setSelectedAssessment(null)
                                   setGrades({})
+                                  setOriginalGrades({})
                                 }}
                                 className="flex items-center space-x-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
                               >
