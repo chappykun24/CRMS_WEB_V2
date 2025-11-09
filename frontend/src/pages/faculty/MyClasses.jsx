@@ -29,6 +29,7 @@ const MyClasses = () => {
   const abortControllerRef = useRef(null)
   const classesCacheRef = useRef(new Map())
   const sidebarRef = useRef(null)
+  const loadingSessionsRef = useRef(new Set()) // Track which sessions are currently loading
   
   // Enhanced caching for faculty data
   const facultyCacheRef = useRef({
@@ -274,14 +275,29 @@ const MyClasses = () => {
 
   // Load attendance data for a specific session - async, uses cached students, then fetches attendance
   const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId, sessionType = null, meetingType = null) => {
-    if (!selectedClass || sessionData[sessionKey]) {
-      // Already loaded
+    if (!selectedClass) {
+      console.warn('⚠️ [MYCLASSES] No selected class, skipping session data load')
       return
     }
     
+    console.log('🚀 [MYCLASSES] loadSessionData called for:', sessionKey, 'sessionId:', sessionId)
+    
+    // Check if already loading using ref (avoids closure issues)
+    if (loadingSessionsRef.current.has(sessionKey)) {
+      console.log('⏳ [MYCLASSES] Session already loading, skipping duplicate:', sessionKey)
+      return
+    }
+    
+    // Mark as loading immediately using ref (prevents duplicate calls)
+    loadingSessionsRef.current.add(sessionKey)
+    setLoadingSession(prev => ({ ...prev, [sessionKey]: true }))
+    
     try {
-      setLoadingSession(prev => ({ ...prev, [sessionKey]: true }))
-      console.log('🔍 [MYCLASSES] Loading session data:', sessionKey)
+      console.log('🔍 [MYCLASSES] Starting to load session data:', sessionKey, 'sessionId:', sessionId)
+      
+      // Check if already loaded by reading current state synchronously
+      // We'll check this by reading the state in the render, but for now, just proceed
+      // The worst case is we update already-loaded data, which is fine
       
       // Step 1: Use cached students list if available (from attendance mode)
       let studentsList = cachedStudentsList || students
@@ -458,7 +474,7 @@ const MyClasses = () => {
     } finally {
       setLoadingSession(prev => ({ ...prev, [sessionKey]: false }))
     }
-  }, [selectedClass, sessionData, extractSurname, cachedStudentsList, students])
+  }, [selectedClass, extractSurname, cachedStudentsList, students]) // Removed sessionData to avoid closure issues
 
   // Load full attendance list for the class - show modal immediately, load sessions progressively
   // Uses cached students from attendance mode for instant display
@@ -541,47 +557,57 @@ const MyClasses = () => {
     const studentsToUse = cachedStudentsList || students
     
     // Step 1: Show cached students immediately (even if session data not loaded yet)
-    if (!sessionData[session.session_key] && studentsToUse && studentsToUse.length > 0) {
-      console.log('📋 [MYCLASSES] Showing cached students immediately for session:', session.session_key)
-      // Create session data with cached students (no attendance status yet)
-      setSessionData(prev => ({
-        ...prev,
-        [session.session_key]: {
-          records: studentsToUse.map(student => ({
-            ...student,
-            status: null, // Will be updated when attendance loads
-            remarks: null,
-            session_date: session.session_date,
-            title: session.title
-          })),
-          statusCounts: {},
-          loaded: false // Mark as not fully loaded yet
+    // Use functional update to check current state
+    setSessionData(currentSessionData => {
+      const existingData = currentSessionData[session.session_key]
+      const isFullyLoaded = existingData && existingData.loaded === true
+      
+      if (isFullyLoaded) {
+        // Session already loaded, enable images immediately
+        console.log('✅ [MYCLASSES] Session already fully loaded:', session.session_key)
+        setTimeout(() => setImagesLoaded(true), 50)
+        return currentSessionData // No change needed
+      }
+      
+      // Show cached students immediately if available
+      if (studentsToUse && studentsToUse.length > 0) {
+        console.log('📋 [MYCLASSES] Showing cached students immediately for session:', session.session_key)
+        // Enable images immediately since we have student data
+        setTimeout(() => setImagesLoaded(true), 100)
+        
+        return {
+          ...currentSessionData,
+          [session.session_key]: {
+            records: studentsToUse.map(student => ({
+              ...student,
+              status: null, // Will be updated when attendance loads
+              remarks: null,
+              session_date: session.session_date,
+              title: session.title
+            })),
+            statusCounts: {},
+            loaded: false // Mark as not fully loaded yet
+          }
         }
-      }))
-      // Enable images immediately since we have student data
-      setTimeout(() => {
-        setImagesLoaded(true)
-      }, 100)
-    } else if (sessionData[session.session_key]) {
-      // Session already loaded, enable images immediately
-      setImagesLoaded(true)
-      return // Already have full data, no need to reload
-    }
+      }
+      
+      return currentSessionData
+    })
     
-    // Step 2: Load attendance data asynchronously (if not already loaded)
-    if (!sessionData[session.session_key]?.loaded) {
-      loadSessionData(
-        session.session_key,
-        session.session_date,
-        session.title,
-        session.session_id,
-        session.session_type,
-        session.meeting_type
-      ).catch(error => {
-        console.error('❌ [MYCLASSES] Error loading session:', error)
-      })
-    }
-  }, [sessionList, sessionData, loadSessionData, cachedStudentsList, students])
+    // Step 2: Always try to load attendance data asynchronously
+    // loadSessionData will check if already loaded/loading using ref
+    console.log('🔄 [MYCLASSES] Calling loadSessionData for session:', session.session_key, 'sessionId:', session.session_id)
+    loadSessionData(
+      session.session_key,
+      session.session_date,
+      session.title,
+      session.session_id,
+      session.session_type,
+      session.meeting_type
+    ).catch(error => {
+      console.error('❌ [MYCLASSES] Error loading session:', error)
+    })
+  }, [sessionList, loadSessionData, cachedStudentsList, students])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
