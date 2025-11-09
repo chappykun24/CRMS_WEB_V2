@@ -3,9 +3,16 @@ from flask_cors import CORS
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+import os
+import sys
 
 app = Flask(__name__)
 CORS(app)
+
+# Log startup
+print("🚀 [Python API] Starting KMeans Clustering API...")
+print(f"📦 [Python API] Python version: {sys.version}")
+print(f"🌐 [Python API] Port: {os.environ.get('PORT', '10000')}")
 
 def cluster_records(records):
     df = pd.DataFrame(records)
@@ -281,7 +288,21 @@ def cluster_students():
 
 @app.route("/", methods=["GET"])
 def health():
-    return "KMeans Clustering API is running!"
+    """Healthcheck endpoint for deployment platforms"""
+    return jsonify({
+        "status": "healthy",
+        "service": "KMeans Clustering API",
+        "version": "1.0"
+    }), 200
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Alternative healthcheck endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "service": "KMeans Clustering API",
+        "version": "1.0"
+    }), 200
 
 if __name__ == "__main__":
     import os
