@@ -84,16 +84,17 @@ const Grades = () => {
     if (cachedStudents) {
       const studentsList = Array.isArray(cachedStudents) ? cachedStudents : []
       setStudents(studentsList)
-      // Load images for cached students after a delay
-      setTimeout(() => {
+      // Load images for cached students immediately
+      requestAnimationFrame(() => {
+        setImagesReady(true)
         const imagesToLoad = studentsList
           .filter(s => s.student_photo)
           .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
         if (imagesToLoad.length > 0) {
-          imageLoaderService.queueImages(imagesToLoad)
+          // Load images immediately in parallel
+          imageLoaderService.queueImages(imagesToLoad, true)
         }
-        setImagesReady(true)
-      }, 100) // Shorter delay for cached data
+      })
     }
     
     if (cachedGrades) {
@@ -134,15 +135,16 @@ const Grades = () => {
         // Cache minimized data for next time (excludes photos)
         safeSetItem(studentsCacheKey, studentsList, minimizeStudentData)
         
-        // Load images asynchronously after essential data is displayed
-        // Delay image loading to prioritize text data
-        setTimeout(() => {
+        // Load images immediately after essential data is displayed
+        // Use requestAnimationFrame to ensure DOM is ready, then load images
+        requestAnimationFrame(() => {
+          setImagesReady(true) // Enable image loading in UI immediately
           const imagesToLoad = studentsList
             .filter(s => s.student_photo)
             .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
-          imageLoaderService.queueImages(imagesToLoad)
-          setImagesReady(true) // Enable image loading in UI
-        }, 300) // 300ms delay to show text first
+          // Load images immediately in parallel (no batching delay)
+          imageLoaderService.queueImages(imagesToLoad, true)
+        })
       } else {
         console.error('Failed to load students')
         if (showLoading) setStudents([])

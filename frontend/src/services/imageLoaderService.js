@@ -8,24 +8,40 @@ class ImageLoaderService {
   constructor() {
     this.imageQueue = []
     this.loading = false
-    this.batchSize = 5 // Load 5 images at a time
-    this.delayBetweenBatches = 100 // 100ms delay between batches
+    this.batchSize = 20 // Load 20 images at a time (increased for faster loading)
+    this.delayBetweenBatches = 0 // No delay between batches for faster loading
     this.imageCache = new Map() // Cache loaded images
+    this.loadingImages = new Set() // Track currently loading images to avoid duplicates
   }
 
   /**
    * Add images to loading queue
    * @param {Array} images - Array of {src, id} objects
+   * @param {Boolean} immediate - If true, start loading immediately without batching
    */
-  queueImages(images) {
+  queueImages(images, immediate = false) {
     if (!Array.isArray(images)) return
     
-    // Filter out already cached images and invalid srcs
+    // Filter out already cached images, invalid srcs, and currently loading images
     const newImages = images.filter(img => {
       if (!img.src || !img.id) return false
       if (this.imageCache.has(img.id)) return false
+      if (this.loadingImages.has(img.id)) return false
       return true
     })
+    
+    if (newImages.length === 0) return
+    
+    // If immediate, load all images in parallel without batching
+    if (immediate) {
+      newImages.forEach(img => {
+        this.loadingImages.add(img.id)
+        this.preloadImage(img).finally(() => {
+          this.loadingImages.delete(img.id)
+        })
+      })
+      return
+    }
     
     this.imageQueue.push(...newImages)
     this.processQueue()
@@ -39,22 +55,45 @@ class ImageLoaderService {
     
     this.loading = true
     
-    while (this.imageQueue.length > 0) {
-      // Get batch of images
-      const batch = this.imageQueue.splice(0, this.batchSize)
-      
-      // Preload images in batch
-      await Promise.all(
-        batch.map(img => this.preloadImage(img))
-      )
-      
-      // Delay between batches to avoid blocking
-      if (this.imageQueue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, this.delayBetweenBatches))
+    // Use requestIdleCallback for non-blocking processing if available
+    const processBatch = async () => {
+      while (this.imageQueue.length > 0) {
+        // Get batch of images
+        const batch = this.imageQueue.splice(0, this.batchSize)
+        
+        // Mark as loading
+        batch.forEach(img => this.loadingImages.add(img.id))
+        
+        // Preload images in batch (all in parallel)
+        Promise.all(
+          batch.map(img => 
+            this.preloadImage(img).finally(() => {
+              this.loadingImages.delete(img.id)
+            })
+          )
+        )
+        
+        // If there are more images, use requestIdleCallback or setTimeout(0) for next batch
+        if (this.imageQueue.length > 0) {
+          if (this.delayBetweenBatches > 0) {
+            await new Promise(resolve => setTimeout(resolve, this.delayBetweenBatches))
+          } else {
+            // Use requestAnimationFrame for smooth processing without blocking
+            await new Promise(resolve => requestAnimationFrame(resolve))
+          }
+        }
       }
+      
+      this.loading = false
     }
     
-    this.loading = false
+    // Start processing immediately
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(processBatch, { timeout: 100 })
+    } else {
+      // Fallback: use requestAnimationFrame
+      requestAnimationFrame(processBatch)
+    }
   }
 
   /**

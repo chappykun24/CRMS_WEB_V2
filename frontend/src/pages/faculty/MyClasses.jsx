@@ -528,17 +528,17 @@ const MyClasses = () => {
       
       console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
       
-      // Step 7: Load images asynchronously after essential data is displayed
-      // Queue images for batch loading, then enable image loading in UI
-      setTimeout(() => {
+      // Step 7: Load images immediately after essential data is displayed
+      requestAnimationFrame(() => {
+        setImagesLoaded(true) // Enable image loading in UI immediately
         const imagesToLoad = sessionRecords
           .filter(r => r.student_photo)
           .map(r => ({ src: r.student_photo, id: `attendance_${sessionKey}_${r.student_id}` }))
         if (imagesToLoad.length > 0) {
-          imageLoaderService.queueImages(imagesToLoad)
+          // Load images immediately in parallel (no batching delay)
+          imageLoaderService.queueImages(imagesToLoad, true)
         }
-        setImagesLoaded(true) // Enable image loading in UI after queueing
-      }, 300) // Delay to prioritize text content rendering
+      })
       
     } catch (error) {
       console.error('❌ [MYCLASSES] Error loading session data:', error)
@@ -1297,16 +1297,17 @@ const MyClasses = () => {
         timestamp: Date.now()
       })
       
-      // Load images asynchronously after essential data is displayed
-      setTimeout(() => {
+      // Load images immediately after essential data is displayed
+      requestAnimationFrame(() => {
+        setImagesLoaded(true) // Enable image loading in UI immediately
         const imagesToLoad = sortedStudents
           .filter(s => s.student_photo)
           .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
         if (imagesToLoad.length > 0) {
-          imageLoaderService.queueImages(imagesToLoad)
+          // Load images immediately in parallel (no batching delay)
+          imageLoaderService.queueImages(imagesToLoad, true)
         }
-        setImagesLoaded(true) // Enable image loading in UI
-      }, 300) // Delay to show text first
+      })
       
     } catch (error) {
       console.error('Error fetching students:', error)

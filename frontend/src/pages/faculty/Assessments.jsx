@@ -399,16 +399,17 @@ const Assessments = () => {
     // Show cached data immediately if available
     if (cached) {
       setGrades(cached)
-      // Load images for cached grades after a delay
-      setTimeout(() => {
+      // Load images for cached grades immediately
+      requestAnimationFrame(() => {
+        setImagesReady(true)
         const imagesToLoad = Object.values(cached)
           .filter(g => g.student_photo)
-          .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${idx}` }))
+          .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
         if (imagesToLoad.length > 0) {
-          imageLoaderService.queueImages(imagesToLoad)
+          // Load images immediately in parallel
+          imageLoaderService.queueImages(imagesToLoad, true)
         }
-        setImagesReady(true)
-      }, 100)
+      })
     }
     
     try {
@@ -433,14 +434,15 @@ const Assessments = () => {
         })
         setGrades(gradesMap)
         
-        // Load images asynchronously after essential data is displayed
-        setTimeout(() => {
+        // Load images immediately after essential data is displayed
+        requestAnimationFrame(() => {
+          setImagesReady(true) // Enable image loading in UI immediately
           const imagesToLoad = data
             .filter(g => g.student_photo)
             .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id}` }))
-          imageLoaderService.queueImages(imagesToLoad)
-          setImagesReady(true) // Enable image loading in UI
-        }, 300) // 300ms delay to show text first
+          // Load images immediately in parallel (no batching delay)
+          imageLoaderService.queueImages(imagesToLoad, true)
+        })
         // Cache for next time (grades are small)
         safeSetItem(gradesCacheKey, gradesMap)
       } else {

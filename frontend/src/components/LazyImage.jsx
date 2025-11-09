@@ -40,40 +40,84 @@ const LazyImage = ({
 
   // Handle delayLoad prop - if true, wait for it to become false
   useEffect(() => {
-    if (!delayLoad && !priority) {
-      // Set up Intersection Observer for lazy loading
-      if ('IntersectionObserver' in window && imgRef.current) {
+    // If priority, load immediately
+    if (priority) {
+      setShouldLoad(true)
+      return
+    }
+    
+    // If delayLoad is true, don't load yet
+    if (delayLoad) {
+      setShouldLoad(false)
+      // Clean up observer if it exists
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+        observerRef.current = null
+      }
+      return
+    }
+    
+    // delayLoad is false - start loading immediately
+    // For visible images, load right away. For off-screen images, use Intersection Observer
+    const setupLoading = () => {
+      if (!imgRef.current) {
+        // Ref not ready, try again next frame
+        requestAnimationFrame(setupLoading)
+        return
+      }
+      
+      // Check if element is already visible
+      const rect = imgRef.current.getBoundingClientRect()
+      const isVisible = rect.top < window.innerHeight + 200 && rect.bottom > -200
+      
+      if (isVisible) {
+        // Already visible, load immediately
+        setShouldLoad(true)
+        return
+      }
+      
+      // Set up Intersection Observer for off-screen images
+      if ('IntersectionObserver' in window) {
+        // Disconnect any existing observer
+        if (observerRef.current) {
+          observerRef.current.disconnect()
+        }
+        
         observerRef.current = new IntersectionObserver(
           (entries) => {
             entries.forEach((entry) => {
               if (entry.isIntersecting) {
                 setShouldLoad(true)
                 // Disconnect observer once we start loading
-                if (observerRef.current && imgRef.current) {
-                  observerRef.current.unobserve(imgRef.current)
+                if (observerRef.current) {
+                  observerRef.current.disconnect()
+                  observerRef.current = null
                 }
               }
             })
           },
           {
-            rootMargin: '50px' // Start loading 50px before entering viewport
+            rootMargin: '200px' // Start loading 200px before entering viewport
           }
         )
         
-        observerRef.current.observe(imgRef.current)
+        if (imgRef.current) {
+          observerRef.current.observe(imgRef.current)
+        }
       } else {
         // Fallback: load immediately if IntersectionObserver not supported
         setShouldLoad(true)
       }
-    } else if (priority || !delayLoad) {
-      // Load immediately if priority or delayLoad is false
-      setShouldLoad(true)
     }
+    
+    // Start setup on next frame to ensure DOM is ready
+    requestAnimationFrame(setupLoading)
 
     // Cleanup observer on unmount
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect()
+        observerRef.current = null
       }
     }
   }, [delayLoad, priority])
@@ -90,8 +134,8 @@ const LazyImage = ({
     }
   }
 
-  // Show skeleton if not loading yet or if loading
-  if (!shouldLoad || isLoading) {
+  // Show skeleton if not loading yet
+  if (!shouldLoad) {
     return (
       <div 
         ref={imgRef}
@@ -156,18 +200,21 @@ const LazyImage = ({
 
   // Show image with skeleton while loading
   return (
-    <div className={`${sizeClasses[size]} ${shapeClasses[shape]} relative overflow-hidden ${className}`}>
+    <div 
+      ref={imgRef}
+      className={`${sizeClasses[size]} ${shapeClasses[shape]} relative overflow-hidden ${className}`}
+    >
       {/* Skeleton overlay while loading */}
       {isLoading && (
         <div 
-          className="absolute inset-0 bg-gray-200 animate-pulse"
+          className="absolute inset-0 bg-gray-200 animate-pulse z-10"
           role="status"
           aria-label="Loading image"
         />
       )}
       
       {/* Actual image - only loads when shouldLoad is true */}
-      {shouldLoad && (
+      {shouldLoad && src && (
         <img
           src={src}
           alt={alt}
@@ -176,7 +223,8 @@ const LazyImage = ({
           }`}
           onLoad={handleLoad}
           onError={handleError}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
         />
       )}
     </div>
