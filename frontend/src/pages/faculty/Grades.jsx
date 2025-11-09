@@ -293,37 +293,35 @@ const Grades = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        <div className="px-8 py-6 h-full overflow-y-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="px-8 pt-6 pb-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search students..." 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
+                />
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800">{error}</p>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 overflow-hidden px-8 pb-6">
+          <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Main Content - Students List */}
-              <div className="lg:col-span-3 flex flex-col min-h-0">
-                {/* Search Bar */}
-                <div className="flex items-center gap-3 mb-6 flex-shrink-0">
-                  <div className="relative flex-1">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input 
-                        type="text" 
-                        placeholder="Search students..." 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
-                    <p className="text-red-800">{error}</p>
-                  </div>
-                )}
-
+              <div className="lg:col-span-3 flex flex-col h-full">
                 {/* Students Grades Table */}
                 {selectedClass ? (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col h-full">
                     {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
@@ -342,14 +340,14 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+                      <div className="flex-1 overflow-y-auto min-h-0">
                         <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
+                          <thead className="bg-gray-50 sticky top-0 z-30">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-r border-gray-200">
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-40 border-r border-gray-200">
                                 #
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-20 border-r border-gray-200 min-w-[200px]">
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-40 border-r border-gray-200 min-w-[200px]">
                                 Student
                               </th>
                               {assessments.map((assessment) => (
@@ -366,7 +364,7 @@ const Grades = () => {
                             </div>
                                 </th>
                               ))}
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-l border-gray-200 min-w-[100px]">
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-40 border-l border-gray-200 min-w-[100px]">
                                 Total Grade
                               </th>
                             </tr>
@@ -380,11 +378,11 @@ const Grades = () => {
                               })
                               
                               return (
-                                <tr key={student.enrollment_id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-10 border-r border-gray-100">
+                                <tr key={student.enrollment_id} className="hover:bg-gray-50 bg-white">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-30 border-r border-gray-100">
                                     {index + 1}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-10 border-r border-gray-100">
+                                  <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-30 border-r border-gray-100">
                                     <div className="flex items-center space-x-3">
                                       <LazyImage
                                         src={student.student_photo} 
@@ -431,7 +429,7 @@ const Grades = () => {
                                       </td>
                                     )
                                   })}
-                                  <td className="px-4 py-3 whitespace-nowrap text-center sticky right-0 bg-white z-10 border-l border-gray-100">
+                                  <td className="px-4 py-3 whitespace-nowrap text-center sticky right-0 bg-white z-30 border-l border-gray-100">
                                     {loadingGrades ? (
                                       <div className="h-4 w-12 bg-gray-200 rounded animate-pulse mx-auto"></div>
                                     ) : studentGrades[student.enrollment_id] ? (
@@ -477,8 +475,8 @@ const Grades = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <div className="lg:col-span-1 flex flex-col h-full">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                   <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                   </div>

@@ -837,31 +837,33 @@ const Assessments = () => {
 
             {/* Grading Tab Content */}
             {activeTab === 'grading' && (
-              <div className="px-8 h-full overflow-y-auto py-4">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                  {/* Main Content - Student List for Grading */}
-                  <div className="lg:col-span-3 flex flex-col min-w-0">
-                    {error && (
-                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
-                        <p className="text-red-800">{error}</p>
-                      </div>
-                    )}
-                    {successMessage && (
-                      <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
-                        <p className="text-green-800">{successMessage}</p>
-                      </div>
-                    )}
-
-                    {selectedAssessment ? (
-                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="px-8 pt-6 pb-4 flex-shrink-0">
+                  {error && (
+                    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800">{error}</p>
+                    </div>
+                  )}
+                  {successMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800">{successMessage}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 overflow-hidden px-8 pb-6">
+                  <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Main Content - Student List for Grading */}
+                    <div className="lg:col-span-3 flex flex-col h-full">
+                      {selectedAssessment ? (
+                        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col h-full">
                         <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
                           <h2 className="text-base font-semibold text-gray-900">
                             Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
                         {gradingLoading ? (
-                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                            <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
+                          <div className="flex-1 overflow-y-auto min-h-0">
+                            <div className="px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
                               <div className="w-20 flex-shrink-0">Penalty</div>
@@ -892,13 +894,13 @@ const Assessments = () => {
                                     <div className="h-12 bg-gray-200 rounded skeleton"></div>
                                   </div>
                                   <div className="w-32 flex-shrink-0 ml-2">
-                                    <div className="flex flex-col gap-1.5">
-                                      <div className="flex gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex gap-1 flex-1">
                                         <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
                                         <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
                                         <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
                                       </div>
-                                      <div className="h-3 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
+                                      <div className="h-3 bg-gray-200 rounded w-10 skeleton"></div>
                                     </div>
                                   </div>
                                 </li>
@@ -906,9 +908,9 @@ const Assessments = () => {
                             </ul>
                           </div>
                         ) : Object.keys(grades).length > 0 ? (
-                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                            <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
-                              <div className="w-52 flex-shrink-0">Student</div>
+                          <div className="flex-1 overflow-y-auto min-h-0">
+                            <div className="px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
+                              <div className="w-52 flex-shrink-0 sticky left-0 bg-gray-50 z-40">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
                               <div className="w-20 flex-shrink-0">Penalty</div>
                               <div className="w-20 flex-shrink-0">Adjusted</div>
@@ -917,8 +919,8 @@ const Assessments = () => {
                             </div>
                             <ul className="divide-y divide-gray-200">
                               {Object.entries(grades).map(([enrollmentId, gradeData]) => (
-                                <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50">
-                                  <div className="w-52 flex-shrink-0 flex items-center space-x-3">
+                                <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50 bg-white">
+                                  <div className="w-52 flex-shrink-0 flex items-center space-x-3 sticky left-0 bg-white z-30">
                                     <LazyImage
                                       src={gradeData.student_photo} 
                                       alt={gradeData.student_name || 'Student'}
@@ -968,8 +970,8 @@ const Assessments = () => {
                                     />
                                   </div>
                                   <div className="w-32 flex-shrink-0 ml-2">
-                                    <div className="flex flex-col gap-1.5">
-                                      <div className="flex gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex gap-1 flex-1">
                                         <button
                                           onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
                                           className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-1 ${
@@ -1004,7 +1006,7 @@ const Assessments = () => {
                                           Missing
                                         </button>
                                       </div>
-                                      <div className="text-xs font-medium text-gray-900 text-center">
+                                      <div className="text-xs font-medium text-gray-900 whitespace-nowrap">
                                         {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
                                       </div>
                                     </div>
@@ -1049,7 +1051,7 @@ const Assessments = () => {
                         )}
                       </div>
                     ) : !selectedClass ? (
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center h-full">
                         <div className="text-center">
                           <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
@@ -1057,7 +1059,7 @@ const Assessments = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center h-full">
                         <div className="text-center">
                           <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Assessment</h3>
@@ -1068,8 +1070,8 @@ const Assessments = () => {
                   </div>
 
                   {/* Right Sidebar - Subjects and Assessments */}
-                  <div className="lg:col-span-1 flex flex-col">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                  <div className="lg:col-span-1 flex flex-col h-full">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                       {/* Header */}
                       {selectedClass && (
                         <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
