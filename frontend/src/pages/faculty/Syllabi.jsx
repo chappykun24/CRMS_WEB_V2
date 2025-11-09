@@ -1,22 +1,1199 @@
-import React from 'react'
-import { DocumentTextIcon } from '@heroicons/react/24/solid'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon, 
+  PencilIcon, 
+  TrashIcon, 
+  EyeIcon,
+  DocumentTextIcon,
+  AcademicCapIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+  BookOpenIcon,
+  ArrowPathIcon
+} from '@heroicons/react/24/solid'
 
 const Syllabi = () => {
+  const { user } = useAuth()
+  const location = useLocation()
+  const [sidebarExpanded] = useState(true)
+  const [syllabi, setSyllabi] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedClass, setSelectedClass] = useState(null)
+  const [classes, setClasses] = useState([])
+  const [schoolTerms, setSchoolTerms] = useState([])
+  
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [editingSyllabus, setEditingSyllabus] = useState(null)
+  const [viewingSyllabus, setViewingSyllabus] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Form data
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    course_outline: '',
+    course_objectives: '',
+    prerequisites: '',
+    learning_resources: '',
+    assessment_framework: '',
+    grading_policy: '',
+    version: '1.0',
+    term_id: ''
+  })
+
+  // Load faculty classes
+  useEffect(() => {
+    const loadClasses = async () => {
+      if (!user?.user_id) return
+      
+      const cacheKey = `classes_${user.user_id}`
+      const cached = safeGetItem(cacheKey)
+      if (cached) {
+        const classesData = Array.isArray(cached) ? cached : []
+        setClasses(classesData)
+        setLoading(false)
+        
+        if (location.state?.selectedClassId) {
+          const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
+          if (classToSelect) {
+            setSelectedClass(classToSelect)
+          }
+        }
+      }
+      
+      try {
+        const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
+        if (response.ok) {
+          const data = await response.json()
+          const classesData = Array.isArray(data) ? data : []
+          setClasses(classesData)
+          safeSetItem(cacheKey, classesData, minimizeClassData)
+          
+          if (location.state?.selectedClassId && !selectedClass) {
+            const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
+            if (classToSelect) {
+              setSelectedClass(classToSelect)
+            }
+          }
+        } else {
+          if (!cached) setError('Failed to load classes')
+        }
+      } catch (error) {
+        console.error('Error loading classes:', error)
+        if (!cached) setError('Failed to load classes')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadClasses()
+  }, [user, location.state])
+
+  // Load school terms
+  useEffect(() => {
+    const loadSchoolTerms = async () => {
+      try {
+        const response = await fetch('/api/school-terms')
+        if (response.ok) {
+          const data = await response.json()
+          setSchoolTerms(Array.isArray(data) ? data : [])
+        }
+      } catch (error) {
+        console.error('Error loading school terms:', error)
+      }
+    }
+    
+    loadSchoolTerms()
+  }, [])
+
+  // Load syllabi when class is selected
+  useEffect(() => {
+    if (!selectedClass) {
+      setSyllabi([])
+      return
+    }
+    
+    const sectionId = selectedClass.section_course_id
+    const syllabiCacheKey = `syllabi_${sectionId}`
+    const cached = safeGetItem(syllabiCacheKey)
+    
+    if (cached) {
+      setSyllabi(Array.isArray(cached) ? cached : [])
+    }
+    
+    loadSyllabi(sectionId, syllabiCacheKey, !cached)
+  }, [selectedClass])
+
+  const loadSyllabi = async (sectionCourseId, cacheKey, showLoading = true) => {
+    if (!sectionCourseId) return
+    
+    try {
+      if (showLoading) setLoading(true)
+      
+      const response = await fetch(`/api/syllabi/class/${sectionCourseId}`)
+      if (response.ok) {
+        const data = await response.json()
+        const syllabiData = Array.isArray(data) ? data : []
+        setSyllabi(syllabiData)
+        setError('')
+        safeSetItem(cacheKey, syllabiData)
+      } else {
+        setError('Failed to load syllabi')
+        if (showLoading) setSyllabi([])
+      }
+    } catch (error) {
+      console.error('Error loading syllabi:', error)
+      setError('Failed to load syllabi')
+      if (showLoading) setSyllabi([])
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleArrayInputChange = (field, value) => {
+    // Convert comma-separated string to array for learning_resources
+    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item !== '')
+    setFormData(prev => ({
+      ...prev,
+      [field]: arrayValue
+    }))
+  }
+
+  const handleJSONInputChange = (field, value) => {
+    // Try to parse JSON, if invalid, store as string
+    try {
+      const parsed = JSON.parse(value)
+      setFormData(prev => ({
+        ...prev,
+        [field]: parsed
+      }))
+    } catch (e) {
+      // If not valid JSON, store as string (user can format later)
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }))
+    }
+  }
+
+  const handleCreateSyllabus = async (e) => {
+    e.preventDefault()
+    if (!selectedClass) return
+
+    setIsSubmitting(true)
+    try {
+      // Get term_id from form, or fall back to selected class term_id
+      const termId = formData.term_id || selectedClass.term_id
+      
+      if (!termId) {
+        alert('Please select a school term')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Prepare learning_resources - handle both string and array
+      let learningResources = null
+      if (formData.learning_resources) {
+        if (typeof formData.learning_resources === 'string') {
+          learningResources = formData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
+        } else if (Array.isArray(formData.learning_resources)) {
+          learningResources = formData.learning_resources
+        }
+      }
+
+      // Prepare JSON fields
+      let assessmentFramework = null
+      if (formData.assessment_framework) {
+        if (typeof formData.assessment_framework === 'string') {
+          try {
+            assessmentFramework = JSON.parse(formData.assessment_framework)
+          } catch (e) {
+            // If invalid JSON, store as string (backend will handle)
+            assessmentFramework = formData.assessment_framework
+          }
+        } else {
+          assessmentFramework = formData.assessment_framework
+        }
+      }
+
+      let gradingPolicy = null
+      if (formData.grading_policy) {
+        if (typeof formData.grading_policy === 'string') {
+          try {
+            gradingPolicy = JSON.parse(formData.grading_policy)
+          } catch (e) {
+            // If invalid JSON, store as string (backend will handle)
+            gradingPolicy = formData.grading_policy
+          }
+        } else {
+          gradingPolicy = formData.grading_policy
+        }
+      }
+
+      const response = await fetch('/api/syllabi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description || null,
+          course_outline: formData.course_outline || null,
+          course_objectives: formData.course_objectives || null,
+          prerequisites: formData.prerequisites || null,
+          learning_resources: learningResources,
+          assessment_framework: assessmentFramework,
+          grading_policy: gradingPolicy,
+          version: formData.version || '1.0',
+          course_id: selectedClass.course_id,
+          term_id: termId,
+          section_course_id: selectedClass.section_course_id,
+          created_by: user.user_id
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setShowCreateModal(false)
+        resetForm()
+        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        alert('Syllabus created successfully!')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to create syllabus')
+      }
+    } catch (error) {
+      console.error('Error creating syllabus:', error)
+      alert('Failed to create syllabus')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEditSyllabus = async (e) => {
+    e.preventDefault()
+    if (!editingSyllabus) return
+
+    setIsSubmitting(true)
+    try {
+      // Prepare learning_resources - handle both string and array
+      let learningResources = null
+      if (formData.learning_resources) {
+        if (typeof formData.learning_resources === 'string') {
+          learningResources = formData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
+        } else if (Array.isArray(formData.learning_resources)) {
+          learningResources = formData.learning_resources
+        }
+      }
+
+      // Prepare JSON fields
+      let assessmentFramework = null
+      if (formData.assessment_framework) {
+        if (typeof formData.assessment_framework === 'string') {
+          try {
+            assessmentFramework = JSON.parse(formData.assessment_framework)
+          } catch (e) {
+            // If invalid JSON, store as string (backend will handle)
+            assessmentFramework = formData.assessment_framework
+          }
+        } else {
+          assessmentFramework = formData.assessment_framework
+        }
+      }
+
+      let gradingPolicy = null
+      if (formData.grading_policy) {
+        if (typeof formData.grading_policy === 'string') {
+          try {
+            gradingPolicy = JSON.parse(formData.grading_policy)
+          } catch (e) {
+            // If invalid JSON, store as string (backend will handle)
+            gradingPolicy = formData.grading_policy
+          }
+        } else {
+          gradingPolicy = formData.grading_policy
+        }
+      }
+
+      const response = await fetch(`/api/syllabi/${editingSyllabus.syllabus_id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description || null,
+          course_outline: formData.course_outline || null,
+          course_objectives: formData.course_objectives || null,
+          prerequisites: formData.prerequisites || null,
+          learning_resources: learningResources,
+          assessment_framework: assessmentFramework,
+          grading_policy: gradingPolicy,
+          version: formData.version || '1.0'
+        })
+      })
+
+      if (response.ok) {
+        setShowEditModal(false)
+        setEditingSyllabus(null)
+        resetForm()
+        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        alert('Syllabus updated successfully!')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to update syllabus')
+      }
+    } catch (error) {
+      console.error('Error updating syllabus:', error)
+      alert('Failed to update syllabus')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteSyllabus = async (syllabusId) => {
+    if (!confirm('Are you sure you want to delete this syllabus?')) return
+
+    try {
+      const response = await fetch(`/api/syllabi/${syllabusId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+
+      if (response.ok) {
+        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        alert('Syllabus deleted successfully!')
+      } else {
+        alert('Failed to delete syllabus')
+      }
+    } catch (error) {
+      console.error('Error deleting syllabus:', error)
+      alert('Failed to delete syllabus')
+    }
+  }
+
+  const handleSubmitForReview = async (syllabusId) => {
+    try {
+      const response = await fetch(`/api/syllabi/${syllabusId}/submit-review`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+
+      if (response.ok) {
+        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        alert('Syllabus submitted for review successfully!')
+      } else {
+        alert('Failed to submit syllabus for review')
+      }
+    } catch (error) {
+      console.error('Error submitting syllabus for review:', error)
+      alert('Failed to submit syllabus for review')
+    }
+  }
+
+  const openEditModal = (syllabus) => {
+    setEditingSyllabus(syllabus)
+    setFormData({
+      title: syllabus.title || '',
+      description: syllabus.description || '',
+      course_outline: syllabus.course_outline || '',
+      course_objectives: syllabus.course_objectives || '',
+      prerequisites: syllabus.prerequisites || '',
+      learning_resources: Array.isArray(syllabus.learning_resources) 
+        ? syllabus.learning_resources.join(', ')
+        : syllabus.learning_resources || '',
+      assessment_framework: typeof syllabus.assessment_framework === 'object'
+        ? JSON.stringify(syllabus.assessment_framework, null, 2)
+        : syllabus.assessment_framework || '',
+      grading_policy: typeof syllabus.grading_policy === 'object'
+        ? JSON.stringify(syllabus.grading_policy, null, 2)
+        : syllabus.grading_policy || '',
+      version: syllabus.version || '1.0',
+      term_id: syllabus.term_id || ''
+    })
+    setShowEditModal(true)
+  }
+
+  const openViewModal = (syllabus) => {
+    setViewingSyllabus(syllabus)
+    setShowViewModal(true)
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      course_outline: '',
+      course_objectives: '',
+      prerequisites: '',
+      learning_resources: '',
+      assessment_framework: '',
+      grading_policy: '',
+      version: '1.0',
+      term_id: ''
+    })
+  }
+
+  const openCreateModal = () => {
+    resetForm()
+    // Set default term_id from selected class if available
+    if (selectedClass?.term_id) {
+      setFormData(prev => ({ 
+        ...prev, 
+        term_id: selectedClass.term_id,
+        title: selectedClass.course_title ? `${selectedClass.course_title} Syllabus` : ''
+      }))
+    }
+    setShowCreateModal(true)
+  }
+
+  const filteredSyllabi = syllabi.filter(syllabus =>
+    syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'rejected': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const formatLearningResources = (resources) => {
+    if (Array.isArray(resources)) {
+      return resources.join(', ')
+    }
+    if (typeof resources === 'string') {
+      return resources
+    }
+    return 'No resources'
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Syllabi</h1>
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <div className="flex justify-center mb-6">
-            <DocumentTextIcon className="h-20 w-20 text-gray-300" />
+    <>
+      <style>{`
+        .syllabus-card {
+          transition: all 0.2s ease-in-out;
+        }
+        .syllabus-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .skeleton {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
+        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
+      }`} style={{ marginTop: '0px' }}>
+        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+          <div className="px-8 py-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">Syllabi</h1>
+            
+            {/* Content with Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Main Content - Syllabi Table */}
+              <div className="lg:col-span-4">
+                {/* Search Bar and Create Button */}
+                {selectedClass && (
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="relative flex-1">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input 
+                          type="text" 
+                          placeholder="Search syllabi..." 
+                          value={searchQuery} 
+                          onChange={(e) => setSearchQuery(e.target.value)} 
+                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      onClick={openCreateModal} 
+                      className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    >
+                      <PlusIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-800">{error}</p>
+                  </div>
+                )}
+                
+                {/* Syllabi Table */}
+                {selectedClass && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                    {loading ? (
+                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <tr key={i} className="hover:bg-gray-50">
+                                <td className="px-8 py-4">
+                                  <div className="h-4 bg-gray-200 rounded w-32 skeleton mb-2"></div>
+                                  <div className="h-3 bg-gray-100 rounded w-24 skeleton"></div>
+                                </td>
+                                <td className="px-8 py-4">
+                                  <div className="h-4 bg-gray-200 rounded w-12 skeleton"></div>
+                                </td>
+                                <td className="px-8 py-4">
+                                  <div className="h-6 bg-gray-200 rounded-full w-20 skeleton"></div>
+                                </td>
+                                <td className="px-8 py-4">
+                                  <div className="h-6 bg-gray-200 rounded-full w-20 skeleton"></div>
+                                </td>
+                                <td className="px-8 py-4">
+                                  <div className="h-4 bg-gray-200 rounded w-24 skeleton"></div>
+                                </td>
+                                <td className="px-8 py-4">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : filteredSyllabi.length > 0 ? (
+                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredSyllabi.map((syllabus) => (
+                              <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                                    <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="text-sm text-gray-900">v{syllabus.version}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                                    {syllabus.review_status || 'pending'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
+                                    {syllabus.approval_status || 'pending'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="text-sm text-gray-900">
+                                    {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center space-x-2">
+                                    <button 
+                                      onClick={() => openViewModal(syllabus)} 
+                                      className="text-blue-600 hover:text-blue-900"
+                                      title="View"
+                                    >
+                                      <EyeIcon className="h-4 w-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => openEditModal(syllabus)} 
+                                      className="text-red-600 hover:text-red-900"
+                                      title="Edit"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    {syllabus.review_status !== 'pending' && syllabus.approval_status === 'pending' && (
+                                      <button 
+                                        onClick={() => handleSubmitForReview(syllabus.syllabus_id)} 
+                                        className="text-green-600 hover:text-green-900"
+                                        title="Submit for Review"
+                                      >
+                                        <CheckCircleIcon className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                    <button 
+                                      onClick={() => handleDeleteSyllabus(syllabus.syllabus_id)} 
+                                      className="text-red-600 hover:text-red-900"
+                                      title="Delete"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center py-16">
+                        <div className="text-center">
+                          <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No syllabi found</h3>
+                          <p className="text-gray-500">
+                            {searchQuery ? 'No syllabi match your search.' : 'Create your first syllabus to get started.'}
+                          </p>
+                          {!searchQuery && (
+                            <button 
+                              onClick={openCreateModal} 
+                              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                              <PlusIcon className="h-4 w-4" />
+                              Create Syllabus
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No Class Selected State */}
+                {!selectedClass && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                    <div className="text-center">
+                      <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
+                      <p className="text-gray-500">Choose a class from the sidebar to view its syllabi.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Sidebar - Classes */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
+                  <div className="flex-1 overflow-hidden">
+                    {loading ? (
+                      <div className="p-4 space-y-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : classes.length > 0 ? (
+                      <div className="p-4 space-y-2 overflow-y-auto h-full">
+                        {classes.map((cls) => (
+                          <div
+                            key={cls.section_course_id}
+                            onClick={() => setSelectedClass(cls)}
+                            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                              selectedClass?.section_course_id === cls.section_course_id
+                                ? 'border-gray-300 bg-gray-50'
+                                : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                            } group`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-medium text-sm truncate ${
+                                  selectedClass?.section_course_id === cls.section_course_id
+                                    ? 'text-gray-900'
+                                    : 'text-gray-900 group-hover:text-gray-900'
+                                }`}>
+                                  {cls.course_title}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                              </div>
+                              {selectedClass?.section_course_id === cls.section_course_id && (
+                                <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center p-8">
+                        <div className="text-center">
+                          <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                          <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-3">Feature Coming Soon</h2>
-          <p className="text-gray-500 text-base max-w-md mx-auto">
-            The syllabi management feature is currently under development and will be available in a future update.
-          </p>
         </div>
       </div>
-    </div>
+
+      {/* Create Syllabus Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Syllabus</h2>
+              
+              <form onSubmit={handleCreateSyllabus} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="e.g., Introduction to Computer Science"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
+                    <input
+                      type="text"
+                      name="version"
+                      value={formData.version}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="1.0"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">School Term *</label>
+                  <select
+                    name="term_id"
+                    value={formData.term_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">Select term</option>
+                    {schoolTerms.filter(term => term.is_active).map(term => (
+                      <option key={term.term_id} value={term.term_id}>
+                        {term.school_year} - {term.semester}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedClass?.term_id && !formData.term_id && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Default: {selectedClass.school_year} - {selectedClass.semester}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Course description..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Objectives</label>
+                  <textarea
+                    name="course_objectives"
+                    value={formData.course_objectives}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="List the course objectives..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Outline</label>
+                  <textarea
+                    name="course_outline"
+                    value={formData.course_outline}
+                    onChange={handleInputChange}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Detailed course outline..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prerequisites</label>
+                  <textarea
+                    name="prerequisites"
+                    value={formData.prerequisites}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Course prerequisites..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Learning Resources (comma-separated)</label>
+                  <textarea
+                    name="learning_resources"
+                    value={typeof formData.learning_resources === 'string' 
+                      ? formData.learning_resources 
+                      : Array.isArray(formData.learning_resources) 
+                        ? formData.learning_resources.join(', ')
+                        : ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, learning_resources: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Resource 1, Resource 2, Resource 3..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Framework (JSON)</label>
+                  <textarea
+                    name="assessment_framework"
+                    value={typeof formData.assessment_framework === 'string' 
+                      ? formData.assessment_framework 
+                      : JSON.stringify(formData.assessment_framework, null, 2)}
+                    onChange={(e) => handleJSONInputChange('assessment_framework', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
+                    placeholder='{"quizzes": 20, "exams": 40, "projects": 40}'
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Grading Policy (JSON)</label>
+                  <textarea
+                    name="grading_policy"
+                    value={typeof formData.grading_policy === 'string' 
+                      ? formData.grading_policy 
+                      : JSON.stringify(formData.grading_policy, null, 2)}
+                    onChange={(e) => handleJSONInputChange('grading_policy', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
+                    placeholder='{"A": "90-100", "B": "80-89", "C": "70-79", "D": "60-69", "F": "0-59"}'
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create Syllabus'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Syllabus Modal */}
+      {showEditModal && editingSyllabus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Syllabus</h2>
+              
+              <form onSubmit={handleEditSyllabus} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
+                    <input
+                      type="text"
+                      name="version"
+                      value={formData.version}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Objectives</label>
+                  <textarea
+                    name="course_objectives"
+                    value={formData.course_objectives}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Outline</label>
+                  <textarea
+                    name="course_outline"
+                    value={formData.course_outline}
+                    onChange={handleInputChange}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prerequisites</label>
+                  <textarea
+                    name="prerequisites"
+                    value={formData.prerequisites}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Learning Resources (comma-separated)</label>
+                  <textarea
+                    name="learning_resources"
+                    value={typeof formData.learning_resources === 'string' 
+                      ? formData.learning_resources 
+                      : Array.isArray(formData.learning_resources) 
+                        ? formData.learning_resources.join(', ')
+                        : ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, learning_resources: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Framework (JSON)</label>
+                  <textarea
+                    name="assessment_framework"
+                    value={typeof formData.assessment_framework === 'string' 
+                      ? formData.assessment_framework 
+                      : JSON.stringify(formData.assessment_framework, null, 2)}
+                    onChange={(e) => handleJSONInputChange('assessment_framework', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Grading Policy (JSON)</label>
+                  <textarea
+                    name="grading_policy"
+                    value={typeof formData.grading_policy === 'string' 
+                      ? formData.grading_policy 
+                      : JSON.stringify(formData.grading_policy, null, 2)}
+                    onChange={(e) => handleJSONInputChange('grading_policy', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Updating...' : 'Update Syllabus'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Syllabus Modal */}
+      {showViewModal && viewingSyllabus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">{viewingSyllabus.title}</h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-1">Version</h3>
+                  <p className="text-sm text-gray-900">v{viewingSyllabus.version}</p>
+                </div>
+
+                {viewingSyllabus.description && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Description</h3>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.description}</p>
+                  </div>
+                )}
+
+                {viewingSyllabus.course_objectives && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Course Objectives</h3>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.course_objectives}</p>
+                  </div>
+                )}
+
+                {viewingSyllabus.course_outline && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Course Outline</h3>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.course_outline}</p>
+                  </div>
+                )}
+
+                {viewingSyllabus.prerequisites && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Prerequisites</h3>
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.prerequisites}</p>
+                  </div>
+                )}
+
+                {viewingSyllabus.learning_resources && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Learning Resources</h3>
+                    <p className="text-sm text-gray-900">{formatLearningResources(viewingSyllabus.learning_resources)}</p>
+                  </div>
+                )}
+
+                {viewingSyllabus.assessment_framework && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Assessment Framework</h3>
+                    <pre className="text-sm text-gray-900 bg-gray-50 p-3 rounded border overflow-x-auto whitespace-pre-wrap">
+                      {typeof viewingSyllabus.assessment_framework === 'object' 
+                        ? JSON.stringify(viewingSyllabus.assessment_framework, null, 2)
+                        : viewingSyllabus.assessment_framework}
+                    </pre>
+                  </div>
+                )}
+
+                {viewingSyllabus.grading_policy && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Grading Policy</h3>
+                    <pre className="text-sm text-gray-900 bg-gray-50 p-3 rounded border overflow-x-auto whitespace-pre-wrap">
+                      {typeof viewingSyllabus.grading_policy === 'object' 
+                        ? JSON.stringify(viewingSyllabus.grading_policy, null, 2)
+                        : viewingSyllabus.grading_policy}
+                    </pre>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Review Status</h3>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.review_status)}`}>
+                      {viewingSyllabus.review_status || 'pending'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-1">Approval Status</h3>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.approval_status)}`}>
+                      {viewingSyllabus.approval_status || 'pending'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
