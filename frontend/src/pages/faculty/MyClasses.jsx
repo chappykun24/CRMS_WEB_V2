@@ -82,12 +82,31 @@ const MyClasses = () => {
   const [cachedStudentsList, setCachedStudentsList] = useState(null) // Cached students from attendance mode
 
   // Cache students list when attendance mode is enabled and students are loaded
-  // This ensures the students data is available for the full attendance list modal
+  // IMPORTANT: Only cache students that belong to the currently selected class
+  // This ensures we don't show stale data from a different class
   useEffect(() => {
-    if (isAttendanceMode && students && students.length > 0 && !cachedStudentsList) {
-      console.log('💾 [MYCLASSES] Caching students list from attendance form:', students.length, 'students')
-      console.log('  Class:', selectedClass?.section_course_id, selectedClass?.course_title)
-      setCachedStudentsList(students)
+    if (isAttendanceMode && selectedClass && students && students.length > 0) {
+      // Check if cached students belong to current class
+      const cachedClassId = cachedStudentsList?.[0]?.section_course_id || cachedStudentsList?.classId
+      const currentClassId = selectedClass.section_course_id
+      
+      // Only cache if:
+      // 1. No cache exists, OR
+      // 2. Cache exists but belongs to a different class (should be cleared first, but double-check)
+      if (!cachedStudentsList || cachedClassId !== currentClassId) {
+        console.log('💾 [MYCLASSES] Caching students list from attendance form:', students.length, 'students')
+        console.log('  Class ID:', currentClassId, selectedClass?.course_title)
+        console.log('  Previous cache class ID:', cachedClassId || 'none')
+        
+        // Store students with class ID for verification
+        const studentsWithClassId = students.map(student => ({
+          ...student,
+          classId: currentClassId // Add class ID to each student for verification
+        }))
+        setCachedStudentsList(studentsWithClassId)
+      } else {
+        console.log('✅ [MYCLASSES] Students already cached for this class:', currentClassId)
+      }
     }
   }, [isAttendanceMode, students, cachedStudentsList, selectedClass])
 
@@ -318,7 +337,25 @@ const MyClasses = () => {
       // The worst case is we update already-loaded data, which is fine
       
       // Step 1: Use cached students list if available (from attendance mode)
-      let studentsList = cachedStudentsList || students
+      // IMPORTANT: Verify cached students belong to current class
+      let studentsList = null
+      if (cachedStudentsList && cachedStudentsList.length > 0) {
+        const cachedClassId = cachedStudentsList[0]?.classId || cachedStudentsList[0]?.section_course_id
+        if (cachedClassId === currentSelectedClass.section_course_id) {
+          studentsList = cachedStudentsList
+          console.log('✅ [MYCLASSES] Using verified cached students for session:', sessionKey)
+        } else {
+          console.warn('⚠️ [MYCLASSES] Cached students do not match current class, fetching fresh')
+          console.log('  Cached class ID:', cachedClassId)
+          console.log('  Current class ID:', currentSelectedClass.section_course_id)
+          studentsList = null // Force fetch
+        }
+      }
+      
+      // Fallback to current students if no valid cache
+      if (!studentsList) {
+        studentsList = students
+      }
       
       // If no cached students, fetch them (fallback)
       if (!studentsList || studentsList.length === 0) {
@@ -341,7 +378,12 @@ const MyClasses = () => {
               }
               return a.full_name.localeCompare(b.full_name)
             })
-            setCachedStudentsList(studentsList)
+            // Add class ID to students for verification
+            const studentsWithClassId = studentsList.map(student => ({
+              ...student,
+              classId: currentSelectedClass.section_course_id
+            }))
+            setCachedStudentsList(studentsWithClassId)
           }
         } catch (err) {
           console.error('❌ [MYCLASSES] Error fetching students:', err)
@@ -502,12 +544,50 @@ const MyClasses = () => {
   // Load full attendance list for the class - show modal immediately, load sessions progressively
   // Uses cached students from attendance mode for instant display
   const loadFullAttendanceList = useCallback(async () => {
-    if (!selectedClass) return
+    // Use ref to get current selectedClass (avoids closure issues)
+    const currentSelectedClass = selectedClassRef.current || selectedClass
+    if (!currentSelectedClass) {
+      alert('Please select a class first')
+      return
+    }
     
-    // Step 0: Cache students list if available (from attendance mode)
-    if (students && students.length > 0 && !cachedStudentsList) {
-      console.log('💾 [MYCLASSES] Caching students list from attendance mode:', students.length, 'students')
-      setCachedStudentsList(students)
+    const currentClassId = currentSelectedClass.section_course_id
+    
+    console.log('📋 [MYCLASSES] Loading full attendance list for class:', currentClassId, currentSelectedClass.course_title)
+    
+    // IMPORTANT: Verify cached students belong to current class
+    // If cached students belong to a different class, clear them
+    if (cachedStudentsList && cachedStudentsList.length > 0) {
+      const cachedClassId = cachedStudentsList[0]?.classId || cachedStudentsList[0]?.section_course_id
+      if (cachedClassId && cachedClassId !== currentClassId) {
+        console.warn('⚠️ [MYCLASSES] Cached students belong to different class, clearing cache')
+        console.log('  Cached class ID:', cachedClassId)
+        console.log('  Current class ID:', currentClassId)
+        setCachedStudentsList(null)
+      } else if (cachedClassId === currentClassId) {
+        console.log('✅ [MYCLASSES] Cached students verified for class:', currentClassId)
+      }
+    }
+    
+    // Step 0: Cache students list if available (from attendance mode) and belongs to current class
+    if (students && students.length > 0) {
+      // Verify students belong to current class before caching
+      const studentsClassId = students[0]?.section_course_id
+      if (studentsClassId === currentClassId) {
+        // Only cache if not already cached or if cache belongs to different class
+        if (!cachedStudentsList || cachedStudentsList[0]?.classId !== currentClassId) {
+          console.log('💾 [MYCLASSES] Caching students list for current class:', currentClassId)
+          const studentsWithClassId = students.map(student => ({
+            ...student,
+            classId: currentClassId // Add class ID for verification
+          }))
+          setCachedStudentsList(studentsWithClassId)
+        }
+      } else {
+        console.warn('⚠️ [MYCLASSES] Students do not belong to current class, not caching')
+        console.log('  Students class ID:', studentsClassId)
+        console.log('  Current class ID:', currentClassId)
+      }
     }
     
     // IMPORTANT: Clear all session-related state when opening modal
@@ -521,39 +601,68 @@ const MyClasses = () => {
     
     // Show modal immediately with skeleton loading
     setShowFullAttendanceModal(true)
-    setLoadingFullAttendance(true)
+    setLoadingFullAttendance(true) // Keep loading true to show skeletons until data loads
     
     try {
       // Step 1: Load session list (fast - just metadata)
       const sessions = await loadSessionList()
       setSessionList(sessions)
+      
+      // Step 2: Verify and use cached students (only if they belong to current class)
+      let studentsToUse = null
+      if (cachedStudentsList && cachedStudentsList.length > 0) {
+        const cachedClassId = cachedStudentsList[0]?.classId || cachedStudentsList[0]?.section_course_id
+        if (cachedClassId === currentClassId) {
+          studentsToUse = cachedStudentsList
+          console.log('✅ [MYCLASSES] Using verified cached students:', studentsToUse.length, 'students')
+        } else {
+          console.warn('⚠️ [MYCLASSES] Cached students do not match current class, will use fresh students')
+        }
+      }
+      
+      // Fallback to current students if no valid cache
+      if (!studentsToUse && students && students.length > 0) {
+        const studentsClassId = students[0]?.section_course_id
+        if (studentsClassId === currentClassId) {
+          studentsToUse = students
+          console.log('✅ [MYCLASSES] Using current students:', studentsToUse.length, 'students')
+        }
+      }
+      
+      // Step 3: Hide main loading skeleton, but keep session skeletons if no students yet
       setLoadingFullAttendance(false)
       
-      // Step 2: If we have cached students, show them immediately (even without attendance data yet)
-      const studentsToUse = cachedStudentsList || students
+      // Step 4: If we have valid students, show them immediately (even without attendance data yet)
+      // This provides instant display while attendance loads in background
       if (studentsToUse && studentsToUse.length > 0 && sessions.length > 0) {
         const firstSession = sessions[0]
         // Create initial session data with students (no attendance yet - will be fetched)
+        // Status will show skeleton loader until attendance data loads
         setSessionData(prev => ({
           ...prev,
           [firstSession.session_key]: {
             records: studentsToUse.map(student => ({
               ...student,
-              status: null, // Will be updated when attendance loads
+              status: null, // Will be updated when attendance loads - shows skeleton
               remarks: null,
               session_date: firstSession.session_date,
               title: firstSession.title
             })),
             statusCounts: {},
-            loaded: false // Mark as not fully loaded yet
+            loaded: false // Mark as not fully loaded yet - will show skeleton for status
           }
         }))
+        console.log('📊 [MYCLASSES] Created initial session data with', studentsToUse.length, 'students (skeleton for status)')
+      } else {
+        console.log('⏳ [MYCLASSES] No students available yet, showing full skeleton loading')
+        // Keep loadingFullAttendance true to show full skeleton
+        setLoadingFullAttendance(true)
       }
       
-      // Step 3: Load first session (latest) attendance data immediately asynchronously
+      // Step 5: Load first session (latest) attendance data immediately asynchronously
       if (sessions.length > 0) {
         const firstSession = sessions[0]
-        // Load asynchronously without blocking
+        // Load asynchronously without blocking - status will show skeleton until loaded
         loadSessionData(
           firstSession.session_key,
           firstSession.session_date,
@@ -588,8 +697,24 @@ const MyClasses = () => {
       return
     }
     
-    // Get cached students list
-    const studentsToUse = cachedStudentsList || students
+    // Get cached students list - verify they belong to current class
+    let studentsToUse = null
+    if (cachedStudentsList && cachedStudentsList.length > 0) {
+      const cachedClassId = cachedStudentsList[0]?.classId || cachedStudentsList[0]?.section_course_id
+      if (cachedClassId === currentSelectedClass.section_course_id) {
+        studentsToUse = cachedStudentsList
+        console.log('✅ [MYCLASSES] Using verified cached students for tab:', session.session_key)
+      } else {
+        console.warn('⚠️ [MYCLASSES] Cached students do not match current class in tab change')
+        console.log('  Cached class ID:', cachedClassId)
+        console.log('  Current class ID:', currentSelectedClass.section_course_id)
+      }
+    }
+    
+    // Fallback to current students if no valid cache
+    if (!studentsToUse) {
+      studentsToUse = students
+    }
     
     // Step 1: Show cached students immediately (even if session data not loaded yet)
     // Use functional update to check current state
@@ -1065,7 +1190,7 @@ const MyClasses = () => {
       
       // Reset all attendance-related state to prevent stale data
       setSessionData({}) // Clear all cached session attendance data
-      setCachedStudentsList(null) // Clear cached students from attendance mode
+      setCachedStudentsList(null) // Clear cached students from attendance mode (IMPORTANT: prevent old class data)
       setSessionList([]) // Clear session list
       setActiveSessionTab(0) // Reset to first tab
       setLoadingSession({}) // Clear loading state
@@ -1076,7 +1201,7 @@ const MyClasses = () => {
       // Clear loading sessions ref
       loadingSessionsRef.current.clear()
       
-      console.log('✅ [FACULTY] Attendance cache reset complete')
+      console.log('✅ [FACULTY] Attendance cache reset complete - all cached data cleared for new class')
     }
     
     setSelectedClass(classItem)
