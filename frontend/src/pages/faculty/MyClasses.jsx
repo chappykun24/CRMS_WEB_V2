@@ -450,14 +450,19 @@ const MyClasses = () => {
       }, {})
       
       // Step 6: Store session data (photos included but loading deferred)
-      setSessionData(prev => ({
-        ...prev,
-        [sessionKey]: {
-          records: sessionRecords,
-          statusCounts,
-          loaded: true
+      // Use functional update to ensure we're updating the correct session
+      setSessionData(prev => {
+        const updated = {
+          ...prev,
+          [sessionKey]: {
+            records: sessionRecords,
+            statusCounts,
+            loaded: true
+          }
         }
-      }))
+        console.log('💾 [MYCLASSES] Storing session data for:', sessionKey, 'total sessions in state:', Object.keys(updated).length, 'all keys:', Object.keys(updated))
+        return updated
+      })
       
       console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
       
@@ -590,7 +595,10 @@ const MyClasses = () => {
         // Enable images immediately since we have student data
         setTimeout(() => setImagesLoaded(true), 100)
         
-        return {
+        // Create session data entry with cached students
+        // IMPORTANT: Always create a new entry for this specific session key
+        // to ensure each session has its own isolated data
+        const newSessionData = {
           ...currentSessionData,
           [session.session_key]: {
             records: studentsToUse.map(student => ({
@@ -601,9 +609,12 @@ const MyClasses = () => {
               title: session.title
             })),
             statusCounts: {},
-            loaded: false // Mark as not fully loaded yet
+            loaded: false, // Mark as not fully loaded yet
+            session_key: session.session_key // Store session key for verification
           }
         }
+        console.log('📝 [MYCLASSES] Created session data entry for:', session.session_key, 'with', studentsToUse.length, 'students')
+        return newSessionData
       }
       
       return currentSessionData
@@ -1836,8 +1847,12 @@ const MyClasses = () => {
                   <div className="flex-1 overflow-auto p-4">
                     {sessionList[activeSessionTab] && (() => {
                       const session = sessionList[activeSessionTab]
+                      // CRITICAL: Always get session data using the current active session's key
                       const sessionDataItem = sessionData[session.session_key]
                       const isLoadingSession = loadingSession[session.session_key]
+                      
+                      // Debug: Log which session we're displaying
+                      console.log('🎯 [MYCLASSES] Displaying session:', session.session_key, 'tab index:', activeSessionTab, 'has data:', !!sessionDataItem, 'loaded:', sessionDataItem?.loaded, 'available keys:', Object.keys(sessionData))
                       
                       const formatDate = (dateString) => {
                         if (!dateString) return 'N/A'
@@ -1902,15 +1917,26 @@ const MyClasses = () => {
                       }
                       
                       // Show session data (students from cache, attendance status from data)
-                      const { records, statusCounts } = sessionDataItem || {
-                        records: (cachedStudentsList || students || []).map(student => ({
+                      // IMPORTANT: Always use the session data for the CURRENT active session
+                      // If sessionDataItem exists, use it (even if loaded: false, it has the right students)
+                      // Only fallback to cached students if no sessionDataItem exists
+                      let records, statusCounts
+                      if (sessionDataItem) {
+                        // Use the session data for this specific session
+                        records = sessionDataItem.records || []
+                        statusCounts = sessionDataItem.statusCounts || {}
+                        console.log('📊 [MYCLASSES] Using session data for:', session.session_key, 'records:', records.length, 'loaded:', sessionDataItem.loaded)
+                      } else {
+                        // Fallback: show cached students with null status (will be updated when data loads)
+                        records = (cachedStudentsList || students || []).map(student => ({
                           ...student,
                           status: null,
                           remarks: null,
                           session_date: session.session_date,
                           title: session.title
-                        })),
-                        statusCounts: {}
+                        }))
+                        statusCounts = {}
+                        console.log('📋 [MYCLASSES] Using fallback cached students for:', session.session_key, 'records:', records.length)
                       }
                       
                       // Show loading indicator if attendance data is still loading
