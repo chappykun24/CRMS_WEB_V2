@@ -41,8 +41,14 @@ const MyClasses = () => {
   
   // Selected class and students
   const [selectedClass, setSelectedClass] = useState(null)
+  const selectedClassRef = useRef(null) // Ref to track selectedClass for closures
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedClassRef.current = selectedClass
+  }, [selectedClass])
 
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false)
@@ -474,7 +480,7 @@ const MyClasses = () => {
     } finally {
       setLoadingSession(prev => ({ ...prev, [sessionKey]: false }))
     }
-  }, [selectedClass, extractSurname, cachedStudentsList, students]) // Removed sessionData to avoid closure issues
+  }, [selectedClass, extractSurname, cachedStudentsList, students]) // selectedClass is required for API calls
 
   // Load full attendance list for the class - show modal immediately, load sessions progressively
   // Uses cached students from attendance mode for instant display
@@ -553,6 +559,12 @@ const MyClasses = () => {
     const session = sessionList[sessionIndex]
     if (!session) return
     
+    // Ensure we have selectedClass (closure-safe check)
+    if (!selectedClass) {
+      console.warn('⚠️ [MYCLASSES] No selected class in handleTabChange, cannot load session data')
+      return
+    }
+    
     // Get cached students list
     const studentsToUse = cachedStudentsList || students
     
@@ -595,19 +607,29 @@ const MyClasses = () => {
     })
     
     // Step 2: Always try to load attendance data asynchronously
-    // loadSessionData will check if already loaded/loading using ref
-    console.log('🔄 [MYCLASSES] Calling loadSessionData for session:', session.session_key, 'sessionId:', session.session_id)
-    loadSessionData(
-      session.session_key,
-      session.session_date,
-      session.title,
-      session.session_id,
-      session.session_type,
-      session.meeting_type
-    ).catch(error => {
-      console.error('❌ [MYCLASSES] Error loading session:', error)
-    })
-  }, [sessionList, loadSessionData, cachedStudentsList, students])
+    // Pass selectedClass explicitly to avoid closure issues
+    console.log('🔄 [MYCLASSES] Calling loadSessionData for session:', session.session_key, 'sessionId:', session.session_id, 'selectedClass:', selectedClass?.section_course_id)
+    
+    // Use a small delay to ensure state updates are processed, then load
+    setTimeout(() => {
+      // Double-check selectedClass is still available
+      if (!selectedClass) {
+        console.error('❌ [MYCLASSES] selectedClass became null, cannot load session data')
+        return
+      }
+      
+      loadSessionData(
+        session.session_key,
+        session.session_date,
+        session.title,
+        session.session_id,
+        session.session_type,
+        session.meeting_type
+      ).catch(error => {
+        console.error('❌ [MYCLASSES] Error loading session:', error)
+      })
+    }, 100) // Small delay to ensure state is stable
+  }, [sessionList, loadSessionData, cachedStudentsList, students, selectedClass])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
@@ -803,6 +825,36 @@ const MyClasses = () => {
       }
     }
   }, [selectedClass])
+
+  // Prevent body scroll when modal is open (prevents background shrinking)
+  useEffect(() => {
+    if (showFullAttendanceModal) {
+      // Save current scroll position
+      const scrollY = window.scrollY
+      // Get scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+      
+      // Apply styles to prevent scroll and maintain layout
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+      // Add padding to compensate for scrollbar
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`
+      }
+      
+      return () => {
+        // Restore scroll position and styles
+        document.body.style.position = ''
+        document.body.style.top = ''
+        document.body.style.width = ''
+        document.body.style.overflow = ''
+        document.body.style.paddingRight = ''
+        window.scrollTo(0, scrollY)
+      }
+    }
+  }, [showFullAttendanceModal])
 
   // Handle clicks outside sidebar to close it
   useEffect(() => {
