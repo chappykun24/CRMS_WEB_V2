@@ -50,6 +50,16 @@ const MyClasses = () => {
     selectedClassRef.current = selectedClass
   }, [selectedClass])
 
+  // Cache students list when attendance mode is enabled and students are loaded
+  // This ensures the students data is available for the full attendance list modal
+  useEffect(() => {
+    if (isAttendanceMode && students && students.length > 0 && !cachedStudentsList) {
+      console.log('💾 [MYCLASSES] Caching students list from attendance form:', students.length, 'students')
+      console.log('  Class:', selectedClass?.section_course_id, selectedClass?.course_title)
+      setCachedStudentsList(students)
+    }
+  }, [isAttendanceMode, students, cachedStudentsList, selectedClass])
+
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingClass, setEditingClass] = useState(null)
