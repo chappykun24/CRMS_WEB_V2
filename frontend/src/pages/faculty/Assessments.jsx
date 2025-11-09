@@ -833,7 +833,6 @@ const Assessments = () => {
               </div>
             </div>
             </div>
-
             )}
 
             {/* Grading Tab Content */}
@@ -1213,7 +1212,6 @@ const Assessments = () => {
             )}
           </div>
         </div>
-      </div>
 
       {/* Create Assessment Modal */}
       {showCreateModal && (
