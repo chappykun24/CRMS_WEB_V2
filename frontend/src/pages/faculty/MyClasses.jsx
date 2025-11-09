@@ -472,14 +472,47 @@ const MyClasses = () => {
     }
   }, [selectedClass, loadSessionList, loadSessionData, students, cachedStudentsList])
 
-  // Handle tab change - load session data if not already loaded (async, non-blocking)
+  // Handle tab change - show cached students immediately, load attendance data asynchronously
   const handleTabChange = useCallback(async (sessionIndex) => {
     setActiveSessionTab(sessionIndex)
     setImagesLoaded(false) // Reset image loading state
     
     const session = sessionList[sessionIndex]
-    if (session && !sessionData[session.session_key]) {
-      // Load this session's data asynchronously
+    if (!session) return
+    
+    // Get cached students list
+    const studentsToUse = cachedStudentsList || students
+    
+    // Step 1: Show cached students immediately (even if session data not loaded yet)
+    if (!sessionData[session.session_key] && studentsToUse && studentsToUse.length > 0) {
+      console.log('📋 [MYCLASSES] Showing cached students immediately for session:', session.session_key)
+      // Create session data with cached students (no attendance status yet)
+      setSessionData(prev => ({
+        ...prev,
+        [session.session_key]: {
+          records: studentsToUse.map(student => ({
+            ...student,
+            status: null, // Will be updated when attendance loads
+            remarks: null,
+            session_date: session.session_date,
+            title: session.title
+          })),
+          statusCounts: {},
+          loaded: false // Mark as not fully loaded yet
+        }
+      }))
+      // Enable images immediately since we have student data
+      setTimeout(() => {
+        setImagesLoaded(true)
+      }, 100)
+    } else if (sessionData[session.session_key]) {
+      // Session already loaded, enable images immediately
+      setImagesLoaded(true)
+      return // Already have full data, no need to reload
+    }
+    
+    // Step 2: Load attendance data asynchronously (if not already loaded)
+    if (!sessionData[session.session_key]?.loaded) {
       loadSessionData(
         session.session_key,
         session.session_date,
@@ -488,11 +521,8 @@ const MyClasses = () => {
       ).catch(error => {
         console.error('❌ [MYCLASSES] Error loading session:', error)
       })
-    } else if (session && sessionData[session.session_key]) {
-      // Session already loaded, enable images immediately
-      setImagesLoaded(true)
     }
-  }, [sessionList, sessionData, loadSessionData])
+  }, [sessionList, sessionData, loadSessionData, cachedStudentsList, students])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
@@ -1658,8 +1688,9 @@ const MyClasses = () => {
                         })
                       }
                       
-                      // Show skeleton if session is loading
-                      if (isLoadingSession || !sessionDataItem) {
+                      // Show cached students immediately, even if attendance data is still loading
+                      // Only show skeleton if we have no session data AND no cached students
+                      if (!sessionDataItem && (!cachedStudentsList || cachedStudentsList.length === 0)) {
                         return (
                           <div className="border border-gray-200 rounded-lg overflow-hidden">
                             {/* Session Header Skeleton */}
@@ -1709,8 +1740,21 @@ const MyClasses = () => {
                         )
                       }
                       
-                      // Show session data
-                      const { records, statusCounts } = sessionDataItem
+                      // Show session data (students from cache, attendance status from data)
+                      const { records, statusCounts } = sessionDataItem || {
+                        records: (cachedStudentsList || students || []).map(student => ({
+                          ...student,
+                          status: null,
+                          remarks: null,
+                          session_date: session.session_date,
+                          title: session.title
+                        })),
+                        statusCounts: {}
+                      }
+                      
+                      // Show loading indicator if attendance data is still loading
+                      // Also show loading if we have session data but it's marked as not fully loaded
+                      const isAttendanceLoading = isLoadingSession || (sessionDataItem && !sessionDataItem.loaded)
                       
                       return (
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1718,9 +1762,14 @@ const MyClasses = () => {
                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                             <div className="flex items-center justify-between">
                               <div>
-                                <h3 className="text-sm font-semibold text-gray-900">
-                                  {session.title}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-semibold text-gray-900">
+                                    {session.title}
+                                  </h3>
+                                  {isAttendanceLoading && (
+                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" title="Loading attendance data..."></div>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <p className="text-xs text-gray-500">
                                     {formatDate(session.session_date)} • {records.length} students
@@ -1740,25 +1789,36 @@ const MyClasses = () => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 text-xs">
-                                {statusCounts.present && (
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
-                                    {statusCounts.present} Present
-                                  </span>
-                                )}
-                                {statusCounts.absent && (
-                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
-                                    {statusCounts.absent} Absent
-                                  </span>
-                                )}
-                                {statusCounts.late && (
-                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                    {statusCounts.late} Late
-                                  </span>
-                                )}
-                                {statusCounts.excuse && (
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                    {statusCounts.excuse} Excuse
-                                  </span>
+                                {isAttendanceLoading ? (
+                                  // Show skeleton loaders for status badges
+                                  <>
+                                    <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                                    <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                                    <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                                  </>
+                                ) : (
+                                  <>
+                                    {statusCounts.present && (
+                                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                                        {statusCounts.present} Present
+                                      </span>
+                                    )}
+                                    {statusCounts.absent && (
+                                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
+                                        {statusCounts.absent} Absent
+                                      </span>
+                                    )}
+                                    {statusCounts.late && (
+                                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                        {statusCounts.late} Late
+                                      </span>
+                                    )}
+                                    {statusCounts.excuse && (
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                        {statusCounts.excuse} Excuse
+                                      </span>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1800,20 +1860,27 @@ const MyClasses = () => {
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full whitespace-nowrap ${
-                                        statusColors[record.status] || 'bg-gray-100 text-gray-800'
-                                      }`}>
-                                        {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'N/A'}
-                                      </span>
-                                      {record.remarks && (
-                                        <span 
-                                          className="text-xs text-gray-400 cursor-help flex-shrink-0" 
-                                          title={record.remarks}
-                                        >
-                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                          </svg>
-                                        </span>
+                                      {record.status ? (
+                                        <>
+                                          <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full whitespace-nowrap ${
+                                            statusColors[record.status] || 'bg-gray-100 text-gray-800'
+                                          }`}>
+                                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                          </span>
+                                          {record.remarks && (
+                                            <span 
+                                              className="text-xs text-gray-400 cursor-help flex-shrink-0" 
+                                              title={record.remarks}
+                                            >
+                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                              </svg>
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        // Show skeleton loader for status badge when attendance is loading
+                                        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" title="Loading attendance..."></div>
                                       )}
                                     </div>
                                   </div>
