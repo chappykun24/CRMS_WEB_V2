@@ -72,6 +72,7 @@ const MyClasses = () => {
   const [loadingSession, setLoadingSession] = useState({}) // Track which sessions are loading
   const [activeSessionTab, setActiveSessionTab] = useState(0)
   const [imagesLoaded, setImagesLoaded] = useState(false) // Track if images should start loading
+  const [cachedStudentsList, setCachedStudentsList] = useState(null) // Cached students from attendance mode
 
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
@@ -271,7 +272,7 @@ const MyClasses = () => {
     }
   }, [selectedClass])
 
-  // Load attendance data for a specific session - async, loads student data first, then images
+  // Load attendance data for a specific session - async, uses cached students, then fetches attendance
   const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId) => {
     if (!selectedClass || sessionData[sessionKey]) {
       // Already loaded
@@ -282,7 +283,38 @@ const MyClasses = () => {
       setLoadingSession(prev => ({ ...prev, [sessionKey]: true }))
       console.log('🔍 [MYCLASSES] Loading session data:', sessionKey)
       
-      // Step 1: Fetch attendance for this specific session/date (filters server-side)
+      // Step 1: Use cached students list if available (from attendance mode)
+      let studentsList = cachedStudentsList || students
+      
+      // If no cached students, fetch them (fallback)
+      if (!studentsList || studentsList.length === 0) {
+        console.log('⚠️ [MYCLASSES] No cached students, fetching...')
+        try {
+          const studentsResponse = await fetch(`/api/section-courses/${selectedClass.section_course_id}/students`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          })
+          if (studentsResponse.ok) {
+            const studentsData = await studentsResponse.json()
+            studentsList = Array.isArray(studentsData) ? studentsData : []
+            // Sort by last name
+            studentsList.sort((a, b) => {
+              const lastNameA = extractSurname(a.full_name)
+              const lastNameB = extractSurname(b.full_name)
+              if (lastNameA !== lastNameB) {
+                return lastNameA.localeCompare(lastNameB)
+              }
+              return a.full_name.localeCompare(b.full_name)
+            })
+            setCachedStudentsList(studentsList)
+          }
+        } catch (err) {
+          console.error('❌ [MYCLASSES] Error fetching students:', err)
+        }
+      }
+      
+      // Step 2: Fetch attendance for this specific session/date (filters server-side)
       const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -295,29 +327,50 @@ const MyClasses = () => {
       
       const result = await response.json()
       
-      // Filter records for this session (matching date and title)
-      let sessionRecords = result.data.filter(record => 
-        record.session_date === sessionDate && 
-        (record.title || 'Untitled') === (sessionTitle || 'Untitled')
-      )
+      // Step 3: Create a map of attendance records by enrollment_id for quick lookup
+      const attendanceMap = new Map()
+      result.data
+        .filter(record => 
+          record.session_date === sessionDate && 
+          (record.title || 'Untitled') === (sessionTitle || 'Untitled')
+        )
+        .forEach(record => {
+          attendanceMap.set(record.enrollment_id, record)
+        })
       
-      // Step 2: Sort students alphabetically by last name (client-side processing)
-      sessionRecords.sort((a, b) => {
-        const lastNameA = extractSurname(a.full_name)
-        const lastNameB = extractSurname(b.full_name)
-        if (lastNameA !== lastNameB) {
-          return lastNameA.localeCompare(lastNameB)
+      // Step 4: Merge cached students with attendance data
+      const sessionRecords = studentsList.map(student => {
+        const attendanceRecord = attendanceMap.get(student.enrollment_id)
+        if (attendanceRecord) {
+          // Student has attendance record - use attendance data
+          return {
+            ...student,
+            status: attendanceRecord.status,
+            remarks: attendanceRecord.remarks || null,
+            session_date: attendanceRecord.session_date,
+            title: attendanceRecord.title
+          }
+        } else {
+          // Student has no attendance record - mark as absent or null
+          return {
+            ...student,
+            status: null, // or 'absent' if you want to default
+            remarks: null,
+            session_date: sessionDate,
+            title: sessionTitle
+          }
         }
-        return a.full_name.localeCompare(b.full_name)
       })
       
-      // Step 3: Calculate status counts
+      // Step 5: Calculate status counts
       const statusCounts = sessionRecords.reduce((acc, record) => {
-        acc[record.status] = (acc[record.status] || 0) + 1
+        if (record.status) {
+          acc[record.status] = (acc[record.status] || 0) + 1
+        }
         return acc
       }, {})
       
-      // Step 4: Store session data (photos included but loading deferred)
+      // Step 6: Store session data (photos included but loading deferred)
       setSessionData(prev => ({
         ...prev,
         [sessionKey]: {
@@ -329,7 +382,7 @@ const MyClasses = () => {
       
       console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
       
-      // Step 5: Enable image loading after a delay (non-blocking)
+      // Step 7: Enable image loading after a delay (non-blocking)
       // This allows UI to render student names and status immediately
       // Images will load lazily via ImageSkeleton component based on imagesLoaded state
       setTimeout(() => {
@@ -350,11 +403,18 @@ const MyClasses = () => {
     } finally {
       setLoadingSession(prev => ({ ...prev, [sessionKey]: false }))
     }
-  }, [selectedClass, sessionData, extractSurname])
+  }, [selectedClass, sessionData, extractSurname, cachedStudentsList, students])
 
   // Load full attendance list for the class - show modal immediately, load sessions progressively
+  // Uses cached students from attendance mode for instant display
   const loadFullAttendanceList = useCallback(async () => {
     if (!selectedClass) return
+    
+    // Step 0: Cache students list if available (from attendance mode)
+    if (students && students.length > 0 && !cachedStudentsList) {
+      console.log('💾 [MYCLASSES] Caching students list from attendance mode:', students.length, 'students')
+      setCachedStudentsList(students)
+    }
     
     // Show modal immediately with skeleton loading
     setShowFullAttendanceModal(true)
@@ -370,7 +430,28 @@ const MyClasses = () => {
       setSessionList(sessions)
       setLoadingFullAttendance(false)
       
-      // Step 2: Load first session (latest) immediately asynchronously
+      // Step 2: If we have cached students, show them immediately (even without attendance data yet)
+      const studentsToUse = cachedStudentsList || students
+      if (studentsToUse && studentsToUse.length > 0 && sessions.length > 0) {
+        const firstSession = sessions[0]
+        // Create initial session data with students (no attendance yet - will be fetched)
+        setSessionData(prev => ({
+          ...prev,
+          [firstSession.session_key]: {
+            records: studentsToUse.map(student => ({
+              ...student,
+              status: null, // Will be updated when attendance loads
+              remarks: null,
+              session_date: firstSession.session_date,
+              title: firstSession.title
+            })),
+            statusCounts: {},
+            loaded: false // Mark as not fully loaded yet
+          }
+        }))
+      }
+      
+      // Step 3: Load first session (latest) attendance data immediately asynchronously
       if (sessions.length > 0) {
         const firstSession = sessions[0]
         // Load asynchronously without blocking
@@ -389,7 +470,7 @@ const MyClasses = () => {
       setShowFullAttendanceModal(false)
       setLoadingFullAttendance(false)
     }
-  }, [selectedClass, loadSessionList, loadSessionData])
+  }, [selectedClass, loadSessionList, loadSessionData, students, cachedStudentsList])
 
   // Handle tab change - load session data if not already loaded (async, non-blocking)
   const handleTabChange = useCallback(async (sessionIndex) => {
@@ -953,7 +1034,14 @@ const MyClasses = () => {
                           await handleClassSelect(cls)
                         }
                         // Then toggle attendance mode
-                        setIsAttendanceMode(!isAttendanceMode)
+                        const newAttendanceMode = !isAttendanceMode
+                        setIsAttendanceMode(newAttendanceMode)
+                        
+                        // Cache students list when entering attendance mode
+                        if (newAttendanceMode && students && students.length > 0) {
+                          console.log('💾 [MYCLASSES] Caching students list for full view:', students.length, 'students')
+                          setCachedStudentsList(students)
+                        }
                       } finally {
                         setTogglingAttendance(false)
                       }
