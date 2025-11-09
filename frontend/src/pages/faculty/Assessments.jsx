@@ -1214,6 +1214,7 @@ const Assessments = () => {
             )}
           </div>
         </div>
+      </div>
 
       {/* Create Assessment Modal */}
       {showCreateModal && (
