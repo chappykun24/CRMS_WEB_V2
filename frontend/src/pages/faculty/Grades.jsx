@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
-import { ImageSkeleton } from '../../components/skeletons'
+import LazyImage from '../../components/LazyImage'
+import imageLoaderService from '../../services/imageLoaderService'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -17,6 +18,7 @@ const Grades = () => {
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
+  const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -75,9 +77,23 @@ const Grades = () => {
     const cachedGrades = safeGetItem(gradesCacheKey)
     const cachedScores = safeGetItem(scoresCacheKey)
     
+    // Reset images ready state when class changes
+    setImagesReady(false)
+    
     // Show cached data immediately if available
     if (cachedStudents) {
-      setStudents(Array.isArray(cachedStudents) ? cachedStudents : [])
+      const studentsList = Array.isArray(cachedStudents) ? cachedStudents : []
+      setStudents(studentsList)
+      // Load images for cached students after a delay
+      setTimeout(() => {
+        const imagesToLoad = studentsList
+          .filter(s => s.student_photo)
+          .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
+        if (imagesToLoad.length > 0) {
+          imageLoaderService.queueImages(imagesToLoad)
+        }
+        setImagesReady(true)
+      }, 100) // Shorter delay for cached data
     }
     
     if (cachedGrades) {
@@ -110,13 +126,23 @@ const Grades = () => {
         fetch(`/api/grading/class/${sectionCourseId}/assessment-scores`)
       ])
       
-      // Process students
+      // Process students - Load essential data first, images later
       if (studentsResponse.ok) {
         const studentsData = await studentsResponse.json()
         const studentsList = Array.isArray(studentsData) ? studentsData : []
         setStudents(studentsList)
         // Cache minimized data for next time (excludes photos)
         safeSetItem(studentsCacheKey, studentsList, minimizeStudentData)
+        
+        // Load images asynchronously after essential data is displayed
+        // Delay image loading to prioritize text data
+        setTimeout(() => {
+          const imagesToLoad = studentsList
+            .filter(s => s.student_photo)
+            .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
+          imageLoaderService.queueImages(imagesToLoad)
+          setImagesReady(true) // Enable image loading in UI
+        }, 300) // 300ms delay to show text first
       } else {
         console.error('Failed to load students')
         if (showLoading) setStudents([])
@@ -359,12 +385,14 @@ const Grades = () => {
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-10 border-r border-gray-100">
                                     <div className="flex items-center space-x-3">
-                                      <ImageSkeleton
-                                  src={student.student_photo} 
-                                  alt={student.full_name}
+                                      <LazyImage
+                                        src={student.student_photo} 
+                                        alt={student.full_name}
                                         size="md"
                                         shape="circle"
                                         className="border border-gray-200"
+                                        delayLoad={!imagesReady}
+                                        priority={false}
                                       />
                                       <div className="min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">

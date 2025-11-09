@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
-import { ImageSkeleton } from '../../components/skeletons'
+import LazyImage from '../../components/LazyImage'
+import imageLoaderService from '../../services/imageLoaderService'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -40,6 +41,7 @@ const Assessments = () => {
   const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [gradingLoading, setGradingLoading] = useState(false)
+  const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -391,9 +393,22 @@ const Assessments = () => {
     const gradesCacheKey = `assessment_grades_${assessmentId}`
     const cached = safeGetItem(gradesCacheKey)
     
+    // Reset images ready state when assessment changes
+    setImagesReady(false)
+    
     // Show cached data immediately if available
     if (cached) {
       setGrades(cached)
+      // Load images for cached grades after a delay
+      setTimeout(() => {
+        const imagesToLoad = Object.values(cached)
+          .filter(g => g.student_photo)
+          .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${idx}` }))
+        if (imagesToLoad.length > 0) {
+          imageLoaderService.queueImages(imagesToLoad)
+        }
+        setImagesReady(true)
+      }, 100)
     }
     
     try {
@@ -417,6 +432,15 @@ const Assessments = () => {
           }
         })
         setGrades(gradesMap)
+        
+        // Load images asynchronously after essential data is displayed
+        setTimeout(() => {
+          const imagesToLoad = data
+            .filter(g => g.student_photo)
+            .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id}` }))
+          imageLoaderService.queueImages(imagesToLoad)
+          setImagesReady(true) // Enable image loading in UI
+        }, 300) // 300ms delay to show text first
         // Cache for next time (grades are small)
         safeSetItem(gradesCacheKey, gradesMap)
       } else {
@@ -884,12 +908,14 @@ const Assessments = () => {
                               {Object.entries(grades).map(([enrollmentId, gradeData]) => (
                                 <li key={enrollmentId} className="flex items-center px-6 py-3 hover:bg-gray-50">
                                   <div className="w-48 flex-shrink-0 flex items-center space-x-3">
-                                    <ImageSkeleton
-                                          src={gradeData.student_photo} 
+                                    <LazyImage
+                                      src={gradeData.student_photo} 
                                       alt={gradeData.student_name || 'Student'}
                                       size="md"
                                       shape="circle"
                                       className="border border-gray-200"
+                                      delayLoad={!imagesReady}
+                                      priority={false}
                                     />
                                     <div className="flex-1">
                                       <div className="text-sm font-medium text-gray-900">{formatName(gradeData.student_name) || 'Student'}</div>

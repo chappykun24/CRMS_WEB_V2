@@ -8,7 +8,9 @@ import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '.
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 
 import ClassCard from '../../components/ClassCard'
-import { CardGridSkeleton, StudentListSkeleton, ImageSkeleton } from '../../components/skeletons'
+import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
+import LazyImage from '../../components/LazyImage'
+import imageLoaderService from '../../services/imageLoaderService'
 
 const MyClasses = () => {
   const { user } = useAuth()
@@ -526,11 +528,16 @@ const MyClasses = () => {
       
       console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
       
-      // Step 7: Enable image loading after a delay (non-blocking)
-      // This allows UI to render student names and status immediately
-      // Images will load lazily via ImageSkeleton component based on imagesLoaded state
+      // Step 7: Load images asynchronously after essential data is displayed
+      // Queue images for batch loading, then enable image loading in UI
       setTimeout(() => {
-        setImagesLoaded(true)
+        const imagesToLoad = sessionRecords
+          .filter(r => r.student_photo)
+          .map(r => ({ src: r.student_photo, id: `attendance_${sessionKey}_${r.student_id}` }))
+        if (imagesToLoad.length > 0) {
+          imageLoaderService.queueImages(imagesToLoad)
+        }
+        setImagesLoaded(true) // Enable image loading in UI after queueing
       }, 300) // Delay to prioritize text content rendering
       
     } catch (error) {
@@ -1290,6 +1297,17 @@ const MyClasses = () => {
         timestamp: Date.now()
       })
       
+      // Load images asynchronously after essential data is displayed
+      setTimeout(() => {
+        const imagesToLoad = sortedStudents
+          .filter(s => s.student_photo)
+          .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
+        if (imagesToLoad.length > 0) {
+          imageLoaderService.queueImages(imagesToLoad)
+        }
+        setImagesLoaded(true) // Enable image loading in UI
+      }, 300) // Delay to show text first
+      
     } catch (error) {
       console.error('Error fetching students:', error)
       if (!sessionCached && !cachedStudents) {
@@ -1584,12 +1602,14 @@ const MyClasses = () => {
                           </span>
                         </div>
                         <div className="flex-shrink-0">
-                          <ImageSkeleton
-                              src={student.student_photo} 
-                              alt={student.full_name}
+                          <LazyImage
+                            src={student.student_photo} 
+                            alt={student.full_name}
                             size="md"
                             shape="circle"
                             className="border border-gray-200"
+                            delayLoad={!imagesLoaded}
+                            priority={false}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -2207,12 +2227,14 @@ const MyClasses = () => {
                                   >
                                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                       <div className="flex-shrink-0">
-                                        <ImageSkeleton
-                                          src={imagesLoaded && record.student_photo ? record.student_photo : null}
+                                        <LazyImage
+                                          src={record.student_photo || null}
                                           alt={record.full_name}
                                           size="xs"
                                           shape="circle"
                                           className="border border-gray-200"
+                                          delayLoad={!imagesLoaded}
+                                          priority={false}
                                         />
                                       </div>
                                       <div className="flex-1 min-w-0">
