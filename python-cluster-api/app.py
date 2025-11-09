@@ -41,8 +41,24 @@ def cluster_records(records):
                 df['submission_rate'] = (1 - (df['average_days_late'].fillna(3) / 10).clip(0, 1)).fillna(0.8)
         # If max_rate <= 1, values are already in decimal form (0-1), use as-is
     
+    # Use average_submission_status_score if available, otherwise fall back to average_days_late
+    # submission_status_score: ontime=0, late=1, missing=2 (lower is better)
+    if 'average_submission_status_score' in df.columns:
+        # Use the new submission status score (preferred)
+        submission_timeliness_col = 'average_submission_status_score'
+        print('✅ [Python API] Using average_submission_status_score for clustering')
+    else:
+        # Fall back to average_days_late for backward compatibility
+        submission_timeliness_col = 'average_days_late'
+        print('⚠️ [Python API] Using average_days_late (legacy) for clustering')
+        # Normalize average_days_late to 0-2 scale to match submission_status_score
+        # Assume max 10 days late = 2.0 (equivalent to missing)
+        if 'average_days_late' in df.columns:
+            df['average_submission_status_score'] = (df['average_days_late'].fillna(3) / 5).clip(0, 2)
+            submission_timeliness_col = 'average_submission_status_score'
+    
     # Core behavior features: attendance, grades, submission timeliness, submission rate
-    features = ['attendance_percentage', 'average_score', 'average_days_late', 'submission_rate']
+    features = ['attendance_percentage', 'average_score', submission_timeliness_col, 'submission_rate']
     
     # Ensure numeric types
     for col in features:
@@ -51,11 +67,17 @@ def cluster_records(records):
     # Fill missing submission_rate with reasonable defaults based on other behavior
     if df['submission_rate'].isna().any():
         mask = df['submission_rate'].isna()
-        # Estimate submission rate from attendance and days late
-        # Higher attendance + lower days late = higher submission rate
+        # Estimate submission rate from attendance and submission status
+        # Higher attendance + better submission status (lower score) = higher submission rate
+        if submission_timeliness_col in df.columns:
+            # Convert submission_status_score (0-2) to a rate factor (0-1), where 0=best, 2=worst
+            timeliness_factor = 1 - (df.loc[mask, submission_timeliness_col].fillna(2) / 2).clip(0, 1)
+        else:
+            timeliness_factor = (1 - (df.loc[mask, 'average_days_late'].fillna(3) / 10).clip(0, 1))
+        
         estimated_rate = (
             (df.loc[mask, 'attendance_percentage'].fillna(75) / 100) * 0.7 +  # 70% weight on attendance
-            (1 - (df.loc[mask, 'average_days_late'].fillna(3) / 10).clip(0, 1)) * 0.3  # 30% weight on timeliness
+            timeliness_factor * 0.3  # 30% weight on timeliness
         ).clip(0.5, 1.0)  # Ensure between 50% and 100%
         df.loc[mask, 'submission_rate'] = estimated_rate.fillna(0.8)
 
@@ -71,7 +93,7 @@ def cluster_records(records):
     # These defaults are more realistic and prevent all students from clustering together
     df_clean['attendance_percentage'] = df_clean['attendance_percentage'].fillna(75.0)  # Default to 75% (typical attendance)
     df_clean['average_score'] = df_clean['average_score'].fillna(50.0)  # Default to 50 (average score, NOT 0!)
-    df_clean['average_days_late'] = df_clean['average_days_late'].fillna(3.0)  # Default to 3 days (typical delay)
+    df_clean[submission_timeliness_col] = df_clean[submission_timeliness_col].fillna(1.0)  # Default to 1.0 (between ontime and late)
     df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)  # Default to 80% (typical submission rate)
     
     if len(df_clean) == 0:
@@ -83,13 +105,13 @@ def cluster_records(records):
     # Check data variation to detect potential issues before clustering
     attendance_range = df_clean['attendance_percentage'].max() - df_clean['attendance_percentage'].min()
     score_range = df_clean['average_score'].max() - df_clean['average_score'].min()
-    days_late_range = df_clean['average_days_late'].max() - df_clean['average_days_late'].min()
+    timeliness_range = df_clean[submission_timeliness_col].max() - df_clean[submission_timeliness_col].min()
     submission_range = df_clean['submission_rate'].max() - df_clean['submission_rate'].min()
     
     print(f'📊 [Python API] Data variation check:')
     print(f'  Attendance range: {attendance_range:.2f}%')
     print(f'  Score range: {score_range:.2f}')
-    print(f'  Days late range: {days_late_range:.2f}')
+    print(f'  Submission status score range: {timeliness_range:.2f} (0=ontime, 1=late, 2=missing)')
     print(f'  Submission rate range: {submission_range:.2f}')
     
     # Warn if variation is too low (may cause clustering issues)
@@ -97,8 +119,8 @@ def cluster_records(records):
         print(f'⚠️ WARNING: Low attendance variation ({attendance_range:.2f}%). Clustering may not distinguish students well.')
     if score_range < 10:
         print(f'⚠️ WARNING: Low score variation ({score_range:.2f}). Clustering may not distinguish students well.')
-    if days_late_range < 1:
-        print(f'⚠️ WARNING: Low days late variation ({days_late_range:.2f}). Clustering may not distinguish students well.')
+    if timeliness_range < 0.5:
+        print(f'⚠️ WARNING: Low submission status score variation ({timeliness_range:.2f}). Clustering may not distinguish students well.')
 
     n_clusters_requested = 4  # More clusters for better behavior differentiation
     n_clusters = min(n_clusters_requested, len(df_clean))

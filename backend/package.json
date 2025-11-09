@@ -9,7 +9,9 @@
     "dev": "nodemon server.js",
     "build": "echo 'No build step required'",
     "test": "echo 'No tests specified'",
-    "create-assessments": "node scripts/create-assessments.js"
+    "create-assessments": "node scripts/create-assessments.js",
+    "migrate": "node scripts/run_migration.js",
+    "migrate:dry-run": "node scripts/run_migration.js --dry-run"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

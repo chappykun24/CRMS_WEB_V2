@@ -41,15 +41,15 @@ const checkStudentDataQuality = async () => {
         MIN(average_score) as min_score,
         MAX(average_score) as max_score,
         AVG(average_score) as avg_score,
-        MIN(average_days_late) as min_days_late,
-        MAX(average_days_late) as max_days_late,
-        AVG(average_days_late) as avg_days_late,
+        MIN(average_submission_status_score) as min_status_score,
+        MAX(average_submission_status_score) as max_status_score,
+        AVG(average_submission_status_score) as avg_status_score,
         MIN(submission_rate) as min_submission_rate,
         MAX(submission_rate) as max_submission_rate,
         AVG(submission_rate) as avg_submission_rate,
         COUNT(CASE WHEN attendance_percentage IS NULL THEN 1 END) as null_attendance,
         COUNT(CASE WHEN average_score IS NULL THEN 1 END) as null_scores,
-        COUNT(CASE WHEN average_days_late IS NULL THEN 1 END) as null_days_late,
+        COUNT(CASE WHEN average_submission_status_score IS NULL THEN 1 END) as null_status_score,
         COUNT(CASE WHEN submission_rate IS NULL THEN 1 END) as null_submission_rate
       FROM (
         SELECT 
@@ -71,15 +71,21 @@ const checkStudentDataQuality = async () => {
             50.0
           ) as average_score,
           COALESCE(
-            (SELECT AVG(EXTRACT(EPOCH FROM (sub.submitted_at - a.due_date)) / 86400.0)
+            (SELECT AVG(
+              CASE 
+                WHEN COALESCE(sub.submission_status, 'missing') = 'ontime' THEN 0
+                WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN 1
+                WHEN COALESCE(sub.submission_status, 'missing') = 'missing' THEN 2
+                ELSE 2
+              END
+            )
              FROM submissions sub
              JOIN assessments a ON sub.assessment_id = a.assessment_id
              JOIN course_enrollments ce ON sub.enrollment_id = ce.enrollment_id
              WHERE ce.student_id = s.student_id
-               AND sub.submitted_at > a.due_date
              GROUP BY ce.student_id),
-            3.0
-          ) as average_days_late,
+            1.0
+          ) as average_submission_status_score,
           COALESCE(
             (SELECT COUNT(*) * 100.0 / NULLIF(COUNT(DISTINCT a.assessment_id), 0)
              FROM submissions sub
@@ -103,12 +109,12 @@ const checkStudentDataQuality = async () => {
     console.log(`  Unique Score Values: ${stats.unique_scores}`);
     console.log(`\n  Attendance Range: ${stats.min_attendance} - ${stats.max_attendance} (avg: ${stats.avg_attendance})`);
     console.log(`  Score Range: ${stats.min_score} - ${stats.max_score} (avg: ${stats.avg_score})`);
-    console.log(`  Days Late Range: ${stats.min_days_late} - ${stats.max_days_late} (avg: ${stats.avg_days_late})`);
+    console.log(`  Submission Status Score Range: ${stats.min_status_score} - ${stats.max_status_score} (avg: ${stats.avg_status_score}) (0=ontime, 1=late, 2=missing)`);
     console.log(`  Submission Rate Range: ${stats.min_submission_rate} - ${stats.max_submission_rate} (avg: ${stats.avg_submission_rate})`);
     console.log(`\n  Null Values:`);
     console.log(`    Attendance: ${stats.null_attendance}`);
     console.log(`    Scores: ${stats.null_scores}`);
-    console.log(`    Days Late: ${stats.null_days_late}`);
+    console.log(`    Status Score: ${stats.null_status_score}`);
     console.log(`    Submission Rate: ${stats.null_submission_rate}`);
     
     // Check for data variation issues
@@ -146,7 +152,7 @@ const checkClusterDistribution = async (termId = null) => {
           COUNT(*) as student_count,
           ROUND(AVG((ac.based_on->>'attendance')::numeric), 2) as avg_attendance,
           ROUND(AVG((ac.based_on->>'score')::numeric), 2) as avg_score,
-          ROUND(AVG((ac.based_on->>'average_days_late')::numeric), 2) as avg_days_late,
+          ROUND(AVG((ac.based_on->>'average_submission_status_score')::numeric), 2) as avg_status_score,
           ROUND(AVG((ac.based_on->>'submission_rate')::numeric), 2) as avg_submission_rate,
           MIN(ac.generated_at) as first_generated,
           MAX(ac.generated_at) as last_generated
@@ -170,7 +176,7 @@ const checkClusterDistribution = async (termId = null) => {
           COUNT(*) as student_count,
           ROUND(AVG((ac.based_on->>'attendance')::numeric), 2) as avg_attendance,
           ROUND(AVG((ac.based_on->>'score')::numeric), 2) as avg_score,
-          ROUND(AVG((ac.based_on->>'average_days_late')::numeric), 2) as avg_days_late,
+          ROUND(AVG((ac.based_on->>'average_submission_status_score')::numeric), 2) as avg_status_score,
           ROUND(AVG((ac.based_on->>'submission_rate')::numeric), 2) as avg_submission_rate,
           MIN(ac.generated_at) as first_generated,
           MAX(ac.generated_at) as last_generated
@@ -204,7 +210,7 @@ const checkClusterDistribution = async (termId = null) => {
       console.log(`  Student Count: ${row.student_count}`);
       console.log(`  Avg Attendance: ${row.avg_attendance}%`);
       console.log(`  Avg Score: ${row.avg_score}`);
-      console.log(`  Avg Days Late: ${row.avg_days_late}`);
+      console.log(`  Avg Status Score: ${row.avg_status_score} (0=ontime, 1=late, 2=missing)`);
       console.log(`  Avg Submission Rate: ${row.avg_submission_rate}%`);
       console.log(`  Generated: ${row.first_generated} to ${row.last_generated}`);
     });
@@ -251,21 +257,21 @@ const testClusteringAPI = async () => {
         student_id: 999999,
         attendance_percentage: 95,
         average_score: 85,
-        average_days_late: 0,
+        average_submission_status_score: 0,
         submission_rate: 100
       },
       {
         student_id: 999998,
         attendance_percentage: 50,
         average_score: 30,
-        average_days_late: 10,
+        average_submission_status_score: 2,
         submission_rate: 60
       },
       {
         student_id: 999997,
         attendance_percentage: 75,
         average_score: 40,
-        average_days_late: 3,
+        average_submission_status_score: 1,
         submission_rate: 80
       }
     ];
@@ -289,7 +295,7 @@ const testClusteringAPI = async () => {
       console.log(`\nStudent ${student.student_id}:`);
       console.log(`  Attendance: ${student.attendance_percentage}%`);
       console.log(`  Score: ${student.average_score}`);
-      console.log(`  Days Late: ${student.average_days_late}`);
+      console.log(`  Status Score: ${student.average_submission_status_score} (0=ontime, 1=late, 2=missing)`);
       console.log(`  Submission Rate: ${student.submission_rate}%`);
       console.log(`  Cluster: ${clusterInfo?.cluster_label || 'Not Clustered'}`);
       console.log(`  Cluster Number: ${clusterInfo?.cluster ?? 'N/A'}`);

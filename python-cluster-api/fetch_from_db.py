@@ -90,23 +90,30 @@ def fetch_student_data(limit: int = 200) -> List[Dict]:
           ),
           0
         )::NUMERIC AS average_score,
-        -- Average days late: average of days late for submissions that were actually late
+        -- Average submission status score: converts ontime=0, late=1, missing=2 to numerical average
+        -- This replaces average_days_late for clustering purposes
         COALESCE(
           (
-            SELECT ROUND(AVG(days_late)::NUMERIC, 2)
-            FROM (
-              SELECT EXTRACT(DAY FROM (sub.submitted_at - ass.due_date))::NUMERIC AS days_late
-              FROM course_enrollments ce_late
-              INNER JOIN submissions sub ON ce_late.enrollment_id = sub.enrollment_id
-              INNER JOIN assessments ass ON sub.assessment_id = ass.assessment_id
-              WHERE ce_late.student_id = s.student_id
-                AND sub.submitted_at IS NOT NULL
-                AND ass.due_date IS NOT NULL
-                AND sub.submitted_at > ass.due_date
-            ) late_submissions
+            SELECT ROUND(AVG(
+              CASE 
+                WHEN COALESCE(sub.submission_status, 'missing') = 'ontime' THEN 0
+                WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN 1
+                WHEN COALESCE(sub.submission_status, 'missing') = 'missing' THEN 2
+                ELSE 2
+              END
+            )::NUMERIC, 2)
+            FROM course_enrollments ce_status
+            INNER JOIN section_courses sc_status ON ce_status.section_course_id = sc_status.section_course_id
+            INNER JOIN assessments ass ON sc_status.section_course_id = ass.section_course_id
+            LEFT JOIN submissions sub ON (
+              ce_status.enrollment_id = sub.enrollment_id 
+              AND sub.assessment_id = ass.assessment_id
+            )
+            WHERE ce_status.student_id = s.student_id
+              AND ce_status.status = 'enrolled'
           ),
-          0
-        )::NUMERIC AS average_days_late,
+          2
+        )::NUMERIC AS average_submission_status_score,
         -- Submission rate: distinct submissions / distinct assessments for this student
         COALESCE(
           (

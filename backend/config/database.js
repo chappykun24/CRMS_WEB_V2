@@ -20,7 +20,7 @@ const dbConfig = {
   user: process.env.NEON_USER || process.env.DB_USER || 'postgres',
   password: process.env.NEON_PASSWORD || process.env.DB_PASSWORD || 'password',
   port: parseInt(process.env.NEON_PORT || process.env.DB_PORT || '5432'),
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: (process.env.NODE_ENV === 'production' || process.env.NEON_HOST) ? { rejectUnauthorized: false } : false,
   // Optimized connection pool settings for Neon
   max: 5, // Further reduced max connections for Neon compatibility
   min: 1, // Reduced minimum connections

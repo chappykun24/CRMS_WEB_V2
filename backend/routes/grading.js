@@ -23,7 +23,11 @@ router.post('/submit-grades', async (req, res) => {
       const results = [];
       
       for (const grade of grades) {
-        const { enrollment_id, raw_score, late_penalty = 0, feedback = '', graded_by } = grade;
+        const { enrollment_id, raw_score, late_penalty = 0, feedback = '', graded_by, submission_status = 'missing' } = grade;
+        
+        // Validate submission_status
+        const validStatuses = ['ontime', 'late', 'missing'];
+        const finalStatus = validStatuses.includes(submission_status) ? submission_status : 'missing';
         
         // Calculate adjusted score
         const adjusted_score = Math.max(0, raw_score - late_penalty);
@@ -45,14 +49,15 @@ router.post('/submit-grades', async (req, res) => {
               graded_at = CURRENT_TIMESTAMP,
               graded_by = $5,
               status = 'graded',
-              remarks = $6
-            WHERE enrollment_id = $7 AND assessment_id = $8
-            RETURNING submission_id, total_score, adjusted_score
+              submission_status = $6,
+              remarks = $7
+            WHERE enrollment_id = $8 AND assessment_id = $9
+            RETURNING submission_id, total_score, adjusted_score, submission_status
           `;
           
           const updateResult = await client.query(updateQuery, [
             adjusted_score, raw_score, adjusted_score, late_penalty, 
-            graded_by, feedback, enrollment_id, assessment_id
+            graded_by, finalStatus, feedback, enrollment_id, assessment_id
           ]);
           
           results.push({
@@ -60,6 +65,7 @@ router.post('/submit-grades', async (req, res) => {
             submission_id: updateResult.rows[0].submission_id,
             total_score: updateResult.rows[0].total_score,
             adjusted_score: updateResult.rows[0].adjusted_score,
+            submission_status: updateResult.rows[0].submission_status,
             action: 'updated'
           });
         } else {
@@ -67,14 +73,14 @@ router.post('/submit-grades', async (req, res) => {
           const insertQuery = `
             INSERT INTO submissions (
               enrollment_id, assessment_id, total_score, raw_score, 
-              adjusted_score, late_penalty, graded_by, status, remarks
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'graded', $8)
-            RETURNING submission_id, total_score, adjusted_score
+              adjusted_score, late_penalty, graded_by, status, submission_status, remarks
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'graded', $8, $9)
+            RETURNING submission_id, total_score, adjusted_score, submission_status
           `;
           
           const insertResult = await client.query(insertQuery, [
             enrollment_id, assessment_id, adjusted_score, raw_score, 
-            adjusted_score, late_penalty, graded_by, feedback
+            adjusted_score, late_penalty, graded_by, finalStatus, feedback
           ]);
           
           results.push({
@@ -82,6 +88,7 @@ router.post('/submit-grades', async (req, res) => {
             submission_id: insertResult.rows[0].submission_id,
             total_score: insertResult.rows[0].total_score,
             adjusted_score: insertResult.rows[0].adjusted_score,
+            submission_status: insertResult.rows[0].submission_status,
             action: 'created'
           });
         }
@@ -120,11 +127,12 @@ router.get('/assessment/:id/grades', async (req, res) => {
         sub.raw_score,
         sub.adjusted_score,
         sub.late_penalty,
-        sub.status as submission_status,
-        sub.submitted_at,
+        sub.status as workflow_status,
+        COALESCE(sub.submission_status, 'missing') as submission_status,
         sub.graded_at,
         sub.remarks as feedback,
-        u.name as graded_by_name
+        u.name as graded_by_name,
+        a.due_date
       FROM assessments a
       JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       JOIN course_enrollments ce ON sc.section_course_id = ce.section_course_id
@@ -146,9 +154,13 @@ router.get('/assessment/:id/grades', async (req, res) => {
 // PUT /api/grading/grade/:submissionId - Update a specific grade
 router.put('/grade/:submissionId', async (req, res) => {
   const { submissionId } = req.params;
-  const { raw_score, late_penalty = 0, feedback = '', graded_by } = req.body;
+  const { raw_score, late_penalty = 0, feedback = '', graded_by, submission_status = 'missing' } = req.body;
   
   try {
+    // Validate submission_status
+    const validStatuses = ['ontime', 'late', 'missing'];
+    const finalStatus = validStatuses.includes(submission_status) ? submission_status : 'missing';
+    
     // Calculate adjusted score
     const adjusted_score = Math.max(0, raw_score - late_penalty);
     
@@ -161,14 +173,15 @@ router.put('/grade/:submissionId', async (req, res) => {
         graded_at = CURRENT_TIMESTAMP,
         graded_by = $5,
         status = 'graded',
-        remarks = $6
-      WHERE submission_id = $7
-      RETURNING submission_id, total_score, adjusted_score, raw_score, late_penalty
+        submission_status = $6,
+        remarks = $7
+      WHERE submission_id = $8
+      RETURNING submission_id, total_score, adjusted_score, raw_score, late_penalty, submission_status
     `;
     
     const result = await db.query(query, [
       adjusted_score, raw_score, adjusted_score, late_penalty, 
-      graded_by, feedback, submissionId
+      graded_by, finalStatus, feedback, submissionId
     ]);
     
     if (result.rows.length === 0) {
@@ -203,8 +216,8 @@ router.get('/student/:enrollmentId/grades', async (req, res) => {
         sub.raw_score,
         sub.adjusted_score,
         sub.late_penalty,
-        sub.status as submission_status,
-        sub.submitted_at,
+        sub.status as workflow_status,
+        COALESCE(sub.submission_status, 'missing') as submission_status,
         sub.graded_at,
         sub.remarks as feedback,
         u.name as graded_by_name
@@ -333,8 +346,8 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         sub.raw_score,
         sub.adjusted_score,
         sub.late_penalty,
-        sub.status as submission_status,
-        sub.submitted_at,
+        sub.status as workflow_status,
+        COALESCE(sub.submission_status, 'missing') as submission_status,
         sub.graded_at
       FROM course_enrollments ce
       JOIN students s ON ce.student_id = s.student_id

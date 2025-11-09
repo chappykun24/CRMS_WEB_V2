@@ -358,10 +358,10 @@ CREATE TABLE submissions (
     raw_score FLOAT,                    -- Score before any adjustments
     adjusted_score FLOAT,               -- Score after adjustments
     late_penalty FLOAT DEFAULT 0,       -- Penalty for late submission
-    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     graded_at TIMESTAMP,                -- When it was graded
     graded_by INTEGER,                  -- Who graded it
-    status VARCHAR(20) DEFAULT 'submitted', -- submitted, graded, late, etc.
+    status VARCHAR(20) DEFAULT 'submitted', -- submitted, graded, late, etc. (workflow status)
+    submission_status VARCHAR(20) DEFAULT 'missing' CHECK (submission_status IN ('ontime', 'late', 'missing')), -- Submission timeliness status
     remarks TEXT,
     FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE,
     FOREIGN KEY (assessment_id) REFERENCES assessments(assessment_id) ON DELETE CASCADE,
@@ -543,7 +543,7 @@ CREATE INDEX idx_rubrics_type ON rubrics(rubric_type);
 CREATE INDEX idx_submissions_enrollment_id ON submissions(enrollment_id);
 CREATE INDEX idx_submissions_assessment_id ON submissions(assessment_id);
 CREATE INDEX idx_submissions_status ON submissions(status);
-CREATE INDEX idx_submissions_submitted_at ON submissions(submitted_at);
+CREATE INDEX idx_submissions_submission_status ON submissions(submission_status);
 CREATE INDEX idx_submissions_graded_by ON submissions(graded_by);
 
 -- Rubric scores indexes
