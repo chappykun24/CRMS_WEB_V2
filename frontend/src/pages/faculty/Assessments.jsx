@@ -24,7 +24,6 @@ import {
 const Assessments = () => {
   const { user } = useAuth()
   const location = useLocation()
-  const [sidebarExpanded] = useState(true) // Default to expanded
   const [assessments, setAssessments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -564,14 +563,11 @@ const Assessments = () => {
           }
         }
       `}</style>
-      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
-        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-      }`} style={{ marginTop: '0px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+      <div className="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
           {/* Header and Navigation */}
-          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
-            <div className="px-8 bg-gray-50">
-              <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
+          <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 z-40">
+            <div className="px-8">
+              <div className="flex items-center justify-between bg-gray-50">
                 <div className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab('assessments')}
@@ -599,12 +595,12 @@ const Assessments = () => {
           </div>
 
           {/* Content */}
-          <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
+          <div className="flex-1 overflow-hidden">
             {/* Tab Content */}
             {activeTab === 'assessments' && (
-              <div className="px-8 h-full">
+              <div className="px-8 h-full overflow-y-auto py-4">
             {/* Assessment Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               {/* Main Content - Assessments Table */}
               <div className="lg:col-span-4">
                 {/* Search Bar and Create Button - Only show when subject is selected */}
@@ -842,8 +838,8 @@ const Assessments = () => {
 
             {/* Grading Tab Content */}
             {activeTab === 'grading' && (
-              <div className="px-8 h-full">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+              <div className="px-8 h-full overflow-y-auto py-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   {/* Main Content - Student List for Grading */}
                   <div className="lg:col-span-3 flex flex-col min-w-0">
                     {error && (
@@ -858,14 +854,14 @@ const Assessments = () => {
                     )}
 
                     {selectedAssessment ? (
-                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                         <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
                           <h2 className="text-base font-semibold text-gray-900">
                             Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
                         {gradingLoading ? (
-                          <div className="flex-1 overflow-y-auto min-h-0">
+                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
@@ -911,7 +907,7 @@ const Assessments = () => {
                             </ul>
                           </div>
                         ) : Object.keys(grades).length > 0 ? (
-                          <div className="flex-1 overflow-y-auto min-h-0">
+                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
@@ -1073,8 +1069,8 @@ const Assessments = () => {
                   </div>
 
                   {/* Right Sidebar - Subjects and Assessments */}
-                  <div className="lg:col-span-1 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
+                  <div className="lg:col-span-1 flex flex-col">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                       {/* Header */}
                       {selectedClass && (
                         <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">

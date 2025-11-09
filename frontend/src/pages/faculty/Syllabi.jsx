@@ -20,7 +20,6 @@ import {
 const Syllabi = () => {
   const { user } = useAuth()
   const location = useLocation()
-  const [sidebarExpanded] = useState(true)
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -517,13 +516,14 @@ const Syllabi = () => {
           }
         }
       `}</style>
-      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
-        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-      }`} style={{ marginTop: '0px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-          <div className="px-8 py-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Syllabi</h1>
-            
+      <div className="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
+        <div className="flex-shrink-0 px-8 py-6 border-b border-gray-200">
+          <h1 className="text-3xl font-bold text-gray-900">Syllabi</h1>
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="px-8 py-6 h-full overflow-y-auto">
             {/* Content with Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               {/* Main Content - Syllabi Table */}
@@ -561,9 +561,9 @@ const Syllabi = () => {
                 
                 {/* Syllabi Table */}
                 {selectedClass && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                     {loading ? (
-                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                      <div className="flex-1 overflow-y-auto min-h-0">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
@@ -607,7 +607,7 @@ const Syllabi = () => {
                         </table>
                       </div>
                     ) : filteredSyllabi.length > 0 ? (
-                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                      <div className="flex-1 overflow-y-auto min-h-0">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
@@ -721,9 +721,12 @@ const Syllabi = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
-                  <div className="flex-1 overflow-hidden">
+              <div className="lg:col-span-1 flex flex-col">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                  <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                    <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto min-h-0">
                     {loading ? (
                       <div className="p-4 space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
@@ -738,7 +741,7 @@ const Syllabi = () => {
                         ))}
                       </div>
                     ) : classes.length > 0 ? (
-                      <div className="p-4 space-y-2 overflow-y-auto h-full">
+                      <div className="p-4 space-y-2">
                         {classes.map((cls) => (
                           <div
                             key={cls.section_course_id}
@@ -817,7 +820,7 @@ const Syllabi = () => {
                       placeholder="1.0"
                     />
                   </div>
-                </div>
+          </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">School Term *</label>
@@ -1189,9 +1192,9 @@ const Syllabi = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
         </div>
+      </div>
+    </div>
       )}
     </>
   )

@@ -280,23 +280,22 @@ const Grades = () => {
     })
 
   return (
-    <div className="absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out left-64 right-0" style={{ marginTop: '0px' }}>
-      <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
-        {/* Header */}
-        <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
-          <div className="px-8 bg-gray-50">
-            <div className="flex items-center justify-between bg-gray-50 border-b border-gray-200">
-              <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
-                Grade Management
-              </div>
+    <div className="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200">
+        <div className="px-8">
+          <div className="flex items-center justify-between bg-gray-50">
+            <div className="py-2 px-4 font-medium text-sm text-red-600 border-b-2 border-red-600">
+              Grade Management
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-          <div className="px-8 h-full flex flex-col">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 flex-1 min-h-0">
+      {/* Content */}
+      <div className="flex-1 overflow-hidden">
+        <div className="px-8 py-6 h-full overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Main Content - Students List */}
               <div className="lg:col-span-3 flex flex-col min-h-0">
                 {/* Search Bar */}
@@ -324,7 +323,7 @@ const Grades = () => {
 
                 {/* Students Grades Table */}
                 {selectedClass ? (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
                     {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
@@ -343,7 +342,7 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="flex-1 overflow-auto min-h-0">
+                      <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
@@ -478,13 +477,13 @@ const Grades = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
-                  <div className="px-6 py-4 border-b border-gray-200">
+              <div className="lg:col-span-1 flex flex-col">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+                  <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                   </div>
                   
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto min-h-0">
                     {loading ? (
                       <div className="p-4 space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
