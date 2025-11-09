@@ -209,8 +209,8 @@ const Grades = () => {
       if (showLoading) {
         setLoadingStudents(false)
         setLoadingGrades(false)
-      }
     }
+  }
   }
 
   // Helper function to extract surname (last word) for alphabetical sorting
@@ -238,9 +238,9 @@ const Grades = () => {
   // Filter and sort students alphabetically by last name
   const filteredStudents = students
     .filter(student =>
-      student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.student_number?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.student_number?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
     .sort((a, b) => {
       const aLast = extractSurname(a.full_name)
       const bLast = extractSurname(b.full_name)
@@ -335,8 +335,8 @@ const Grades = () => {
                                     <span className="truncate">{assessment.title}</span>
                                     <span className="text-xs text-gray-400 font-normal">
                                       {assessment.total_points}pts
-                                    </span>
-                                  </div>
+                              </span>
+                            </div>
                                 </th>
                               ))}
                               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-l border-gray-200 min-w-[100px]">
@@ -360,21 +360,21 @@ const Grades = () => {
                                   <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-10 border-r border-gray-100">
                                     <div className="flex items-center space-x-3">
                                       <ImageSkeleton
-                                        src={student.student_photo}
-                                        alt={student.full_name}
+                                  src={student.student_photo} 
+                                  alt={student.full_name}
                                         size="md"
                                         shape="circle"
                                         className="border border-gray-200"
                                       />
                                       <div className="min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-gray-900 truncate">
                                           {formatName(student.full_name)}
-                                        </p>
-                                        <p className="text-xs text-gray-500 truncate">
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
                                           {student.student_number || 'N/A'}
-                                        </p>
-                                      </div>
-                                    </div>
+                              </p>
+                            </div>
+                          </div>
                                   </td>
                                   {assessments.map((assessment) => {
                                     const score = scoreMap.get(assessment.assessment_id)

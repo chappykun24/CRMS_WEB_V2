@@ -505,7 +505,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
                   <div className="flex justify-center mb-3">
                     <ImageSkeleton
                       src={user?.profilePic || user?.profile_pic}
-                      alt={user?.name || 'User'} 
+                        alt={user?.name || 'User'} 
                       size="xl"
                       shape="circle"
                       className="border-4 border-gray-200 shadow-lg"

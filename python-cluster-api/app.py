@@ -27,7 +27,7 @@ def cluster_records(records):
         if not pd.isna(max_rate):
             if max_rate > 1 and max_rate <= 100:
                 # Values are percentages, convert to decimal
-                df['submission_rate'] = df['submission_rate'] / 100
+            df['submission_rate'] = df['submission_rate'] / 100
             elif max_rate > 100:
                 # Invalid values, recalculate from days late
                 print('⚠️ WARNING: Invalid submission_rate values detected. Recalculating from average_days_late.')

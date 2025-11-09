@@ -312,7 +312,7 @@ const MyClasses = () => {
       if (!studentsList || studentsList.length === 0) {
         console.log('⚠️ [MYCLASSES] No cached students, fetching...')
         try {
-          const studentsResponse = await fetch(`/api/section-courses/${selectedClass.section_course_id}/students`, {
+          const studentsResponse = await fetch(`/api/section-courses/${currentSelectedClass.section_course_id}/students`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             }
@@ -368,7 +368,7 @@ const MyClasses = () => {
         } catch (sessionError) {
           console.warn('⚠️ [MYCLASSES] Session ID endpoint failed, using date filter:', sessionError)
           // Fallback to date-based query
-          const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
+          const response = await fetch(`/api/attendance/class/${currentSelectedClass.section_course_id}?date=${sessionDate}`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             }
@@ -392,7 +392,7 @@ const MyClasses = () => {
         }
       } else {
         // Fallback: no session ID, use date filter
-        const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
+        const response = await fetch(`/api/attendance/class/${currentSelectedClass.section_course_id}?date=${sessionDate}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           }
@@ -607,28 +607,20 @@ const MyClasses = () => {
     })
     
     // Step 2: Always try to load attendance data asynchronously
-    // Pass selectedClass explicitly to avoid closure issues
-    console.log('🔄 [MYCLASSES] Calling loadSessionData for session:', session.session_key, 'sessionId:', session.session_id, 'selectedClass:', selectedClass?.section_course_id)
+    // Use ref to ensure we have the current selectedClass
+    console.log('🔄 [MYCLASSES] Calling loadSessionData for session:', session.session_key, 'sessionId:', session.session_id, 'selectedClass:', currentSelectedClass?.section_course_id)
     
-    // Use a small delay to ensure state updates are processed, then load
-    setTimeout(() => {
-      // Double-check selectedClass is still available
-      if (!selectedClass) {
-        console.error('❌ [MYCLASSES] selectedClass became null, cannot load session data')
-        return
-      }
-      
-      loadSessionData(
-        session.session_key,
-        session.session_date,
-        session.title,
-        session.session_id,
-        session.session_type,
-        session.meeting_type
-      ).catch(error => {
-        console.error('❌ [MYCLASSES] Error loading session:', error)
-      })
-    }, 100) // Small delay to ensure state is stable
+    // Call immediately - loadSessionData uses selectedClass from its closure/ref
+    loadSessionData(
+      session.session_key,
+      session.session_date,
+      session.title,
+      session.session_id,
+      session.session_type,
+      session.meeting_type
+    ).catch(error => {
+      console.error('❌ [MYCLASSES] Error loading session:', error)
+    })
   }, [sessionList, loadSessionData, cachedStudentsList, students, selectedClass])
 
   // Submit attendance data
@@ -831,26 +823,36 @@ const MyClasses = () => {
     if (showFullAttendanceModal) {
       // Save current scroll position
       const scrollY = window.scrollY
-      // Get scrollbar width
+      // Get scrollbar width before hiding it
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
       
       // Apply styles to prevent scroll and maintain layout
       document.body.style.position = 'fixed'
       document.body.style.top = `-${scrollY}px`
-      document.body.style.width = '100%'
+      document.body.style.left = '0'
+      document.body.style.right = '0'
       document.body.style.overflow = 'hidden'
-      // Add padding to compensate for scrollbar
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`
+      
+      // Add padding to compensate for scrollbar on the sidebar container
+      // This prevents the sidebar from shrinking when scrollbar disappears
+      const sidebarContainer = document.querySelector('[data-sidebar-container]')
+      if (sidebarContainer && scrollbarWidth > 0) {
+        sidebarContainer.style.paddingRight = `${scrollbarWidth}px`
       }
       
       return () => {
         // Restore scroll position and styles
         document.body.style.position = ''
         document.body.style.top = ''
-        document.body.style.width = ''
+        document.body.style.left = ''
+        document.body.style.right = ''
         document.body.style.overflow = ''
-        document.body.style.paddingRight = ''
+        
+        // Remove padding from sidebar container
+        if (sidebarContainer) {
+          sidebarContainer.style.paddingRight = ''
+        }
+        
         window.scrollTo(0, scrollY)
       }
     }
@@ -859,10 +861,17 @@ const MyClasses = () => {
   // Handle clicks outside sidebar to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Don't close sidebar if modal is open
+      if (showFullAttendanceModal) {
+        return
+      }
+      
       if (sidebarRef.current && !sidebarRef.current.contains(event.target) && selectedClass) {
         // Check if the click is not on a class card
         const isClassCard = event.target.closest('[data-class-card]')
-        if (!isClassCard) {
+        // Check if click is on modal
+        const isModal = event.target.closest('[data-attendance-modal]')
+        if (!isClassCard && !isModal) {
           setSelectedClass(null)
           setIsAttendanceMode(false)
           removeLocalStorageItem('selectedClass')
@@ -875,7 +884,7 @@ const MyClasses = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [selectedClass])
+  }, [selectedClass, showFullAttendanceModal])
 
   // Ensure loading state is shown immediately on mount/reload
   useEffect(() => {
@@ -1659,8 +1668,20 @@ const MyClasses = () => {
 
       {/* Full Attendance List Modal */}
       {showFullAttendanceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+        <div 
+          data-attendance-modal
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal if clicking on backdrop (not modal content)
+            if (e.target === e.currentTarget) {
+              setShowFullAttendanceModal(false)
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div>
@@ -1674,7 +1695,7 @@ const MyClasses = () => {
                     )
                   }
                 </p>
-              </div>
+    </div>
               <button
                 onClick={() => setShowFullAttendanceModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
