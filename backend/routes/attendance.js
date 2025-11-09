@@ -96,29 +96,40 @@ router.get('/session/:sessionId', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
 
+    console.log('🔍 [ATTENDANCE API] Fetching attendance for session:', sessionId);
+
+    // Optimized query: directly filter by session_id for fastest performance
     const result = await db.query(`
       SELECT 
         al.attendance_id,
         al.enrollment_id,
         al.status,
         al.remarks,
+        al.session_date,
+        al.recorded_at,
         s.student_id,
         s.full_name,
         s.student_number,
-        s.student_photo
+        s.student_photo,
+        ses.title,
+        ses.session_type,
+        ses.meeting_type
       FROM attendance_logs al
       JOIN course_enrollments ce ON al.enrollment_id = ce.enrollment_id
       JOIN students s ON ce.student_id = s.student_id
+      LEFT JOIN sessions ses ON al.session_id = ses.session_id
       WHERE al.session_id = $1
       ORDER BY s.full_name
     `, [sessionId]);
+
+    console.log('✅ [ATTENDANCE API] Session query successful, found', result.rows.length, 'records');
 
     res.json({
       success: true,
       data: result.rows
     });
   } catch (error) {
-    console.error('Error fetching session attendance:', error);
+    console.error('❌ [ATTENDANCE API] Error fetching session attendance:', error);
     res.status(500).json({
       success: false,
       error: error.message

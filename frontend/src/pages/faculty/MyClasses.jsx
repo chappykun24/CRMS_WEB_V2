@@ -273,7 +273,7 @@ const MyClasses = () => {
   }, [selectedClass])
 
   // Load attendance data for a specific session - async, uses cached students, then fetches attendance
-  const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId) => {
+  const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId, sessionType = null, meetingType = null) => {
     if (!selectedClass || sessionData[sessionKey]) {
       // Already loaded
       return
@@ -314,29 +314,84 @@ const MyClasses = () => {
         }
       }
       
-      // Step 2: Fetch attendance for this specific session/date (filters server-side)
-      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      // Step 2: Fetch attendance for this specific session using session_id (much faster)
+      // Use session_id endpoint for direct, efficient query
+      let attendanceMap = new Map()
+      
+      if (sessionId) {
+        // Use session ID endpoint - direct query, much faster
+        try {
+          const response = await fetch(`/api/attendance/session/${sessionId}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          })
+          
+          if (response.ok) {
+            const result = await response.json()
+            // Map attendance records by enrollment_id
+            result.data.forEach(record => {
+              attendanceMap.set(record.enrollment_id, {
+                ...record,
+                session_date: record.session_date || sessionDate,
+                title: record.title || sessionTitle,
+                session_type: record.session_type || sessionType,
+                meeting_type: record.meeting_type || meetingType
+              })
+            })
+            console.log('✅ [MYCLASSES] Loaded attendance via session ID:', sessionId, attendanceMap.size, 'records')
+          } else {
+            throw new Error('Session endpoint failed, falling back to date query')
+          }
+        } catch (sessionError) {
+          console.warn('⚠️ [MYCLASSES] Session ID endpoint failed, using date filter:', sessionError)
+          // Fallback to date-based query
+          const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          })
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch session data')
+          }
+          
+          const result = await response.json()
+          
+          // Filter records for this session (matching date and title)
+          result.data
+            .filter(record => 
+              record.session_date === sessionDate && 
+              (record.title || 'Untitled') === (sessionTitle || 'Untitled')
+            )
+            .forEach(record => {
+              attendanceMap.set(record.enrollment_id, record)
+            })
         }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch session data')
-      }
-      
-      const result = await response.json()
-      
-      // Step 3: Create a map of attendance records by enrollment_id for quick lookup
-      const attendanceMap = new Map()
-      result.data
-        .filter(record => 
-          record.session_date === sessionDate && 
-          (record.title || 'Untitled') === (sessionTitle || 'Untitled')
-        )
-        .forEach(record => {
-          attendanceMap.set(record.enrollment_id, record)
+      } else {
+        // Fallback: no session ID, use date filter
+        const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
         })
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch session data')
+        }
+        
+        const result = await response.json()
+        
+        // Filter records for this session (matching date and title)
+        result.data
+          .filter(record => 
+            record.session_date === sessionDate && 
+            (record.title || 'Untitled') === (sessionTitle || 'Untitled')
+          )
+          .forEach(record => {
+            attendanceMap.set(record.enrollment_id, record)
+          })
+      }
       
       // Step 4: Merge cached students with attendance data
       const sessionRecords = studentsList.map(student => {
@@ -459,7 +514,9 @@ const MyClasses = () => {
           firstSession.session_key,
           firstSession.session_date,
           firstSession.title,
-          firstSession.session_id
+          firstSession.session_id,
+          firstSession.session_type,
+          firstSession.meeting_type
         ).catch(error => {
           console.error('❌ [MYCLASSES] Error loading first session:', error)
         })
@@ -517,7 +574,9 @@ const MyClasses = () => {
         session.session_key,
         session.session_date,
         session.title,
-        session.session_id
+        session.session_id,
+        session.session_type,
+        session.meeting_type
       ).catch(error => {
         console.error('❌ [MYCLASSES] Error loading session:', error)
       })
