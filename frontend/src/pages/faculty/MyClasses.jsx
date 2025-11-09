@@ -281,8 +281,10 @@ const MyClasses = () => {
 
   // Load attendance data for a specific session - async, uses cached students, then fetches attendance
   const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId, sessionType = null, meetingType = null) => {
-    if (!selectedClass) {
-      console.warn('⚠️ [MYCLASSES] No selected class, skipping session data load')
+    // Use ref to get current selectedClass (avoids closure issues when modal is open)
+    const currentSelectedClass = selectedClassRef.current || selectedClass
+    if (!currentSelectedClass) {
+      console.warn('⚠️ [MYCLASSES] No selected class (ref:', !!selectedClassRef.current, 'state:', !!selectedClass, '), skipping session data load')
       return
     }
     
