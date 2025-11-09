@@ -561,8 +561,9 @@ const MyClasses = () => {
     const session = sessionList[sessionIndex]
     if (!session) return
     
-    // Ensure we have selectedClass (closure-safe check)
-    if (!selectedClass) {
+    // Use ref to get current selectedClass (avoids closure issues)
+    const currentSelectedClass = selectedClassRef.current || selectedClass
+    if (!currentSelectedClass) {
       console.warn('⚠️ [MYCLASSES] No selected class in handleTabChange, cannot load session data')
       return
     }
