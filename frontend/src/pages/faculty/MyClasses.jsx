@@ -66,9 +66,12 @@ const MyClasses = () => {
   
   // Full attendance list modal state
   const [showFullAttendanceModal, setShowFullAttendanceModal] = useState(false)
-  const [fullAttendanceList, setFullAttendanceList] = useState([])
+  const [sessionList, setSessionList] = useState([]) // List of sessions (dates/titles only)
+  const [sessionData, setSessionData] = useState({}) // {sessionKey: {records, statusCounts, ...}}
   const [loadingFullAttendance, setLoadingFullAttendance] = useState(false)
+  const [loadingSession, setLoadingSession] = useState({}) // Track which sessions are loading
   const [activeSessionTab, setActiveSessionTab] = useState(0)
+  const [imagesLoaded, setImagesLoaded] = useState(false) // Track if images should start loading
 
   // Session details state - matching SQL requirements
   const [sessionDetails, setSessionDetails] = useState({
@@ -228,77 +231,187 @@ const MyClasses = () => {
     return attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.remarks || ''
   }, [attendanceRecords, sessionDetails.session_date])
 
-  // Load full attendance list for the class
-  const loadFullAttendanceList = useCallback(async () => {
-    if (!selectedClass) return
-    
-    // Show modal immediately with skeleton loading
-    setShowFullAttendanceModal(true)
-    setLoadingFullAttendance(true)
-    setFullAttendanceList([])
-    setActiveSessionTab(0)
+  // Get list of sessions (dates/titles only) - fast initial load using sessions endpoint
+  const loadSessionList = useCallback(async () => {
+    if (!selectedClass) return []
     
     try {
-      console.log('🔍 [MYCLASSES] Loading full attendance list for class:', selectedClass.section_course_id)
+      console.log('🔍 [MYCLASSES] Loading session list for class:', selectedClass.section_course_id)
       
-      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}`, {
+      // Use sessions endpoint to get only session metadata (much faster)
+      const response = await fetch(`/api/attendance/sessions/${selectedClass.section_course_id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       })
       
       if (!response.ok) {
-        throw new Error('Failed to fetch attendance list')
+        throw new Error('Failed to fetch session list')
       }
       
       const result = await response.json()
-      console.log('✅ [MYCLASSES] Loaded full attendance list:', result.data.length, 'records')
+      console.log('✅ [MYCLASSES] Loaded session list:', result.data.length, 'sessions')
       
-      // Group attendance by session/date
-      const groupedBySession = {}
-      result.data.forEach(record => {
-        const sessionKey = `${record.session_date}_${record.title || 'Untitled'}`
-        if (!groupedBySession[sessionKey]) {
-          groupedBySession[sessionKey] = {
-            session_date: record.session_date,
-            title: record.title || 'Untitled Session',
-            session_type: record.session_type || 'Lecture',
-            meeting_type: record.meeting_type || 'Face-to-Face',
-            records: []
-          }
-        }
-        groupedBySession[sessionKey].records.push(record)
-      })
+      // Map sessions to our format
+      const sessionsArray = result.data.map(session => ({
+        session_id: session.session_id,
+        session_key: `${session.session_date}_${session.title || 'Untitled'}`,
+        session_date: session.session_date,
+        title: session.title || 'Untitled Session',
+        session_type: session.session_type || 'Lecture',
+        meeting_type: session.meeting_type || 'Face-to-Face',
+        student_count: parseInt(session.attendance_count) || 0
+      }))
       
-      // Convert to array and sort by date (descending)
-      const sessionsArray = Object.values(groupedBySession).sort((a, b) => {
-        const dateA = new Date(a.session_date)
-        const dateB = new Date(b.session_date)
-        return dateB - dateA // Most recent first
-      })
-      
-      // Sort students within each session alphabetically by last name
-      sessionsArray.forEach(session => {
-        session.records.sort((a, b) => {
-          const lastNameA = extractSurname(a.full_name)
-          const lastNameB = extractSurname(b.full_name)
-          if (lastNameA !== lastNameB) {
-            return lastNameA.localeCompare(lastNameB)
-          }
-          // If last names are the same, sort by full name
-          return a.full_name.localeCompare(b.full_name)
-        })
-      })
-      
-      setFullAttendanceList(sessionsArray)
+      // Sessions are already sorted by date DESC from the API
+      return sessionsArray
     } catch (error) {
-      console.error('❌ [MYCLASSES] Error loading full attendance list:', error)
+      console.error('❌ [MYCLASSES] Error loading session list:', error)
+      throw error
+    }
+  }, [selectedClass])
+
+  // Load attendance data for a specific session - async, loads student data first, then images
+  const loadSessionData = useCallback(async (sessionKey, sessionDate, sessionTitle, sessionId) => {
+    if (!selectedClass || sessionData[sessionKey]) {
+      // Already loaded
+      return
+    }
+    
+    try {
+      setLoadingSession(prev => ({ ...prev, [sessionKey]: true }))
+      console.log('🔍 [MYCLASSES] Loading session data:', sessionKey)
+      
+      // Step 1: Fetch attendance for this specific session/date (filters server-side)
+      const response = await fetch(`/api/attendance/class/${selectedClass.section_course_id}?date=${sessionDate}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch session data')
+      }
+      
+      const result = await response.json()
+      
+      // Filter records for this session (matching date and title)
+      let sessionRecords = result.data.filter(record => 
+        record.session_date === sessionDate && 
+        (record.title || 'Untitled') === (sessionTitle || 'Untitled')
+      )
+      
+      // Step 2: Sort students alphabetically by last name (client-side processing)
+      sessionRecords.sort((a, b) => {
+        const lastNameA = extractSurname(a.full_name)
+        const lastNameB = extractSurname(b.full_name)
+        if (lastNameA !== lastNameB) {
+          return lastNameA.localeCompare(lastNameB)
+        }
+        return a.full_name.localeCompare(b.full_name)
+      })
+      
+      // Step 3: Calculate status counts
+      const statusCounts = sessionRecords.reduce((acc, record) => {
+        acc[record.status] = (acc[record.status] || 0) + 1
+        return acc
+      }, {})
+      
+      // Step 4: Store session data (photos included but loading deferred)
+      setSessionData(prev => ({
+        ...prev,
+        [sessionKey]: {
+          records: sessionRecords,
+          statusCounts,
+          loaded: true
+        }
+      }))
+      
+      console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
+      
+      // Step 5: Enable image loading after a delay (non-blocking)
+      // This allows UI to render student names and status immediately
+      // Images will load lazily via ImageSkeleton component based on imagesLoaded state
+      setTimeout(() => {
+        setImagesLoaded(true)
+      }, 300) // Delay to prioritize text content rendering
+      
+    } catch (error) {
+      console.error('❌ [MYCLASSES] Error loading session data:', error)
+      setSessionData(prev => ({
+        ...prev,
+        [sessionKey]: {
+          records: [],
+          statusCounts: {},
+          loaded: true,
+          error: error.message
+        }
+      }))
+    } finally {
+      setLoadingSession(prev => ({ ...prev, [sessionKey]: false }))
+    }
+  }, [selectedClass, sessionData, extractSurname])
+
+  // Load full attendance list for the class - show modal immediately, load sessions progressively
+  const loadFullAttendanceList = useCallback(async () => {
+    if (!selectedClass) return
+    
+    // Show modal immediately with skeleton loading
+    setShowFullAttendanceModal(true)
+    setLoadingFullAttendance(true)
+    setSessionList([])
+    setSessionData({})
+    setActiveSessionTab(0)
+    setImagesLoaded(false)
+    
+    try {
+      // Step 1: Load session list (fast - just metadata)
+      const sessions = await loadSessionList()
+      setSessionList(sessions)
+      setLoadingFullAttendance(false)
+      
+      // Step 2: Load first session (latest) immediately asynchronously
+      if (sessions.length > 0) {
+        const firstSession = sessions[0]
+        // Load asynchronously without blocking
+        loadSessionData(
+          firstSession.session_key,
+          firstSession.session_date,
+          firstSession.title,
+          firstSession.session_id
+        ).catch(error => {
+          console.error('❌ [MYCLASSES] Error loading first session:', error)
+        })
+      }
+    } catch (error) {
+      console.error('❌ [MYCLASSES] Error loading attendance list:', error)
       alert('Failed to load attendance list. Please try again.')
       setShowFullAttendanceModal(false)
-    } finally {
       setLoadingFullAttendance(false)
     }
-  }, [selectedClass, extractSurname])
+  }, [selectedClass, loadSessionList, loadSessionData])
+
+  // Handle tab change - load session data if not already loaded (async, non-blocking)
+  const handleTabChange = useCallback(async (sessionIndex) => {
+    setActiveSessionTab(sessionIndex)
+    setImagesLoaded(false) // Reset image loading state
+    
+    const session = sessionList[sessionIndex]
+    if (session && !sessionData[session.session_key]) {
+      // Load this session's data asynchronously
+      loadSessionData(
+        session.session_key,
+        session.session_date,
+        session.title,
+        session.session_id
+      ).catch(error => {
+        console.error('❌ [MYCLASSES] Error loading session:', error)
+      })
+    } else if (session && sessionData[session.session_key]) {
+      // Session already loaded, enable images immediately
+      setImagesLoaded(true)
+    }
+  }, [sessionList, sessionData, loadSessionData])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
@@ -1302,7 +1415,7 @@ const MyClasses = () => {
                     loadingFullAttendance ? (
                       <span className="inline-block h-4 bg-gray-200 rounded w-20 animate-pulse align-middle"></span>
                     ) : (
-                      `${fullAttendanceList.reduce((sum, session) => sum + session.records.length, 0)} total records`
+                      `${sessionList.reduce((sum, session) => sum + session.student_count, 0)} total records`
                     )
                   }
                 </p>
@@ -1389,7 +1502,7 @@ const MyClasses = () => {
                     </div>
                   </div>
                 </>
-              ) : fullAttendanceList.length === 0 ? (
+              ) : sessionList.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-gray-500">
                   <p>No attendance records found.</p>
                 </div>
@@ -1398,7 +1511,7 @@ const MyClasses = () => {
                   {/* Session Tabs */}
                   <div className="border-b border-gray-200 px-4 pt-2">
                     <div className="flex space-x-1 overflow-x-auto">
-                      {fullAttendanceList.map((session, sessionIndex) => {
+                      {sessionList.map((session, sessionIndex) => {
                         const formatDate = (dateString) => {
                           if (!dateString) return 'N/A'
                           const date = new Date(dateString)
@@ -1408,27 +1521,29 @@ const MyClasses = () => {
                           })
                         }
                         
-                        const statusCounts = session.records.reduce((acc, record) => {
-                          acc[record.status] = (acc[record.status] || 0) + 1
-                          return acc
-                        }, {})
-                        
+                        const sessionDataItem = sessionData[session.session_key]
+                        const statusCounts = sessionDataItem?.statusCounts || {}
                         const totalAbsent = statusCounts.absent || 0
+                        const isLoading = loadingSession[session.session_key]
                         
                         return (
                           <button
                             key={`tab-${sessionIndex}`}
-                            onClick={() => setActiveSessionTab(sessionIndex)}
+                            onClick={() => handleTabChange(sessionIndex)}
+                            disabled={isLoading}
                             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                               activeSessionTab === sessionIndex
                                 ? 'border-blue-500 text-blue-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
+                            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
                           >
                             <div className="flex items-center gap-2">
                               <span>{formatDate(session.session_date)}</span>
-                              <span className="text-xs text-gray-400">({session.records.length})</span>
-                              {totalAbsent > 0 && (
+                              <span className="text-xs text-gray-400">({session.student_count})</span>
+                              {isLoading && (
+                                <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                              )}
+                              {!isLoading && totalAbsent > 0 && (
                                 <span className="w-2 h-2 bg-red-500 rounded-full" title={`${totalAbsent} absent`}></span>
                               )}
                             </div>
@@ -1440,8 +1555,11 @@ const MyClasses = () => {
                   
                   {/* Active Session Content */}
                   <div className="flex-1 overflow-auto p-4">
-                    {fullAttendanceList[activeSessionTab] && (() => {
-                      const session = fullAttendanceList[activeSessionTab]
+                    {sessionList[activeSessionTab] && (() => {
+                      const session = sessionList[activeSessionTab]
+                      const sessionDataItem = sessionData[session.session_key]
+                      const isLoadingSession = loadingSession[session.session_key]
+                      
                       const formatDate = (dateString) => {
                         if (!dateString) return 'N/A'
                         const date = new Date(dateString)
@@ -1452,10 +1570,59 @@ const MyClasses = () => {
                         })
                       }
                       
-                      const statusCounts = session.records.reduce((acc, record) => {
-                        acc[record.status] = (acc[record.status] || 0) + 1
-                        return acc
-                      }, {})
+                      // Show skeleton if session is loading
+                      if (isLoadingSession || !sessionDataItem) {
+                        return (
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            {/* Session Header Skeleton */}
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="h-4 bg-gray-200 rounded w-48 animate-pulse mb-2"></div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+                                  <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+                                  <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Students Grid Skeleton - 3 Columns */}
+                            <div className="p-4">
+                              <div className="grid grid-cols-3 gap-3">
+                                {[...Array(15)].map((_, index) => (
+                                  <div 
+                                    key={`skeleton-student-${index}`} 
+                                    className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg"
+                                  >
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                      <div className="flex-shrink-0">
+                                        <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse"></div>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="h-4 bg-gray-200 rounded w-24 animate-pulse mb-1"></div>
+                                        <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                                      <div className="h-5 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      
+                      // Show session data
+                      const { records, statusCounts } = sessionDataItem
                       
                       return (
                         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1468,7 +1635,7 @@ const MyClasses = () => {
                                 </h3>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <p className="text-xs text-gray-500">
-                                    {formatDate(session.session_date)} • {session.records.length} students
+                                    {formatDate(session.session_date)} • {records.length} students
                                   </p>
                                   {session.session_type && (
                                     <>
@@ -1512,7 +1679,7 @@ const MyClasses = () => {
                           {/* Students Grid - 3 Columns */}
                           <div className="overflow-x-auto p-4">
                             <div className="grid grid-cols-3 gap-3">
-                              {session.records.map((record, recordIndex) => {
+                              {records.map((record, recordIndex) => {
                                 const statusColors = {
                                   present: 'bg-green-100 text-green-800',
                                   absent: 'bg-red-100 text-red-800',
@@ -1528,7 +1695,7 @@ const MyClasses = () => {
                                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                       <div className="flex-shrink-0">
                                         <ImageSkeleton
-                                          src={record.student_photo}
+                                          src={imagesLoaded && record.student_photo ? record.student_photo : null}
                                           alt={record.full_name}
                                           size="xs"
                                           shape="circle"
@@ -1581,7 +1748,7 @@ const MyClasses = () => {
                   <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
                 ) : (
                   <>
-                    {fullAttendanceList.length} session{fullAttendanceList.length !== 1 ? 's' : ''} recorded
+                    {sessionList.length} session{sessionList.length !== 1 ? 's' : ''} recorded
                   </>
                 )}
               </div>
