@@ -827,11 +827,10 @@ const Assessments = () => {
                           <div className="max-h-[60vh] overflow-y-auto pb-32">
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-10 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-48 flex-shrink-0">Student</div>
-                              <div className="w-24 flex-shrink-0">Status</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
                               <div className="w-20 flex-shrink-0">Penalty</div>
                               <div className="w-20 flex-shrink-0">Adjusted</div>
-                              <div className="w-20 flex-shrink-0">Percent</div>
+                              <div className="w-48 flex-shrink-0">Status / Percent</div>
                               <div className="flex-1">Feedback</div>
                             </div>
                             <ul className="divide-y divide-gray-200">
@@ -844,24 +843,24 @@ const Assessments = () => {
                                       <div className="h-3 bg-gray-100 rounded w-16 skeleton"></div>
                                     </div>
                                   </div>
-                                  <div className="w-24 flex-shrink-0 ml-2">
-                                    <div className="flex flex-col gap-1">
-                                      <div className="h-6 bg-gray-200 rounded skeleton"></div>
-                                      <div className="h-6 bg-gray-200 rounded skeleton"></div>
-                                      <div className="h-6 bg-gray-200 rounded skeleton"></div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                  </div>
+                                  <div className="w-20 flex-shrink-0 ml-2">
+                                    <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
+                                  </div>
+                                  <div className="w-48 flex-shrink-0 ml-2">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex gap-1">
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                        <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                      </div>
+                                      <div className="h-4 bg-gray-200 rounded w-12 skeleton"></div>
                                     </div>
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <div className="h-8 bg-gray-200 rounded skeleton"></div>
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
-                                  </div>
-                                  <div className="w-20 flex-shrink-0 ml-2">
-                                    <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
                                   </div>
                                   <div className="flex-1 ml-2">
                                     <div className="h-8 bg-gray-200 rounded skeleton"></div>
@@ -897,43 +896,6 @@ const Assessments = () => {
                                       <div className="text-xs text-gray-500">SR Code: {gradeData.student_number || 'N/A'}</div>
                                     </div>
                                   </div>
-                                  <div className="w-24 flex-shrink-0 ml-2">
-                                    <div className="flex flex-col gap-1">
-                                      <button
-                                        onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                        className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                          gradeData.submission_status === 'ontime'
-                                            ? 'bg-green-100 text-green-800 border border-green-300'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-                                        }`}
-                                        title="On Time"
-                                      >
-                                        On Time
-                                      </button>
-                                      <button
-                                        onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                        className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                          gradeData.submission_status === 'late'
-                                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-                                        }`}
-                                        title="Late"
-                                      >
-                                        Late
-                                      </button>
-                                      <button
-                                        onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                        className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                                          gradeData.submission_status === 'missing'
-                                            ? 'bg-red-100 text-red-800 border border-red-300'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-                                        }`}
-                                        title="Missing"
-                                      >
-                                        Missing
-                                      </button>
-                                    </div>
-                                  </div>
                                   <div className="w-20 flex-shrink-0 ml-2">
                                     <input
                                       type="number"
@@ -958,8 +920,47 @@ const Assessments = () => {
                                   <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900">
                                     {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
                                   </div>
-                                  <div className="w-20 flex-shrink-0 ml-2 text-sm font-medium text-gray-900">
-                                    {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
+                                  <div className="w-48 flex-shrink-0 ml-2">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex gap-1">
+                                        <button
+                                          onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
+                                          className={`px-2 py-1 text-xs font-medium rounded transition-colors flex-1 ${
+                                            gradeData.submission_status === 'ontime'
+                                              ? 'bg-green-100 text-green-800 border border-green-300'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                          }`}
+                                          title="On Time"
+                                        >
+                                          On Time
+                                        </button>
+                                        <button
+                                          onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
+                                          className={`px-2 py-1 text-xs font-medium rounded transition-colors flex-1 ${
+                                            gradeData.submission_status === 'late'
+                                              ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                          }`}
+                                          title="Late"
+                                        >
+                                          Late
+                                        </button>
+                                        <button
+                                          onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
+                                          className={`px-2 py-1 text-xs font-medium rounded transition-colors flex-1 ${
+                                            gradeData.submission_status === 'missing'
+                                              ? 'bg-red-100 text-red-800 border border-red-300'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                          }`}
+                                          title="Missing"
+                                        >
+                                          Missing
+                                        </button>
+                                      </div>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
+                                      </div>
+                                    </div>
                                   </div>
                                   <div className="flex-1 ml-2">
                                     <textarea
