@@ -500,13 +500,18 @@ const MyClasses = () => {
       setCachedStudentsList(students)
     }
     
-    // Show modal immediately with skeleton loading
-    setShowFullAttendanceModal(true)
-    setLoadingFullAttendance(true)
+    // IMPORTANT: Clear all session-related state when opening modal
+    // This ensures we don't show stale data from a previously selected class
     setSessionList([])
     setSessionData({})
     setActiveSessionTab(0)
     setImagesLoaded(false)
+    setLoadingSession({})
+    loadingSessionsRef.current.clear() // Clear any pending loading sessions
+    
+    // Show modal immediately with skeleton loading
+    setShowFullAttendanceModal(true)
+    setLoadingFullAttendance(true)
     
     try {
       // Step 1: Load session list (fast - just metadata)
@@ -1037,6 +1042,33 @@ const MyClasses = () => {
 
   // Handle class selection - lazy load students ONLY when class is clicked
   const handleClassSelect = useCallback(async (classItem) => {
+    // Check if this is a different class than the currently selected one
+    const previousClassId = selectedClass?.section_course_id
+    const newClassId = classItem?.section_course_id
+    const isDifferentClass = previousClassId !== newClassId
+    
+    // If switching to a different class, reset all attendance-related cached data
+    if (isDifferentClass && selectedClass) {
+      console.log('🔄 [FACULTY] Switching classes - resetting attendance cache')
+      console.log('  Old class:', previousClassId, selectedClass.course_title)
+      console.log('  New class:', newClassId, classItem.course_title)
+      
+      // Reset all attendance-related state to prevent stale data
+      setSessionData({}) // Clear all cached session attendance data
+      setCachedStudentsList(null) // Clear cached students from attendance mode
+      setSessionList([]) // Clear session list
+      setActiveSessionTab(0) // Reset to first tab
+      setLoadingSession({}) // Clear loading state
+      setImagesLoaded(false) // Reset image loading state
+      setShowFullAttendanceModal(false) // Close modal if open
+      setLoadingFullAttendance(false) // Reset loading state
+      
+      // Clear loading sessions ref
+      loadingSessionsRef.current.clear()
+      
+      console.log('✅ [FACULTY] Attendance cache reset complete')
+    }
+    
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
     
