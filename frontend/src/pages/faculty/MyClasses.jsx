@@ -67,6 +67,12 @@ const MyClasses = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
+  const dispatchSelectedClassChange = useCallback((classData) => {
+    window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+      detail: { class: classData ?? null }
+    }))
+  }, [])
+
   // Attendance mode state
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {enrollmentId: {date: {status, remarks}}}
@@ -982,10 +988,10 @@ const MyClasses = () => {
     return () => {
       if (!selectedClass) {
         removeLocalStorageItem('selectedClass')
-        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+        dispatchSelectedClassChange(null)
       }
     }
-  }, [selectedClass])
+  }, [selectedClass, dispatchSelectedClassChange])
 
   // Prevent body scroll when modal is open (prevents background shrinking)
   useEffect(() => {
@@ -1044,7 +1050,7 @@ const MyClasses = () => {
           setSelectedClass(null)
           setIsAttendanceMode(false)
           removeLocalStorageItem('selectedClass')
-          window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+          dispatchSelectedClassChange(null)
         }
       }
     }
@@ -1237,7 +1243,7 @@ const MyClasses = () => {
     saveSelectedClass(classItem)
     
     // Dispatch custom event to notify Header of change
-    window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+    dispatchSelectedClassChange(classItem)
     
     // Check sessionStorage first for instant display
     const sectionId = classItem.section_course_id

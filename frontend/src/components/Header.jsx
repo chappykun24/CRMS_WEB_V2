@@ -34,34 +34,37 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   
   // Listen for localStorage changes to update selected class
   useEffect(() => {
-    const handleStorageChange = () => {
+    const updateSelectedClass = (classData) => {
+      setSelectedClass(classData || null)
+    }
+
+    const handleStorageChange = (event) => {
+      // When receiving the custom event, use the payload immediately
+      if (event?.type === 'selectedClassChanged' && event.detail && 'class' in event.detail) {
+        updateSelectedClass(event.detail.class)
+        return
+      }
+
       try {
         const classData = getSelectedClass()
-        setSelectedClass(classData)
-      } catch (e) {
+        updateSelectedClass(classData)
+      } catch (error) {
         // Fallback to direct localStorage access if manager fails
         try {
-          const classData = localStorage.getItem('selectedClass')
-          if (classData) {
-            setSelectedClass(JSON.parse(classData))
-          } else {
-            setSelectedClass(null)
-          }
+          const classDataStr = localStorage.getItem('selectedClass')
+          updateSelectedClass(classDataStr ? JSON.parse(classDataStr) : null)
         } catch (parseError) {
-          setSelectedClass(null)
+          updateSelectedClass(null)
         }
       }
     }
-    
-    // Check initial value
+
+    // Check initial value on mount
     handleStorageChange()
-    
-    // Listen for storage events
+
     window.addEventListener('storage', handleStorageChange)
-    
-    // Also listen for custom events (for same-tab updates)
     window.addEventListener('selectedClassChanged', handleStorageChange)
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('selectedClassChanged', handleStorageChange)

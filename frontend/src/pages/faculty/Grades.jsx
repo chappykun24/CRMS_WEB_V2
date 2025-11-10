@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
+import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import LazyImage from '../../components/LazyImage'
 import imageLoaderService from '../../services/imageLoaderService'
 
@@ -108,6 +109,25 @@ const Grades = () => {
     
     // Fetch fresh data in background (non-blocking if cache exists)
     loadSectionData(sectionId, studentsCacheKey, gradesCacheKey, scoresCacheKey, !cachedStudents || !cachedGrades || !cachedScores)
+  }, [selectedClass])
+
+  // Keep Header breadcrumb in sync with selected class
+  useEffect(() => {
+    if (selectedClass) {
+      saveSelectedClass(selectedClass)
+      window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+        detail: { class: selectedClass }
+      }))
+    } else {
+      try {
+        localStorage.removeItem('selectedClass')
+        window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+          detail: { class: null }
+        }))
+      } catch (error) {
+        console.error('Error clearing selected class:', error)
+      }
+    }
   }, [selectedClass])
 
   // Load all data for a specific section (lazy load on class selection)

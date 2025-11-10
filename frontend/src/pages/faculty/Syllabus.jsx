@@ -67,8 +67,6 @@ const Syllabus = () => {
           const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
           if (classToSelect) {
             setSelectedClass(classToSelect)
-            saveSelectedClass(classToSelect)
-            window.dispatchEvent(new CustomEvent('selectedClassChanged'))
           }
         }
       }
@@ -85,8 +83,6 @@ const Syllabus = () => {
             const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
             if (classToSelect) {
               setSelectedClass(classToSelect)
-              saveSelectedClass(classToSelect)
-              window.dispatchEvent(new CustomEvent('selectedClassChanged'))
             }
           }
         } else {
@@ -107,11 +103,15 @@ const Syllabus = () => {
   useEffect(() => {
     if (selectedClass) {
       saveSelectedClass(selectedClass)
-      window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+      window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+        detail: { class: selectedClass }
+      }))
     } else {
       try {
         localStorage.removeItem('selectedClass')
-        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+        window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+          detail: { class: null }
+        }))
       } catch (error) {
         console.error('Error clearing selected class:', error)
       }

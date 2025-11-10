@@ -70,15 +70,16 @@ const Assessments = () => {
   // Notify Header when selected class changes
   useEffect(() => {
     if (selectedClass) {
-      // Save selected class to localStorage for Header breadcrumb
       saveSelectedClass(selectedClass)
-      // Dispatch custom event to notify Header of change
-      window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+      window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+        detail: { class: selectedClass }
+      }))
     } else {
-      // Clear selected class from localStorage when no class is selected
       try {
         localStorage.removeItem('selectedClass')
-        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+        window.dispatchEvent(new CustomEvent('selectedClassChanged', {
+          detail: { class: null }
+        }))
       } catch (error) {
         console.error('Error clearing selected class:', error)
       }
@@ -132,8 +133,6 @@ const Assessments = () => {
           const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
           if (classToSelect) {
             setSelectedClass(classToSelect)
-            saveSelectedClass(classToSelect)
-            window.dispatchEvent(new CustomEvent('selectedClassChanged'))
           }
         }
       }
@@ -153,8 +152,6 @@ const Assessments = () => {
             const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
             if (classToSelect) {
               setSelectedClass(classToSelect)
-              saveSelectedClass(classToSelect)
-              window.dispatchEvent(new CustomEvent('selectedClassChanged'))
             }
           }
         } else {
