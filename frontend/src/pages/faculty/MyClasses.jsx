@@ -1369,7 +1369,7 @@ const MyClasses = () => {
   }, [])
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-full flex overflow-auto">
       {/* Main Content - Classes List */}
       <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
 
