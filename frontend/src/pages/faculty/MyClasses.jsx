@@ -1497,17 +1497,17 @@ const MyClasses = () => {
               {isAttendanceMode && selectedClass && (
                 <div className="mb-3 bg-white border border-gray-200 rounded-lg p-3 sticky top-0 z-20">
                   <div className="flex items-center justify-between gap-3">
-                    {/* Left: Class Title and meta */}
+                    {/* Left: Meta only (no title) */}
                     <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">
-                        {selectedClass.course_title}
-                      </h3>
                       <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-600">
                         <span className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</span>
                         <span className="hidden sm:inline">•</span>
                         <span className="truncate">{selectedClass.semester} {selectedClass.school_year}</span>
-                        <span className="ml-2 inline-block bg-gray-100 text-gray-700 rounded-full px-2 py-0.5 shrink-0">
-                          {students.length} student{students.length !== 1 ? 's' : ''}
+                        <span
+                          className="ml-2 inline-block bg-gray-100 text-gray-700 rounded-full px-1.5 py-0.5 shrink-0 text-[10px]"
+                          title={`${students.length} student${students.length !== 1 ? 's' : ''}`}
+                        >
+                          {students.length}
                         </span>
                       </div>
                     </div>
