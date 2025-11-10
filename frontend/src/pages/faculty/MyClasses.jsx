@@ -1485,7 +1485,7 @@ const MyClasses = () => {
                               Loading...
                             </>
                           ) : (
-                            'View Full List'
+                            'Attendance History'
                           )}
                         </button>
                         <button
@@ -1583,7 +1583,82 @@ const MyClasses = () => {
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
-              
+              {isAttendanceMode && selectedClass && (
+                <div className="mb-3 bg-white border border-gray-200 rounded-lg p-3 sticky top-0 z-20">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left: Class Title and meta */}
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">
+                        {selectedClass.course_title}
+                      </h3>
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-600">
+                        <span className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="truncate">{selectedClass.semester} {selectedClass.school_year}</span>
+                        <span className="ml-2 inline-block bg-gray-100 text-gray-700 rounded-full px-2 py-0.5 shrink-0">
+                          {students.length} student{students.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Controls */}
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <input
+                        type="date"
+                        value={sessionDetails.session_date}
+                        onChange={async (e) => {
+                          const selectedDate = e.target.value
+                          updateSessionDetails('session_date', selectedDate)
+                          if (selectedDate && selectedClass) {
+                            await loadExistingAttendanceForDate(selectedDate)
+                          }
+                        }}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <input
+                        type="text"
+                        value={sessionDetails.title}
+                        onChange={(e) => updateSessionDetails('title', e.target.value)}
+                        placeholder="Session Title"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
+                        style={{ minWidth: 140 }}
+                      />
+                      <select
+                        value={sessionDetails.session_type}
+                        onChange={(e) => updateSessionDetails('session_type', e.target.value)}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option>Lecture</option>
+                        <option>Laboratory</option>
+                        <option>Recitation</option>
+                        <option>Seminar</option>
+                      </select>
+                      <select
+                        value={sessionDetails.meeting_type}
+                        onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                      >
+                        <option>Face-to-Face</option>
+                        <option>Online</option>
+                        <option>Hybrid</option>
+                      </select>
+                      <button
+                        onClick={markAllPresent}
+                        className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                      >
+                        Mark All Present
+                      </button>
+                      <button
+                        onClick={submitAttendance}
+                        disabled={submittingAttendance || !sessionDetailsValid}
+                        className="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {submittingAttendance ? 'Submitting...' : 'Submit'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
@@ -1639,8 +1714,8 @@ const MyClasses = () => {
                                 onClick={() => markAttendance(student.enrollment_id, 'absent')}
                                 className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none ${
                                   getAttendanceStatus(student.enrollment_id) === 'absent' 
-                                    ? 'bg-gray-300 text-gray-900' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                                    ? 'bg-red-200 text-red-900' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-800'
                                 }`}
                                 style={{ border: 'none', outline: 'none' }}
                               >
