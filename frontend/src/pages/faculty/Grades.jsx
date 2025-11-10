@@ -84,17 +84,17 @@ const Grades = () => {
     if (cachedStudents) {
       const studentsList = Array.isArray(cachedStudents) ? cachedStudents : []
       setStudents(studentsList)
-      // Load images for cached students immediately
-      requestAnimationFrame(() => {
+      // Delay image loading - show names and grades first, then load images
+      setTimeout(() => {
         setImagesReady(true)
         const imagesToLoad = studentsList
           .filter(s => s.student_photo)
           .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
         if (imagesToLoad.length > 0) {
-          // Load images immediately in parallel
-          imageLoaderService.queueImages(imagesToLoad, true)
+          // Load images with lazy loading (not immediate)
+          imageLoaderService.queueImages(imagesToLoad, false)
         }
-      })
+      }, 300) // Small delay to ensure names/grades render first
     }
     
     if (cachedGrades) {
@@ -131,20 +131,20 @@ const Grades = () => {
       if (studentsResponse.ok) {
         const studentsData = await studentsResponse.json()
         const studentsList = Array.isArray(studentsData) ? studentsData : []
+        // Set students first (names and data) - this renders immediately
         setStudents(studentsList)
         // Cache minimized data for next time (excludes photos)
         safeSetItem(studentsCacheKey, studentsList, minimizeStudentData)
         
-        // Load images immediately after essential data is displayed
-        // Use requestAnimationFrame to ensure DOM is ready, then load images
-        requestAnimationFrame(() => {
-          setImagesReady(true) // Enable image loading in UI immediately
+        // Delay image loading - show names and grades first, then load images asynchronously
+        setTimeout(() => {
+          setImagesReady(true) // Enable image loading in UI after essential data is displayed
           const imagesToLoad = studentsList
             .filter(s => s.student_photo)
             .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
-          // Load images immediately in parallel (no batching delay)
-          imageLoaderService.queueImages(imagesToLoad, true)
-        })
+          // Load images with lazy loading (not immediate) - images load last
+          imageLoaderService.queueImages(imagesToLoad, false)
+        }, 300) // Small delay to ensure names/grades render first
       } else {
         console.error('Failed to load students')
         if (showLoading) setStudents([])

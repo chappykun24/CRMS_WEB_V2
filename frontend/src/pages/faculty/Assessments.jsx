@@ -401,17 +401,17 @@ const Assessments = () => {
       setGrades(cached)
       // Store original grades from cache
       setOriginalGrades(JSON.parse(JSON.stringify(cached)))
-      // Load images for cached grades immediately
-      requestAnimationFrame(() => {
+      // Delay image loading - show names and grades first, then load images
+      setTimeout(() => {
         setImagesReady(true)
         const imagesToLoad = Object.values(cached)
           .filter(g => g.student_photo)
           .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
         if (imagesToLoad.length > 0) {
-          // Load images immediately in parallel
-          imageLoaderService.queueImages(imagesToLoad, true)
+          // Load images with lazy loading (not immediate)
+          imageLoaderService.queueImages(imagesToLoad, false)
         }
-      })
+      }, 300) // Small delay to ensure names/grades render first
     }
     
     try {
@@ -434,19 +434,20 @@ const Assessments = () => {
             due_date: grade.due_date
           }
         })
+        // Set grades first (names and scores) - this renders immediately
         setGrades(gradesMap)
         // Store original grades as deep copy for change detection
         setOriginalGrades(JSON.parse(JSON.stringify(gradesMap)))
         
-        // Load images immediately after essential data is displayed
-        requestAnimationFrame(() => {
-          setImagesReady(true) // Enable image loading in UI immediately
+        // Delay image loading - show names and grades first, then load images asynchronously
+        setTimeout(() => {
+          setImagesReady(true) // Enable image loading in UI after essential data is displayed
           const imagesToLoad = data
             .filter(g => g.student_photo)
             .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id}` }))
-          // Load images immediately in parallel (no batching delay)
-          imageLoaderService.queueImages(imagesToLoad, true)
-        })
+          // Load images with lazy loading (not immediate) - images load last
+          imageLoaderService.queueImages(imagesToLoad, false)
+        }, 300) // Small delay to ensure names/grades render first
         // Cache for next time (grades are small)
         safeSetItem(gradesCacheKey, gradesMap)
       } else {
