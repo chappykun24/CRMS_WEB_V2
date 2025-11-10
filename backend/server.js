@@ -36,25 +36,44 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    const allowedOrigins = process.env.NODE_ENV === 'production' 
-      ? [
-          'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
-          'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app', // Latest deployment
-          'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app', // Previous deployment
-          'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app', // Earlier deployment
-          process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
-        ]
-      : ['http://localhost:3000', 'http://127.0.0.1:3000'];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
+    // In production, allow all Vercel preview deployments and the main frontend
+    if (process.env.NODE_ENV === 'production') {
+      // Check if it's a Vercel deployment (includes preview and production)
+      const isVercelDeployment = origin.includes('.vercel.app') || 
+                                  origin.includes('crms-web-v2-frontend') ||
+                                  origin.includes('kcs-projects-59f6ae3a');
+      
+      // Also check against explicit allowed origins
+      const allowedOrigins = [
+        'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
+        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app',
+        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app',
+        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app',
+        'https://crms-web-v2-frontend-git-master-kcs-projects-59f6ae3a.vercel.app', // Git branch deployment
+        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
+      ];
+      
+      if (isVercelDeployment || allowedOrigins.indexOf(origin) !== -1) {
+        console.log(`✅ [CORS] Allowed origin: ${origin}`);
+        callback(null, true);
+      } else {
+        console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
     } else {
-      console.log(`🚫 [CORS] Blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      // Development: allow localhost
+      const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
