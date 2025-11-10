@@ -305,23 +305,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       
       const title = pageTitles[pageName] || 'Faculty Dashboard'
       
-      // Build breadcrumb parts: [Title] > [Tab] > [Class]
+      // Build breadcrumb parts: [Title] > [Class] > [Tab]
       const breadcrumbParts = []
       
-      // Add active tab if it exists (e.g., "Grading" tab in Assessments)
-      if (facultyActiveTab && facultyActiveTab !== pageName) {
-        // Capitalize first letter of tab name
-        const tabDisplayName = facultyActiveTab.charAt(0).toUpperCase() + facultyActiveTab.slice(1)
-        breadcrumbParts.push(tabDisplayName)
-      }
-      
-      // Add selected class if it exists
+      // Add selected class first so tab labels appear after the subject
       if (selectedClass && selectedClass.course_title) {
         breadcrumbParts.push(selectedClass.course_title)
       }
       
-      // Build subtitle from breadcrumb parts - only show if there's content
-      // Stay blank until there is a selected class or active tab
+      // Add active tab if it exists (e.g., "Attendance" tab or "Grading")
+      if (facultyActiveTab && facultyActiveTab !== pageName) {
+        const tabDisplayName = facultyActiveTab.charAt(0).toUpperCase() + facultyActiveTab.slice(1)
+        breadcrumbParts.push(tabDisplayName)
+      }
+      
+      // Build subtitle from breadcrumb parts - stay blank until we have content
       const subtitle = breadcrumbParts.length > 0 ? breadcrumbParts.join(' > ') : ''
       
       return {

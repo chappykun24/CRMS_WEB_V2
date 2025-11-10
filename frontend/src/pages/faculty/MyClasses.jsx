@@ -73,6 +73,21 @@ const MyClasses = () => {
     }))
   }, [])
 
+  // Keep breadcrumb tab state in sync (Attendance vs default)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+      detail: { activeTab: isAttendanceMode ? 'attendance' : null }
+    }))
+  }, [isAttendanceMode])
+
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+        detail: { activeTab: null }
+      }))
+    }
+  }, [])
+
   // Attendance mode state
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {enrollmentId: {date: {status, remarks}}}
