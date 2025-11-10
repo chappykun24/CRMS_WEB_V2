@@ -112,8 +112,12 @@ const Assessments = () => {
     due_date: '',
     submission_deadline: '',
     grading_method: 'points',
-    instructions: ''
+    instructions: '',
+    syllabus_id: ''
   })
+  
+  // Syllabi for the selected class
+  const [syllabi, setSyllabi] = useState([])
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -175,6 +179,7 @@ const Assessments = () => {
       setAssessments([])
       setSelectedAssessment(null)
       setGrades({})
+      setSyllabi([])
       return
     }
     
@@ -190,7 +195,25 @@ const Assessments = () => {
     
     // Fetch fresh data in background (non-blocking if cache exists)
     loadAssessments(sectionId, assessmentsCacheKey, !cached)
+    
+    // Load syllabi for this class
+    loadSyllabiForClass(sectionId)
   }, [selectedClass])
+  
+  // Load syllabi for the selected class
+  const loadSyllabiForClass = async (sectionCourseId) => {
+    if (!sectionCourseId) return
+    
+    try {
+      const response = await fetch(`/api/syllabi/class/${sectionCourseId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSyllabi(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error loading syllabi:', error)
+    }
+  }
 
   const loadAssessments = async (sectionCourseId, cacheKey, showLoading = true) => {
     if (!sectionCourseId) return
@@ -374,8 +397,13 @@ const Assessments = () => {
       due_date: assessment.due_date ? assessment.due_date.split('T')[0] : '',
       submission_deadline: assessment.submission_deadline ? assessment.submission_deadline.split('T')[0] : '',
       grading_method: assessment.grading_method || 'points',
-      instructions: assessment.instructions || ''
+      instructions: assessment.instructions || '',
+      syllabus_id: assessment.syllabus_id || ''
     })
+    // Load syllabi if not already loaded
+    if (selectedClass && syllabi.length === 0) {
+      loadSyllabiForClass(selectedClass.section_course_id)
+    }
     setShowEditModal(true)
   }
 
@@ -390,12 +418,17 @@ const Assessments = () => {
       due_date: '',
       submission_deadline: '',
       grading_method: 'points',
-      instructions: ''
+      instructions: '',
+      syllabus_id: ''
     })
   }
 
   const openCreateModal = () => {
     resetForm()
+    // Load syllabi if not already loaded
+    if (selectedClass && syllabi.length === 0) {
+      loadSyllabiForClass(selectedClass.section_course_id)
+    }
     setShowCreateModal(true)
   }
 
@@ -783,6 +816,11 @@ const Assessments = () => {
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
                                         <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
+                                        {assessment.syllabus_title && (
+                                          <div className="text-xs text-blue-600 mt-1">
+                                            📋 {assessment.syllabus_title} (v{assessment.syllabus_version})
+                                          </div>
+                                        )}
                                       </div>
                                     </td>
                                     <td className="px-8 py-4">
@@ -1445,6 +1483,26 @@ const Assessments = () => {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus (Optional)</label>
+                  <select
+                    name="syllabus_id"
+                    value={formData.syllabus_id}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">No syllabus linked</option>
+                    {syllabi.map((syllabus) => (
+                      <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
+                        {syllabus.title} (v{syllabus.version})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Link this assessment to a syllabus to connect it with ILOs and course outcomes
+                  </p>
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1592,6 +1650,26 @@ const Assessments = () => {
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus (Optional)</label>
+                  <select
+                    name="syllabus_id"
+                    value={formData.syllabus_id}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">No syllabus linked</option>
+                    {syllabi.map((syllabus) => (
+                      <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
+                        {syllabus.title} (v{syllabus.version})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Link this assessment to a syllabus to connect it with ILOs and course outcomes
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">

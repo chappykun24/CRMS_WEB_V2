@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
+import ILOMappingTable from '../../components/ILOMappingTable'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -15,7 +16,8 @@ import {
   XCircleIcon,
   ClockIcon,
   BookOpenIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  TableCellsIcon
 } from '@heroicons/react/24/solid'
 
 const Syllabus = () => {
@@ -36,6 +38,8 @@ const Syllabus = () => {
   const [editingSyllabus, setEditingSyllabus] = useState(null)
   const [viewingSyllabus, setViewingSyllabus] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState('syllabi') // 'syllabi' or 'ilo-mapping'
+  const [selectedSyllabusForILO, setSelectedSyllabusForILO] = useState(null)
   
   // Form data
   const [formData, setFormData] = useState({
@@ -139,6 +143,7 @@ const Syllabus = () => {
   useEffect(() => {
     if (!selectedClass) {
       setSyllabi([])
+      setSelectedSyllabusForILO(null) // Reset selected syllabus when class changes
       return
     }
     
@@ -152,6 +157,13 @@ const Syllabus = () => {
     
     loadSyllabi(sectionId, syllabiCacheKey, !cached)
   }, [selectedClass])
+  
+  // Reset selected syllabus when switching tabs
+  useEffect(() => {
+    if (activeTab !== 'ilo-mapping') {
+      setSelectedSyllabusForILO(null)
+    }
+  }, [activeTab])
 
   const loadSyllabi = async (sectionCourseId, cacheKey, showLoading = true) => {
     if (!sectionCourseId) return
@@ -542,9 +554,24 @@ const Syllabus = () => {
             <div className="flex items-center justify-between bg-gray-50">
               <div className="flex space-x-4 sm:space-x-6 lg:space-x-8">
                 <button
-                  className="py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm text-red-600 border-b-2 border-red-600 bg-transparent border-0 focus:outline-none"
+                  onClick={() => setActiveTab('syllabi')}
+                  className={`py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm transition-colors bg-transparent border-0 focus:outline-none focus:ring-0 ${
+                    activeTab === 'syllabi'
+                      ? 'text-red-600 border-b-2 border-red-600'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
                   Syllabus
+                </button>
+                <button
+                  onClick={() => setActiveTab('ilo-mapping')}
+                  className={`py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm transition-colors bg-transparent border-0 focus:outline-none focus:ring-0 ${
+                    activeTab === 'ilo-mapping'
+                      ? 'text-red-600 border-b-2 border-red-600'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  ILO Mapping
                 </button>
               </div>
             </div>
@@ -554,10 +581,11 @@ const Syllabus = () => {
         {/* Content */}
         <div className="flex-1 overflow-hidden">
           <div className="px-8 py-6 h-full overflow-y-auto">
-            {/* Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
-              {/* Main Content - Syllabus Table */}
-              <div className="lg:col-span-4 flex flex-col min-h-0">
+            {activeTab === 'syllabi' ? (
+              /* Content with Sidebar */
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
+                {/* Main Content - Syllabus Table */}
+                <div className="lg:col-span-4 flex flex-col min-h-0">
                 {/* Search Bar and Create Button */}
                 {selectedClass && (
                   <div className="flex items-center gap-3 mb-4 flex-shrink-0">
@@ -813,6 +841,141 @@ const Syllabus = () => {
                 </div>
               </div>
             </div>
+          ) : (
+              /* ILO Mapping Tab */
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
+                {/* Main Content */}
+                <div className="lg:col-span-4 flex flex-col min-h-0">
+                  {!selectedClass ? (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
+                      <div className="text-center">
+                        <TableCellsIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
+                        <p className="text-gray-500">Choose a class from the sidebar to view ILO mappings.</p>
+                      </div>
+                    </div>
+                  ) : selectedSyllabusForILO ? (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 flex flex-col min-h-0">
+                      <div className="mb-4 flex items-center justify-between flex-shrink-0">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{selectedSyllabusForILO.title}</h3>
+                          <p className="text-sm text-gray-500">Version {selectedSyllabusForILO.version}</p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedSyllabusForILO(null)}
+                          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        >
+                          Back to Syllabi
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto min-h-0">
+                        <ILOMappingTable
+                          syllabusId={selectedSyllabusForILO.syllabus_id}
+                          onUpdate={() => {
+                            // Refresh syllabi list if needed
+                            if (selectedClass) {
+                              loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Select a Syllabus for ILO Mapping</h3>
+                      {loading ? (
+                        <div className="text-center py-8 text-gray-500">Loading syllabi...</div>
+                      ) : syllabi.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {syllabi.map((syllabus) => (
+                            <div
+                              key={syllabus.syllabus_id}
+                              onClick={() => setSelectedSyllabusForILO(syllabus)}
+                              className="p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="font-medium text-gray-900">{syllabus.title}</div>
+                              <div className="text-sm text-gray-500">Version {syllabus.version}</div>
+                              <div className="mt-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                                  {syllabus.review_status || 'pending'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          No syllabi found. Create a syllabus first.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Right Sidebar - Classes */}
+                <div className="lg:col-span-1 flex flex-col min-h-0">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
+                    <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                      <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                    </div>
+                    <div className="flex-1 overflow-y-auto min-h-0">
+                      {loading ? (
+                        <div className="p-4 space-y-2">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-1">
+                                  <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                  <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : classes.length > 0 ? (
+                        <div className="p-4 space-y-2">
+                          {classes.map((cls) => (
+                            <div
+                              key={cls.section_course_id}
+                              onClick={() => setSelectedClass(cls)}
+                              className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                selectedClass?.section_course_id === cls.section_course_id
+                                  ? 'border-gray-300 bg-gray-50'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                              } group`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className={`font-medium text-sm truncate ${
+                                    selectedClass?.section_course_id === cls.section_course_id
+                                      ? 'text-gray-900'
+                                      : 'text-gray-900 group-hover:text-gray-900'
+                                  }`}>
+                                    {cls.course_title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                                </div>
+                                {selectedClass?.section_course_id === cls.section_course_id && (
+                                  <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center p-8">
+                          <div className="text-center">
+                            <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                            <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

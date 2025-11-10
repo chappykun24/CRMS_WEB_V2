@@ -1906,6 +1906,7 @@ import attendanceRoutes from './routes/attendance.js';
 import assessmentRoutes from './routes/assessments.js';
 import gradingRoutes from './routes/grading.js';
 import syllabiRoutes from './routes/syllabi.js';
+import iloRoutes from './routes/ilos.js';
 
 // Use API routes
 app.use('/api/auth', authRoutes);
@@ -1914,6 +1915,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/grading', gradingRoutes);
 app.use('/api/syllabi', syllabiRoutes);
+app.use('/api/ilos', iloRoutes);
 
 console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');

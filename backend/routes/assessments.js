@@ -64,6 +64,7 @@ router.get('/class/:sectionCourseId', async (req, res) => {
       SELECT 
         a.assessment_id,
         a.section_course_id,
+        a.syllabus_id,
         a.title,
         a.description,
         a.type,
@@ -79,9 +80,12 @@ router.get('/class/:sectionCourseId', async (req, res) => {
         a.status,
         a.created_at,
         a.updated_at,
-        (SELECT COUNT(*) FROM submissions s WHERE s.assessment_id = a.assessment_id) as total_submissions,
-        (SELECT COUNT(*) FROM submissions s WHERE s.assessment_id = a.assessment_id AND s.status = 'graded') as graded_submissions
+        sy.title as syllabus_title,
+        sy.version as syllabus_version,
+        (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id) as total_submissions,
+        (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id AND sub.status = 'graded') as graded_submissions
       FROM assessments a
+      LEFT JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       WHERE a.section_course_id = $1
       ORDER BY a.due_date ASC, a.created_at DESC
     `;
@@ -90,7 +94,7 @@ router.get('/class/:sectionCourseId', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching class assessments:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
@@ -107,13 +111,17 @@ router.get('/:id', async (req, res) => {
         c.title as course_title,
         c.course_code,
         u.name as instructor_name,
-        (SELECT COUNT(*) FROM submissions s WHERE s.assessment_id = a.assessment_id) as total_submissions,
-        (SELECT COUNT(*) FROM submissions s WHERE s.assessment_id = a.assessment_id AND s.status = 'graded') as graded_submissions
+        sy.title as syllabus_title,
+        sy.version as syllabus_version,
+        sy.syllabus_id,
+        (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id) as total_submissions,
+        (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id AND sub.status = 'graded') as graded_submissions
       FROM assessments a
       LEFT JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       LEFT JOIN sections s ON sc.section_id = s.section_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
       LEFT JOIN users u ON sc.instructor_id = u.user_id
+      LEFT JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       WHERE a.assessment_id = $1
     `;
     
@@ -126,7 +134,7 @@ router.get('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error fetching assessment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
@@ -134,6 +142,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     section_course_id,
+    syllabus_id,
     title,
     description,
     type,
@@ -150,15 +159,15 @@ router.post('/', async (req, res) => {
   try {
     const query = `
       INSERT INTO assessments (
-        section_course_id, title, description, type, category,
+        section_course_id, syllabus_id, title, description, type, category,
         total_points, weight_percentage, due_date, submission_deadline,
         grading_method, instructions, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING assessment_id, title, type, total_points, weight_percentage, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING assessment_id, title, type, total_points, weight_percentage, status, syllabus_id
     `;
     
     const values = [
-      section_course_id, title, description, type, category,
+      section_course_id, syllabus_id || null, title, description, type, category,
       total_points, weight_percentage, due_date, submission_deadline,
       grading_method, instructions, created_by
     ];
@@ -171,7 +180,7 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating assessment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
@@ -179,6 +188,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const {
+    syllabus_id,
     title,
     description,
     type,
@@ -194,15 +204,17 @@ router.put('/:id', async (req, res) => {
   try {
     const query = `
       UPDATE assessments SET
-        title = $1, description = $2, type = $3, category = $4,
-        total_points = $5, weight_percentage = $6, due_date = $7,
-        submission_deadline = $8, grading_method = $9, instructions = $10,
+        syllabus_id = COALESCE($1, syllabus_id),
+        title = $2, description = $3, type = $4, category = $5,
+        total_points = $6, weight_percentage = $7, due_date = $8,
+        submission_deadline = $9, grading_method = $10, instructions = $11,
         updated_at = CURRENT_TIMESTAMP
-      WHERE assessment_id = $11
-      RETURNING assessment_id, title, type, total_points, weight_percentage
+      WHERE assessment_id = $12
+      RETURNING assessment_id, title, type, total_points, weight_percentage, syllabus_id
     `;
     
     const values = [
+      syllabus_id !== undefined ? syllabus_id : null,
       title, description, type, category, total_points, weight_percentage,
       due_date, submission_deadline, grading_method, instructions, id
     ];
@@ -219,7 +231,7 @@ router.put('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating assessment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
