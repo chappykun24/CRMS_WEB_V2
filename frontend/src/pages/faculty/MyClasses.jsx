@@ -1580,6 +1580,16 @@ const MyClasses = () => {
 
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
+                {isAttendanceMode && selectedClass && (
+                  <div className="mb-3 px-1">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                      {selectedClass.course_title}
+                    </h3>
+                    <div className="text-xs text-gray-600">
+                      {students.length} student{students.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                )}
                 {loadingStudents ? (
                   <StudentListSkeleton students={5} />
                 ) : students.length > 0 ? (
