@@ -820,11 +820,13 @@ const Assessments = () => {
                 )}
               </div>
 
-              {/* Right Sidebar - Subjects */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 h-full flex flex-col">
-                  {/* Content */}
-                  <div className="flex-1 overflow-hidden">
+              {/* Right Sidebar - Classes */}
+              <div className="lg:col-span-1 flex flex-col">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                  <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                    <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto min-h-0">
                     {loading ? (
                       <div className="p-4 space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
@@ -839,7 +841,7 @@ const Assessments = () => {
                         ))}
                       </div>
                     ) : classes.length > 0 ? (
-                      <div className="p-4 space-y-2 overflow-y-auto h-full">
+                      <div className="p-4 space-y-2">
                         {classes.map((cls) => (
                           <div
                             key={cls.section_course_id}
@@ -1128,145 +1130,151 @@ const Assessments = () => {
                     )}
                   </div>
 
-                  {/* Right Sidebar - Subjects and Assessments */}
-                  <div className="lg:col-span-1 flex flex-col h-full min-w-0">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full overflow-hidden">
-                      {/* Header */}
-                      {selectedClass && (
-                        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex-shrink-0">
-                          <p className="text-xs sm:text-sm text-gray-500 truncate" title={selectedClass.course_title}>{selectedClass.course_title}</p>
+                  {/* Right Sidebar - Classes and Assessments */}
+                  <div className="lg:col-span-1 flex flex-col">
+                    {!selectedClass ? (
+                      // Classes Selection
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                          <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                         </div>
-                      )}
-
-                      {/* Content */}
-                      <div className="flex-1 overflow-y-auto min-h-0">
-                        {!selectedClass ? (
-                          // Classes Selection
-                          <div className="h-full flex flex-col">
-                            {loading ? (
-                              <div className="p-4 space-y-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                  <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                                    <div className="flex items-center">
-                                      <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
-                                        <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
-                                      </div>
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                          {loading ? (
+                            <div className="p-4 space-y-2">
+                              {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="flex-1">
+                                      <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                      <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
                                     </div>
                                   </div>
-                                ))}
-                              </div>
-                            ) : classes.length > 0 ? (
-                              <div className="p-3 sm:p-4 space-y-2 overflow-y-auto h-full">
-                                {classes.map((cls) => (
-                                  <div
-                                    key={cls.section_course_id}
-                                    onClick={() => setSelectedClass(cls)}
-                                    className="p-2 sm:p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 group"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-xs sm:text-sm text-gray-900 truncate group-hover:text-gray-900" title={cls.course_title}>{cls.course_title}</p>
-                                        <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
-                                      </div>
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex items-center justify-center p-8">
-                                <div className="text-center">
-                                  <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
-                                  <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          // Assessments Selection
-                          <div className="h-full flex flex-col">
-                            {/* Back Button */}
-                            <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100">
-                              <button
-                                onClick={() => {
-                                  setSelectedClass(null)
-                                  setSelectedAssessment(null)
-                                  setGrades({})
-                                  setOriginalGrades({})
-                                }}
-                                className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-600 hover:text-red-600 transition-colors"
-                              >
-                                <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                                <span className="truncate">Back to Classes</span>
-                              </button>
+                              ))}
                             </div>
-
-                            {loading ? (
-                              <div className="p-4 space-y-2">
-                                {Array.from({ length: 3 }).map((_, i) => (
-                                  <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                                    <div className="flex items-center">
-                                      <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-1"></div>
-                                        <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
-                                      </div>
+                          ) : classes.length > 0 ? (
+                            <div className="p-4 space-y-2">
+                              {classes.map((cls) => (
+                                <div
+                                  key={cls.section_course_id}
+                                  onClick={() => setSelectedClass(cls)}
+                                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                    selectedClass?.section_course_id === cls.section_course_id
+                                      ? 'border-gray-300 bg-gray-50'
+                                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                                  } group`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`font-medium text-sm truncate ${
+                                        selectedClass?.section_course_id === cls.section_course_id
+                                          ? 'text-gray-900'
+                                          : 'text-gray-900 group-hover:text-gray-900'
+                                      }`}>
+                                        {cls.course_title}
+                                      </p>
+                                      <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
                                     </div>
+                                    {selectedClass?.section_course_id === cls.section_course_id && (
+                                      <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            ) : assessments.length > 0 ? (
-                              <div className="p-3 sm:p-4 space-y-2 overflow-y-auto h-full">
-                                {assessments.map((assessment) => (
-                                  <div
-                                    key={assessment.assessment_id}
-                                    onClick={() => handleAssessmentSelect(assessment)}
-                                    className={`p-2 sm:p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
-                                      selectedAssessment?.assessment_id === assessment.assessment_id
-                                        ? 'border-gray-300 bg-gray-50'
-                                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
-                                    } group`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1 min-w-0">
-                                        <p className={`font-medium text-xs sm:text-sm truncate ${
-                                          selectedAssessment?.assessment_id === assessment.assessment_id
-                                            ? 'text-gray-900'
-                                            : 'text-gray-900 group-hover:text-gray-900'
-                                        }`}>
-                                          {assessment.title}
-                                        </p>
-                                        <div className="flex items-center space-x-1 sm:space-x-2 mt-1">
-                                          <span className="text-xs text-gray-500">{assessment.type}</span>
-                                          <span className="text-gray-300">•</span>
-                                          <span className="text-xs text-gray-500">{assessment.total_points} pts</span>
-                                        </div>
-                                      </div>
-                                      {selectedAssessment?.assessment_id === assessment.assessment_id && (
-                                        <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex items-center justify-center p-8">
-                                <div className="text-center">
-                                  <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
-                                  <p className="text-sm text-gray-500">Create assessments for this class to start grading.</p>
                                 </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex-1 flex items-center justify-center p-8">
+                              <div className="text-center">
+                                <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                                <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
                               </div>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      // Assessments Selection
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                          <div className="mb-2">
+                            <h3 className="text-sm font-medium text-gray-900 truncate" title={selectedClass.course_title}>{selectedClass.course_title}</h3>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedClass(null)
+                              setSelectedAssessment(null)
+                              setGrades({})
+                              setOriginalGrades({})
+                            }}
+                            className="flex items-center space-x-2 text-xs text-gray-600 hover:text-red-600 transition-colors"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Back to Classes</span>
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                          {loading ? (
+                            <div className="p-4 space-y-2">
+                              {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="flex-1">
+                                      <div className="h-4 bg-gray-200 rounded w-2/3 skeleton mb-1"></div>
+                                      <div className="h-3 bg-gray-100 rounded w-1/3 skeleton"></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : assessments.length > 0 ? (
+                            <div className="p-4 space-y-2">
+                              {assessments.map((assessment) => (
+                                <div
+                                  key={assessment.assessment_id}
+                                  onClick={() => handleAssessmentSelect(assessment)}
+                                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                    selectedAssessment?.assessment_id === assessment.assessment_id
+                                      ? 'border-gray-300 bg-gray-50'
+                                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                                  } group`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`font-medium text-sm truncate ${
+                                        selectedAssessment?.assessment_id === assessment.assessment_id
+                                          ? 'text-gray-900'
+                                          : 'text-gray-900 group-hover:text-gray-900'
+                                      }`}>
+                                        {assessment.title}
+                                      </p>
+                                      <div className="flex items-center space-x-2 mt-1">
+                                        <span className="text-xs text-gray-500">{assessment.type}</span>
+                                        <span className="text-gray-300">•</span>
+                                        <span className="text-xs text-gray-500">{assessment.total_points} pts</span>
+                                      </div>
+                                    </div>
+                                    {selectedAssessment?.assessment_id === assessment.assessment_id && (
+                                      <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex-1 flex items-center justify-center p-8">
+                              <div className="text-center">
+                                <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
+                                <p className="text-sm text-gray-500">Create assessments for this class to start grading.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
