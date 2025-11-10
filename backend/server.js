@@ -31,54 +31,84 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Enhanced CORS configuration for both development and production
+// Build list of allowed origins
+const getAllowedOrigins = () => {
+  const origins = [
+    'https://crms-web-v2-frontend.vercel.app',
+    'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app',
+    'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app',
+    'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app',
+    'https://crms-web-v2-frontend-git-master-kcs-projects-59f6ae3a.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+  ];
+  
+  // Add FRONTEND_URL from environment if provided
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+  
+  return origins;
+};
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // In production, allow all Vercel preview deployments and the main frontend
-    if (process.env.NODE_ENV === 'production') {
-      // Check if it's a Vercel deployment (includes preview and production)
-      const isVercelDeployment = origin.includes('.vercel.app') || 
-                                  origin.includes('crms-web-v2-frontend') ||
-                                  origin.includes('kcs-projects-59f6ae3a');
-      
-      // Also check against explicit allowed origins
-      const allowedOrigins = [
-        'https://crms-web-v2-frontend.vercel.app', // Main frontend URL
-        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app',
-        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app',
-        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app',
-        'https://crms-web-v2-frontend-git-master-kcs-projects-59f6ae3a.vercel.app', // Git branch deployment
-        process.env.FRONTEND_URL || 'https://crms-web-v2-frontend.vercel.app'
-      ];
-      
-      if (isVercelDeployment || allowedOrigins.indexOf(origin) !== -1) {
-        console.log(`✅ [CORS] Allowed origin: ${origin}`);
-        callback(null, true);
-      } else {
-        console.log(`🚫 [CORS] Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    } else {
-      // Development: allow localhost
-      const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.log(`🚫 [CORS] Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
+    // Allow requests with no origin (like mobile apps, curl, Postman, or server-to-server requests)
+    if (!origin) {
+      console.log(`✅ [CORS] Allowing request with no origin`);
+      return callback(null, true);
     }
+    
+    const allowedOrigins = getAllowedOrigins();
+    
+    // Normalize origin for comparison (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Check exact match
+    if (allowedOrigins.some(allowed => allowed.replace(/\/$/, '') === normalizedOrigin)) {
+      console.log(`✅ [CORS] Allowed origin (exact match): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Check if it's a Vercel deployment (for preview deployments)
+    const isVercelDeployment = origin.includes('.vercel.app') || 
+                                origin.includes('crms-web-v2-frontend') ||
+                                origin.includes('kcs-projects-59f6ae3a');
+    
+    if (isVercelDeployment) {
+      console.log(`✅ [CORS] Allowed origin (Vercel deployment): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Log blocked origin for debugging
+    console.log(`🚫 [CORS] Blocked origin: ${origin}`);
+    console.log(`🔍 [CORS] Allowed origins: ${allowedOrigins.join(', ')}`);
+    console.log(`🌍 [CORS] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    
+    // In development, be more permissive
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`⚠️ [CORS] Development mode - allowing origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'user-id'],
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'user-id', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  preflightContinue: false,
+  maxAge: 86400 // 24 hours
 };
 
-// Middleware
+// Middleware - Apply CORS first
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 // Enable compression for all responses
 app.use(compression({
@@ -3090,6 +3120,26 @@ app.post('/api/students/enroll', async (req, res) => {
   }
 });
 
+// Global error handler - CORS middleware should handle headers, but ensure error responses are sent
+app.use((err, req, res, next) => {
+  console.error('❌ [ERROR]', err.message);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('❌ [ERROR] Stack:', err.stack);
+  }
+  
+  // CORS headers should already be set by cors middleware
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  // CORS headers should already be set by cors middleware
+  res.status(404).json({ error: 'Route not found' });
+});
+
 // Start server
 app.listen(PORT, () => {
   const baseUrl = process.env.NODE_ENV === 'production' 
@@ -3104,13 +3154,7 @@ app.listen(PORT, () => {
   console.log(`📚 [SERVER] Catalog API: ${baseUrl}/api/programs, /api/program-specializations, /api/courses`);
   console.log(`📸 [SERVER] File uploads: Enabled (5MB max, base64 storage)`);
   console.log(`🌍 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
-  const allowedOrigins = process.env.NODE_ENV === 'production' 
-    ? [
-        'https://crms-web-v2-frontend.vercel.app',
-        'https://frontend-i7zn9mv9v-kcs-projects-59f6ae3a.vercel.app',
-        'https://frontend-id847wk8h-kcs-projects-59f6ae3a.vercel.app',
-        'https://frontend-usqyxjw9h-kcs-projects-59f6ae3a.vercel.app'
-      ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
-  console.log(`🔗 [SERVER] Frontend URLs: ${allowedOrigins.join(', ')}`);
+  const allowedOrigins = getAllowedOrigins();
+  console.log(`🔗 [SERVER] Allowed CORS Origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔗 [SERVER] CORS Configuration: Enabled with credentials`);
 });
