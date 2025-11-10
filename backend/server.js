@@ -104,11 +104,8 @@ const corsOptions = {
   maxAge: 86400 // 24 hours
 };
 
-// Middleware - Apply CORS first
+// Middleware - Apply CORS first (this automatically handles OPTIONS preflight requests)
 app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
 
 // Enable compression for all responses
 app.use(compression({
