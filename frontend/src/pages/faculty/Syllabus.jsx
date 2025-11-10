@@ -1471,27 +1471,120 @@ const Syllabus = () => {
                   </div>
                 )}
 
-                {viewingSyllabus.assessment_framework && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Assessment Framework</h3>
-                    <pre className="text-sm text-gray-900 bg-gray-50 p-3 rounded border overflow-x-auto whitespace-pre-wrap">
-                      {typeof viewingSyllabus.assessment_framework === 'object' 
-                        ? JSON.stringify(viewingSyllabus.assessment_framework, null, 2)
-                        : viewingSyllabus.assessment_framework}
-                    </pre>
-                  </div>
-                )}
+                {viewingSyllabus.assessment_framework && (() => {
+                  // Parse assessment framework
+                  let framework = null
+                  try {
+                    if (typeof viewingSyllabus.assessment_framework === 'string') {
+                      framework = JSON.parse(viewingSyllabus.assessment_framework)
+                    } else {
+                      framework = viewingSyllabus.assessment_framework
+                    }
+                  } catch (e) {
+                    framework = null
+                  }
+                  
+                  const components = framework?.components || []
+                  const totalWeight = components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
+                  
+                  return (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Assessment Framework</h3>
+                      {components.length > 0 ? (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="space-y-3">
+                            {components.map((comp, index) => (
+                              <div key={index} className="flex items-start justify-between p-3 bg-white rounded border border-gray-200">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-1">
+                                    <span className="font-semibold text-gray-900">{comp.type}</span>
+                                    {comp.count && (
+                                      <span className="text-sm text-gray-600">
+                                        ({comp.count} {comp.count === 1 ? 'item' : 'items'})
+                                      </span>
+                                    )}
+                                    <span className="text-sm font-medium text-blue-600">{comp.weight}%</span>
+                                  </div>
+                                  {comp.description && (
+                                    <p className="text-sm text-gray-600 mt-1">{comp.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-300">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Total Weight:</span>
+                              <span className={`text-sm font-bold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                                {totalWeight}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                          <p className="text-sm text-gray-500 italic">No assessment components defined</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
-                {viewingSyllabus.grading_policy && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Grading Policy</h3>
-                    <pre className="text-sm text-gray-900 bg-gray-50 p-3 rounded border overflow-x-auto whitespace-pre-wrap">
-                      {typeof viewingSyllabus.grading_policy === 'object' 
-                        ? JSON.stringify(viewingSyllabus.grading_policy, null, 2)
-                        : viewingSyllabus.grading_policy}
-                    </pre>
-                  </div>
-                )}
+                {viewingSyllabus.grading_policy && (() => {
+                  // Parse grading policy
+                  let policy = null
+                  try {
+                    if (typeof viewingSyllabus.grading_policy === 'string') {
+                      policy = JSON.parse(viewingSyllabus.grading_policy)
+                    } else {
+                      policy = viewingSyllabus.grading_policy
+                    }
+                  } catch (e) {
+                    policy = null
+                  }
+                  
+                  return (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Grading Policy</h3>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        {policy?.scale && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
+                            <div className="space-y-2">
+                              {Object.entries(policy.scale).map(([grade, range]) => (
+                                <div key={grade} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                                  <span className="font-medium text-gray-900">{grade}</span>
+                                  <span className="text-sm text-gray-600">{range}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {policy?.components && policy.components.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Components</h4>
+                            <div className="space-y-2">
+                              {policy.components.map((comp, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                                  <span className="text-sm text-gray-900">{comp.type || comp.name || 'Component'}</span>
+                                  <span className="text-sm font-medium text-blue-600">{comp.weight || comp.percentage || 0}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {policy?.description && (
+                          <div className="mt-4 pt-4 border-t border-gray-300">
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{policy.description}</p>
+                          </div>
+                        )}
+                        {!policy?.scale && !policy?.components && !policy?.description && (
+                          <p className="text-sm text-gray-500 italic">No grading policy details available</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
