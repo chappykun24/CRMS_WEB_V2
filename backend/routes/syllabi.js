@@ -219,8 +219,69 @@ router.post('/', async (req, res) => {
     ];
     
     const result = await db.query(query, values);
+    const syllabusId = result.rows[0].syllabus_id;
+    
+    // Create ILOs if provided
+    if (req.body.ilos && Array.isArray(req.body.ilos) && req.body.ilos.length > 0) {
+      try {
+        for (const ilo of req.body.ilos) {
+          // Skip temporary ILOs (those with temp IDs)
+          if (ilo.ilo_id && ilo.ilo_id.toString().startsWith('temp_')) {
+            delete ilo.ilo_id;
+          }
+          
+          const iloQuery = `
+            INSERT INTO ilos (syllabus_id, code, description, category, level, weight_percentage, assessment_methods, learning_activities)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING ilo_id
+          `;
+          
+          const iloValues = [
+            syllabusId,
+            ilo.code,
+            ilo.description,
+            ilo.category || null,
+            ilo.level || null,
+            ilo.weight_percentage || null,
+            Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods : [],
+            Array.isArray(ilo.learning_activities) ? ilo.learning_activities : []
+          ];
+          
+          const iloResult = await db.query(iloQuery, iloValues);
+          const newIloId = iloResult.rows[0].ilo_id;
+          
+          // Create mappings if provided
+          const createMappings = async (mappings, tableName, idColumn) => {
+            if (mappings && Array.isArray(mappings) && mappings.length > 0) {
+              for (const mapping of mappings) {
+                const mappingQuery = `
+                  INSERT INTO ${tableName} (ilo_id, ${idColumn}, assessment_tasks)
+                  VALUES ($1, $2, $3)
+                  ON CONFLICT (ilo_id, ${idColumn}) DO UPDATE
+                  SET assessment_tasks = $3, updated_at = CURRENT_TIMESTAMP
+                `;
+                await db.query(mappingQuery, [
+                  newIloId,
+                  mapping[idColumn],
+                  Array.isArray(mapping.assessment_tasks) ? mapping.assessment_tasks : []
+                ]);
+              }
+            }
+          };
+          
+          if (ilo.so_mappings) await createMappings(ilo.so_mappings, 'ilo_so_mappings', 'so_id');
+          if (ilo.iga_mappings) await createMappings(ilo.iga_mappings, 'ilo_iga_mappings', 'iga_id');
+          if (ilo.cdio_mappings) await createMappings(ilo.cdio_mappings, 'ilo_cdio_mappings', 'cdio_id');
+          if (ilo.sdg_mappings) await createMappings(ilo.sdg_mappings, 'ilo_sdg_mappings', 'sdg_id');
+        }
+      } catch (iloError) {
+        console.error('Error creating ILOs:', iloError);
+        // Continue even if ILO creation fails - syllabus is already created
+      }
+    }
+    
     res.status(201).json({ 
-      syllabus_id: result.rows[0].syllabus_id,
+      syllabus_id: syllabusId,
       message: 'Syllabus created successfully',
       syllabus: result.rows[0]
     });
@@ -309,9 +370,123 @@ router.put('/:id', async (req, res) => {
     ];
     
     const result = await db.query(query, values);
+    const syllabusId = parseInt(id);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    // Update ILOs if provided
+    if (req.body.ilos && Array.isArray(req.body.ilos)) {
+      try {
+        // Get existing ILOs for this syllabus
+        const existingIlosResult = await db.query(
+          'SELECT ilo_id FROM ilos WHERE syllabus_id = $1',
+          [syllabusId]
+        );
+        const existingIloIds = existingIlosResult.rows.map(row => row.ilo_id);
+        const newIloIds = [];
+        
+        // Process each ILO
+        for (const ilo of req.body.ilos) {
+          if (ilo.ilo_id && !ilo.ilo_id.toString().startsWith('temp_') && existingIloIds.includes(parseInt(ilo.ilo_id))) {
+            // Update existing ILO
+            const updateIloQuery = `
+              UPDATE ilos 
+              SET code = $1, description = $2, category = $3, level = $4, 
+                  weight_percentage = $5, assessment_methods = $6, learning_activities = $7,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE ilo_id = $8 AND syllabus_id = $9
+              RETURNING ilo_id
+            `;
+            const updateResult = await db.query(updateIloQuery, [
+              ilo.code,
+              ilo.description,
+              ilo.category || null,
+              ilo.level || null,
+              ilo.weight_percentage || null,
+              Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods : [],
+              Array.isArray(ilo.learning_activities) ? ilo.learning_activities : [],
+              ilo.ilo_id,
+              syllabusId
+            ]);
+            if (updateResult.rows.length > 0) {
+              newIloIds.push(updateResult.rows[0].ilo_id);
+            }
+            
+            // Update mappings - delete old and insert new
+            const updateMappings = async (mappings, tableName, idColumn) => {
+              await db.query(`DELETE FROM ${tableName} WHERE ilo_id = $1`, [ilo.ilo_id]);
+              if (mappings && Array.isArray(mappings) && mappings.length > 0) {
+                for (const mapping of mappings) {
+                  await db.query(
+                    `INSERT INTO ${tableName} (ilo_id, ${idColumn}, assessment_tasks) VALUES ($1, $2, $3)`,
+                    [
+                      ilo.ilo_id,
+                      mapping[idColumn],
+                      Array.isArray(mapping.assessment_tasks) ? mapping.assessment_tasks : []
+                    ]
+                  );
+                }
+              }
+            };
+            
+            if (ilo.so_mappings) await updateMappings(ilo.so_mappings, 'ilo_so_mappings', 'so_id');
+            if (ilo.iga_mappings) await updateMappings(ilo.iga_mappings, 'ilo_iga_mappings', 'iga_id');
+            if (ilo.cdio_mappings) await updateMappings(ilo.cdio_mappings, 'ilo_cdio_mappings', 'cdio_id');
+            if (ilo.sdg_mappings) await updateMappings(ilo.sdg_mappings, 'ilo_sdg_mappings', 'sdg_id');
+          } else {
+            // Create new ILO
+            const createIloQuery = `
+              INSERT INTO ilos (syllabus_id, code, description, category, level, weight_percentage, assessment_methods, learning_activities)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+              RETURNING ilo_id
+            `;
+            const createResult = await db.query(createIloQuery, [
+              syllabusId,
+              ilo.code,
+              ilo.description,
+              ilo.category || null,
+              ilo.level || null,
+              ilo.weight_percentage || null,
+              Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods : [],
+              Array.isArray(ilo.learning_activities) ? ilo.learning_activities : []
+            ]);
+            const newIloId = createResult.rows[0].ilo_id;
+            newIloIds.push(newIloId);
+            
+            // Create mappings
+            const createMappings = async (mappings, tableName, idColumn) => {
+              if (mappings && Array.isArray(mappings) && mappings.length > 0) {
+                for (const mapping of mappings) {
+                  await db.query(
+                    `INSERT INTO ${tableName} (ilo_id, ${idColumn}, assessment_tasks) VALUES ($1, $2, $3)`,
+                    [
+                      newIloId,
+                      mapping[idColumn],
+                      Array.isArray(mapping.assessment_tasks) ? mapping.assessment_tasks : []
+                    ]
+                  );
+                }
+              }
+            };
+            
+            if (ilo.so_mappings) await createMappings(ilo.so_mappings, 'ilo_so_mappings', 'so_id');
+            if (ilo.iga_mappings) await createMappings(ilo.iga_mappings, 'ilo_iga_mappings', 'iga_id');
+            if (ilo.cdio_mappings) await createMappings(ilo.cdio_mappings, 'ilo_cdio_mappings', 'cdio_id');
+            if (ilo.sdg_mappings) await createMappings(ilo.sdg_mappings, 'ilo_sdg_mappings', 'sdg_id');
+          }
+        }
+        
+        // Delete ILOs that are no longer in the list
+        const ilosToDelete = existingIloIds.filter(id => !newIloIds.includes(id));
+        if (ilosToDelete.length > 0) {
+          await db.query('DELETE FROM ilos WHERE ilo_id = ANY($1::int[])', [ilosToDelete]);
+        }
+      } catch (iloError) {
+        console.error('Error updating ILOs:', iloError);
+        // Continue even if ILO update fails
+      }
     }
     
     res.json({ 

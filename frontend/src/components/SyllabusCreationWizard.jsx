@@ -11,7 +11,8 @@ import {
   ChartBarIcon,
   ListBulletIcon,
   PlusIcon,
-  TrashIcon
+  TrashIcon,
+  PencilIcon
 } from '@heroicons/react/24/solid'
 
 const SyllabusCreationWizard = ({ 
@@ -56,15 +57,85 @@ const SyllabusCreationWizard = ({
   })
   const [errors, setErrors] = useState({})
   
-  const totalSteps = 5
+  const totalSteps = 6
   
   const steps = [
     { number: 1, title: 'Basic Information', icon: DocumentTextIcon },
     { number: 2, title: 'Course Details', icon: BookOpenIcon },
     { number: 3, title: 'Grading Policy', icon: ChartBarIcon },
     { number: 4, title: 'Assessment Framework', icon: ClipboardDocumentListIcon },
-    { number: 5, title: 'Learning Resources', icon: ListBulletIcon }
+    { number: 5, title: 'Learning Resources', icon: ListBulletIcon },
+    { number: 6, title: 'ILOs & Mapping', icon: AcademicCapIcon }
   ]
+  
+  // ILOs state
+  const [ilos, setIlos] = useState([])
+  const [showILOModal, setShowILOModal] = useState(false)
+  const [editingILO, setEditingILO] = useState(null)
+  const [iloFormData, setIloFormData] = useState({
+    code: '',
+    description: '',
+    category: '',
+    level: '',
+    weight_percentage: '',
+    assessment_methods: '',
+    learning_activities: '',
+    so_mappings: [],
+    iga_mappings: [],
+    cdio_mappings: [],
+    sdg_mappings: []
+  })
+  
+  // Reference data for mappings
+  const [soReferences, setSoReferences] = useState([])
+  const [igaReferences, setIgaReferences] = useState([])
+  const [cdioReferences, setCdioReferences] = useState([])
+  const [sdgReferences, setSdgReferences] = useState([])
+  
+  // Assessment task options
+  const assessmentTasks = [
+    { code: 'QZ', label: 'Quiz' },
+    { code: 'ME', label: 'Major Exam' },
+    { code: 'FP', label: 'Final Project' },
+    { code: 'P', label: 'Presentation' },
+    { code: 'LA', label: 'Lab Activity' },
+    { code: 'A', label: 'Assignment' }
+  ]
+  
+  // Load reference data for ILO mappings
+  useEffect(() => {
+    const loadReferences = async () => {
+      try {
+        const [soRes, igaRes, cdioRes, sdgRes] = await Promise.all([
+          fetch('/api/ilos/references/so'),
+          fetch('/api/ilos/references/iga'),
+          fetch('/api/ilos/references/cdio'),
+          fetch('/api/ilos/references/sdg')
+        ])
+        
+        if (soRes.ok) {
+          const soData = await soRes.json()
+          setSoReferences(soData)
+        }
+        if (igaRes.ok) {
+          const igaData = await igaRes.json()
+          setIgaReferences(igaData)
+        }
+        if (cdioRes.ok) {
+          const cdioData = await cdioRes.json()
+          setCdioReferences(cdioData)
+        }
+        if (sdgRes.ok) {
+          const sdgData = await sdgRes.json()
+          setSdgReferences(sdgData)
+        }
+      } catch (error) {
+        console.error('Error loading reference data:', error)
+      }
+    }
+    
+    loadReferences()
+  }, [])
   
   useEffect(() => {
     if (editingSyllabus) {
@@ -97,6 +168,11 @@ const SyllabusCreationWizard = ({
               components: []
             })
       })
+      
+      // Load ILOs if editing
+      if (editingSyllabus.syllabus_id) {
+        loadILOs(editingSyllabus.syllabus_id)
+      }
     } else if (selectedClass) {
       // Set default term_id from selected class
       setFormData(prev => ({
@@ -106,6 +182,20 @@ const SyllabusCreationWizard = ({
       }))
     }
   }, [editingSyllabus, selectedClass])
+  
+  const loadILOs = async (syllabusId) => {
+    if (!syllabusId) return
+    
+    try {
+      const response = await fetch(`/api/ilos/syllabus/${syllabusId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setIlos(data)
+      }
+    } catch (error) {
+      console.error('Error loading ILOs:', error)
+    }
+  }
   
   const validateStep = (step) => {
     const newErrors = {}
@@ -263,6 +353,99 @@ const SyllabusCreationWizard = ({
     setCurrentStep(prev => Math.max(prev - 1, 1))
   }
   
+  // ILO Management Functions
+  const resetILOForm = () => {
+    setIloFormData({
+      code: '',
+      description: '',
+      category: '',
+      level: '',
+      weight_percentage: '',
+      assessment_methods: '',
+      learning_activities: '',
+      so_mappings: [],
+      iga_mappings: [],
+      cdio_mappings: [],
+      sdg_mappings: []
+    })
+    setEditingILO(null)
+  }
+  
+  const openILOModal = (ilo = null) => {
+    if (ilo) {
+      setEditingILO(ilo)
+      setIloFormData({
+        code: ilo.code || '',
+        description: ilo.description || '',
+        category: ilo.category || '',
+        level: ilo.level || '',
+        weight_percentage: ilo.weight_percentage || '',
+        assessment_methods: Array.isArray(ilo.assessment_methods) 
+          ? ilo.assessment_methods.join(', ') 
+          : ilo.assessment_methods || '',
+        learning_activities: Array.isArray(ilo.learning_activities) 
+          ? ilo.learning_activities.join(', ') 
+          : ilo.learning_activities || '',
+        so_mappings: ilo.so_mappings || [],
+        iga_mappings: ilo.iga_mappings || [],
+        cdio_mappings: ilo.cdio_mappings || [],
+        sdg_mappings: ilo.sdg_mappings || []
+      })
+    } else {
+      resetILOForm()
+    }
+    setShowILOModal(true)
+  }
+  
+  const handleSaveILO = () => {
+    const newILO = {
+      ...iloFormData,
+      assessment_methods: iloFormData.assessment_methods 
+        ? iloFormData.assessment_methods.split(',').map(s => s.trim()).filter(s => s)
+        : [],
+      learning_activities: iloFormData.learning_activities
+        ? iloFormData.learning_activities.split(',').map(s => s.trim()).filter(s => s)
+        : [],
+      weight_percentage: iloFormData.weight_percentage ? parseFloat(iloFormData.weight_percentage) : null
+    }
+    
+    if (editingILO) {
+      setIlos(prev => prev.map(ilo => 
+        ilo.ilo_id === editingILO.ilo_id ? { ...editingILO, ...newILO } : ilo
+      ))
+    } else {
+      setIlos(prev => [...prev, { ...newILO, ilo_id: `temp_${Date.now()}` }])
+    }
+    
+    setShowILOModal(false)
+    resetILOForm()
+  }
+  
+  const handleDeleteILO = (iloId) => {
+    if (confirm('Are you sure you want to delete this ILO?')) {
+      setIlos(prev => prev.filter(ilo => ilo.ilo_id !== iloId))
+    }
+  }
+  
+  const handleAddMapping = (type, referenceId, assessmentTasks) => {
+    const mapping = {
+      [type === 'so' ? 'so_id' : type === 'iga' ? 'iga_id' : type === 'cdio' ? 'cdio_id' : 'sdg_id']: referenceId,
+      assessment_tasks: assessmentTasks
+    }
+    
+    setIloFormData(prev => ({
+      ...prev,
+      [`${type}_mappings`]: [...prev[`${type}_mappings`], mapping]
+    }))
+  }
+  
+  const handleRemoveMapping = (type, index) => {
+    setIloFormData(prev => ({
+      ...prev,
+      [`${type}_mappings`]: prev[`${type}_mappings`].filter((_, i) => i !== index)
+    }))
+  }
+  
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return
     
@@ -280,7 +463,13 @@ const SyllabusCreationWizard = ({
       return
     }
     
-    await onSave(formData)
+    // Include ILOs in the form data
+    const syllabusData = {
+      ...formData,
+      ilos: ilos // Include ILOs to be saved
+    }
+    
+    await onSave(syllabusData)
   }
   
   const renderStepContent = () => {
@@ -729,6 +918,169 @@ const SyllabusCreationWizard = ({
           </div>
         )
         
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Intended Learning Outcomes (ILOs)</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Define the learning outcomes for this course and optionally map them to educational goals (SO, IGA, CDIO, SDG).
+              </p>
+            </div>
+            
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => openILOModal()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                <PlusIcon className="h-5 w-5" />
+                Add ILO
+              </button>
+            </div>
+            
+            {ilos.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                <p className="text-gray-500 mb-2">No ILOs added yet.</p>
+                <p className="text-sm text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
+                <p className="text-xs text-gray-400 mt-2">Note: ILOs are optional but recommended for outcome-based education.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {ilos.map((ilo, index) => (
+                  <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-semibold text-gray-900">{ilo.code}</span>
+                          {ilo.category && (
+                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{ilo.category}</span>
+                          )}
+                          {ilo.level && (
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{ilo.level}</span>
+                          )}
+                          {ilo.weight_percentage && (
+                            <span className="text-xs text-gray-600">Weight: {ilo.weight_percentage}%</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 mb-2">{ilo.description}</p>
+                        {ilo.assessment_methods?.length > 0 && (
+                          <p className="text-xs text-gray-600 mb-1">
+                            <strong>Assessment Methods:</strong> {Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods.join(', ') : ilo.assessment_methods}
+                          </p>
+                        )}
+                        {ilo.learning_activities?.length > 0 && (
+                          <p className="text-xs text-gray-600 mb-2">
+                            <strong>Learning Activities:</strong> {Array.isArray(ilo.learning_activities) ? ilo.learning_activities.join(', ') : ilo.learning_activities}
+                          </p>
+                        )}
+                        
+                        {/* Show mappings if any */}
+                        {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
+                          ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-2">Mappings:</p>
+                            <div className="space-y-1">
+                              {ilo.so_mappings?.length > 0 && (
+                                <div className="text-xs text-gray-600">
+                                  <strong>SO:</strong> {' '}
+                                  {ilo.so_mappings.map((m, i) => {
+                                    const so = soReferences.find(r => r.so_id === m.so_id)
+                                    return (
+                                      <span key={i}>
+                                        {so?.so_code || m.so_id}
+                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
+                                        {i < ilo.so_mappings.length - 1 && ', '}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {ilo.iga_mappings?.length > 0 && (
+                                <div className="text-xs text-gray-600">
+                                  <strong>IGA:</strong> {' '}
+                                  {ilo.iga_mappings.map((m, i) => {
+                                    const iga = igaReferences.find(r => r.iga_id === m.iga_id)
+                                    return (
+                                      <span key={i}>
+                                        {iga?.iga_code || m.iga_id}
+                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
+                                        {i < ilo.iga_mappings.length - 1 && ', '}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {ilo.cdio_mappings?.length > 0 && (
+                                <div className="text-xs text-gray-600">
+                                  <strong>CDIO:</strong> {' '}
+                                  {ilo.cdio_mappings.map((m, i) => {
+                                    const cdio = cdioReferences.find(r => r.cdio_id === m.cdio_id)
+                                    return (
+                                      <span key={i}>
+                                        {cdio?.cdio_code || m.cdio_id}
+                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
+                                        {i < ilo.cdio_mappings.length - 1 && ', '}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {ilo.sdg_mappings?.length > 0 && (
+                                <div className="text-xs text-gray-600">
+                                  <strong>SDG:</strong> {' '}
+                                  {ilo.sdg_mappings.map((m, i) => {
+                                    const sdg = sdgReferences.find(r => r.sdg_id === m.sdg_id)
+                                    return (
+                                      <span key={i}>
+                                        {sdg?.sdg_code || m.sdg_id}
+                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
+                                        {i < ilo.sdg_mappings.length - 1 && ', '}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openILOModal(ilo)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Edit ILO"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteILO(ilo.ilo_id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded"
+                          title="Delete ILO"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> ILOs will be saved when you create/update the syllabus. 
+                You can add mappings to Student Outcomes (SO), Institutional Graduate Attributes (IGA), 
+                CDIO Skills, and SDG Skills when editing an ILO. 
+                After the syllabus is created, you can also manage mappings in the ILO Mapping section.
+              </p>
+            </div>
+          </div>
+        )
+        
       default:
         return null
     }
@@ -845,6 +1197,328 @@ const SyllabusCreationWizard = ({
           </div>
         </div>
       </div>
+      
+      {/* ILO Creation/Edit Modal */}
+      {showILOModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {editingILO ? 'Edit ILO' : 'Create New ILO'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowILOModal(false)
+                    resetILOForm()
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ILO Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={iloFormData.code}
+                      onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="e.g., ILO1"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category
+                    </label>
+                    <select
+                      value={iloFormData.category}
+                      onChange={(e) => setIloFormData(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="Knowledge">Knowledge</option>
+                      <option value="Skills">Skills</option>
+                      <option value="Attitudes">Attitudes</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Level
+                    </label>
+                    <select
+                      value={iloFormData.level}
+                      onChange={(e) => setIloFormData(prev => ({ ...prev, level: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="">Select level</option>
+                      <option value="Basic">Basic</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Weight Percentage
+                    </label>
+                    <input
+                      type="number"
+                      value={iloFormData.weight_percentage}
+                      onChange={(e) => setIloFormData(prev => ({ ...prev, weight_percentage: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="0-100"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={iloFormData.description}
+                    onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Describe the intended learning outcome..."
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Assessment Methods (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={iloFormData.assessment_methods}
+                    onChange={(e) => setIloFormData(prev => ({ ...prev, assessment_methods: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., Quiz, Exam, Project"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Separate multiple methods with commas</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Learning Activities (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={iloFormData.learning_activities}
+                    onChange={(e) => setIloFormData(prev => ({ ...prev, learning_activities: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., Lecture, Lab, Assignment"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Separate multiple activities with commas</p>
+                </div>
+                
+                {/* Mapping Section */}
+                <div className="mt-6 border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Map to Educational Goals (Optional)</h4>
+                  <p className="text-xs text-gray-600 mb-4">
+                    Optionally map this ILO to educational goals. You can also do this later in the ILO Mapping section.
+                  </p>
+                  
+                  {/* SO Mappings */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Student Outcomes (SO)</label>
+                    <div className="space-y-2">
+                      {iloFormData.so_mappings.map((mapping, index) => {
+                        const so = soReferences.find(r => r.so_id === mapping.so_id)
+                        return (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-700 flex-1">{so?.so_code || mapping.so_id}</span>
+                            <span className="text-xs text-gray-500">
+                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMapping('so', index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddMapping('so', parseInt(e.target.value), [])
+                            e.target.value = ''
+                          }
+                        }}
+                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="">Add SO mapping...</option>
+                        {soReferences.filter(so => !iloFormData.so_mappings.some(m => m.so_id === so.so_id)).map(so => (
+                          <option key={so.so_id} value={so.so_id}>{so.so_code} - {so.description}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* IGA Mappings */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Institutional Graduate Attributes (IGA)</label>
+                    <div className="space-y-2">
+                      {iloFormData.iga_mappings.map((mapping, index) => {
+                        const iga = igaReferences.find(r => r.iga_id === mapping.iga_id)
+                        return (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-700 flex-1">{iga?.iga_code || mapping.iga_id}</span>
+                            <span className="text-xs text-gray-500">
+                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMapping('iga', index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddMapping('iga', parseInt(e.target.value), [])
+                            e.target.value = ''
+                          }
+                        }}
+                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="">Add IGA mapping...</option>
+                        {igaReferences.filter(iga => !iloFormData.iga_mappings.some(m => m.iga_id === iga.iga_id)).map(iga => (
+                          <option key={iga.iga_id} value={iga.iga_id}>{iga.iga_code} - {iga.description}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* CDIO Mappings */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">CDIO Skills</label>
+                    <div className="space-y-2">
+                      {iloFormData.cdio_mappings.map((mapping, index) => {
+                        const cdio = cdioReferences.find(r => r.cdio_id === mapping.cdio_id)
+                        return (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-700 flex-1">{cdio?.cdio_code || mapping.cdio_id}</span>
+                            <span className="text-xs text-gray-500">
+                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMapping('cdio', index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddMapping('cdio', parseInt(e.target.value), [])
+                            e.target.value = ''
+                          }
+                        }}
+                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="">Add CDIO mapping...</option>
+                        {cdioReferences.filter(cdio => !iloFormData.cdio_mappings.some(m => m.cdio_id === cdio.cdio_id)).map(cdio => (
+                          <option key={cdio.cdio_id} value={cdio.cdio_id}>{cdio.cdio_code} - {cdio.description}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* SDG Mappings */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">SDG Skills</label>
+                    <div className="space-y-2">
+                      {iloFormData.sdg_mappings.map((mapping, index) => {
+                        const sdg = sdgReferences.find(r => r.sdg_id === mapping.sdg_id)
+                        return (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <span className="text-xs text-gray-700 flex-1">{sdg?.sdg_code || mapping.sdg_id}</span>
+                            <span className="text-xs text-gray-500">
+                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMapping('sdg', index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleAddMapping('sdg', parseInt(e.target.value), [])
+                            e.target.value = ''
+                          }
+                        }}
+                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="">Add SDG mapping...</option>
+                        {sdgReferences.filter(sdg => !iloFormData.sdg_mappings.some(m => m.sdg_id === sdg.sdg_id)).map(sdg => (
+                          <option key={sdg.sdg_id} value={sdg.sdg_id}>{sdg.sdg_code} - {sdg.description}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    Assessment tasks can be added later in the ILO Mapping section for more detailed mapping.
+                  </p>
+                </div>
+                
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowILOModal(false)
+                      resetILOForm()
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveILO}
+                    disabled={!iloFormData.code || !iloFormData.description}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {editingILO ? 'Update ILO' : 'Add ILO'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

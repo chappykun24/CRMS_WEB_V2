@@ -273,7 +273,8 @@ const Syllabus = () => {
           course_id: selectedClass.course_id,
           term_id: termId,
           section_course_id: selectedClass.section_course_id,
-          created_by: user.user_id
+          created_by: user.user_id,
+          ilos: wizardFormData.ilos || [] // Include ILOs
         })
       })
 
@@ -329,7 +330,8 @@ const Syllabus = () => {
           learning_resources: learningResources,
           assessment_framework: assessmentFramework,
           grading_policy: gradingPolicy,
-          version: wizardFormData.version || '1.0'
+          version: wizardFormData.version || '1.0',
+          ilos: wizardFormData.ilos || [] // Include ILOs
         })
       })
 
