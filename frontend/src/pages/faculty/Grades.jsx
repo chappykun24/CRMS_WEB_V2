@@ -362,10 +362,10 @@ const Grades = () => {
         <div className="flex-1 overflow-hidden px-8 pb-6">
           <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Main Content - Students List */}
-              <div className="lg:col-span-3 flex flex-col h-full">
+              <div className="lg:col-span-3 flex flex-col">
                 {/* Students Grades Table */}
                 {selectedClass ? (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col h-full">
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                     {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
@@ -384,8 +384,8 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="flex-1 overflow-y-auto min-h-0">
-                        <table className="min-w-full divide-y divide-gray-200">
+                      <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
+                        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
                           <thead className="bg-gray-50 sticky top-0 z-30">
                             <tr>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-40 border-r border-gray-200">
@@ -519,18 +519,17 @@ const Grades = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1 flex flex-col h-full">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
+              <div className="lg:col-span-1 flex flex-col">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                   <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                   </div>
-                  
                   <div className="flex-1 overflow-y-auto min-h-0">
                     {loading ? (
                       <div className="p-4 space-y-2">
                         {Array.from({ length: 4 }).map((_, i) => (
                           <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                            <div className="flex items-center">
+                            <div className="flex items-center space-x-3">
                               <div className="flex-1">
                                 <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
                                 <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
@@ -540,7 +539,7 @@ const Grades = () => {
                         ))}
                       </div>
                     ) : classes.length > 0 ? (
-                      <div className="p-4 space-y-2 overflow-y-auto h-full">
+                      <div className="p-4 space-y-2">
                         {classes.map((cls) => (
                           <div
                             key={cls.section_course_id}
