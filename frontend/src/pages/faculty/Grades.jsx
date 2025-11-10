@@ -337,35 +337,37 @@ const Grades = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="px-8 pt-6 pb-4 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search students..." 
-                  value={searchQuery} 
-                  onChange={(e) => setSearchQuery(e.target.value)} 
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
-                />
+      <div className="flex-1 overflow-hidden">
+        <div className="px-8 py-6 h-full overflow-y-auto">
+          <div className="flex flex-col h-full gap-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search students..." 
+                      value={searchQuery} 
+                      onChange={(e) => setSearchQuery(e.target.value)} 
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
+                    />
+                  </div>
+                </div>
               </div>
+              {error && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800">{error}</p>
+                </div>
+              )}
             </div>
-          </div>
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800">{error}</p>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 overflow-hidden px-8 pb-6">
-          <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
               {/* Main Content - Students List */}
-              <div className="lg:col-span-3 flex flex-col">
+              <div className="lg:col-span-3 flex flex-col min-h-0">
                 {/* Students Grades Table */}
                 {selectedClass ? (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                     {loading || loadingStudents ? (
                       <div className="p-6">
                         <div className="space-y-3">
@@ -404,8 +406,8 @@ const Grades = () => {
                                     <span className="truncate">{assessment.title}</span>
                                     <span className="text-xs text-gray-400 font-normal">
                                       {assessment.total_points}pts
-                              </span>
-                            </div>
+                                    </span>
+                                  </div>
                                 </th>
                               ))}
                               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-40 border-l border-gray-200 min-w-[100px]">
@@ -438,14 +440,14 @@ const Grades = () => {
                                         priority={false}
                                       />
                                       <div className="min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                                        <p className="text-sm font-medium text-gray-900 truncate">
                                           {formatName(student.full_name)}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
+                                        </p>
+                                        <p className="text-xs text-gray-500 truncate">
                                           {student.student_number || 'N/A'}
-                              </p>
-                            </div>
-                          </div>
+                                        </p>
+                                      </div>
+                                    </div>
                                   </td>
                                   {assessments.map((assessment) => {
                                     const score = scoreMap.get(assessment.assessment_id)
@@ -498,17 +500,19 @@ const Grades = () => {
                         </table>
                       </div>
                     ) : (
-                      <div className="p-6 text-center">
-                        <UserGroupIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
-                        <p className="text-gray-500">
-                          {searchQuery ? 'No students match your search.' : 'No students enrolled in this class.'}
-                        </p>
+                      <div className="flex-1 flex items-center justify-center py-16">
+                        <div className="text-center">
+                          <UserGroupIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+                          <p className="text-gray-500">
+                            {searchQuery ? 'No students match your search.' : 'No students enrolled in this class.'}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                     <div className="text-center">
                       <UserGroupIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
@@ -519,8 +523,8 @@ const Grades = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <div className="lg:col-span-1 flex flex-col min-h-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                   <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                   </div>
