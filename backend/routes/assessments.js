@@ -167,8 +167,11 @@ router.post('/', async (req, res) => {
       RETURNING assessment_id, title, type, total_points, weight_percentage, status, syllabus_id
     `;
     
+    // Convert empty string to null for syllabus_id
+    const normalizedSyllabusId = (syllabus_id === '' || syllabus_id === undefined || syllabus_id === null) ? null : syllabus_id;
+    
     const values = [
-      section_course_id, syllabus_id || null, title, description, type, category,
+      section_course_id, normalizedSyllabusId, title, description, type, category,
       total_points, weight_percentage, due_date, submission_deadline,
       grading_method, instructions, created_by
     ];
@@ -203,9 +206,12 @@ router.put('/:id', async (req, res) => {
   } = req.body;
   
   try {
+    // Convert empty string to null for syllabus_id
+    const normalizedSyllabusId = (syllabus_id === '' || syllabus_id === undefined || syllabus_id === null) ? null : syllabus_id;
+    
     const query = `
       UPDATE assessments SET
-        syllabus_id = COALESCE($1, syllabus_id),
+        syllabus_id = $1,
         title = $2, description = $3, type = $4, category = $5,
         total_points = $6, weight_percentage = $7, due_date = $8,
         submission_deadline = $9, grading_method = $10, instructions = $11,
@@ -215,7 +221,7 @@ router.put('/:id', async (req, res) => {
     `;
     
     const values = [
-      syllabus_id !== undefined ? syllabus_id : null,
+      normalizedSyllabusId,
       title, description, type, category, total_points, weight_percentage,
       due_date, submission_deadline, grading_method, instructions, id
     ];

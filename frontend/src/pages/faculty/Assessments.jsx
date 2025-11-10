@@ -118,6 +118,10 @@ const Assessments = () => {
   
   // Syllabi for the selected class
   const [syllabi, setSyllabi] = useState([])
+  // Selected syllabus details (for assessment framework)
+  const [selectedSyllabusDetails, setSelectedSyllabusDetails] = useState(null)
+  // Assessment components from selected syllabus
+  const [assessmentComponents, setAssessmentComponents] = useState([])
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -251,6 +255,73 @@ const Assessments = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }))
+    
+    // If syllabus_id changes, load the syllabus details to get assessment framework
+    if (name === 'syllabus_id') {
+      if (value) {
+        loadSyllabusDetails(value)
+      } else {
+        setSelectedSyllabusDetails(null)
+        setAssessmentComponents([])
+        // Reset type and weight when syllabus is unlinked
+        setFormData(prev => ({
+          ...prev,
+          type: 'Quiz',
+          weight_percentage: 25
+        }))
+      }
+    }
+  }
+  
+  // Load syllabus details to get assessment framework
+  const loadSyllabusDetails = async (syllabusId) => {
+    try {
+      const response = await fetch(`/api/syllabi/${syllabusId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      if (response.ok) {
+        const syllabus = await response.json()
+        setSelectedSyllabusDetails(syllabus)
+        
+        // Extract assessment components from assessment_framework
+        if (syllabus.assessment_framework) {
+          let components = []
+          if (typeof syllabus.assessment_framework === 'string') {
+            try {
+              const framework = JSON.parse(syllabus.assessment_framework)
+              components = framework.components || []
+            } catch (e) {
+              console.error('Error parsing assessment_framework:', e)
+            }
+          } else if (syllabus.assessment_framework.components) {
+            components = syllabus.assessment_framework.components
+          }
+          setAssessmentComponents(components)
+        } else {
+          setAssessmentComponents([])
+        }
+      }
+    } catch (error) {
+      console.error('Error loading syllabus details:', error)
+      setAssessmentComponents([])
+    }
+  }
+  
+  // Handle assessment component selection
+  const handleAssessmentComponentChange = (e) => {
+    const selectedIndex = e.target.value
+    if (selectedIndex === '' || !assessmentComponents[selectedIndex]) {
+      return
+    }
+    
+    const component = assessmentComponents[selectedIndex]
+    setFormData(prev => ({
+      ...prev,
+      type: component.type || prev.type,
+      weight_percentage: component.weight || prev.weight_percentage
     }))
   }
 
@@ -425,8 +496,10 @@ const Assessments = () => {
       instructions: '',
       syllabus_id: ''
     })
+    setSelectedSyllabusDetails(null)
+    setAssessmentComponents([])
   }
-
+  
   const openCreateModal = () => {
     resetForm()
     // Load syllabi if not already loaded
@@ -1389,19 +1462,73 @@ const Assessments = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="Quiz">Quiz</option>
-                      <option value="Exam">Exam</option>
-                      <option value="Project">Project</option>
-                      <option value="Assignment">Assignment</option>
-                      <option value="Lab">Lab</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Assessment Type
+                      {assessmentComponents.length > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">(from syllabus)</span>
+                      )}
+                    </label>
+                    {/* Show assessment components dropdown if syllabus is linked and has components */}
+                    {assessmentComponents.length > 0 ? (
+                      <div className="space-y-2">
+                        <select
+                          onChange={handleAssessmentComponentChange}
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50 text-sm"
+                        >
+                          <option value="">Select from syllabus framework...</option>
+                          {assessmentComponents.map((comp, index) => (
+                            <option key={index} value={index}>
+                              {comp.type} - {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          name="type"
+                          value={formData.type}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        >
+                          <option value="Quiz">Quiz</option>
+                          <option value="Exam">Exam</option>
+                          <option value="Project">Project</option>
+                          <option value="Assignment">Assignment</option>
+                          <option value="Lab">Lab</option>
+                          <option value="Presentation">Presentation</option>
+                          <option value="Midterm Exam">Midterm Exam</option>
+                          <option value="Final Exam">Final Exam</option>
+                          {/* Add custom types from syllabus if not in default list */}
+                          {assessmentComponents
+                            .filter(comp => !['Quiz', 'Exam', 'Project', 'Assignment', 'Lab', 'Presentation', 'Midterm Exam', 'Final Exam'].includes(comp.type))
+                            .map((comp, index) => (
+                              <option key={`custom-${index}`} value={comp.type}>
+                                {comp.type}
+                              </option>
+                            ))
+                          }
+                        </select>
+                        <p className="text-xs text-gray-500">
+                          Select from syllabus framework above to auto-fill type and weight, or choose manually below.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="Quiz">Quiz</option>
+                        <option value="Exam">Exam</option>
+                        <option value="Project">Project</option>
+                        <option value="Assignment">Assignment</option>
+                        <option value="Lab">Lab</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Midterm Exam">Midterm Exam</option>
+                        <option value="Final Exam">Final Exam</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -1432,7 +1559,16 @@ const Assessments = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (%)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Weight (%)
+                      {assessmentComponents.length > 0 && formData.weight_percentage && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          {assessmentComponents.some(comp => comp.weight === parseFloat(formData.weight_percentage))
+                            ? '✓ Matches syllabus'
+                            : '⚠ Different from syllabus'}
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="number"
                       name="weight_percentage"
@@ -1441,8 +1577,19 @@ const Assessments = () => {
                       required
                       min="0"
                       max="100"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      step="0.1"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                        assessmentComponents.length > 0 && formData.weight_percentage && 
+                        !assessmentComponents.some(comp => comp.weight === parseFloat(formData.weight_percentage))
+                          ? 'border-yellow-300 bg-yellow-50'
+                          : 'border-gray-300'
+                      }`}
                     />
+                    {assessmentComponents.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Syllabus weights: {assessmentComponents.map(comp => `${comp.type} (${comp.weight}%)`).join(', ')}
+                      </p>
+                    )}
                   </div>
                   
                   <div>
@@ -1497,7 +1644,12 @@ const Assessments = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Syllabus (Optional)
+                    {assessmentComponents.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600">✓ Framework loaded</span>
+                    )}
+                  </label>
                   <select
                     name="syllabus_id"
                     value={formData.syllabus_id}
@@ -1516,8 +1668,21 @@ const Assessments = () => {
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Link this assessment to a syllabus to connect it with ILOs and course outcomes
+                    Link this assessment to an approved syllabus to connect it with ILOs and course outcomes. 
+                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework.
                   </p>
+                  {assessmentComponents.length > 0 && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                      <strong>Available assessment types from syllabus:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {assessmentComponents.map((comp, index) => (
+                          <li key={index}>
+                            {comp.type}: {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -1564,19 +1729,73 @@ const Assessments = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="Quiz">Quiz</option>
-                      <option value="Exam">Exam</option>
-                      <option value="Project">Project</option>
-                      <option value="Assignment">Assignment</option>
-                      <option value="Lab">Lab</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Assessment Type
+                      {assessmentComponents.length > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">(from syllabus)</span>
+                      )}
+                    </label>
+                    {/* Show assessment components dropdown if syllabus is linked and has components */}
+                    {assessmentComponents.length > 0 ? (
+                      <div className="space-y-2">
+                        <select
+                          onChange={handleAssessmentComponentChange}
+                          className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50 text-sm"
+                        >
+                          <option value="">Select from syllabus framework...</option>
+                          {assessmentComponents.map((comp, index) => (
+                            <option key={index} value={index}>
+                              {comp.type} - {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          name="type"
+                          value={formData.type}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        >
+                          <option value="Quiz">Quiz</option>
+                          <option value="Exam">Exam</option>
+                          <option value="Project">Project</option>
+                          <option value="Assignment">Assignment</option>
+                          <option value="Lab">Lab</option>
+                          <option value="Presentation">Presentation</option>
+                          <option value="Midterm Exam">Midterm Exam</option>
+                          <option value="Final Exam">Final Exam</option>
+                          {/* Add custom types from syllabus if not in default list */}
+                          {assessmentComponents
+                            .filter(comp => !['Quiz', 'Exam', 'Project', 'Assignment', 'Lab', 'Presentation', 'Midterm Exam', 'Final Exam'].includes(comp.type))
+                            .map((comp, index) => (
+                              <option key={`custom-${index}`} value={comp.type}>
+                                {comp.type}
+                              </option>
+                            ))
+                          }
+                        </select>
+                        <p className="text-xs text-gray-500">
+                          Select from syllabus framework above to auto-fill type and weight, or choose manually below.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      >
+                        <option value="Quiz">Quiz</option>
+                        <option value="Exam">Exam</option>
+                        <option value="Project">Project</option>
+                        <option value="Assignment">Assignment</option>
+                        <option value="Lab">Lab</option>
+                        <option value="Presentation">Presentation</option>
+                        <option value="Midterm Exam">Midterm Exam</option>
+                        <option value="Final Exam">Final Exam</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -1606,7 +1825,16 @@ const Assessments = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (%)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Weight (%)
+                      {assessmentComponents.length > 0 && formData.weight_percentage && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          {assessmentComponents.some(comp => comp.weight === parseFloat(formData.weight_percentage))
+                            ? '✓ Matches syllabus'
+                            : '⚠ Different from syllabus'}
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="number"
                       name="weight_percentage"
@@ -1615,8 +1843,19 @@ const Assessments = () => {
                       required
                       min="0"
                       max="100"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      step="0.1"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                        assessmentComponents.length > 0 && formData.weight_percentage && 
+                        !assessmentComponents.some(comp => comp.weight === parseFloat(formData.weight_percentage))
+                          ? 'border-yellow-300 bg-yellow-50'
+                          : 'border-gray-300'
+                      }`}
                     />
+                    {assessmentComponents.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Syllabus weights: {assessmentComponents.map(comp => `${comp.type} (${comp.weight}%)`).join(', ')}
+                      </p>
+                    )}
                   </div>
                   
                   <div>
@@ -1670,7 +1909,12 @@ const Assessments = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Syllabus (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Syllabus (Optional)
+                    {assessmentComponents.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600">✓ Framework loaded</span>
+                    )}
+                  </label>
                   <select
                     name="syllabus_id"
                     value={formData.syllabus_id}
@@ -1689,8 +1933,21 @@ const Assessments = () => {
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Link this assessment to a syllabus to connect it with ILOs and course outcomes
+                    Link this assessment to an approved syllabus to connect it with ILOs and course outcomes. 
+                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework.
                   </p>
+                  {assessmentComponents.length > 0 && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                      <strong>Available assessment types from syllabus:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {assessmentComponents.map((comp, index) => (
+                          <li key={index}>
+                            {comp.type}: {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
