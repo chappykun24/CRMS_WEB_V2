@@ -1547,16 +1547,40 @@ const Syllabus = () => {
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Grading Policy</h3>
                       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        {policy?.scale && (
+                        {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
                           <div className="mb-4">
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
                             <div className="space-y-2">
-                              {Object.entries(policy.scale).map(([grade, range]) => (
-                                <div key={grade} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                                  <span className="font-medium text-gray-900">{grade}</span>
-                                  <span className="text-sm text-gray-600">{range}</span>
+                              {policy.scale.map((item, index) => (
+                                <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-gray-900">{item.grade || 'N/A'}</span>
+                                    <span className="text-sm text-gray-600">{item.range || 'N/A'}</span>
+                                  </div>
+                                  {item.description && (
+                                    <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                                  )}
                                 </div>
                               ))}
+                            </div>
+                          </div>
+                        )}
+                        {policy?.scale && !Array.isArray(policy.scale) && typeof policy.scale === 'object' && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
+                            <div className="space-y-2">
+                              {Object.entries(policy.scale).map(([grade, range]) => {
+                                // Handle if range is an object or string
+                                const rangeValue = typeof range === 'object' && range !== null 
+                                  ? range.range || range.value || JSON.stringify(range)
+                                  : String(range)
+                                return (
+                                  <div key={grade} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                                    <span className="font-medium text-gray-900">{grade}</span>
+                                    <span className="text-sm text-gray-600">{rangeValue}</span>
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
                         )}
