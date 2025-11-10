@@ -517,20 +517,30 @@ const Syllabi = () => {
         }
       `}</style>
       <div className="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
-        <div className="flex-shrink-0 px-8 py-6 border-b border-gray-200">
-          <h1 className="text-3xl font-bold text-gray-900">Syllabi</h1>
+        <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 z-40">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between bg-gray-50">
+              <div className="flex space-x-4 sm:space-x-6 lg:space-x-8">
+                <button
+                  className="py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm text-red-600 border-b-2 border-red-600 bg-transparent border-0 focus:outline-none"
+                >
+                  Syllabus
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* Content */}
         <div className="flex-1 overflow-hidden">
           <div className="px-8 py-6 h-full overflow-y-auto">
             {/* Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
               {/* Main Content - Syllabi Table */}
-              <div className="lg:col-span-4">
+              <div className="lg:col-span-4 flex flex-col min-h-0">
                 {/* Search Bar and Create Button */}
                 {selectedClass && (
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3 mb-4 flex-shrink-0">
                     <div className="relative flex-1">
                       <div className="relative">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -554,14 +564,14 @@ const Syllabi = () => {
 
                 {/* Error Message */}
                 {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
                     <p className="text-red-800">{error}</p>
                   </div>
                 )}
                 
                 {/* Syllabi Table */}
                 {selectedClass && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                     {loading ? (
                       <div className="flex-1 overflow-y-auto min-h-0">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -710,7 +720,7 @@ const Syllabi = () => {
 
                 {/* No Class Selected State */}
                 {!selectedClass && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                     <div className="text-center">
                       <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
@@ -721,8 +731,8 @@ const Syllabi = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <div className="lg:col-span-1 flex flex-col min-h-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                   <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                   </div>
