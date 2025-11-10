@@ -647,249 +647,253 @@ const Assessments = () => {
           <div className="flex-1 overflow-hidden">
             {/* Tab Content */}
             {activeTab === 'assessments' && (
-              <div className="px-8 h-full overflow-y-auto py-4">
-            {/* Assessment Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* Main Content - Assessments Table */}
-              <div className="lg:col-span-4">
-                {/* Search Bar and Create Button - Only show when subject is selected */}
-                {selectedClass && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="relative flex-1">
-                      <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
-                      </div>
-                    </div>
-                    <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
-                      <PlusIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {error && (<div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-800">{error}</p></div>)}
-                
-                {/* Assessments Table */}
-                {selectedClass && (
-                  <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
-                    {loading ? (
-                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <tr key={i} className="hover:bg-gray-50">
-                                <td className="px-8 py-4">
-                                  <div className="flex items-center">
-                                    <div className="flex-shrink-0 h-10 w-10">
-                                      <div className="h-10 w-10 rounded-lg bg-gray-200 skeleton"></div>
-                                    </div>
-                                    <div className="ml-4">
-                                      <div className="h-4 bg-gray-200 rounded w-32 skeleton mb-2"></div>
-                                      <div className="h-3 bg-gray-100 rounded w-24 skeleton"></div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="h-4 bg-gray-200 rounded w-20 skeleton"></div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="flex items-center space-x-2">
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : filteredAssessments.length > 0 ? (
-                      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredAssessments.map((assessment) => (
-                              <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
-                                    <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
-                                  </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {assessment.type}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="text-sm text-gray-900">{assessment.total_points}</div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="text-sm text-gray-900">{assessment.weight_percentage}%</div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="text-sm text-gray-900">
-                                    {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : '—'}
-                                  </div>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assessment.status)}`}>
-                                    {assessment.status}
-                                  </span>
-                                </td>
-                                <td className="px-8 py-4">
-                                  <div className="flex items-center space-x-2">
-                                    <button onClick={() => openEditModal(assessment)} className="text-red-600 hover:text-red-900"><PencilIcon className="h-4 w-4" /></button>
-                                    {assessment.is_published ? (
-                                      <button onClick={() => handleUnpublishAssessment(assessment.assessment_id)} className="text-yellow-600 hover:text-yellow-900"><XMarkIcon className="h-4 w-4" /></button>
-                                    ) : (
-                                      <button onClick={() => handlePublishAssessment(assessment.assessment_id)} className="text-green-600 hover:text-green-900"><CheckIcon className="h-4 w-4" /></button>
-                                    )}
-                                    <button onClick={() => handleDeleteAssessment(assessment.assessment_id)} className="text-red-600 hover:text-red-900"><TrashIcon className="h-4 w-4" /></button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center py-16">
-                        <div className="text-center">
-                          <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
-                          <p className="text-gray-500">
-                            {searchQuery ? 'No assessments match your search.' : 'Create your first assessment to get started.'}
-                          </p>
-                          {!searchQuery && (
-                            <button onClick={openCreateModal} className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                              <PlusIcon className="h-4 w-4" />
-                              Create Assessment
-                            </button>
-                          )}
+              <div className="px-8 py-6 h-full overflow-y-auto">
+                {/* Assessment Content with Sidebar */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+                  {/* Main Content - Assessments Table */}
+                  <div className="lg:col-span-4 flex flex-col min-h-0">
+                    {/* Search Bar and Create Button - Only show when subject is selected */}
+                    {selectedClass && (
+                      <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+                        <div className="relative flex-1">
+                          <div className="relative">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
+                          </div>
                         </div>
+                        <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
+                          <PlusIcon className="h-5 w-5" />
+                        </button>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* No Class Selected State */}
-                {!selectedClass && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center py-16">
-                    <div className="text-center">
-                      <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
-                      <p className="text-gray-500">Choose a class from the sidebar to view its assessments.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Sidebar - Classes */}
-              <div className="lg:col-span-1 flex flex-col">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-                  <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-                    <h3 className="text-sm font-medium text-gray-900">Classes</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto min-h-0">
-                    {loading ? (
-                      <div className="p-4 space-y-2">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                          <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
-                                <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                    {/* Error Message */}
+                    {error && (
+                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
+                        <p className="text-red-800">{error}</p>
                       </div>
-                    ) : classes.length > 0 ? (
-                      <div className="p-4 space-y-2">
-                        {classes.map((cls) => (
-                          <div
-                            key={cls.section_course_id}
-                            onClick={() => setSelectedClass(cls)}
-                            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
-                              selectedClass?.section_course_id === cls.section_course_id
-                                ? 'border-gray-300 bg-gray-50'
-                                : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
-                            } group`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm truncate ${
-                                  selectedClass?.section_course_id === cls.section_course_id
-                                    ? 'text-gray-900'
-                                    : 'text-gray-900 group-hover:text-gray-900'
-                                }`}>
-                                  {cls.course_title}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
-                              </div>
-                              {selectedClass?.section_course_id === cls.section_course_id && (
-                                <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                    )}
+                    
+                    {/* Assessments Table */}
+                    {selectedClass && (
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
+                        {loading ? (
+                          <div className="flex-1 overflow-y-auto min-h-0">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <tr key={i} className="hover:bg-gray-50">
+                                    <td className="px-8 py-4">
+                                      <div className="flex items-center">
+                                        <div className="flex-shrink-0 h-10 w-10">
+                                          <div className="h-10 w-10 rounded-lg bg-gray-200 skeleton"></div>
+                                        </div>
+                                        <div className="ml-4">
+                                          <div className="h-4 bg-gray-200 rounded w-32 skeleton mb-2"></div>
+                                          <div className="h-3 bg-gray-100 rounded w-24 skeleton"></div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="h-4 bg-gray-200 rounded w-20 skeleton"></div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="flex items-center space-x-2">
+                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : filteredAssessments.length > 0 ? (
+                          <div className="flex-1 overflow-y-auto min-h-0">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredAssessments.map((assessment) => (
+                                  <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4">
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
+                                        <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {assessment.type}
+                                      </span>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="text-sm text-gray-900">{assessment.total_points}</div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="text-sm text-gray-900">{assessment.weight_percentage}%</div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="text-sm text-gray-900">
+                                        {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : '—'}
+                                      </div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assessment.status)}`}>
+                                        {assessment.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                      <div className="flex items-center space-x-2">
+                                        <button onClick={() => openEditModal(assessment)} className="text-red-600 hover:text-red-900"><PencilIcon className="h-4 w-4" /></button>
+                                        {assessment.is_published ? (
+                                          <button onClick={() => handleUnpublishAssessment(assessment.assessment_id)} className="text-yellow-600 hover:text-yellow-900"><XMarkIcon className="h-4 w-4" /></button>
+                                        ) : (
+                                          <button onClick={() => handlePublishAssessment(assessment.assessment_id)} className="text-green-600 hover:text-green-900"><CheckIcon className="h-4 w-4" /></button>
+                                        )}
+                                        <button onClick={() => handleDeleteAssessment(assessment.assessment_id)} className="text-red-600 hover:text-red-900"><TrashIcon className="h-4 w-4" /></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center py-16">
+                            <div className="text-center">
+                              <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No assessments found</h3>
+                              <p className="text-gray-500">
+                                {searchQuery ? 'No assessments match your search.' : 'Create your first assessment to get started.'}
+                              </p>
+                              {!searchQuery && (
+                                <button onClick={openCreateModal} className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                  <PlusIcon className="h-4 w-4" />
+                                  Create Assessment
+                                </button>
                               )}
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center p-8">
+                    )}
+
+                    {/* No Class Selected State */}
+                    {!selectedClass && (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                         <div className="text-center">
-                          <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
-                          <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                          <ClipboardDocumentListIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
+                          <p className="text-gray-500">Choose a class from the sidebar to view its assessments.</p>
                         </div>
                       </div>
                     )}
                   </div>
+
+                  {/* Right Sidebar - Classes */}
+                  <div className="lg:col-span-1 flex flex-col min-h-0">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
+                      <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                        <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                      </div>
+                      <div className="flex-1 overflow-y-auto min-h-0">
+                        {loading ? (
+                          <div className="p-4 space-y-2">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                              <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                    <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : classes.length > 0 ? (
+                          <div className="p-4 space-y-2">
+                            {classes.map((cls) => (
+                              <div
+                                key={cls.section_course_id}
+                                onClick={() => setSelectedClass(cls)}
+                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                  selectedClass?.section_course_id === cls.section_course_id
+                                    ? 'border-gray-300 bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                                } group`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-medium text-sm truncate ${
+                                      selectedClass?.section_course_id === cls.section_course_id
+                                        ? 'text-gray-900'
+                                        : 'text-gray-900 group-hover:text-gray-900'
+                                    }`}>
+                                      {cls.course_title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                                  </div>
+                                  {selectedClass?.section_course_id === cls.section_course_id && (
+                                    <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center p-8">
+                            <div className="text-center">
+                              <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                              <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-            </div>
             )}
 
             {/* Grading Tab Content */}
             {activeTab === 'grading' && (
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0">
+              <div className="px-8 py-6 h-full overflow-y-auto">
+                <div className="mb-4 flex-shrink-0">
                   {error && (
                     <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-xs sm:text-sm text-red-800">{error}</p>
@@ -901,12 +905,11 @@ const Assessments = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 overflow-hidden px-4 sm:px-6 lg:px-8 pb-6">
-                  <div className="h-full grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
-                    {/* Main Content - Student List for Grading */}
-                    <div className="lg:col-span-3 flex flex-col h-full min-w-0">
-                      {selectedAssessment ? (
-                        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col h-full">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full min-h-0">
+                  {/* Main Content - Student List for Grading */}
+                  <div className="lg:col-span-3 flex flex-col min-h-0">
+                    {selectedAssessment ? (
+                      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                         <div className="px-4 sm:px-6 py-3 border-b border-gray-200 flex-shrink-0">
                           <h2 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
                             Grades for: {selectedAssessment.title} <span className="text-xs sm:text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
@@ -1112,7 +1115,7 @@ const Assessments = () => {
                         )}
                       </div>
                     ) : !selectedClass ? (
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center h-full">
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                         <div className="text-center">
                           <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
@@ -1120,7 +1123,7 @@ const Assessments = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center h-full">
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                         <div className="text-center">
                           <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                           <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Assessment</h3>
@@ -1131,10 +1134,10 @@ const Assessments = () => {
                   </div>
 
                   {/* Right Sidebar - Classes and Assessments */}
-                  <div className="lg:col-span-1 flex flex-col">
+                  <div className="lg:col-span-1 flex flex-col min-h-0">
                     {!selectedClass ? (
                       // Classes Selection
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                         <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                           <h3 className="text-sm font-medium text-gray-900">Classes</h3>
                         </div>
@@ -1195,7 +1198,7 @@ const Assessments = () => {
                       </div>
                     ) : (
                       // Assessments Selection
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                         <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
                           <div className="mb-2">
                             <h3 className="text-sm font-medium text-gray-900 truncate" title={selectedClass.course_title}>{selectedClass.course_title}</h3>
@@ -1277,7 +1280,6 @@ const Assessments = () => {
                     )}
                   </div>
                 </div>
-              </div>
               </div>
             )}
           </div>
