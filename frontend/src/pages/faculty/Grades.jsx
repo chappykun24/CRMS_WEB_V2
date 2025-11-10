@@ -129,7 +129,18 @@ const Grades = () => {
       
       // Process students - Load essential data first, images later
       if (studentsResponse.ok) {
-        const studentsData = await studentsResponse.json()
+        let studentsData
+        try {
+          const text = await studentsResponse.text()
+          studentsData = JSON.parse(text)
+        } catch (parseError) {
+          console.error('Error parsing students JSON:', parseError)
+          if (showLoading) {
+            setError('Failed to parse students data. The response may be corrupted.')
+            setStudents([])
+          }
+          studentsData = [] // Set to empty array on parse error
+        }
         const studentsList = Array.isArray(studentsData) ? studentsData : []
         // Set students first (names and data) - this renders immediately
         setStudents(studentsList)
@@ -152,18 +163,31 @@ const Grades = () => {
       
       // Process grades
       if (gradesResponse.ok) {
-        const gradesData = await gradesResponse.json()
-        const gradesMap = {}
-        gradesData.forEach(item => {
+        let gradesData
+        try {
+          const text = await gradesResponse.text()
+          gradesData = JSON.parse(text)
+        } catch (parseError) {
+          console.error('Error parsing grades JSON:', parseError)
+          if (showLoading) {
+            setError('Failed to parse grades data. The response may be corrupted.')
+            setStudentGrades({})
+          }
+          gradesData = [] // Set to empty array on parse error
+        }
+        if (gradesData && Array.isArray(gradesData)) {
+          const gradesMap = {}
+          gradesData.forEach(item => {
           gradesMap[item.enrollment_id] = {
             total_grade: item.total_grade,
             total_assessments: item.total_assessments,
             graded_assessments: item.graded_assessments
           }
         })
-        setStudentGrades(gradesMap)
-        // Cache for next time (grades are small, no need to minimize)
-        safeSetItem(gradesCacheKey, gradesMap)
+          setStudentGrades(gradesMap)
+          // Cache for next time (grades are small, no need to minimize)
+          safeSetItem(gradesCacheKey, gradesMap)
+        }
       } else {
         console.error('Failed to load student grades')
         if (showLoading) setStudentGrades({})
@@ -171,13 +195,26 @@ const Grades = () => {
       
       // Process assessment scores
       if (scoresResponse.ok) {
-        const scoresData = await scoresResponse.json()
+        let scoresData
+        try {
+          const text = await scoresResponse.text()
+          scoresData = JSON.parse(text)
+        } catch (parseError) {
+          console.error('Error parsing assessment scores JSON:', parseError)
+          if (showLoading) {
+            setError('Failed to parse assessment scores. The response may be corrupted.')
+            setAssessments([])
+            setAssessmentScores({})
+          }
+          scoresData = [] // Set to empty array on parse error
+        }
         
-        // Extract unique assessments
-        const assessmentsMap = new Map()
-        const scoresByStudent = {}
-        
-        scoresData.forEach(row => {
+        if (scoresData && Array.isArray(scoresData)) {
+          // Extract unique assessments
+          const assessmentsMap = new Map()
+          const scoresByStudent = {}
+          
+          scoresData.forEach(row => {
           // Collect assessments
           if (row.assessment_id && !assessmentsMap.has(row.assessment_id)) {
             assessmentsMap.set(row.assessment_id, {
@@ -207,16 +244,17 @@ const Grades = () => {
           }
         })
         
-        setAssessments(Array.from(assessmentsMap.values()).sort((a, b) => 
-          new Date(a.due_date || 0) - new Date(b.due_date || 0)
-        ))
-        setAssessmentScores(scoresByStudent)
-        
-        // Cache assessment scores
-        safeSetItem(scoresCacheKey, {
-          assessments: Array.from(assessmentsMap.values()),
-          scores: scoresByStudent
-        })
+          setAssessments(Array.from(assessmentsMap.values()).sort((a, b) => 
+            new Date(a.due_date || 0) - new Date(b.due_date || 0)
+          ))
+          setAssessmentScores(scoresByStudent)
+          
+          // Cache assessment scores
+          safeSetItem(scoresCacheKey, {
+            assessments: Array.from(assessmentsMap.values()),
+            scores: scoresByStudent
+          })
+        }
       } else {
         console.error('Failed to load assessment scores')
         if (showLoading) {
@@ -227,7 +265,13 @@ const Grades = () => {
     } catch (error) {
       console.error('Error loading section data:', error)
       if (showLoading) {
-        setError('Failed to load section data')
+        if (error.message && error.message.includes('JSON')) {
+          setError('Failed to parse server response. Please try again.')
+        } else if (error.message && error.message.includes('fetch') || error.message && error.message.includes('Network')) {
+          setError('Network error. Please check your connection and try again.')
+        } else {
+          setError('Failed to load section data')
+        }
         setStudents([])
         setStudentGrades({})
         setAssessments([])

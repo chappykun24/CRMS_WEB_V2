@@ -34,6 +34,28 @@ const Assessments = () => {
   // Tab navigation - check location state for default tab
   const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'assessments')
   
+  // Clear assessment grades cache when switching tabs
+  useEffect(() => {
+    // Clear all assessment grades cache when leaving grading tab
+    if (activeTab !== 'grading') {
+      try {
+        const keysToRemove = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && key.startsWith('assessment_grades_')) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key))
+        if (keysToRemove.length > 0) {
+          console.log(`🧹 [CACHE] Cleared ${keysToRemove.length} assessment grades cache entries`)
+        }
+      } catch (error) {
+        console.error('Error clearing assessment grades cache:', error)
+      }
+    }
+  }, [activeTab])
+  
   // Grading states
   const [selectedAssessment, setSelectedAssessment] = useState(null)
   const [grades, setGrades] = useState({})
@@ -420,7 +442,16 @@ const Assessments = () => {
       
       const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
-        const data = await response.json()
+        // Check if response is valid JSON before parsing
+        const text = await response.text()
+        let data
+        try {
+          data = JSON.parse(text)
+        } catch (parseError) {
+          console.error('Error parsing JSON response:', parseError)
+          setError('Failed to parse server response. The data may be corrupted.')
+          return
+        }
         const gradesMap = {}
         data.forEach(grade => {
           gradesMap[grade.enrollment_id] = {
@@ -448,15 +479,32 @@ const Assessments = () => {
           // Load images with lazy loading (not immediate) - images load last
           imageLoaderService.queueImages(imagesToLoad, false)
         }, 300) // Small delay to ensure names/grades render first
-        // Cache for next time (grades are small)
-        safeSetItem(gradesCacheKey, gradesMap)
+        // Don't cache assessment grades - they're too large (can be 9+ MB)
+        // safeSetItem(gradesCacheKey, gradesMap)
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Failed to load grades')
+        // Handle error response - check if it's valid JSON
+        try {
+          const errorText = await response.text()
+          let errorData
+          try {
+            errorData = JSON.parse(errorText)
+            setError(errorData.error || 'Failed to load grades')
+          } catch (parseError) {
+            setError(`Failed to load grades (${response.status} ${response.statusText})`)
+          }
+        } catch (error) {
+          setError(`Failed to load grades (${response.status} ${response.statusText})`)
+        }
       }
     } catch (error) {
       console.error('Error loading grades:', error)
-      setError('Failed to load grades')
+      if (error.message && error.message.includes('JSON')) {
+        setError('Failed to parse server response. Please try again.')
+      } else if (error.message && error.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.')
+      } else {
+        setError('Failed to load grades')
+      }
     } finally {
       setGradingLoading(false)
     }
@@ -863,7 +911,7 @@ const Assessments = () => {
                           </h2>
                         </div>
                         {gradingLoading ? (
-                          <div className="flex-1 overflow-y-auto min-h-0">
+                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
@@ -909,7 +957,7 @@ const Assessments = () => {
                             </ul>
                           </div>
                         ) : Object.keys(grades).length > 0 ? (
-                          <div className="flex-1 overflow-y-auto min-h-0">
+                          <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                             <div className="px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
                               <div className="w-52 flex-shrink-0 sticky left-0 bg-gray-50 z-40">Student</div>
                               <div className="w-20 flex-shrink-0">Raw</div>
