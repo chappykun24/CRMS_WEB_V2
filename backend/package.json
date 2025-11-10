@@ -10,7 +10,8 @@
     "build": "echo 'No build step required'",
     "test": "echo 'No tests specified'",
     "migrate": "node scripts/run_migration.js",
-    "migrate:dry-run": "node scripts/run_migration.js --dry-run"
+    "migrate:dry-run": "node scripts/run_migration.js --dry-run",
+    "generate-scores": "node scripts/generateStudentScores.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
