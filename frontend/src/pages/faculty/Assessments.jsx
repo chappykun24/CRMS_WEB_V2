@@ -1211,10 +1211,10 @@ const Assessments = () => {
                   </div>
                 </div>
               </div>
+              </div>
             )}
           </div>
         </div>
-      </div>
 
       {/* Create Assessment Modal */}
       {showCreateModal && (
