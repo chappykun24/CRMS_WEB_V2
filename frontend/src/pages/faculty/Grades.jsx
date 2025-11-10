@@ -111,6 +111,14 @@ const Grades = () => {
     loadSectionData(sectionId, studentsCacheKey, gradesCacheKey, scoresCacheKey, !cachedStudents || !cachedGrades || !cachedScores)
   }, [selectedClass])
 
+  // Clear any active tab state when Grades page loads (Grades page doesn't have tabs)
+  useEffect(() => {
+    // Clear facultyActiveTab to ensure no tab labels appear in breadcrumb
+    window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+      detail: { activeTab: null }
+    }))
+  }, [])
+
   // Keep Header breadcrumb in sync with selected class
   useEffect(() => {
     if (selectedClass) {

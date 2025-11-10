@@ -305,16 +305,17 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       
       const title = pageTitles[pageName] || 'Faculty Dashboard'
       
-      // Build breadcrumb parts: [Title] > [Class] > [Tab]
+      // Build breadcrumb parts: [Class] > [Tab] (but not for Grades page)
       const breadcrumbParts = []
       
-      // Add selected class first so tab labels appear after the subject
+      // Add selected class if it exists
       if (selectedClass && selectedClass.course_title) {
         breadcrumbParts.push(selectedClass.course_title)
       }
       
-      // Add active tab if it exists (e.g., "Attendance" tab or "Grading")
-      if (facultyActiveTab && facultyActiveTab !== pageName) {
+      // Add active tab if it exists, but ONLY for pages that should show tabs (not Grades)
+      // Grades page should only show the class name, no tab labels
+      if (pageName !== 'grades' && facultyActiveTab && facultyActiveTab !== pageName) {
         const tabDisplayName = facultyActiveTab.charAt(0).toUpperCase() + facultyActiveTab.slice(1)
         breadcrumbParts.push(tabDisplayName)
       }
