@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import ILOMappingTable from '../../components/ILOMappingTable'
+import SyllabusCreationWizard from '../../components/SyllabusCreationWizard'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -225,14 +226,13 @@ const Syllabus = () => {
     }
   }
 
-  const handleCreateSyllabus = async (e) => {
-    e.preventDefault()
+  const handleCreateSyllabus = async (wizardFormData) => {
     if (!selectedClass) return
 
     setIsSubmitting(true)
     try {
       // Get term_id from form, or fall back to selected class term_id
-      const termId = formData.term_id || selectedClass.term_id
+      const termId = wizardFormData.term_id || selectedClass.term_id
       
       if (!termId) {
         alert('Please select a school term')
@@ -242,42 +242,17 @@ const Syllabus = () => {
 
       // Prepare learning_resources - handle both string and array
       let learningResources = null
-      if (formData.learning_resources) {
-        if (typeof formData.learning_resources === 'string') {
-          learningResources = formData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
-        } else if (Array.isArray(formData.learning_resources)) {
-          learningResources = formData.learning_resources
+      if (wizardFormData.learning_resources) {
+        if (typeof wizardFormData.learning_resources === 'string') {
+          learningResources = wizardFormData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
+        } else if (Array.isArray(wizardFormData.learning_resources)) {
+          learningResources = wizardFormData.learning_resources
         }
       }
 
-      // Prepare JSON fields
-      let assessmentFramework = null
-      if (formData.assessment_framework) {
-        if (typeof formData.assessment_framework === 'string') {
-          try {
-            assessmentFramework = JSON.parse(formData.assessment_framework)
-          } catch (e) {
-            // If invalid JSON, store as string (backend will handle)
-            assessmentFramework = formData.assessment_framework
-          }
-        } else {
-          assessmentFramework = formData.assessment_framework
-        }
-      }
-
-      let gradingPolicy = null
-      if (formData.grading_policy) {
-        if (typeof formData.grading_policy === 'string') {
-          try {
-            gradingPolicy = JSON.parse(formData.grading_policy)
-          } catch (e) {
-            // If invalid JSON, store as string (backend will handle)
-            gradingPolicy = formData.grading_policy
-          }
-        } else {
-          gradingPolicy = formData.grading_policy
-        }
-      }
+      // Prepare JSON fields - they should already be objects from the wizard
+      const assessmentFramework = wizardFormData.assessment_framework || null
+      const gradingPolicy = wizardFormData.grading_policy || null
 
       const response = await fetch('/api/syllabi', {
         method: 'POST',
@@ -286,15 +261,15 @@ const Syllabus = () => {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({
-          title: formData.title,
-          description: formData.description || null,
-          course_outline: formData.course_outline || null,
-          course_objectives: formData.course_objectives || null,
-          prerequisites: formData.prerequisites || null,
+          title: wizardFormData.title,
+          description: wizardFormData.description || null,
+          course_outline: wizardFormData.course_outline || null,
+          course_objectives: wizardFormData.course_objectives || null,
+          prerequisites: wizardFormData.prerequisites || null,
           learning_resources: learningResources,
           assessment_framework: assessmentFramework,
           grading_policy: gradingPolicy,
-          version: formData.version || '1.0',
+          version: wizardFormData.version || '1.0',
           course_id: selectedClass.course_id,
           term_id: termId,
           section_course_id: selectedClass.section_course_id,
@@ -319,51 +294,25 @@ const Syllabus = () => {
       setIsSubmitting(false)
     }
   }
-
-  const handleEditSyllabus = async (e) => {
-    e.preventDefault()
+  
+  const handleUpdateSyllabus = async (wizardFormData) => {
     if (!editingSyllabus) return
 
     setIsSubmitting(true)
     try {
-      // Prepare learning_resources - handle both string and array
+      // Prepare learning_resources
       let learningResources = null
-      if (formData.learning_resources) {
-        if (typeof formData.learning_resources === 'string') {
-          learningResources = formData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
-        } else if (Array.isArray(formData.learning_resources)) {
-          learningResources = formData.learning_resources
+      if (wizardFormData.learning_resources) {
+        if (typeof wizardFormData.learning_resources === 'string') {
+          learningResources = wizardFormData.learning_resources.split(',').map(item => item.trim()).filter(item => item !== '')
+        } else if (Array.isArray(wizardFormData.learning_resources)) {
+          learningResources = wizardFormData.learning_resources
         }
       }
 
       // Prepare JSON fields
-      let assessmentFramework = null
-      if (formData.assessment_framework) {
-        if (typeof formData.assessment_framework === 'string') {
-          try {
-            assessmentFramework = JSON.parse(formData.assessment_framework)
-          } catch (e) {
-            // If invalid JSON, store as string (backend will handle)
-            assessmentFramework = formData.assessment_framework
-          }
-        } else {
-          assessmentFramework = formData.assessment_framework
-        }
-      }
-
-      let gradingPolicy = null
-      if (formData.grading_policy) {
-        if (typeof formData.grading_policy === 'string') {
-          try {
-            gradingPolicy = JSON.parse(formData.grading_policy)
-          } catch (e) {
-            // If invalid JSON, store as string (backend will handle)
-            gradingPolicy = formData.grading_policy
-          }
-        } else {
-          gradingPolicy = formData.grading_policy
-        }
-      }
+      const assessmentFramework = wizardFormData.assessment_framework || null
+      const gradingPolicy = wizardFormData.grading_policy || null
 
       const response = await fetch(`/api/syllabi/${editingSyllabus.syllabus_id}`, {
         method: 'PUT',
@@ -372,15 +321,15 @@ const Syllabus = () => {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({
-          title: formData.title,
-          description: formData.description || null,
-          course_outline: formData.course_outline || null,
-          course_objectives: formData.course_objectives || null,
-          prerequisites: formData.prerequisites || null,
+          title: wizardFormData.title,
+          description: wizardFormData.description || null,
+          course_outline: wizardFormData.course_outline || null,
+          course_objectives: wizardFormData.course_objectives || null,
+          prerequisites: wizardFormData.prerequisites || null,
           learning_resources: learningResources,
           assessment_framework: assessmentFramework,
           grading_policy: gradingPolicy,
-          version: formData.version || '1.0'
+          version: wizardFormData.version || '1.0'
         })
       })
 
@@ -401,6 +350,7 @@ const Syllabus = () => {
       setIsSubmitting(false)
     }
   }
+
 
   const handleDeleteSyllabus = async (syllabusId) => {
     if (!confirm('Are you sure you want to delete this syllabus?')) return
@@ -448,25 +398,22 @@ const Syllabus = () => {
 
   const openEditModal = (syllabus) => {
     setEditingSyllabus(syllabus)
-    setFormData({
-      title: syllabus.title || '',
-      description: syllabus.description || '',
-      course_outline: syllabus.course_outline || '',
-      course_objectives: syllabus.course_objectives || '',
-      prerequisites: syllabus.prerequisites || '',
-      learning_resources: Array.isArray(syllabus.learning_resources) 
-        ? syllabus.learning_resources.join(', ')
-        : syllabus.learning_resources || '',
-      assessment_framework: typeof syllabus.assessment_framework === 'object'
-        ? JSON.stringify(syllabus.assessment_framework, null, 2)
-        : syllabus.assessment_framework || '',
-      grading_policy: typeof syllabus.grading_policy === 'object'
-        ? JSON.stringify(syllabus.grading_policy, null, 2)
-        : syllabus.grading_policy || '',
-      version: syllabus.version || '1.0',
-      term_id: syllabus.term_id || ''
-    })
     setShowEditModal(true)
+  }
+  
+  const handleWizardSave = async (wizardFormData) => {
+    if (editingSyllabus) {
+      await handleUpdateSyllabus(wizardFormData)
+    } else {
+      await handleCreateSyllabus(wizardFormData)
+    }
+  }
+  
+  const handleWizardClose = () => {
+    setShowCreateModal(false)
+    setShowEditModal(false)
+    setEditingSyllabus(null)
+    resetForm()
   }
 
   const openViewModal = (syllabus) => {
@@ -980,14 +927,43 @@ const Syllabus = () => {
         </div>
       </div>
 
-      {/* Create Syllabus Modal */}
-      {showCreateModal && (
+      {/* Create/Edit Syllabus Wizard */}
+      {(showCreateModal || showEditModal) && selectedClass && (
+        <SyllabusCreationWizard
+          selectedClass={selectedClass}
+          schoolTerms={schoolTerms}
+          onClose={handleWizardClose}
+          onSave={handleWizardSave}
+          editingSyllabus={editingSyllabus}
+        />
+      )}
+      
+      {/* Legacy Create Syllabus Modal - Kept for fallback if no class selected */}
+      {showCreateModal && !selectedClass && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Syllabus</h2>
+              <p className="text-red-600 mb-4">Please select a class first to create a syllabus.</p>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Legacy Create Modal - Removed, using wizard instead */}
+      {false && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Syllabus</h2>
               
-              <form onSubmit={handleCreateSyllabus} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
@@ -1152,14 +1128,14 @@ const Syllabus = () => {
         </div>
       )}
 
-      {/* Edit Syllabus Modal */}
-      {showEditModal && editingSyllabus && (
+      {/* Edit Syllabus Modal - Replaced by Wizard */}
+      {false && showEditModal && editingSyllabus && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Syllabus</h2>
               
-              <form onSubmit={handleEditSyllabus} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
