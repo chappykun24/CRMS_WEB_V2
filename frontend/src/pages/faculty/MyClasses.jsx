@@ -73,21 +73,6 @@ const MyClasses = () => {
     }))
   }, [])
 
-  // Keep breadcrumb tab state in sync (Attendance vs default)
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('facultyTabChanged', {
-      detail: { activeTab: isAttendanceMode ? 'attendance' : null }
-    }))
-  }, [isAttendanceMode])
-
-  useEffect(() => {
-    return () => {
-      window.dispatchEvent(new CustomEvent('facultyTabChanged', {
-        detail: { activeTab: null }
-      }))
-    }
-  }, [])
-
   // Attendance mode state
   const [isAttendanceMode, setIsAttendanceMode] = useState(false)
   const [attendanceRecords, setAttendanceRecords] = useState({}) // {enrollmentId: {date: {status, remarks}}}
@@ -104,6 +89,22 @@ const MyClasses = () => {
   const [activeSessionTab, setActiveSessionTab] = useState(0)
   const [imagesLoaded, setImagesLoaded] = useState(false) // Track if images should start loading
   const [cachedStudentsList, setCachedStudentsList] = useState(null) // Cached students from attendance mode
+
+  // Keep breadcrumb tab state in sync (Attendance vs default)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+      detail: { activeTab: isAttendanceMode ? 'attendance' : null }
+    }))
+  }, [isAttendanceMode])
+
+  // Reset breadcrumb tab on unmount
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+        detail: { activeTab: null }
+      }))
+    }
+  }, [])
 
   // Cache students list when attendance mode is enabled and students are loaded
   // IMPORTANT: Only cache students that belong to the currently selected class
@@ -1601,16 +1602,6 @@ const MyClasses = () => {
 
               {/* Students List */}
               <div className="flex-1 overflow-auto min-h-0">
-                {isAttendanceMode && selectedClass && (
-                  <div className="mb-3 px-1">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                      {selectedClass.course_title}
-                    </h3>
-                    <div className="text-xs text-gray-600">
-                      {students.length} student{students.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                )}
                 {loadingStudents ? (
                   <StudentListSkeleton students={5} />
                 ) : students.length > 0 ? (
