@@ -1491,31 +1491,33 @@ const Syllabus = () => {
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Assessment Framework</h3>
                       {components.length > 0 ? (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="space-y-3">
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="grid grid-cols-2 gap-2 mb-3">
                             {components.map((comp, index) => (
-                              <div key={index} className="flex items-start justify-between p-3 bg-white rounded border border-gray-200">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3 mb-1">
-                                    <span className="font-semibold text-gray-900">{comp.type}</span>
-                                    {comp.count && (
-                                      <span className="text-sm text-gray-600">
-                                        ({comp.count} {comp.count === 1 ? 'item' : 'items'})
-                                      </span>
-                                    )}
-                                    <span className="text-sm font-medium text-blue-600">{comp.weight}%</span>
-                                  </div>
+                              <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-semibold text-gray-900 text-sm">{comp.type}</span>
+                                  <span className="text-xs font-medium text-blue-600">{comp.weight}%</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {comp.count && (
+                                    <span className="text-xs text-gray-500">
+                                      {comp.count} {comp.count === 1 ? 'item' : 'items'}
+                                    </span>
+                                  )}
                                   {comp.description && (
-                                    <p className="text-sm text-gray-600 mt-1">{comp.description}</p>
+                                    <span className="text-xs text-gray-500 truncate" title={comp.description}>
+                                      {comp.description}
+                                    </span>
                                   )}
                                 </div>
                               </div>
                             ))}
                           </div>
-                          <div className="mt-3 pt-3 border-t border-gray-300">
+                          <div className="pt-2 border-t border-gray-300">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-700">Total Weight:</span>
-                              <span className={`text-sm font-bold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                              <span className="text-xs font-medium text-gray-700">Total Weight:</span>
+                              <span className={`text-xs font-bold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
                                 {totalWeight}%
                               </span>
                             </div>
@@ -1550,15 +1552,15 @@ const Syllabus = () => {
                         {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
                           <div className="mb-4">
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {policy.scale.map((item, index) => (
                                 <div key={index} className="p-2 bg-white rounded border border-gray-200">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="font-medium text-gray-900">{item.grade || 'N/A'}</span>
-                                    <span className="text-sm text-gray-600">{item.range || 'N/A'}</span>
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-gray-900 text-sm">{item.grade || 'N/A'}</span>
+                                    <span className="text-xs text-gray-600">{item.range || 'N/A'}</span>
                                   </div>
                                   {item.description && (
-                                    <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5 truncate" title={item.description}>{item.description}</p>
                                   )}
                                 </div>
                               ))}
@@ -1568,7 +1570,7 @@ const Syllabus = () => {
                         {policy?.scale && !Array.isArray(policy.scale) && typeof policy.scale === 'object' && (
                           <div className="mb-4">
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {Object.entries(policy.scale).map(([grade, range]) => {
                                 // Handle if range is an object or string
                                 const rangeValue = typeof range === 'object' && range !== null 
@@ -1576,8 +1578,8 @@ const Syllabus = () => {
                                   : String(range)
                                 return (
                                   <div key={grade} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                                    <span className="font-medium text-gray-900">{grade}</span>
-                                    <span className="text-sm text-gray-600">{rangeValue}</span>
+                                    <span className="font-medium text-gray-900 text-sm">{grade}</span>
+                                    <span className="text-xs text-gray-600">{rangeValue}</span>
                                   </div>
                                 )
                               })}
@@ -1587,11 +1589,11 @@ const Syllabus = () => {
                         {policy?.components && policy.components.length > 0 && (
                           <div>
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Components</h4>
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {policy.components.map((comp, index) => (
                                 <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                                  <span className="text-sm text-gray-900">{comp.type || comp.name || 'Component'}</span>
-                                  <span className="text-sm font-medium text-blue-600">{comp.weight || comp.percentage || 0}%</span>
+                                  <span className="text-xs text-gray-900 truncate">{comp.type || comp.name || 'Component'}</span>
+                                  <span className="text-xs font-medium text-blue-600 ml-2">{comp.weight || comp.percentage || 0}%</span>
                                 </div>
                               ))}
                             </div>
