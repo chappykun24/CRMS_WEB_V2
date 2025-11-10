@@ -320,22 +320,9 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         breadcrumbParts.push(selectedClass.course_title)
       }
       
-      // Build subtitle from breadcrumb parts
-      let subtitle = ''
-      if (breadcrumbParts.length > 0) {
-        subtitle = breadcrumbParts.join(' > ')
-      } else {
-        // Default subtitles when no class is selected
-        if (pageName === 'classes') {
-          subtitle = 'Select a class to view details'
-        } else if (pageName === 'assessments') {
-          subtitle = facultyActiveTab === 'grading' ? 'Select an assessment to grade' : 'Select a class to view assessments'
-        } else if (pageName === 'grades') {
-          subtitle = 'Select a class to view grades'
-        } else if (pageName === 'syllabus') {
-          subtitle = 'Select a class to view syllabus'
-        }
-      }
+      // Build subtitle from breadcrumb parts - only show if there's content
+      // Stay blank until there is a selected class or active tab
+      const subtitle = breadcrumbParts.length > 0 ? breadcrumbParts.join(' > ') : ''
       
       return {
         title,
