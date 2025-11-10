@@ -1,10 +1,18 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import { initAnalytics } from './services/analyticsService'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 
 console.log('main.jsx is executing')
+
+// Initialize analytics before rendering the app
+try {
+  initAnalytics()
+} catch (_) {
+  // fail-safe: never block app render due to analytics
+}
 
 try {
   const rootElement = document.getElementById('root')

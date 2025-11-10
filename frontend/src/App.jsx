@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext'
+import { trackPageview, trackEvent } from './services/analyticsService'
 // Removed SidebarProvider import - using local state instead
 import WelcomeScreen from './pages/WelcomeScreen'
 import LoginPage from './pages/LoginPage'
@@ -29,6 +30,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Error caught by boundary:', error, errorInfo)
+    try {
+      trackEvent('error_boundary', {
+        message: error?.message,
+        componentStack: errorInfo?.componentStack,
+      })
+    } catch (_) {}
   }
 
   render() {
@@ -63,6 +70,11 @@ function App() {
   }, [])
 
   useEffect(() => {
+    // Track page view on route change
+    try {
+      trackPageview(location.pathname)
+    } catch (_) {}
+
     const onPageShow = (event) => {
       if (event.persisted || (performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
         const storedUser = localStorage.getItem('userData')
