@@ -1471,100 +1471,11 @@ const MyClasses = () => {
                   <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
                     {selectedClass.course_title}
                   </h2>
-                    {isAttendanceMode && (
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button
-                          onClick={loadFullAttendanceList}
-                          disabled={loadingFullAttendance}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                          style={{ border: 'none', outline: 'none' }}
-                        >
-                          {loadingFullAttendance ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-800"></div>
-                              Loading...
-                            </>
-                          ) : (
-                            'Attendance History'
-                          )}
-                        </button>
-                        <button
-                          onClick={markAllPresent}
-                          className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
-                          style={{ border: 'none', outline: 'none' }}
-                        >
-                          Mark All Present
-                        </button>
-                        <button
-                          onClick={submitAttendance}
-                          disabled={submittingAttendance || !sessionDetailsValid}
-                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none"
-                          style={{ border: 'none', outline: 'none' }}
-                        >
-                          {submittingAttendance && (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                          )}
-                          {submittingAttendance ? 'Submitting...' : 'Submit'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {/* Session Details Inputs in the middle space - Only in attendance mode */}
-                  {isAttendanceMode && (
-                    <div className="flex items-center gap-3 mt-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="date"
-                          value={sessionDetails.session_date}
-                          onChange={async (e) => {
-                            const selectedDate = e.target.value
-                            console.log('📅 Date selected:', selectedDate)
-                            updateSessionDetails('session_date', selectedDate)
-                            
-                            // Load attendance data for the selected date
-                            if (selectedDate && selectedClass) {
-                              console.log('🔄 Loading attendance for date:', selectedDate)
-                              await loadExistingAttendanceForDate(selectedDate)
-                            }
-                          }}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        {loadingAttendanceData && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        value={sessionDetails.title}
-                        onChange={(e) => updateSessionDetails('title', e.target.value)}
-                        placeholder="Session Title"
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                      />
-                      <input
-                        type="text"
-                        value={sessionDetails.session_type}
-                        onChange={(e) => updateSessionDetails('session_type', e.target.value)}
-                        placeholder="Session Type"
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                      />
-                      <input
-                        type="text"
-                        value={sessionDetails.meeting_type}
-                        onChange={(e) => updateSessionDetails('meeting_type', e.target.value)}
-                        placeholder="Meeting Type"
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-400"
-                      />
-                    </div>
-                  )}
-                  <div className="mt-1 text-xs text-gray-600 space-y-0.5">
-                    <p className="truncate">{selectedClass.course_code} • {selectedClass.section_code}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="truncate">{selectedClass.semester} {selectedClass.school_year}</p>
-                      <span className="ml-2 text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-                        {students.length} student{students.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
+                    {/* Old attendance controls removed; kept exit button below */}
+                   </div>
+                   {/* Session Details Inputs in the middle space - Only in attendance mode */}
+                   {/* Old input row removed */}
+
                 </div>
                 {isAttendanceMode && (
                   <button
@@ -1603,6 +1514,13 @@ const MyClasses = () => {
 
                     {/* Right: Controls */}
                     <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <button
+                        onClick={loadFullAttendanceList}
+                        disabled={loadingFullAttendance}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loadingFullAttendance ? 'Loading...' : 'Attendance History'}
+                      </button>
                       <input
                         type="date"
                         value={sessionDetails.session_date}
