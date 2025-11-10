@@ -377,26 +377,6 @@ const Syllabus = () => {
     }
   }
 
-  const handleSubmitForReview = async (syllabusId) => {
-    try {
-      const response = await fetch(`/api/syllabi/${syllabusId}/submit-review`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
-
-      if (response.ok) {
-        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
-        alert('Syllabus submitted for review successfully!')
-      } else {
-        alert('Failed to submit syllabus for review')
-      }
-    } catch (error) {
-      console.error('Error submitting syllabus for review:', error)
-      alert('Failed to submit syllabus for review')
-    }
-  }
 
   const openEditModal = (syllabus) => {
     setEditingSyllabus(syllabus)
@@ -421,6 +401,109 @@ const Syllabus = () => {
   const openViewModal = (syllabus) => {
     setViewingSyllabus(syllabus)
     setShowViewModal(true)
+  }
+  
+  // Submit syllabus for review (Faculty)
+  const handleSubmitForReview = async (syllabus) => {
+    if (!confirm('Are you sure you want to submit this syllabus for review? You won\'t be able to edit it until it\'s reviewed.')) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/syllabi/${syllabus.syllabus_id}/submit-review`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          created_by: user.user_id
+        })
+      })
+      
+      if (response.ok) {
+        alert('Syllabus submitted for review successfully!')
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to submit syllabus for review')
+      }
+    } catch (error) {
+      console.error('Error submitting syllabus for review:', error)
+      alert('Failed to submit syllabus for review')
+    }
+  }
+  
+  // Review syllabus (Program Chair)
+  const handleReviewSyllabus = async (syllabus, reviewStatus) => {
+    const statusText = reviewStatus === 'approved' ? 'approve' : reviewStatus === 'rejected' ? 'reject' : 'request revision for'
+    if (!confirm(`Are you sure you want to ${statusText} this syllabus?`)) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/syllabi/${syllabus.syllabus_id}/review`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          reviewed_by: user.user_id,
+          review_status: reviewStatus
+        })
+      })
+      
+      if (response.ok) {
+        alert(`Syllabus ${reviewStatus} successfully!`)
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || `Failed to ${reviewStatus} syllabus`)
+      }
+    } catch (error) {
+      console.error('Error reviewing syllabus:', error)
+      alert(`Failed to ${reviewStatus} syllabus`)
+    }
+  }
+  
+  // Approve syllabus (Dean)
+  const handleApproveSyllabus = async (syllabus, approvalStatus) => {
+    const statusText = approvalStatus === 'approved' ? 'approve' : 'reject'
+    if (!confirm(`Are you sure you want to ${statusText} this syllabus?`)) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/syllabi/${syllabus.syllabus_id}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          approved_by: user.user_id,
+          approval_status: approvalStatus
+        })
+      })
+      
+      if (response.ok) {
+        alert(`Syllabus ${approvalStatus} successfully!`)
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || `Failed to ${approvalStatus} syllabus`)
+      }
+    } catch (error) {
+      console.error('Error approving syllabus:', error)
+      alert(`Failed to ${approvalStatus} syllabus`)
+    }
   }
 
   const resetForm = () => {
@@ -461,6 +544,7 @@ const Syllabus = () => {
       case 'approved': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'rejected': return 'bg-red-100 text-red-800'
+      case 'needs_revision': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -655,36 +739,97 @@ const Syllabus = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center space-x-2">
-                                    <button 
-                                      onClick={() => openViewModal(syllabus)} 
-                                      className="text-blue-600 hover:text-blue-900"
+                                    <button
+                                      onClick={() => openViewModal(syllabus)}
+                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                       title="View"
                                     >
-                                      <EyeIcon className="h-4 w-4" />
+                                      <EyeIcon className="h-5 w-5" />
                                     </button>
-                                    <button 
-                                      onClick={() => openEditModal(syllabus)} 
-                                      className="text-red-600 hover:text-red-900"
-                                      title="Edit"
-                                    >
-                                      <PencilIcon className="h-4 w-4" />
-                                    </button>
-                                    {syllabus.review_status !== 'pending' && syllabus.approval_status === 'pending' && (
-                                      <button 
-                                        onClick={() => handleSubmitForReview(syllabus.syllabus_id)} 
-                                        className="text-green-600 hover:text-green-900"
-                                        title="Submit for Review"
+                                    {/* Faculty actions: Edit and Submit for Review */}
+                                    {user?.role_name === 'faculty' && syllabus.created_by === user.user_id && (
+                                      <>
+                                        {((!syllabus.review_status || syllabus.review_status !== 'pending') && 
+                                          syllabus.review_status !== 'approved' && 
+                                          syllabus.approval_status !== 'approved') || 
+                                         syllabus.review_status === 'rejected' || 
+                                         syllabus.review_status === 'needs_revision' ? (
+                                          <button
+                                            onClick={() => openEditModal(syllabus)}
+                                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                            title="Edit"
+                                          >
+                                            <PencilIcon className="h-5 w-5" />
+                                          </button>
+                                        ) : null}
+                                        {syllabus.review_status !== 'pending' && 
+                                         syllabus.approval_status !== 'approved' && 
+                                         (!syllabus.review_status || syllabus.review_status !== 'approved') && (
+                                          <button
+                                            onClick={() => handleSubmitForReview(syllabus)}
+                                            className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                            title="Submit for Review"
+                                          >
+                                            <ArrowPathIcon className="h-5 w-5" />
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                    {/* Program Chair actions: Review */}
+                                    {user?.role_name === 'program_chair' && syllabus.review_status === 'pending' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleReviewSyllabus(syllabus, 'approved')}
+                                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                          title="Approve"
+                                        >
+                                          <CheckCircleIcon className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleReviewSyllabus(syllabus, 'rejected')}
+                                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                          title="Reject"
+                                        >
+                                          <XCircleIcon className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleReviewSyllabus(syllabus, 'needs_revision')}
+                                          className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
+                                          title="Needs Revision"
+                                        >
+                                          <ClockIcon className="h-5 w-5" />
+                                        </button>
+                                      </>
+                                    )}
+                                    {/* Dean actions: Approve/Reject */}
+                                    {user?.role_name === 'dean' && syllabus.review_status === 'approved' && syllabus.approval_status === 'pending' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleApproveSyllabus(syllabus, 'approved')}
+                                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                          title="Approve"
+                                        >
+                                          <CheckCircleIcon className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleApproveSyllabus(syllabus, 'rejected')}
+                                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                          title="Reject"
+                                        >
+                                          <XCircleIcon className="h-5 w-5" />
+                                        </button>
+                                      </>
+                                    )}
+                                    {/* Delete (only if not approved and user owns it) */}
+                                    {user?.role_name === 'faculty' && syllabus.created_by === user.user_id && syllabus.approval_status !== 'approved' && (
+                                      <button
+                                        onClick={() => handleDeleteSyllabus(syllabus.syllabus_id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                        title="Delete"
                                       >
-                                        <CheckCircleIcon className="h-4 w-4" />
+                                        <TrashIcon className="h-5 w-5" />
                                       </button>
                                     )}
-                                    <button 
-                                      onClick={() => handleDeleteSyllabus(syllabus.syllabus_id)} 
-                                      className="text-red-600 hover:text-red-900"
-                                      title="Delete"
-                                    >
-                                      <TrashIcon className="h-4 w-4" />
-                                    </button>
                                   </div>
                                 </td>
                               </tr>

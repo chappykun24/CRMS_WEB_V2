@@ -4,6 +4,7 @@ import {
   ChevronLeftIcon,
   CheckCircleIcon,
   XCircleIcon,
+  XMarkIcon,
   DocumentTextIcon,
   AcademicCapIcon,
   BookOpenIcon,
@@ -92,15 +93,52 @@ const SyllabusCreationWizard = ({
   const [cdioReferences, setCdioReferences] = useState([])
   const [sdgReferences, setSdgReferences] = useState([])
   
-  // Assessment task options
-  const assessmentTasks = [
-    { code: 'QZ', label: 'Quiz' },
-    { code: 'ME', label: 'Major Exam' },
-    { code: 'FP', label: 'Final Project' },
-    { code: 'P', label: 'Presentation' },
-    { code: 'LA', label: 'Lab Activity' },
-    { code: 'A', label: 'Assignment' }
-  ]
+  // Assessment task options - sync with assessment framework components
+  const getAssessmentTasks = () => {
+    const components = formData.assessment_framework?.components || []
+    const taskMap = {
+      'Quiz': 'QZ',
+      'Exam': 'ME',
+      'Major Exam': 'ME',
+      'Final Exam': 'ME',
+      'Project': 'FP',
+      'Final Project': 'FP',
+      'Presentation': 'P',
+      'Lab': 'LA',
+      'Lab Activity': 'LA',
+      'Assignment': 'A',
+      'Homework': 'A',
+      'Report': 'A'
+    }
+    
+    // Get unique task codes from assessment framework
+    const tasksFromFramework = components.map(comp => {
+      const type = comp.type || ''
+      return taskMap[type] || type.substring(0, 2).toUpperCase()
+    }).filter((code, index, self) => self.indexOf(code) === index && code)
+    
+    // Default tasks
+    const defaultTasks = [
+      { code: 'QZ', label: 'Quiz' },
+      { code: 'ME', label: 'Major Exam' },
+      { code: 'FP', label: 'Final Project' },
+      { code: 'P', label: 'Presentation' },
+      { code: 'LA', label: 'Lab Activity' },
+      { code: 'A', label: 'Assignment' }
+    ]
+    
+    // Combine and deduplicate
+    const allTasks = [...defaultTasks]
+    tasksFromFramework.forEach(code => {
+      if (!allTasks.find(t => t.code === code)) {
+        allTasks.push({ code, label: code })
+      }
+    })
+    
+    return allTasks
+  }
+  
+  const assessmentTasks = getAssessmentTasks()
   
   // Load reference data for ILO mappings
   useEffect(() => {
@@ -427,10 +465,10 @@ const SyllabusCreationWizard = ({
     }
   }
   
-  const handleAddMapping = (type, referenceId, assessmentTasks) => {
+  const handleAddMapping = (type, referenceId, assessmentTasks = []) => {
     const mapping = {
       [type === 'so' ? 'so_id' : type === 'iga' ? 'iga_id' : type === 'cdio' ? 'cdio_id' : 'sdg_id']: referenceId,
-      assessment_tasks: assessmentTasks
+      assessment_tasks: Array.isArray(assessmentTasks) ? assessmentTasks : []
     }
     
     setIloFormData(prev => ({
@@ -445,6 +483,24 @@ const SyllabusCreationWizard = ({
       [`${type}_mappings`]: prev[`${type}_mappings`].filter((_, i) => i !== index)
     }))
   }
+  
+  const handleUpdateMappingTasks = (type, index, tasks) => {
+    setIloFormData(prev => {
+      const mappings = [...prev[`${type}_mappings`]]
+      mappings[index] = {
+        ...mappings[index],
+        assessment_tasks: Array.isArray(tasks) ? tasks : []
+      }
+      return {
+        ...prev,
+        [`${type}_mappings`]: mappings
+      }
+    })
+  }
+  
+  // State for mapping modal (which mapping is being edited)
+  const [editingMapping, setEditingMapping] = useState({ type: null, index: null })
+  const [mappingTaskSelection, setMappingTaskSelection] = useState([])
   
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return
@@ -1339,19 +1395,88 @@ const SyllabusCreationWizard = ({
                     <div className="space-y-2">
                       {iloFormData.so_mappings.map((mapping, index) => {
                         const so = soReferences.find(r => r.so_id === mapping.so_id)
+                        const isEditing = editingMapping.type === 'so' && editingMapping.index === index
                         return (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <span className="text-xs text-gray-700 flex-1">{so?.so_code || mapping.so_id}</span>
-                            <span className="text-xs text-gray-500">
-                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMapping('so', index)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </button>
+                          <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-700">{so?.so_code || mapping.so_id}</span>
+                              <div className="flex gap-1">
+                                {!isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: 'so', index })
+                                      setMappingTaskSelection(mapping.assessment_tasks || [])
+                                    }}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit tasks"
+                                  >
+                                    <PencilIcon className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    } else {
+                                      handleRemoveMapping('so', index)
+                                    }
+                                  }}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  title={isEditing ? "Cancel" : "Remove"}
+                                >
+                                  {isEditing ? <XMarkIcon className="h-3 w-3" /> : <TrashIcon className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {assessmentTasks.map(task => (
+                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={mappingTaskSelection.includes(task.code)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
+                                          } else {
+                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
+                                          }
+                                        }}
+                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                      />
+                                      <span className="text-xs text-gray-700">{task.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateMappingTasks('so', index, mappingTaskSelection)
+                                    setEditingMapping({ type: null, index: null })
+                                    setMappingTaskSelection([])
+                                  }}
+                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Save Tasks
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-600">
+                                {mapping.assessment_tasks?.length > 0 ? (
+                                  <span>Tasks: {mapping.assessment_tasks.map(code => {
+                                    const task = assessmentTasks.find(t => t.code === code)
+                                    return task?.label || code
+                                  }).join(', ')}</span>
+                                ) : (
+                                  <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -1378,19 +1503,88 @@ const SyllabusCreationWizard = ({
                     <div className="space-y-2">
                       {iloFormData.iga_mappings.map((mapping, index) => {
                         const iga = igaReferences.find(r => r.iga_id === mapping.iga_id)
+                        const isEditing = editingMapping.type === 'iga' && editingMapping.index === index
                         return (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <span className="text-xs text-gray-700 flex-1">{iga?.iga_code || mapping.iga_id}</span>
-                            <span className="text-xs text-gray-500">
-                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMapping('iga', index)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </button>
+                          <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-700">{iga?.iga_code || mapping.iga_id}</span>
+                              <div className="flex gap-1">
+                                {!isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: 'iga', index })
+                                      setMappingTaskSelection(mapping.assessment_tasks || [])
+                                    }}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit tasks"
+                                  >
+                                    <PencilIcon className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    } else {
+                                      handleRemoveMapping('iga', index)
+                                    }
+                                  }}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  title={isEditing ? "Cancel" : "Remove"}
+                                >
+                                  {isEditing ? <XMarkIcon className="h-3 w-3" /> : <TrashIcon className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {assessmentTasks.map(task => (
+                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={mappingTaskSelection.includes(task.code)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
+                                          } else {
+                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
+                                          }
+                                        }}
+                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                      />
+                                      <span className="text-xs text-gray-700">{task.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateMappingTasks('iga', index, mappingTaskSelection)
+                                    setEditingMapping({ type: null, index: null })
+                                    setMappingTaskSelection([])
+                                  }}
+                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Save Tasks
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-600">
+                                {mapping.assessment_tasks?.length > 0 ? (
+                                  <span>Tasks: {mapping.assessment_tasks.map(code => {
+                                    const task = assessmentTasks.find(t => t.code === code)
+                                    return task?.label || code
+                                  }).join(', ')}</span>
+                                ) : (
+                                  <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -1417,19 +1611,88 @@ const SyllabusCreationWizard = ({
                     <div className="space-y-2">
                       {iloFormData.cdio_mappings.map((mapping, index) => {
                         const cdio = cdioReferences.find(r => r.cdio_id === mapping.cdio_id)
+                        const isEditing = editingMapping.type === 'cdio' && editingMapping.index === index
                         return (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <span className="text-xs text-gray-700 flex-1">{cdio?.cdio_code || mapping.cdio_id}</span>
-                            <span className="text-xs text-gray-500">
-                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMapping('cdio', index)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </button>
+                          <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-700">{cdio?.cdio_code || mapping.cdio_id}</span>
+                              <div className="flex gap-1">
+                                {!isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: 'cdio', index })
+                                      setMappingTaskSelection(mapping.assessment_tasks || [])
+                                    }}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit tasks"
+                                  >
+                                    <PencilIcon className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    } else {
+                                      handleRemoveMapping('cdio', index)
+                                    }
+                                  }}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  title={isEditing ? "Cancel" : "Remove"}
+                                >
+                                  {isEditing ? <XMarkIcon className="h-3 w-3" /> : <TrashIcon className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {assessmentTasks.map(task => (
+                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={mappingTaskSelection.includes(task.code)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
+                                          } else {
+                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
+                                          }
+                                        }}
+                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                      />
+                                      <span className="text-xs text-gray-700">{task.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateMappingTasks('cdio', index, mappingTaskSelection)
+                                    setEditingMapping({ type: null, index: null })
+                                    setMappingTaskSelection([])
+                                  }}
+                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Save Tasks
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-600">
+                                {mapping.assessment_tasks?.length > 0 ? (
+                                  <span>Tasks: {mapping.assessment_tasks.map(code => {
+                                    const task = assessmentTasks.find(t => t.code === code)
+                                    return task?.label || code
+                                  }).join(', ')}</span>
+                                ) : (
+                                  <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -1456,19 +1719,88 @@ const SyllabusCreationWizard = ({
                     <div className="space-y-2">
                       {iloFormData.sdg_mappings.map((mapping, index) => {
                         const sdg = sdgReferences.find(r => r.sdg_id === mapping.sdg_id)
+                        const isEditing = editingMapping.type === 'sdg' && editingMapping.index === index
                         return (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <span className="text-xs text-gray-700 flex-1">{sdg?.sdg_code || mapping.sdg_id}</span>
-                            <span className="text-xs text-gray-500">
-                              {mapping.assessment_tasks?.length > 0 ? `[${mapping.assessment_tasks.join(', ')}]` : 'No tasks'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMapping('sdg', index)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </button>
+                          <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-700">{sdg?.sdg_code || mapping.sdg_id}</span>
+                              <div className="flex gap-1">
+                                {!isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: 'sdg', index })
+                                      setMappingTaskSelection(mapping.assessment_tasks || [])
+                                    }}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                    title="Edit tasks"
+                                  >
+                                    <PencilIcon className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    } else {
+                                      handleRemoveMapping('sdg', index)
+                                    }
+                                  }}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  title={isEditing ? "Cancel" : "Remove"}
+                                >
+                                  {isEditing ? <XMarkIcon className="h-3 w-3" /> : <TrashIcon className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {assessmentTasks.map(task => (
+                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={mappingTaskSelection.includes(task.code)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
+                                          } else {
+                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
+                                          }
+                                        }}
+                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                      />
+                                      <span className="text-xs text-gray-700">{task.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateMappingTasks('sdg', index, mappingTaskSelection)
+                                    setEditingMapping({ type: null, index: null })
+                                    setMappingTaskSelection([])
+                                  }}
+                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Save Tasks
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-600">
+                                {mapping.assessment_tasks?.length > 0 ? (
+                                  <span>Tasks: {mapping.assessment_tasks.map(code => {
+                                    const task = assessmentTasks.find(t => t.code === code)
+                                    return task?.label || code
+                                  }).join(', ')}</span>
+                                ) : (
+                                  <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })}
@@ -1490,7 +1822,7 @@ const SyllabusCreationWizard = ({
                   </div>
                   
                   <p className="text-xs text-gray-500 mt-2">
-                    Assessment tasks can be added later in the ILO Mapping section for more detailed mapping.
+                    Click the edit icon on any mapping to select assessment tasks. Tasks are synced from your assessment framework defined in Step 4.
                   </p>
                 </div>
                 

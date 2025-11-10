@@ -200,7 +200,7 @@ const Assessments = () => {
     loadSyllabiForClass(sectionId)
   }, [selectedClass])
   
-  // Load syllabi for the selected class
+  // Load syllabi for the selected class (only approved ones for linking)
   const loadSyllabiForClass = async (sectionCourseId) => {
     if (!sectionCourseId) return
     
@@ -208,7 +208,11 @@ const Assessments = () => {
       const response = await fetch(`/api/syllabi/class/${sectionCourseId}`)
       if (response.ok) {
         const data = await response.json()
-        setSyllabi(Array.isArray(data) ? data : [])
+        // Filter to show only approved syllabi for linking assessments
+        const approvedSyllabi = Array.isArray(data) 
+          ? data.filter(s => s.approval_status === 'approved') 
+          : []
+        setSyllabi(approvedSyllabi)
       }
     } catch (error) {
       console.error('Error loading syllabi:', error)
@@ -817,8 +821,17 @@ const Assessments = () => {
                                         <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
                                         <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
                                         {assessment.syllabus_title && (
-                                          <div className="text-xs text-blue-600 mt-1">
-                                            📋 {assessment.syllabus_title} (v{assessment.syllabus_version})
+                                          <div className="text-xs mt-1">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                              assessment.syllabus_approval_status === 'approved' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-yellow-100 text-yellow-800'
+                                            }`}>
+                                              📋 {assessment.syllabus_title} (v{assessment.syllabus_version})
+                                              {assessment.syllabus_approval_status !== 'approved' && (
+                                                <span className="ml-1 text-xs">- {assessment.syllabus_approval_status || 'Pending Approval'}</span>
+                                              )}
+                                            </span>
                                           </div>
                                         )}
                                       </div>
@@ -1492,11 +1505,15 @@ const Assessments = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   >
                     <option value="">No syllabus linked</option>
-                    {syllabi.map((syllabus) => (
-                      <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
-                        {syllabus.title} (v{syllabus.version})
-                      </option>
-                    ))}
+                    {syllabi.length === 0 ? (
+                      <option value="" disabled>No approved syllabi available</option>
+                    ) : (
+                      syllabi.map((syllabus) => (
+                        <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
+                          {syllabus.title} (v{syllabus.version}) - Approved
+                        </option>
+                      ))
+                    )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
                     Link this assessment to a syllabus to connect it with ILOs and course outcomes
@@ -1661,11 +1678,15 @@ const Assessments = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   >
                     <option value="">No syllabus linked</option>
-                    {syllabi.map((syllabus) => (
-                      <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
-                        {syllabus.title} (v{syllabus.version})
-                      </option>
-                    ))}
+                    {syllabi.length === 0 ? (
+                      <option value="" disabled>No approved syllabi available</option>
+                    ) : (
+                      syllabi.map((syllabus) => (
+                        <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
+                          {syllabus.title} (v{syllabus.version}) - Approved
+                        </option>
+                      ))
+                    )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
                     Link this assessment to a syllabus to connect it with ILOs and course outcomes

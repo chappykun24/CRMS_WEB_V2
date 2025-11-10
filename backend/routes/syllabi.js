@@ -499,24 +499,40 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/syllabi/:id/submit-review - Submit syllabus for review
+// PUT /api/syllabi/:id/submit-review - Submit syllabus for review (Faculty)
 router.put('/:id/submit-review', async (req, res) => {
   const { id } = req.params;
+  const { created_by } = req.body; // User ID of the faculty member
   
   try {
+    // Verify the syllabus belongs to the user
+    const checkQuery = 'SELECT syllabus_id, created_by, review_status FROM syllabi WHERE syllabus_id = $1';
+    const checkResult = await db.query(checkQuery, [id]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    const syllabus = checkResult.rows[0];
+    
+    // Only allow submission if it's in draft/pending state and belongs to the user
+    if (syllabus.created_by !== created_by) {
+      return res.status(403).json({ error: 'You can only submit your own syllabi for review' });
+    }
+    
+    if (syllabus.review_status === 'approved' || syllabus.approval_status === 'approved') {
+      return res.status(400).json({ error: 'Syllabus is already approved' });
+    }
+    
     const query = `
       UPDATE syllabi SET
         review_status = 'pending',
         updated_at = CURRENT_TIMESTAMP
       WHERE syllabus_id = $1
-      RETURNING syllabus_id, title, review_status
+      RETURNING syllabus_id, title, review_status, approval_status
     `;
     
     const result = await db.query(query, [id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Syllabus not found' });
-    }
     
     res.json({ 
       message: 'Syllabus submitted for review successfully',
@@ -524,6 +540,96 @@ router.put('/:id/submit-review', async (req, res) => {
     });
   } catch (error) {
     console.error('Error submitting syllabus for review:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// PUT /api/syllabi/:id/review - Review syllabus (Program Chair)
+router.put('/:id/review', async (req, res) => {
+  const { id } = req.params;
+  const { reviewed_by, review_status, review_comment } = req.body; // review_status: 'approved', 'rejected', 'needs_revision'
+  
+  try {
+    if (!['approved', 'rejected', 'needs_revision'].includes(review_status)) {
+      return res.status(400).json({ error: 'Invalid review status' });
+    }
+    
+    const query = `
+      UPDATE syllabi SET
+        review_status = $1,
+        reviewed_by = $2,
+        reviewed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE syllabus_id = $3
+      RETURNING syllabus_id, title, review_status, reviewed_by, reviewed_at
+    `;
+    
+    const result = await db.query(query, [review_status, reviewed_by, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    // If approved by program chair, set approval_status to pending for dean
+    if (review_status === 'approved') {
+      await db.query(
+        'UPDATE syllabi SET approval_status = $1 WHERE syllabus_id = $2',
+        ['pending', id]
+      );
+    }
+    
+    res.json({ 
+      message: `Syllabus ${review_status} by program chair`,
+      syllabus: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error reviewing syllabus:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// PUT /api/syllabi/:id/approve - Approve syllabus (Dean)
+router.put('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  const { approved_by, approval_status } = req.body; // approval_status: 'approved', 'rejected'
+  
+  try {
+    if (!['approved', 'rejected'].includes(approval_status)) {
+      return res.status(400).json({ error: 'Invalid approval status' });
+    }
+    
+    // Check if syllabus has been reviewed and approved by program chair
+    const checkQuery = 'SELECT review_status, approval_status FROM syllabi WHERE syllabus_id = $1';
+    const checkResult = await db.query(checkQuery, [id]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    const syllabus = checkResult.rows[0];
+    
+    if (syllabus.review_status !== 'approved') {
+      return res.status(400).json({ error: 'Syllabus must be approved by program chair before dean approval' });
+    }
+    
+    const query = `
+      UPDATE syllabi SET
+        approval_status = $1,
+        approved_by = $2,
+        approved_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE syllabus_id = $3
+      RETURNING syllabus_id, title, approval_status, approved_by, approved_at
+    `;
+    
+    const result = await db.query(query, [approval_status, approved_by, id]);
+    
+    res.json({ 
+      message: `Syllabus ${approval_status} by dean`,
+      syllabus: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error approving syllabus:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });

@@ -82,6 +82,7 @@ router.get('/class/:sectionCourseId', async (req, res) => {
         a.updated_at,
         sy.title as syllabus_title,
         sy.version as syllabus_version,
+        sy.approval_status as syllabus_approval_status,
         (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id) as total_submissions,
         (SELECT COUNT(*) FROM submissions sub WHERE sub.assessment_id = a.assessment_id AND sub.status = 'graded') as graded_submissions
       FROM assessments a
