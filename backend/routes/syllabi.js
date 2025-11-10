@@ -99,6 +99,54 @@ router.get('/class/:sectionCourseId', async (req, res) => {
   }
 });
 
+// GET /api/syllabi - Get all syllabi (for program chairs and deans)
+router.get('/', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        s.syllabus_id,
+        s.course_id,
+        s.term_id,
+        s.title,
+        s.description,
+        s.assessment_framework,
+        s.grading_policy,
+        s.course_outline,
+        s.learning_resources,
+        s.prerequisites,
+        s.course_objectives,
+        s.version,
+        s.is_template,
+        s.template_name,
+        s.section_course_id,
+        s.review_status,
+        s.approval_status,
+        s.reviewed_by,
+        s.reviewed_at,
+        s.approved_by,
+        s.approved_at,
+        s.created_at,
+        s.updated_at,
+        c.title as course_title,
+        c.course_code,
+        st.school_year,
+        st.semester,
+        u.name as instructor_name
+      FROM syllabi s
+      LEFT JOIN courses c ON s.course_id = c.course_id
+      LEFT JOIN school_terms st ON s.term_id = st.term_id
+      LEFT JOIN users u ON s.created_by = u.user_id
+      ORDER BY s.created_at DESC
+    `;
+    
+    const result = await db.query(query);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching all syllabi:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // GET /api/syllabi/:id - Get a specific syllabus with details
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
