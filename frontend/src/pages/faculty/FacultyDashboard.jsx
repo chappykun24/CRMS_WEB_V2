@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import MyClasses from './MyClasses'
 import Assessments from './Assessments'
 import Grades from './Grades'
-import Syllabi from './Syllabi'
+import Syllabus from './Syllabus'
 
 const FacultyDashboard = ({ user }) => {
   // Removed bulk data prefetching - data is now fetched per section on each page
@@ -31,8 +31,8 @@ const FacultyDashboard = ({ user }) => {
             <p className="text-gray-600">Record and manage student grades</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Syllabi</h3>
-            <p className="text-gray-600">Manage course syllabi and materials</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Syllabus</h3>
+            <p className="text-gray-600">Manage course syllabus and materials</p>
           </div>
         </div>
       </div>
@@ -45,7 +45,7 @@ const FacultyDashboard = ({ user }) => {
       <Route path="classes" element={<MyClasses />} />
       <Route path="assessments" element={<Assessments />} />
       <Route path="grades" element={<Grades />} />
-      <Route path="syllabi" element={<Syllabi />} />
+      <Route path="syllabus" element={<Syllabus />} />
       <Route path="*" element={<Navigate to="classes" replace />} />
     </Routes>
   )

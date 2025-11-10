@@ -11,7 +11,7 @@ import {
 import CourseManagement from './CourseManagement'
 import Analytics from '../dean/Analytics'
 import SyllabusReview from './SyllabusReview'
-import Syllabi from './Syllabi'
+import Syllabus from './Syllabus'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 
@@ -408,7 +408,7 @@ const Home = () => {
                 </div>
                 <div className="text-left">
                   <p className="font-semibold text-gray-900">Syllabus Review</p>
-                  <p className="text-xs text-gray-600">Review syllabi</p>
+                  <p className="text-xs text-gray-600">Review syllabus</p>
                 </div>
               </div>
               <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
@@ -428,7 +428,7 @@ const ProgramChairDashboard = ({ user }) => {
       <Route path="/courses" element={<CourseManagement />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/syllabus-review" element={<SyllabusReview />} />
-      <Route path="/syllabi" element={<Syllabi />} />
+      <Route path="/syllabus" element={<Syllabus />} />
       <Route path="*" element={<Navigate to="/program-chair" replace />} />
     </Routes>
   )

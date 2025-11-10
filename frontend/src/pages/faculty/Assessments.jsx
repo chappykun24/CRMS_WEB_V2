@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import LazyImage from '../../components/LazyImage'
 import imageLoaderService from '../../services/imageLoaderService'
 import { 
@@ -34,7 +35,7 @@ const Assessments = () => {
   // Tab navigation - check location state for default tab
   const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'assessments')
   
-  // Clear assessment grades cache when switching tabs
+  // Clear assessment grades cache when switching tabs and notify Header
   useEffect(() => {
     // Clear all assessment grades cache when leaving grading tab
     if (activeTab !== 'grading') {
@@ -54,7 +55,35 @@ const Assessments = () => {
         console.error('Error clearing assessment grades cache:', error)
       }
     }
+    
+    // Notify Header of tab change for breadcrumb updates
+    try {
+      localStorage.setItem('facultyActiveTab', activeTab)
+      window.dispatchEvent(new CustomEvent('facultyTabChanged', {
+        detail: { activeTab }
+      }))
+    } catch (error) {
+      console.error('Error saving active tab:', error)
+    }
   }, [activeTab])
+  
+  // Notify Header when selected class changes
+  useEffect(() => {
+    if (selectedClass) {
+      // Save selected class to localStorage for Header breadcrumb
+      saveSelectedClass(selectedClass)
+      // Dispatch custom event to notify Header of change
+      window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+    } else {
+      // Clear selected class from localStorage when no class is selected
+      try {
+        localStorage.removeItem('selectedClass')
+        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+      } catch (error) {
+        console.error('Error clearing selected class:', error)
+      }
+    }
+  }, [selectedClass])
   
   // Grading states
   const [selectedAssessment, setSelectedAssessment] = useState(null)
@@ -103,6 +132,8 @@ const Assessments = () => {
           const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
           if (classToSelect) {
             setSelectedClass(classToSelect)
+            saveSelectedClass(classToSelect)
+            window.dispatchEvent(new CustomEvent('selectedClassChanged'))
           }
         }
       }
@@ -122,6 +153,8 @@ const Assessments = () => {
             const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
             if (classToSelect) {
               setSelectedClass(classToSelect)
+              saveSelectedClass(classToSelect)
+              window.dispatchEvent(new CustomEvent('selectedClassChanged'))
             }
           }
         } else {

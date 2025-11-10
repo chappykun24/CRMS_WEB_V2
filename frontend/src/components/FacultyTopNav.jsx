@@ -16,7 +16,7 @@ const FacultyTopNav = () => {
     { key: 'classes', label: 'My Classes', href: '/faculty/classes', icon: BookOpenIcon },
     { key: 'assessments', label: 'Assessments', href: '/faculty/assessments', icon: ClipboardDocumentListIcon },
     { key: 'grades', label: 'Grades', href: '/faculty/grades', icon: TrophyIcon },
-    { key: 'syllabi', label: 'Syllabi', href: '/faculty/syllabi', icon: DocumentTextIcon }
+    { key: 'syllabus', label: 'Syllabus', href: '/faculty/syllabus', icon: DocumentTextIcon }
   ]
 
   const isActive = (href) => {

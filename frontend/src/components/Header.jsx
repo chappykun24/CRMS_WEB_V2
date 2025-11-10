@@ -78,6 +78,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
   const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
   const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
+  const [facultyActiveTab, setFacultyActiveTab] = useState(null) // For Assessments page tabs
 
   const handleLogout = () => {
     logout()
@@ -125,6 +126,28 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     window.addEventListener('schoolConfigTabChanged', handleSchoolConfigTabChange)
     return () => {
       window.removeEventListener('schoolConfigTabChanged', handleSchoolConfigTabChange)
+    }
+  }, [])
+
+  // Listen for Faculty page tab changes (e.g., Assessments > Grading tab)
+  useEffect(() => {
+    const handleFacultyTabChange = (event) => {
+      setFacultyActiveTab(event.detail.activeTab || null)
+    }
+    window.addEventListener('facultyTabChanged', handleFacultyTabChange)
+    
+    // Also check localStorage for persisted tab state
+    try {
+      const storedTab = localStorage.getItem('facultyActiveTab')
+      if (storedTab) {
+        setFacultyActiveTab(storedTab)
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    
+    return () => {
+      window.removeEventListener('facultyTabChanged', handleFacultyTabChange)
     }
   }, [])
 
@@ -189,10 +212,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         }
         break
       case 'FACULTY':
-        if (path === '/dashboard/classes') return 'My Classes'
-        if (path === '/dashboard/assessments') return 'Assessments'
-        if (path === '/dashboard/grades') return 'Grades'
-        if (path === '/dashboard/syllabi') return 'Syllabi'
+        if (path === '/dashboard/classes' || path === '/faculty/classes') return 'My Classes'
+        if (path === '/dashboard/assessments' || path === '/faculty/assessments') return 'Assessments'
+        if (path === '/dashboard/grades' || path === '/faculty/grades') return 'Grades'
+        if (path === '/dashboard/syllabus' || path === '/faculty/syllabus') return 'Syllabus'
         break
       case 'DEAN':
         if (path === '/dean' || path === '/dean/') return 'Home'
@@ -264,26 +287,57 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         subtitle: 'Configure system preferences',
         path: '/dashboard/settings'
       }
-    } else if (path.startsWith('/dashboard/faculty/')) {
-      // Check if we're in MyClasses and have a selected class
-      if (path === '/dashboard/faculty/my-classes') {
-        if (selectedClass) {
-          return {
-            title: 'My Classes',
-            subtitle: `${selectedClass.course_title} - ${selectedClass.section_code}`,
-            path: '/dashboard/faculty/my-classes'
-          }
-        }
-        return {
-          title: 'My Classes',
-          subtitle: 'Select a class to view details',
-          path: '/dashboard/faculty/my-classes'
+    } else if (path.startsWith('/faculty/') || path.startsWith('/dashboard/faculty/')) {
+      // Handle faculty routes: /faculty/classes, /faculty/assessments, /faculty/grades, /faculty/syllabus
+      const pathParts = path.split('/').filter(p => p)
+      const pageName = pathParts[pathParts.length - 1] // Get last part (classes, assessments, etc.)
+      
+      // Map page names to display titles
+      const pageTitles = {
+        'classes': 'My Classes',
+        'assessments': 'Assessments',
+        'grades': 'Grades',
+        'syllabus': 'Syllabus'
+      }
+      
+      const title = pageTitles[pageName] || 'Faculty Dashboard'
+      
+      // Build breadcrumb parts: [Title] > [Tab] > [Class]
+      const breadcrumbParts = []
+      
+      // Add active tab if it exists (e.g., "Grading" tab in Assessments)
+      if (facultyActiveTab && facultyActiveTab !== pageName) {
+        // Capitalize first letter of tab name
+        const tabDisplayName = facultyActiveTab.charAt(0).toUpperCase() + facultyActiveTab.slice(1)
+        breadcrumbParts.push(tabDisplayName)
+      }
+      
+      // Add selected class if it exists
+      if (selectedClass && selectedClass.course_title) {
+        breadcrumbParts.push(selectedClass.course_title)
+      }
+      
+      // Build subtitle from breadcrumb parts
+      let subtitle = ''
+      if (breadcrumbParts.length > 0) {
+        subtitle = breadcrumbParts.join(' > ')
+      } else {
+        // Default subtitles when no class is selected
+        if (pageName === 'classes') {
+          subtitle = 'Select a class to view details'
+        } else if (pageName === 'assessments') {
+          subtitle = facultyActiveTab === 'grading' ? 'Select an assessment to grade' : 'Select a class to view assessments'
+        } else if (pageName === 'grades') {
+          subtitle = 'Select a class to view grades'
+        } else if (pageName === 'syllabus') {
+          subtitle = 'Select a class to view syllabus'
         }
       }
-      return { 
-        title: 'Faculty Dashboard', 
-        subtitle: 'Faculty management',
-        path: '/dashboard/faculty'
+      
+      return {
+        title,
+        subtitle,
+        path: path.startsWith('/faculty/') ? `/faculty/${pageName}` : `/dashboard/faculty/${pageName}`
       }
     } else if (path.startsWith('/dashboard/dean/')) {
       return { 
@@ -443,15 +497,21 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
               })()}
             </span>
             
-            {/* Show subtitle as second breadcrumb level */}
-            {breadcrumbData.subtitle && (
-              <>
-                <svg className="w-4 h-4 text-gray-400 ml-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-                <span className="text-gray-500 ml-2">{breadcrumbData.subtitle}</span>
-              </>
-            )}
+            {/* Show subtitle with multiple breadcrumb levels */}
+            {breadcrumbData.subtitle && (() => {
+              // Split subtitle by ' > ' to show multiple levels
+              const parts = breadcrumbData.subtitle.split(' > ')
+              return parts.map((part, index) => (
+                <React.Fragment key={index}>
+                  <svg className="w-4 h-4 text-gray-400 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className={`ml-2 ${index === parts.length - 1 ? 'text-gray-500' : 'text-gray-600'}`}>
+                    {part}
+                  </span>
+                </React.Fragment>
+              ))
+            })()}
           </div>
         </div>
 

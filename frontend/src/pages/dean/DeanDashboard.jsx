@@ -500,7 +500,7 @@ const Home = () => {
               <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
             </button>
 
-            {/* Approve Syllabi */}
+            {/* Approve Syllabus */}
             <button
               onClick={() => navigate('/dean/syllabus-approval')}
               className="flex items-center justify-between p-4 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all group"
@@ -510,8 +510,8 @@ const Home = () => {
                   <DocumentTextIcon className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-900">Approve Syllabi</p>
-                  <p className="text-xs text-gray-600">Review syllabi</p>
+                  <p className="font-semibold text-gray-900">Approve Syllabus</p>
+                  <p className="text-xs text-gray-600">Review syllabus</p>
                 </div>
               </div>
               <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />

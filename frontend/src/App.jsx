@@ -210,7 +210,7 @@ function App() {
                 } 
               />
               <Route 
-                path="/dashboard/syllabi" 
+                path="/dashboard/syllabus" 
                 element={
                   <ProtectedRoute requiredRoles={["faculty"]}>
                     <DashboardLayout>

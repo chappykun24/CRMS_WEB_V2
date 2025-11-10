@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -17,7 +18,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/solid'
 
-const Syllabi = () => {
+const Syllabus = () => {
   const { user } = useAuth()
   const location = useLocation()
   const [syllabi, setSyllabi] = useState([])
@@ -66,6 +67,8 @@ const Syllabi = () => {
           const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
           if (classToSelect) {
             setSelectedClass(classToSelect)
+            saveSelectedClass(classToSelect)
+            window.dispatchEvent(new CustomEvent('selectedClassChanged'))
           }
         }
       }
@@ -82,6 +85,8 @@ const Syllabi = () => {
             const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
             if (classToSelect) {
               setSelectedClass(classToSelect)
+              saveSelectedClass(classToSelect)
+              window.dispatchEvent(new CustomEvent('selectedClassChanged'))
             }
           }
         } else {
@@ -97,6 +102,21 @@ const Syllabi = () => {
     
     loadClasses()
   }, [user, location.state])
+
+  // Notify Header when selected class changes
+  useEffect(() => {
+    if (selectedClass) {
+      saveSelectedClass(selectedClass)
+      window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+    } else {
+      try {
+        localStorage.removeItem('selectedClass')
+        window.dispatchEvent(new CustomEvent('selectedClassChanged'))
+      } catch (error) {
+        console.error('Error clearing selected class:', error)
+      }
+    }
+  }, [selectedClass])
 
   // Load school terms
   useEffect(() => {
@@ -147,12 +167,12 @@ const Syllabi = () => {
         setError('')
         safeSetItem(cacheKey, syllabiData)
       } else {
-        setError('Failed to load syllabi')
+        setError('Failed to load syllabus')
         if (showLoading) setSyllabi([])
       }
     } catch (error) {
-      console.error('Error loading syllabi:', error)
-      setError('Failed to load syllabi')
+      console.error('Error loading syllabus:', error)
+      setError('Failed to load syllabus')
       if (showLoading) setSyllabi([])
     } finally {
       if (showLoading) setLoading(false)
@@ -536,7 +556,7 @@ const Syllabi = () => {
           <div className="px-8 py-6 h-full overflow-y-auto">
             {/* Content with Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
-              {/* Main Content - Syllabi Table */}
+              {/* Main Content - Syllabus Table */}
               <div className="lg:col-span-4 flex flex-col min-h-0">
                 {/* Search Bar and Create Button */}
                 {selectedClass && (
@@ -546,7 +566,7 @@ const Syllabi = () => {
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input 
                           type="text" 
-                          placeholder="Search syllabi..." 
+                          placeholder="Search syllabus..." 
                           value={searchQuery} 
                           onChange={(e) => setSearchQuery(e.target.value)} 
                           className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" 
@@ -569,7 +589,7 @@ const Syllabi = () => {
                   </div>
                 )}
                 
-                {/* Syllabi Table */}
+                {/* Syllabus Table */}
                 {selectedClass && (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                     {loading ? (
@@ -699,9 +719,9 @@ const Syllabi = () => {
                       <div className="flex-1 flex items-center justify-center py-16">
                         <div className="text-center">
                           <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No syllabi found</h3>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No syllabus found</h3>
                           <p className="text-gray-500">
-                            {searchQuery ? 'No syllabi match your search.' : 'Create your first syllabus to get started.'}
+                            {searchQuery ? 'No syllabus match your search.' : 'Create your first syllabus to get started.'}
                           </p>
                           {!searchQuery && (
                             <button 
@@ -724,7 +744,7 @@ const Syllabi = () => {
                     <div className="text-center">
                       <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Class</h3>
-                      <p className="text-gray-500">Choose a class from the sidebar to view its syllabi.</p>
+                      <p className="text-gray-500">Choose a class from the sidebar to view its syllabus.</p>
                     </div>
                   </div>
                 )}
@@ -1210,4 +1230,5 @@ const Syllabi = () => {
   )
 }
 
-export default Syllabi
+export default Syllabus
+
