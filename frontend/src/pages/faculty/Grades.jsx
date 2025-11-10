@@ -406,20 +406,20 @@ const Grades = () => {
                         </div>
                       </div>
                     ) : filteredStudents.length > 0 ? (
-                      <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
-                        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
-                          <thead className="bg-gray-50 sticky top-0 z-50 shadow-sm">
+                      <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0 relative">
+                        <table className="w-full divide-y divide-gray-200 table-fixed" style={{ minWidth: Math.max(800, 300 + (assessments.length * 140) + 120) }}>
+                          <thead className="bg-gray-50 sticky top-0 z-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
+                              <th className="w-12 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
                                 #
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-50 border-r border-gray-200 min-w-[200px]">
+                              <th className="w-48 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-50 border-r border-gray-200">
                                 Student
                               </th>
                               {assessments.map((assessment) => (
                                 <th 
                                   key={assessment.assessment_id} 
-                                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px] bg-gray-50"
+                                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50"
                                   title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
                                 >
                                   <div className="flex flex-col">
@@ -430,7 +430,7 @@ const Grades = () => {
                                   </div>
                                 </th>
                               ))}
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-50 border-l border-gray-200 min-w-[100px]">
+                              <th className="w-32 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-50 border-l border-gray-200">
                                 Total Grade
                               </th>
                             </tr>
@@ -445,21 +445,21 @@ const Grades = () => {
                               
                               return (
                                 <tr key={student.enrollment_id} className="hover:bg-gray-50 bg-white">
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm text-gray-500 sticky left-0 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
                                     {index + 1}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap sticky left-12 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
+                                  <td className="px-4 py-3 sticky left-12 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
                                     <div className="flex items-center space-x-3">
                                       <LazyImage
                                         src={student.student_photo} 
                                         alt={student.full_name}
                                         size="md"
                                         shape="circle"
-                                        className="border border-gray-200"
+                                        className="border border-gray-200 flex-shrink-0"
                                         delayLoad={!imagesReady}
                                         priority={false}
                                       />
-                                      <div className="min-w-0">
+                                      <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium text-gray-900 truncate">
                                           {formatName(student.full_name)}
                                         </p>
@@ -478,7 +478,7 @@ const Grades = () => {
                                     return (
                                       <td 
                                         key={assessment.assessment_id} 
-                                        className="px-4 py-3 whitespace-nowrap text-center text-sm"
+                                        className="px-4 py-3 text-center text-sm"
                                       >
                                         {score && score.total_score !== null ? (
                                           <div className="flex flex-col items-center">
@@ -495,7 +495,7 @@ const Grades = () => {
                                       </td>
                                     )
                                   })}
-                                  <td className="px-4 py-3 whitespace-nowrap text-center sticky right-0 bg-white z-40 border-l border-gray-100 hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-center sticky right-0 bg-white z-40 border-l border-gray-100 hover:bg-gray-50">
                                     {loadingGrades ? (
                                       <div className="h-4 w-12 bg-gray-200 rounded animate-pulse mx-auto"></div>
                                     ) : studentGrades[student.enrollment_id] ? (
