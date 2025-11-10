@@ -255,3 +255,4 @@ backend/scripts/README_sample_data.md
 backend/scripts/generate_sample_assessment_data.js
 backend/scripts/add_attendance_october.js
 backend/scripts/README_add_attendance_october.md
+backend/scripts/generateStudentScores.js

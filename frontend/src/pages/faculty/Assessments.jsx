@@ -499,7 +499,7 @@ const Assessments = () => {
     setSelectedSyllabusDetails(null)
     setAssessmentComponents([])
   }
-  
+
   const openCreateModal = () => {
     resetForm()
     // Load syllabi if not already loaded
@@ -1482,18 +1482,18 @@ const Assessments = () => {
                             </option>
                           ))}
                         </select>
-                        <select
-                          name="type"
-                          value={formData.type}
-                          onChange={handleInputChange}
+                    <select
+                      name="type"
+                      value={formData.type}
+                      onChange={handleInputChange}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        >
-                          <option value="Quiz">Quiz</option>
-                          <option value="Exam">Exam</option>
-                          <option value="Project">Project</option>
-                          <option value="Assignment">Assignment</option>
-                          <option value="Lab">Lab</option>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="Quiz">Quiz</option>
+                      <option value="Exam">Exam</option>
+                      <option value="Project">Project</option>
+                      <option value="Assignment">Assignment</option>
+                      <option value="Lab">Lab</option>
                           <option value="Presentation">Presentation</option>
                           <option value="Midterm Exam">Midterm Exam</option>
                           <option value="Final Exam">Final Exam</option>
@@ -1506,7 +1506,7 @@ const Assessments = () => {
                               </option>
                             ))
                           }
-                        </select>
+                    </select>
                         <p className="text-xs text-gray-500">
                           Select from syllabus framework above to auto-fill type and weight, or choose manually below.
                         </p>
@@ -1749,18 +1749,18 @@ const Assessments = () => {
                             </option>
                           ))}
                         </select>
-                        <select
-                          name="type"
-                          value={formData.type}
-                          onChange={handleInputChange}
+                    <select
+                      name="type"
+                      value={formData.type}
+                      onChange={handleInputChange}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        >
-                          <option value="Quiz">Quiz</option>
-                          <option value="Exam">Exam</option>
-                          <option value="Project">Project</option>
-                          <option value="Assignment">Assignment</option>
-                          <option value="Lab">Lab</option>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    >
+                      <option value="Quiz">Quiz</option>
+                      <option value="Exam">Exam</option>
+                      <option value="Project">Project</option>
+                      <option value="Assignment">Assignment</option>
+                      <option value="Lab">Lab</option>
                           <option value="Presentation">Presentation</option>
                           <option value="Midterm Exam">Midterm Exam</option>
                           <option value="Final Exam">Final Exam</option>
@@ -1773,7 +1773,7 @@ const Assessments = () => {
                               </option>
                             ))
                           }
-                        </select>
+                    </select>
                         <p className="text-xs text-gray-500">
                           Select from syllabus framework above to auto-fill type and weight, or choose manually below.
                         </p>
