@@ -253,9 +253,9 @@ router.get('/class/:sectionCourseId/summary', async (req, res) => {
         a.due_date,
         COUNT(sub.submission_id) as total_submissions,
         COUNT(CASE WHEN sub.status = 'graded' THEN 1 END) as graded_submissions,
-        AVG(sub.total_score) as average_score,
-        MIN(sub.total_score) as lowest_score,
-        MAX(sub.total_score) as highest_score
+        AVG(sub.adjusted_score) as average_score,
+        MIN(sub.adjusted_score) as lowest_score,
+        MAX(sub.adjusted_score) as highest_score
       FROM assessments a
       LEFT JOIN submissions sub ON a.assessment_id = sub.assessment_id
       WHERE a.section_course_id = $1
@@ -288,10 +288,10 @@ router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
           a.title as assessment_title,
           a.total_points,
           a.weight_percentage,
-          COALESCE(sub.total_score, 0) as score,
+          COALESCE(sub.adjusted_score, 0) as score,
           CASE 
-            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 
-            THEN (sub.total_score / a.total_points) * COALESCE(a.weight_percentage, 0)
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 
+            THEN (sub.adjusted_score / a.total_points) * COALESCE(a.weight_percentage, 0)
             ELSE 0
           END as weighted_score
         FROM course_enrollments ce

@@ -479,8 +479,10 @@ const Grades = () => {
                                   </td>
                                   {assessments.map((assessment) => {
                                     const score = scoreMap.get(assessment.assessment_id)
-                                    const percentage = score && assessment.total_points > 0 
-                                      ? ((score.total_score || 0) / assessment.total_points * 100).toFixed(1)
+                                    // Use adjusted_score for calculations and display
+                                    const adjustedScore = score?.adjusted_score ?? null
+                                    const percentage = adjustedScore !== null && assessment.total_points > 0 
+                                      ? ((adjustedScore / assessment.total_points) * 100).toFixed(1)
                                       : null
                                     
                                     return (
@@ -488,10 +490,10 @@ const Grades = () => {
                                         key={assessment.assessment_id} 
                                         className="px-4 py-3 text-center text-sm"
                                       >
-                                        {score && score.total_score !== null ? (
+                                        {adjustedScore !== null ? (
                                           <div className="flex flex-col items-center">
                                             <span className="font-semibold text-gray-900">
-                                              {score.total_score}/{assessment.total_points}
+                                              {adjustedScore.toFixed(2)}/{assessment.total_points}
                                             </span>
                                             <span className="text-xs text-gray-500">
                                               {percentage}%
