@@ -1682,66 +1682,66 @@ const Assessments = () => {
 
             {/* Grading Tab Content */}
             {activeTab === 'grading' && (
-              <div className="px-3 py-2 h-full overflow-y-auto">
-                <div className="mb-2 flex-shrink-0">
+              <div className="px-6 py-4 h-full overflow-y-auto">
+                <div className="mb-4 flex-shrink-0">
                   {error && (
-                    <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-xs text-red-800">{error}</p>
+                    <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">{error}</p>
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-full min-h-0">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-full min-h-0">
                   {/* Main Content - Student List for Grading */}
-                  <div className="lg:col-span-3 flex flex-col min-h-0">
+                  <div className="lg:col-span-4 flex flex-col min-h-0">
                     {selectedAssessment ? (
                       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
-                        <div className="px-3 py-1.5 border-b border-gray-200 flex-shrink-0">
-                          <h2 className="text-xs font-semibold text-gray-900 truncate">
-                            Grades for: {selectedAssessment.title} <span className="text-xs text-gray-600">({selectedAssessment.total_points} pts)</span>
+                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                          <h2 className="text-base font-semibold text-gray-900 truncate">
+                            Grades for: {selectedAssessment.title} <span className="text-sm text-gray-600 font-normal">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
                         {(gradingLoading && Object.keys(grades).length === 0) ? (
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
-                                <div className="px-2 py-1.5 bg-gray-50 sticky top-0 z-50 border-b border-gray-200 flex items-center text-[10px] font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="w-[180px] flex-shrink-0 sticky left-0 bg-gray-50 z-50 pr-2">Student</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="w-[80px] flex-shrink-0 px-1.5">Feedback</div>
-                                  <div className="flex-1 min-w-[250px] px-1.5">Status / %</div>
+                                <div className="px-4 py-3 bg-gray-50 sticky top-0 z-50 border-b border-gray-200 flex items-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  <div className="w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-50 pr-4">Student</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="w-[140px] flex-shrink-0 px-3">Feedback</div>
+                                  <div className="flex-1 min-w-[320px] px-4">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
-                                    <li key={i} className="flex items-center px-2 py-1.5 hover:bg-gray-50">
-                                      <div className="w-[180px] flex-shrink-0 flex items-center gap-2 sticky left-0 bg-white z-20 pr-2 border-r border-gray-100">
-                                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
+                                    <li key={i} className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors">
+                                      <div className="w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-20 pr-4 border-r border-gray-200">
+                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
                                         <div className="flex-1 min-w-0 overflow-hidden">
-                                          <div className="h-3 bg-gray-200 rounded w-24 animate-pulse mb-1"></div>
-                                          <div className="h-2.5 bg-gray-100 rounded w-20 animate-pulse"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse mb-1.5"></div>
+                                          <div className="h-3 bg-gray-100 rounded w-24 animate-pulse"></div>
                                         </div>
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5">
-                                        <div className="h-4 bg-gray-200 rounded w-12 animate-pulse mx-auto"></div>
+                                      <div className="w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-5 bg-gray-200 rounded w-16 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[80px] flex-shrink-0 px-1.5">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[140px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="flex-1 min-w-[250px] px-1.5">
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="flex gap-1 flex-shrink-0">
-                                            <div className="h-6 bg-gray-200 rounded w-14 animate-pulse"></div>
-                                            <div className="h-6 bg-gray-200 rounded w-12 animate-pulse"></div>
-                                            <div className="h-6 bg-gray-200 rounded w-14 animate-pulse"></div>
+                                      <div className="flex-1 min-w-[320px] px-4">
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex gap-2 flex-shrink-0">
+                                            <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+                                            <div className="h-8 bg-gray-200 rounded w-14 animate-pulse"></div>
+                                            <div className="h-8 bg-gray-200 rounded w-18 animate-pulse"></div>
                                           </div>
-                                          <div className="h-3.5 bg-gray-200 rounded w-10 animate-pulse"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
                                         </div>
                                       </div>
                                     </li>
@@ -1754,13 +1754,13 @@ const Assessments = () => {
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
-                                <div className="px-2 py-1.5 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-[10px] font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="w-[180px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-2">Student</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="w-[80px] flex-shrink-0 px-1.5">Feedback</div>
-                                  <div className="flex-1 min-w-[250px] px-1.5 whitespace-nowrap">Status / %</div>
+                                <div className="px-4 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  <div className="w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="w-[140px] flex-shrink-0 px-3">Feedback</div>
+                                  <div className="flex-1 min-w-[320px] px-4 whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -1774,15 +1774,15 @@ const Assessments = () => {
                                       return aLast.localeCompare(bLast)
                                     })
                                     .map(([enrollmentId, gradeData]) => (
-                                    <li key={enrollmentId} className="flex items-center px-2 py-1.5 hover:bg-gray-50 bg-white">
-                                      <div className="w-[180px] flex-shrink-0 flex items-center gap-2 sticky left-0 bg-white z-20 pr-2 border-r border-gray-100">
+                                    <li key={enrollmentId} className="flex items-center px-4 py-3 hover:bg-gray-50 bg-white transition-colors">
+                                      <div className="w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-20 pr-4 border-r border-gray-200">
                                         {!imagesReady ? (
-                                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
+                                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
                                         ) : (
                                           <LazyImage
                                             src={gradeData.student_photo} 
                                             alt={gradeData.student_name || 'Student'}
-                                            size="sm"
+                                            size="md"
                                             shape="circle"
                                             className="border border-gray-200 flex-shrink-0"
                                             delayLoad={false}
@@ -1790,54 +1790,54 @@ const Assessments = () => {
                                           />
                                         )}
                                         <div className="flex-1 min-w-0 overflow-hidden">
-                                          <div className="text-xs font-medium text-gray-900 truncate leading-tight" title={formatName(gradeData.student_name) || 'Student'}>
+                                          <div className="text-sm font-medium text-gray-900 truncate leading-snug" title={formatName(gradeData.student_name) || 'Student'}>
                                             {formatName(gradeData.student_name) || 'Student'}
                                           </div>
-                                          <div className="text-[10px] text-gray-500 truncate leading-tight">SR: {gradeData.student_number || 'N/A'}</div>
+                                          <div className="text-xs text-gray-500 truncate leading-snug mt-0.5">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5">
+                                      <div className="w-[90px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                          className="w-full p-1 text-xs rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
                                           max={selectedAssessment.total_points}
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5">
+                                      <div className="w-[90px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                          className="w-full p-1 text-xs rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
                                           disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
                                         />
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1.5 text-xs font-medium text-gray-900 text-center">
+                                      <div className="w-[90px] flex-shrink-0 px-3 text-sm font-semibold text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="w-[80px] flex-shrink-0 px-1.5">
+                                      <div className="w-[140px] flex-shrink-0 px-3">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                                          className="w-full p-1 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none transition-colors"
+                                          className="w-full px-3 py-2 text-xs rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none transition-colors"
                                           rows="1"
                                           placeholder="Feedback..."
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="flex-1 min-w-[250px] px-1.5 flex-shrink-0">
-                                        <div className="flex items-center gap-2 justify-start">
-                                          <div className="flex gap-1 flex-shrink-0">
+                                      <div className="flex-1 min-w-[320px] px-4 flex-shrink-0">
+                                        <div className="flex items-center gap-3 justify-start">
+                                          <div className="flex gap-2 flex-shrink-0">
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'ontime'
-                                                  ? 'bg-green-100 text-green-800 border border-green-300'
+                                                  ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="On Time"
@@ -1846,9 +1846,9 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'late'
-                                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="Late"
@@ -1857,9 +1857,9 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'missing'
-                                                  ? 'bg-red-100 text-red-800 border border-red-300'
+                                                  ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="Missing"
@@ -1867,7 +1867,7 @@ const Assessments = () => {
                                               Missing
                                             </button>
                                           </div>
-                                          <div className="text-xs font-semibold text-gray-900 whitespace-nowrap ml-1">
+                                          <div className="text-sm font-semibold text-gray-900 whitespace-nowrap ml-2">
                                             {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
                                           </div>
                                         </div>
@@ -1879,33 +1879,33 @@ const Assessments = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center py-8">
+                          <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                              <UserGroupIcon className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-                              <h3 className="text-sm font-medium text-gray-900 mb-1">No students found</h3>
-                              <p className="text-xs text-gray-500">No students enrolled in this assessment yet.</p>
+                              <UserGroupIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                              <h3 className="text-base font-medium text-gray-900 mb-2">No students found</h3>
+                              <p className="text-sm text-gray-500">No students enrolled in this assessment yet.</p>
                             </div>
                           </div>
                         )}
                         {Object.keys(grades).length > 0 && (
-                          <div className="flex-shrink-0 bg-white px-3 py-2 border-t border-gray-200 flex justify-end shadow-sm z-10">
+                          <div className="flex-shrink-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end shadow-sm z-10">
                             <button
                               onClick={handleSubmitGrades}
                               disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0 || !hasChanges()}
-                              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors duration-300 ${
+                              className={`px-5 py-2.5 rounded-md text-sm font-semibold transition-colors duration-300 ${
                                 isSubmittingGrades || !hasChanges()
                                   ? 'bg-gray-400 cursor-not-allowed'
                                   : 'bg-red-600 hover:bg-red-700'
-                              } focus:outline-none focus:ring-1 focus:ring-red-500 text-white`}
+                              } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
                             >
                               {isSubmittingGrades ? (
                                 <span className="flex items-center justify-center">
-                                  <ArrowPathIcon className="h-3 w-3 mr-1.5 animate-spin" />
+                                  <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
                                   <span>Saving...</span>
                                 </span>
                               ) : (
                                 <span className="flex items-center justify-center">
-                                  <CheckIcon className="h-3 w-3 mr-1.5" />
+                                  <CheckIcon className="h-4 w-4 mr-2" />
                                   <span>Save Grades</span>
                                 </span>
                               )}
@@ -1916,17 +1916,17 @@ const Assessments = () => {
                     ) : !selectedClass ? (
                       <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                         <div className="text-center">
-                          <ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-                          <h3 className="text-sm font-medium text-gray-900 mb-1">Select a Class</h3>
-                          <p className="text-xs text-gray-500">Choose a class from the sidebar to start grading</p>
+                          <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-base font-medium text-gray-900 mb-2">Select a Class</h3>
+                          <p className="text-sm text-gray-500">Choose a class from the sidebar to start grading</p>
                         </div>
                       </div>
                     ) : (
                       <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                         <div className="text-center">
-                          <ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-                          <h3 className="text-sm font-medium text-gray-900 mb-1">Select an Assessment</h3>
-                          <p className="text-xs text-gray-500">Choose an assessment to start grading</p>
+                          <ClipboardDocumentCheckIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                          <h3 className="text-base font-medium text-gray-900 mb-2">Select an Assessment</h3>
+                          <p className="text-sm text-gray-500">Choose an assessment to start grading</p>
                         </div>
                       </div>
                     )}
@@ -1937,8 +1937,8 @@ const Assessments = () => {
                     {!selectedClass ? (
                       // Classes Selection
                       <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
-                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-                          <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                        <div className="px-4 py-4 border-b border-gray-200 flex-shrink-0">
+                          <h3 className="text-sm font-semibold text-gray-900">Classes</h3>
                         </div>
                         <div className="flex-1 overflow-y-auto min-h-0">
                           {loading ? (
@@ -1998,9 +1998,9 @@ const Assessments = () => {
                     ) : (
                       // Assessments Selection
                       <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
-                        <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                        <div className="px-4 py-4 border-b border-gray-200 flex-shrink-0">
                           <div className="mb-2">
-                            <h3 className="text-sm font-medium text-gray-900 truncate" title={selectedClass.course_title}>{selectedClass.course_title}</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 truncate" title={selectedClass.course_title}>{selectedClass.course_title}</h3>
                           </div>
                           <button
                             onClick={() => {
