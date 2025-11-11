@@ -29,8 +29,16 @@ router.post('/submit-grades', async (req, res) => {
         const validStatuses = ['ontime', 'late', 'missing'];
         const finalStatus = validStatuses.includes(submission_status) ? submission_status : 'missing';
         
-        // Calculate adjusted score
-        const adjusted_score = Math.max(0, raw_score - late_penalty);
+        // Validate and convert raw_score to number (handle null, empty string, etc.)
+        const numericRawScore = raw_score !== null && raw_score !== '' && !isNaN(raw_score) 
+          ? parseFloat(raw_score) 
+          : null;
+        
+        // Calculate adjusted score (only if raw_score is valid)
+        // If missing submission, adjusted_score should be null, not 0
+        const adjusted_score = (finalStatus === 'missing' || numericRawScore === null) 
+          ? null 
+          : Math.max(0, numericRawScore - (late_penalty || 0));
         
         // Check if submission already exists
         const existingSubmission = await client.query(
@@ -40,6 +48,7 @@ router.post('/submit-grades', async (req, res) => {
         
         if (existingSubmission.rows.length > 0) {
           // Update existing submission
+          // Use adjusted_score for total_score (they should be the same)
           const updateQuery = `
             UPDATE submissions SET
               total_score = $1,
@@ -48,7 +57,7 @@ router.post('/submit-grades', async (req, res) => {
               late_penalty = $4,
               graded_at = CURRENT_TIMESTAMP,
               graded_by = $5,
-              status = 'graded',
+              status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
               submission_status = $6,
               remarks = $7
             WHERE enrollment_id = $8 AND assessment_id = $9
@@ -56,7 +65,7 @@ router.post('/submit-grades', async (req, res) => {
           `;
           
           const updateResult = await client.query(updateQuery, [
-            adjusted_score, raw_score, adjusted_score, late_penalty, 
+            adjusted_score, numericRawScore, adjusted_score, late_penalty || 0, 
             graded_by, finalStatus, feedback, enrollment_id, assessment_id
           ]);
           
@@ -70,17 +79,19 @@ router.post('/submit-grades', async (req, res) => {
           });
         } else {
           // Create new submission
+          // Use adjusted_score for total_score (they should be the same)
+          // Only set status to 'graded' if there's an actual score
           const insertQuery = `
             INSERT INTO submissions (
               enrollment_id, assessment_id, total_score, raw_score, 
               adjusted_score, late_penalty, graded_by, status, submission_status, remarks
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'graded', $8, $9)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END, $8, $9)
             RETURNING submission_id, total_score, adjusted_score, submission_status
           `;
           
           const insertResult = await client.query(insertQuery, [
-            enrollment_id, assessment_id, adjusted_score, raw_score, 
-            adjusted_score, late_penalty, graded_by, finalStatus, feedback
+            enrollment_id, assessment_id, adjusted_score, numericRawScore, 
+            adjusted_score, late_penalty || 0, graded_by, finalStatus, feedback
           ]);
           
           results.push({
@@ -166,8 +177,16 @@ router.put('/grade/:submissionId', async (req, res) => {
     const validStatuses = ['ontime', 'late', 'missing'];
     const finalStatus = validStatuses.includes(submission_status) ? submission_status : 'missing';
     
-    // Calculate adjusted score
-    const adjusted_score = Math.max(0, raw_score - late_penalty);
+    // Validate and convert raw_score to number (handle null, empty string, etc.)
+    const numericRawScore = raw_score !== null && raw_score !== '' && !isNaN(raw_score) 
+      ? parseFloat(raw_score) 
+      : null;
+    
+    // Calculate adjusted score (only if raw_score is valid)
+    // If missing submission, adjusted_score should be null, not 0
+    const adjusted_score = (finalStatus === 'missing' || numericRawScore === null) 
+      ? null 
+      : Math.max(0, numericRawScore - (late_penalty || 0));
     
     const query = `
       UPDATE submissions SET
@@ -177,7 +196,7 @@ router.put('/grade/:submissionId', async (req, res) => {
         late_penalty = $4,
         graded_at = CURRENT_TIMESTAMP,
         graded_by = $5,
-        status = 'graded',
+        status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
         submission_status = $6,
         remarks = $7
       WHERE submission_id = $8
@@ -185,7 +204,7 @@ router.put('/grade/:submissionId', async (req, res) => {
     `;
     
     const result = await db.query(query, [
-      adjusted_score, raw_score, adjusted_score, late_penalty, 
+      adjusted_score, numericRawScore, adjusted_score, late_penalty || 0, 
       graded_by, finalStatus, feedback, submissionId
     ]);
     
@@ -360,6 +379,8 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         sub.submission_id,
         sub.total_score,
         sub.raw_score,
+        -- Use adjusted_score as the primary score (accounts for late penalties)
+        -- adjusted_score is the score that should be used for calculations and display
         sub.adjusted_score,
         sub.late_penalty,
         sub.status as workflow_status,
