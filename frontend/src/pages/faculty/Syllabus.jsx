@@ -663,7 +663,6 @@ const Syllabus = () => {
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -685,13 +684,6 @@ const Syllabus = () => {
                                 <td className="px-8 py-4">
                                   <div className="h-4 bg-gray-200 rounded w-24 skeleton"></div>
                                 </td>
-                                <td className="px-8 py-4">
-                                  <div className="flex items-center space-x-2">
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                    <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                  </div>
-                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -707,12 +699,15 @@ const Syllabus = () => {
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredSyllabi.map((syllabus) => (
-                              <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                              <tr
+                                key={syllabus.syllabus_id}
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => openViewModal(syllabus)}
+                              >
                                 <td className="px-6 py-4">
                                   <div>
                                     <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
@@ -735,101 +730,6 @@ const Syllabus = () => {
                                 <td className="px-6 py-4">
                                   <div className="text-sm text-gray-900">
                                     {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => openViewModal(syllabus)}
-                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                      title="View"
-                                    >
-                                      <EyeIcon className="h-5 w-5" />
-                                    </button>
-                                    {/* Faculty actions: Edit and Submit for Review */}
-                                    {user?.role_name === 'faculty' && syllabus.created_by === user.user_id && (
-                                      <>
-                                        {((!syllabus.review_status || syllabus.review_status !== 'pending') && 
-                                          syllabus.review_status !== 'approved' && 
-                                          syllabus.approval_status !== 'approved') || 
-                                         syllabus.review_status === 'rejected' || 
-                                         syllabus.review_status === 'needs_revision' ? (
-                                          <button
-                                            onClick={() => openEditModal(syllabus)}
-                                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                            title="Edit"
-                                          >
-                                            <PencilIcon className="h-5 w-5" />
-                                          </button>
-                                        ) : null}
-                                        {syllabus.review_status !== 'pending' && 
-                                         syllabus.approval_status !== 'approved' && 
-                                         (!syllabus.review_status || syllabus.review_status !== 'approved') && (
-                                          <button
-                                            onClick={() => handleSubmitForReview(syllabus)}
-                                            className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                                            title="Submit for Review"
-                                          >
-                                            <ArrowPathIcon className="h-5 w-5" />
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
-                                    {/* Program Chair actions: Review */}
-                                    {user?.role_name === 'program_chair' && syllabus.review_status === 'pending' && (
-                                      <>
-                                        <button
-                                          onClick={() => handleReviewSyllabus(syllabus, 'approved')}
-                                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                          title="Approve"
-                                        >
-                                          <CheckCircleIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleReviewSyllabus(syllabus, 'rejected')}
-                                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                          title="Reject"
-                                        >
-                                          <XCircleIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleReviewSyllabus(syllabus, 'needs_revision')}
-                                          className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors"
-                                          title="Needs Revision"
-                                        >
-                                          <ClockIcon className="h-5 w-5" />
-                                        </button>
-                                      </>
-                                    )}
-                                    {/* Dean actions: Approve/Reject */}
-                                    {user?.role_name === 'dean' && syllabus.review_status === 'approved' && syllabus.approval_status === 'pending' && (
-                                      <>
-                                        <button
-                                          onClick={() => handleApproveSyllabus(syllabus, 'approved')}
-                                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                          title="Approve"
-                                        >
-                                          <CheckCircleIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleApproveSyllabus(syllabus, 'rejected')}
-                                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                          title="Reject"
-                                        >
-                                          <XCircleIcon className="h-5 w-5" />
-                                        </button>
-                                      </>
-                                    )}
-                                    {/* Delete (only if not approved and user owns it) */}
-                                    {user?.role_name === 'faculty' && syllabus.created_by === user.user_id && syllabus.approval_status !== 'approved' && (
-                                      <button
-                                        onClick={() => handleDeleteSyllabus(syllabus.syllabus_id)}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                        title="Delete"
-                                      >
-                                        <TrashIcon className="h-5 w-5" />
-                                      </button>
-                                    )}
                                   </div>
                                 </td>
                               </tr>
