@@ -648,15 +648,100 @@ const MyClasses = () => {
       
       console.log('✅ [MYCLASSES] Loaded session data:', sessionKey, sessionRecords.length, 'students')
       
-      // Step 7: Load images immediately after essential data is displayed
+      // Step 7: Fetch student photos on-demand for attendance history
+      const fetchPhotosForSessionRecords = async (records) => {
+        if (!records || records.length === 0) return
+        
+        try {
+          console.log('📸 [MYCLASSES] Fetching photos for', records.length, 'students in session:', sessionKey)
+          
+          // Fetch photos in batches to avoid overwhelming the server
+          const batchSize = 5
+          for (let i = 0; i < records.length; i += batchSize) {
+            const batch = records.slice(i, i + batchSize)
+            
+            const photoPromises = batch.map(async (record) => {
+              // Skip if already has photo
+              if (record.student_photo) return null
+              
+              try {
+                const response = await fetch(`/api/students/${record.student_id}/photo`, {
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                  }
+                })
+                
+                if (response.ok) {
+                  const data = await response.json()
+                  
+                  // Update session data with photo
+                  setSessionData(prev => {
+                    const currentSession = prev[sessionKey]
+                    if (!currentSession || !currentSession.records) return prev
+                    
+                    const updatedRecords = currentSession.records.map(r => 
+                      r.student_id === record.student_id 
+                        ? { ...r, student_photo: data.photo }
+                        : r
+                    )
+                    
+                    return {
+                      ...prev,
+                      [sessionKey]: {
+                        ...currentSession,
+                        records: updatedRecords
+                      }
+                    }
+                  })
+                  
+                  // Queue image for loading
+                  if (data.photo) {
+                    imageLoaderService.queueImages([{
+                      src: data.photo,
+                      id: `attendance_${sessionKey}_${record.student_id}`
+                    }], false)
+                  }
+                  
+                  return { student_id: record.student_id, photo: data.photo }
+                }
+              } catch (error) {
+                console.error(`❌ [MYCLASSES] Error fetching photo for student ${record.student_id}:`, error)
+                return null
+              }
+            })
+            
+            await Promise.all(photoPromises)
+            
+            // Small delay between batches
+            if (i + batchSize < records.length) {
+              await new Promise(resolve => setTimeout(resolve, 100))
+            }
+          }
+          
+          console.log('✅ [MYCLASSES] Photos fetched for session:', sessionKey)
+        } catch (error) {
+          console.error('❌ [MYCLASSES] Error in fetchPhotosForSessionRecords:', error)
+        }
+      }
+      
+      // Step 8: Load images immediately after essential data is displayed
       requestAnimationFrame(() => {
         setImagesLoaded(true) // Enable image loading in UI immediately
-        const imagesToLoad = sessionRecords
-          .filter(r => r.student_photo)
-          .map(r => ({ src: r.student_photo, id: `attendance_${sessionKey}_${r.student_id}` }))
-        if (imagesToLoad.length > 0) {
-          // Load images immediately in parallel (no batching delay)
+        
+        // First, check if any records already have photos
+        const recordsWithPhotos = sessionRecords.filter(r => r.student_photo)
+        if (recordsWithPhotos.length > 0) {
+          const imagesToLoad = recordsWithPhotos.map(r => ({ 
+            src: r.student_photo, 
+            id: `attendance_${sessionKey}_${r.student_id}` 
+          }))
           imageLoaderService.queueImages(imagesToLoad, true)
+        }
+        
+        // Then fetch photos for records that don't have them
+        const recordsWithoutPhotos = sessionRecords.filter(r => !r.student_photo)
+        if (recordsWithoutPhotos.length > 0) {
+          fetchPhotosForSessionRecords(recordsWithoutPhotos)
         }
       })
       
