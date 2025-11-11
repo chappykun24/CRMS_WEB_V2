@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
+import LazyImage from '../../components/LazyImage'
 import { getPrefetchedClasses } from '../../services/dataPrefetchService'
 import { API_BASE_URL } from '../../utils/api'
 import deanCacheService from '../../services/deanCacheService'
@@ -23,6 +24,34 @@ const MyClasses = () => {
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
+  // Selected student stats
+  const [selectedStudentId, setSelectedStudentId] = useState(null)
+  const [studentStats, setStudentStats] = useState({ gradePercent: null, attendancePercent: null, gradedAssessments: 0, totalAssessments: 0 })
+  const [loadingStats, setLoadingStats] = useState(false)
+  const statsCacheRef = useRef(new Map()) // key: `${sectionId}:${studentId}` -> stats
+
+  // Helper function to enrich minimized data with images from enhanced cache
+  const enrichWithImages = useCallback((minimizedClasses, fullClassesData) => {
+    if (!Array.isArray(minimizedClasses) || !Array.isArray(fullClassesData)) {
+      return minimizedClasses
+    }
+    
+    // Create a map of section_course_id to full class data for quick lookup
+    const fullDataMap = new Map()
+    fullClassesData.forEach(cls => {
+      fullDataMap.set(String(cls.section_course_id), cls)
+    })
+    
+    // Enrich minimized classes with images from full data
+    return minimizedClasses.map(item => {
+      const fullData = fullDataMap.get(String(item.section_course_id))
+      return {
+        ...item,
+        bannerImage: fullData?.banner_image || item.banner_image || null,
+        avatarUrl: fullData?.faculty_avatar || item.faculty_avatar || null
+      }
+    })
+  }, [])
 
   // Fetch classes with caching
   const fetchClasses = useCallback(async () => {
@@ -33,19 +62,36 @@ const MyClasses = () => {
     const sessionCacheKey = 'dean_classes_session'
     const sessionCached = safeGetItem(sessionCacheKey)
     
+    // Check enhanced cache (may have full data with images)
+    const cacheKey = 'dean_classes'
+    const enhancedCachedData = getCachedData('classes', cacheKey, 5 * 60 * 1000) // 5 minute cache
+    
     if (sessionCached) {
       console.log('📦 [DEAN MYCLASSES] Using session cached classes data')
-      const formattedClasses = sessionCached.map(item => ({
-        id: String(item.section_course_id),
-        title: item.course_title,
-        code: item.course_code,
-        section: item.section_code,
-        instructor: item.faculty_name,
-        bannerType: item.banner_type || 'color',
-        bannerColor: item.banner_color || '#3B82F6',
-        bannerImage: item.banner_image,
-        avatarUrl: item.faculty_avatar
-      }))
+      // Enrich minimized data with images from enhanced cache if available
+      const enrichedClasses = enhancedCachedData 
+        ? enrichWithImages(sessionCached, enhancedCachedData)
+        : sessionCached
+      
+      const formattedClasses = enrichedClasses.map(item => {
+        // If banner_type is 'image' but no banner_image, fall back to 'color'
+        const hasBannerImage = item.banner_image && item.banner_image.trim() !== ''
+        const bannerType = (item.banner_type === 'image' && hasBannerImage) 
+          ? 'image' 
+          : (item.banner_type || 'color')
+        
+        return {
+          id: String(item.section_course_id),
+          title: item.course_title,
+          code: item.course_code,
+          section: item.section_code,
+          instructor: item.faculty_name,
+          bannerType: bannerType,
+          bannerColor: item.banner_color || '#3B82F6',
+          bannerImage: hasBannerImage ? item.banner_image : null,
+          avatarUrl: item.faculty_avatar || null
+        }
+      })
       setClasses(formattedClasses)
       setLoadingClasses(false)
       // Continue to fetch fresh data in background
@@ -53,26 +99,31 @@ const MyClasses = () => {
       setLoadingClasses(true)
     }
     
-    // Check enhanced cache
-    const cacheKey = 'dean_classes'
-    const cachedData = getCachedData('classes', cacheKey, 5 * 60 * 1000) // 5 minute cache
-    if (cachedData && !sessionCached) {
+    if (enhancedCachedData && !sessionCached) {
       console.log('📦 [DEAN MYCLASSES] Using enhanced cached classes data')
-      const formattedClasses = cachedData.map(item => ({
-        id: String(item.section_course_id),
-        title: item.course_title,
-        code: item.course_code,
-        section: item.section_code,
-        instructor: item.faculty_name,
-        bannerType: item.banner_type || 'color',
-        bannerColor: item.banner_color || '#3B82F6',
-        bannerImage: item.banner_image,
-        avatarUrl: item.faculty_avatar
-      }))
+      const formattedClasses = enhancedCachedData.map(item => {
+        // If banner_type is 'image' but no banner_image, fall back to 'color'
+        const hasBannerImage = item.banner_image && item.banner_image.trim() !== ''
+        const bannerType = (item.banner_type === 'image' && hasBannerImage) 
+          ? 'image' 
+          : (item.banner_type || 'color')
+        
+        return {
+          id: String(item.section_course_id),
+          title: item.course_title,
+          code: item.course_code,
+          section: item.section_code,
+          instructor: item.faculty_name,
+          bannerType: bannerType,
+          bannerColor: item.banner_color || '#3B82F6',
+          bannerImage: hasBannerImage ? item.banner_image : null,
+          avatarUrl: item.faculty_avatar || null
+        }
+      })
       setClasses(formattedClasses)
       setLoadingClasses(false)
       // Cache minimized data in sessionStorage for next time
-      safeSetItem(sessionCacheKey, cachedData, minimizeClassData)
+      safeSetItem(sessionCacheKey, enhancedCachedData, minimizeClassData)
       // Continue to fetch fresh data in background
     }
     
@@ -107,25 +158,32 @@ const MyClasses = () => {
       console.log(`✅ [DEAN MYCLASSES] Received ${Array.isArray(data) ? data.length : 0} classes`)
       
       const classesData = Array.isArray(data) ? data : []
-      const formattedClasses = classesData.map(item => ({
-        id: String(item.section_course_id),
-        title: item.course_title,
-        code: item.course_code,
-        section: item.section_code,
-        instructor: item.faculty_name,
-        bannerType: item.banner_type || 'color',
-        bannerColor: item.banner_color || '#3B82F6',
-        bannerImage: item.banner_image,
-        avatarUrl: item.faculty_avatar
-      }))
+      const formattedClasses = classesData.map(item => {
+        // If banner_type is 'image' but no banner_image, fall back to 'color'
+        const hasBannerImage = item.banner_image && item.banner_image.trim() !== ''
+        const bannerType = (item.banner_type === 'image' && hasBannerImage) 
+          ? 'image' 
+          : (item.banner_type || 'color')
+        
+        return {
+          id: String(item.section_course_id),
+          title: item.course_title,
+          code: item.course_code,
+          section: item.section_code,
+          instructor: item.faculty_name,
+          bannerType: bannerType,
+          bannerColor: item.banner_color || '#3B82F6',
+          bannerImage: hasBannerImage ? item.banner_image : null,
+          avatarUrl: item.faculty_avatar || null
+        }
+      })
       setClasses(formattedClasses)
       
       // Store minimized data in sessionStorage for instant next load
-      if (!sessionCached) {
-        safeSetItem(sessionCacheKey, classesData, minimizeClassData)
-      }
+      // Always update sessionStorage with minimized data when we get fresh data
+      safeSetItem(sessionCacheKey, classesData, minimizeClassData)
       
-      // Store full data in enhanced cache
+      // Store full data in enhanced cache (includes images)
       setCachedData('classes', cacheKey, classesData)
       
     } catch (error) {
@@ -145,35 +203,61 @@ const MyClasses = () => {
     }
   }, [])
 
+  // Helper function to enrich minimized student data with photos from enhanced cache
+  const enrichStudentsWithPhotos = useCallback((minimizedStudents, fullStudentsData) => {
+    if (!Array.isArray(minimizedStudents) || !Array.isArray(fullStudentsData)) {
+      return minimizedStudents
+    }
+    
+    // Create a map of student_id to full student data for quick lookup
+    const fullDataMap = new Map()
+    fullStudentsData.forEach(student => {
+      fullDataMap.set(String(student.student_id), student)
+    })
+    
+    // Enrich minimized students with photos from full data
+    return minimizedStudents.map(item => {
+      const fullData = fullDataMap.get(String(item.student_id))
+      return {
+        ...item,
+        student_photo: fullData?.student_photo || item.student_photo || null
+      }
+    })
+  }, [])
+
   // Handle class selection - lazy load students ONLY when class is clicked
   const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
+    setSelectedStudentId(null)
+    setStudentStats({ gradePercent: null, attendancePercent: null, gradedAssessments: 0, totalAssessments: 0 })
     
     // Check sessionStorage first for instant display
     const sectionId = classItem.id
     const sessionCacheKey = `dean_students_${sectionId}_session`
     const sessionCached = safeGetItem(sessionCacheKey)
     
+    // Check enhanced cache (may have full data with photos)
+    const studentsCacheKey = `dean_students_${sectionId}`
+    const enhancedCachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000) // 10 minute cache
+    
     if (sessionCached) {
       console.log('📦 [DEAN MYCLASSES] Using session cached students data')
-      setStudents(sessionCached)
+      // Enrich minimized data with photos from enhanced cache if available
+      const enrichedStudents = enhancedCachedStudents
+        ? enrichStudentsWithPhotos(sessionCached, enhancedCachedStudents)
+        : sessionCached
+      setStudents(enrichedStudents)
       // Continue to fetch fresh data in background
-    }
-    
-    // Check enhanced cache
-    const studentsCacheKey = `dean_students_${sectionId}`
-    const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000) // 10 minute cache
-    
-    if (cachedStudents && !sessionCached) {
+    } else if (enhancedCachedStudents) {
       console.log('📦 [DEAN MYCLASSES] Using enhanced cached students data')
-      setStudents(cachedStudents)
+      setStudents(enhancedCachedStudents)
       // Cache minimized data in sessionStorage for next time
-      safeSetItem(sessionCacheKey, cachedStudents, minimizeStudentData)
+      safeSetItem(sessionCacheKey, enhancedCachedStudents, minimizeStudentData)
       // Continue to fetch fresh data in background
     }
     
     // Only show loading if no cache available
-    if (!sessionCached && !cachedStudents) {
+    if (!sessionCached && !enhancedCachedStudents) {
       setLoadingStudents(true)
     }
     
@@ -187,7 +271,8 @@ const MyClasses = () => {
     
     try {
       console.log(`🔄 [DEAN MYCLASSES] Fetching students for class ${sectionId}...`)
-      const response = await fetch(`/api/section-courses/${sectionId}/students`, {
+      // Include photos for student avatars
+      const response = await fetch(`${API_BASE_URL}/section-courses/${sectionId}/students?includePhotos=true`, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -206,11 +291,10 @@ const MyClasses = () => {
       setStudents(studentsData)
       
       // Store minimized data in sessionStorage for instant next load
-      if (!sessionCached) {
-        safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
-      }
+      // Always update sessionStorage with minimized data when we get fresh data
+      safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
       
-      // Store full data in enhanced cache
+      // Store full data in enhanced cache (includes photos)
       setCachedData('students', studentsCacheKey, studentsData)
       
     } catch (error) {
@@ -223,9 +307,68 @@ const MyClasses = () => {
       const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000)
       if (!sessionCached && !cachedStudents) {
         setStudents([])
+      } else if (sessionCached && cachedStudents) {
+        // If we have cached data, enrich it with photos
+        const enrichedStudents = enrichStudentsWithPhotos(sessionCached, cachedStudents)
+        setStudents(enrichedStudents)
+      } else if (sessionCached) {
+        setStudents(sessionCached)
+      } else if (cachedStudents) {
+        setStudents(cachedStudents)
       }
     } finally {
       setLoadingStudents(false)
+    }
+  }, [enrichStudentsWithPhotos])
+
+  // Fetch stats for a specific student in the selected class
+  const fetchStudentStats = useCallback(async (sectionId, studentId) => {
+    if (!sectionId || !studentId) return
+    const cacheKey = `${sectionId}:${studentId}`
+    const cached = statsCacheRef.current.get(cacheKey)
+    if (cached) {
+      setStudentStats(cached)
+      return
+    }
+    setLoadingStats(true)
+    try {
+      // Fetch attendance stats for the class
+      const [attendanceRes, gradesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/attendance/stats/${sectionId}`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/grading/class/${sectionId}/student-grades`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        })
+      ])
+
+      let attendancePercent = null
+      if (attendanceRes.ok) {
+        const attendanceJson = await attendanceRes.json().catch(() => null)
+        const list = attendanceJson?.data || attendanceJson || []
+        const found = Array.isArray(list) ? list.find(s => String(s.student_id) === String(studentId)) : null
+        attendancePercent = found?.attendance_percentage !== undefined ? Number(found.attendance_percentage) : null
+      }
+
+      let gradePercent = null
+      let gradedAssessments = 0
+      let totalAssessments = 0
+      if (gradesRes.ok) {
+        const gradesList = await gradesRes.json().catch(() => [])
+        const found = Array.isArray(gradesList) ? gradesList.find(s => String(s.student_id) === String(studentId)) : null
+        gradePercent = found?.total_grade !== undefined && found?.total_grade !== null ? Number(found.total_grade) : null
+        gradedAssessments = found?.graded_assessments || 0
+        totalAssessments = found?.total_assessments || 0
+      }
+
+      const stats = { gradePercent, attendancePercent, gradedAssessments, totalAssessments }
+      setStudentStats(stats)
+      statsCacheRef.current.set(cacheKey, stats)
+    } catch (e) {
+      // Keep UI graceful on errors
+      console.error('❌ [DEAN MYCLASSES] Error fetching student stats:', e)
+    } finally {
+      setLoadingStats(false)
     }
   }, [])
 
@@ -242,7 +385,7 @@ const MyClasses = () => {
         studentsAbortControllerRef.current.abort()
       }
     }
-  }, [fetchClasses])
+  }, [fetchClasses, enrichWithImages, enrichStudentsWithPhotos])
 
   const filtered = useMemo(() => {
     if (!query) return classes
@@ -337,6 +480,47 @@ const MyClasses = () => {
                     </div>
                   </div>
 
+                  {/* Selected Student Statistics */}
+                  {selectedStudentId && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-900">Student Statistics</span>
+                        {loadingStats && <span className="text-xs text-gray-500">Loading...</span>}
+                      </div>
+                      {/* Grade Progress */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600">Total Grade</span>
+                          <span className="text-xs font-medium text-gray-900">{studentStats.gradePercent ?? '—'}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-green-500 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.max(0, Math.min(100, Number(studentStats.gradePercent || 0)))}%` }}
+                          />
+                        </div>
+                        {studentStats.totalAssessments > 0 && (
+                          <div className="mt-1 text-[11px] text-gray-500">
+                            {studentStats.gradedAssessments}/{studentStats.totalAssessments} assessments graded
+                          </div>
+                        )}
+                      </div>
+                      {/* Attendance Progress */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600">Attendance</span>
+                          <span className="text-xs font-medium text-gray-900">{studentStats.attendancePercent ?? '—'}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.max(0, Math.min(100, Number(studentStats.attendancePercent || 0)))}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Students List */}
                   <div className="flex-1 min-h-0">
                     <div className="flex items-center justify-between mb-3">
@@ -354,21 +538,22 @@ const MyClasses = () => {
                     ) : students.length > 0 ? (
                       <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
                         {students.map((student) => (
-                          <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                          <div 
+                            key={student.student_id} 
+                            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedStudentId === student.student_id ? 'bg-red-50 ring-1 ring-red-200' : 'bg-gray-50 hover:bg-gray-100'}`}
+                            onClick={() => {
+                              setSelectedStudentId(student.student_id)
+                              fetchStudentStats(selectedClass?.id, student.student_id)
+                            }}
+                          >
                             <div className="flex-shrink-0">
-                              {student.student_photo ? (
-                                <img 
-                                  src={student.student_photo} 
-                                  alt={student.full_name}
-                                  className="h-10 w-10 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                  <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                </div>
-                              )}
+                              <LazyImage
+                                src={student.student_photo}
+                                alt={student.full_name}
+                                size="md"
+                                shape="circle"
+                                priority={false}
+                              />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
