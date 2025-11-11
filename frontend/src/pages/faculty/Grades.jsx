@@ -57,6 +57,68 @@ const Grades = () => {
       loadClasses()
   }, [user])
 
+  // Fetch student photos on-demand
+  const fetchStudentPhotos = async (students) => {
+    if (!students || students.length === 0) return
+    
+    try {
+      console.log('📸 [GRADES] Fetching photos for', students.length, 'students')
+      
+      // Fetch photos in batches to avoid overwhelming the server
+      const batchSize = 5
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize)
+        
+        const photoPromises = batch.map(async (student) => {
+          try {
+            const response = await fetch(`/api/students/${student.student_id}/photo`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              }
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              // Update students with photo
+              setStudents(prev => {
+                if (!prev) return prev
+                return prev.map(s => 
+                  s.student_id === student.student_id 
+                    ? { ...s, student_photo: data.photo }
+                    : s
+                )
+              })
+              
+              // Queue image for loading
+              if (data.photo) {
+                imageLoaderService.queueImages([{
+                  src: data.photo,
+                  id: `student_${student.student_id}`
+                }], false)
+              }
+              
+              return { student_id: student.student_id, photo: data.photo }
+            }
+          } catch (error) {
+            console.error(`❌ [GRADES] Error fetching photo for student ${student.student_id}:`, error)
+            return null
+          }
+        })
+        
+        await Promise.all(photoPromises)
+        
+        // Small delay between batches
+        if (i + batchSize < students.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+      
+      console.log('✅ [GRADES] Photos fetched and updated')
+    } catch (error) {
+      console.error('❌ [GRADES] Error in fetchStudentPhotos:', error)
+    }
+  }
+
   // Load section-specific data ONLY when class is selected (lazy loading)
   useEffect(() => {
     if (!selectedClass) {
@@ -88,13 +150,8 @@ const Grades = () => {
       // Delay image loading - show names and grades first, then load images
       setTimeout(() => {
         setImagesReady(true)
-        const imagesToLoad = studentsList
-          .filter(s => s.student_photo)
-          .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
-        if (imagesToLoad.length > 0) {
-          // Load images with lazy loading (not immediate)
-          imageLoaderService.queueImages(imagesToLoad, false)
-        }
+        // Fetch photos on-demand for cached students
+        fetchStudentPhotos(studentsList)
       }, 300) // Small delay to ensure names/grades render first
     }
     
@@ -178,11 +235,8 @@ const Grades = () => {
         // Delay image loading - show names and grades first, then load images asynchronously
         setTimeout(() => {
           setImagesReady(true) // Enable image loading in UI after essential data is displayed
-          const imagesToLoad = studentsList
-            .filter(s => s.student_photo)
-            .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
-          // Load images with lazy loading (not immediate) - images load last
-          imageLoaderService.queueImages(imagesToLoad, false)
+          // Fetch photos on-demand
+          fetchStudentPhotos(studentsList)
         }, 300) // Small delay to ensure names/grades render first
       } else {
         console.error('Failed to load students')

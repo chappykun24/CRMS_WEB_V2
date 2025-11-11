@@ -106,7 +106,6 @@ const Assessments = () => {
   const [grades, setGrades] = useState({})
   const [originalGrades, setOriginalGrades] = useState({}) // Store original grades for change detection
   const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorModalMessage, setErrorModalMessage] = useState('')
@@ -1155,7 +1154,6 @@ const Assessments = () => {
         // Show success modal
         setSavedGradesCount(savedCount)
         setShowSuccessModal(true)
-        setSuccessMessage('Grades saved successfully!')
         
         // Clear error message
         setError('')
@@ -1169,11 +1167,6 @@ const Assessments = () => {
           safeSetItem(gradesCacheKey, grades, minimizeGradesData)
           console.log('💾 [GRADING] Updated cache after saving grades')
         }
-        
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => {
-          setSuccessMessage('')
-        }, 5000)
       } else {
         const errorData = await response.json()
         const errorMsg = errorData.error || 'Failed to save grades'
@@ -1621,11 +1614,6 @@ const Assessments = () => {
                   {error && (
                     <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-xs sm:text-sm text-red-800">{error}</p>
-                    </div>
-                  )}
-                  {successMessage && (
-                    <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-xs sm:text-sm text-green-800">{successMessage}</p>
                     </div>
                   )}
                 </div>
