@@ -29,6 +29,7 @@ const Assessments = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all') // Filter by assessment type
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
   
@@ -831,10 +832,24 @@ const Assessments = () => {
     return `${lastName}, ${firstAndMiddle}`
   }
 
-  const filteredAssessments = assessments.filter(assessment =>
-    assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredAssessments = assessments.filter(assessment => {
+    const matchesSearch = assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = typeFilter === 'all' || assessment.type === typeFilter
+    return matchesSearch && matchesType
+  })
+
+  // Calculate totals
+  const totalWeight = filteredAssessments.reduce((sum, assessment) => {
+    return sum + (parseFloat(assessment.weight_percentage) || 0)
+  }, 0)
+  
+  const totalPoints = filteredAssessments.reduce((sum, assessment) => {
+    return sum + (parseFloat(assessment.total_points) || 0)
+  }, 0)
+
+  // Get unique assessment types for filter dropdown
+  const assessmentTypes = ['all', ...new Set(assessments.map(a => a.type).filter(Boolean))]
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -1230,19 +1245,44 @@ const Assessments = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
                   {/* Main Content - Assessments Table */}
                   <div className="lg:col-span-4 flex flex-col min-h-0">
-                    {/* Search Bar and Create Button - Only show when subject is selected */}
+                    {/* Search Bar, Filter, and Create Button - Only show when subject is selected */}
                     {selectedClass && (
-                      <div className="flex items-center gap-3 mb-4 flex-shrink-0">
-                        <div className="relative flex-1">
-                          <div className="relative">
-                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
+                      <>
+                        <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+                          <div className="relative flex-1">
+                            <div className="relative">
+                              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <input type="text" placeholder="Search assessments..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500" />
+                            </div>
                           </div>
+                          <select 
+                            value={typeFilter} 
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 text-sm min-w-[140px]"
+                          >
+                            <option value="all">All Types</option>
+                            {assessmentTypes.filter(type => type !== 'all').map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
+                            <PlusIcon className="h-5 w-5" />
+                          </button>
                         </div>
-                        <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
-                          <PlusIcon className="h-5 w-5" />
-                        </button>
-                      </div>
+                        {/* Total Weight and Points Summary */}
+                        {filteredAssessments.length > 0 && (
+                          <div className="mb-4 flex items-center gap-4 text-sm flex-shrink-0">
+                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
+                              <span className="text-gray-600 font-medium">Total Weight: </span>
+                              <span className="text-gray-900 font-semibold">{totalWeight.toFixed(2)}%</span>
+                            </div>
+                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
+                              <span className="text-gray-600 font-medium">Total Points: </span>
+                              <span className="text-gray-900 font-semibold">{totalPoints}</span>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* Error Message */}
@@ -1262,8 +1302,12 @@ const Assessments = () => {
                                 <tr>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
+                                  </th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
+                                  </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -1317,8 +1361,12 @@ const Assessments = () => {
                                 <tr>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
+                                  </th>
+                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
+                                  </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
