@@ -73,8 +73,7 @@ const SyllabusReview = () => {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Cache-Control': 'max-age=120'
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         signal: abortControllerRef.current.signal
       })
@@ -139,8 +138,7 @@ const SyllabusReview = () => {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Cache-Control': 'no-cache'
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({
           reviewed_by: user.user_id,

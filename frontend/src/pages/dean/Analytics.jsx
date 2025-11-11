@@ -87,8 +87,7 @@ const Analytics = () => {
       const response = await fetch(`${API_BASE_URL}/school-terms`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: termsAbortControllerRef.current.signal
       });
@@ -270,8 +269,7 @@ const Analytics = () => {
     fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=300'
+        'Content-Type': 'application/json'
       },
       signal: abortControllerRef.current.signal
     })

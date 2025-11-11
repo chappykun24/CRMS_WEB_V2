@@ -1347,7 +1347,6 @@ const MyClasses = () => {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300' // 5 minutes browser cache
         },
         signal: abortControllerRef.current.signal
       })

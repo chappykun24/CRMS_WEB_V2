@@ -89,8 +89,7 @@ const SectionManagement = () => {
       const response = await fetch(`${API_BASE_URL}/school-terms`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: termsAbortControllerRef.current.signal
       })
@@ -164,8 +163,7 @@ const SectionManagement = () => {
       const response = await fetch(`${API_BASE_URL}/programs`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: programsAbortControllerRef.current.signal
       })
@@ -193,6 +191,92 @@ const SectionManagement = () => {
       }
       console.error('❌ [STAFF SECTIONS] Error loading programs:', error)
       // Don't show error modal for programs as they're optional
+    }
+  }, [])
+
+  // Load sections with caching
+  const loadSections = useCallback(async () => {
+    console.log('🔍 [STAFF SECTIONS] loadSections starting')
+    setSectionsError('')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_sections_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using session cached sections')
+      setSections(Array.isArray(sessionCached) ? sessionCached : [])
+      setIsLoadingSections(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setIsLoadingSections(true)
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_sections'
+    const cachedData = getCachedData('sections', cacheKey, 5 * 60 * 1000) // 5 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using enhanced cached sections')
+      setSections(Array.isArray(cachedData) ? cachedData : [])
+      setIsLoadingSections(false)
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (sectionsAbortControllerRef.current) {
+      sectionsAbortControllerRef.current.abort()
+    }
+    
+    sectionsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF SECTIONS] Fetching fresh sections...')
+      const response = await fetch(`${API_BASE_URL}/section-courses/sections`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        signal: sectionsAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sections: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log(`✅ [STAFF SECTIONS] Received ${Array.isArray(data) ? data.length : 0} sections`)
+      const sectionsData = Array.isArray(data) ? data.map(s => ({ 
+        id: s.section_id, 
+        sectionCode: s.section_code, 
+        termId: s.term_id,
+        yearLevel: s.year_level,
+        programId: s.program_id,
+        specializationId: s.specialization_id
+      })) : []
+      setSections(sectionsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, sectionsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('sections', cacheKey, sectionsData)
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [STAFF SECTIONS] Sections request was aborted')
+        return
+      }
+      console.error('❌ [STAFF SECTIONS] Error loading sections:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('sections', cacheKey, 5 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setSectionsError('Failed to load sections')
+        setSections([])
+      }
+    } finally {
+      setIsLoadingSections(false)
     }
   }, [])
 

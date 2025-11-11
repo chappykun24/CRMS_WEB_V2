@@ -186,8 +186,7 @@ const CourseManagement = () => {
       const response = await fetch(`/api/section-courses/${courseId}/students`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: studentsAbortControllerRef.current.signal
       })

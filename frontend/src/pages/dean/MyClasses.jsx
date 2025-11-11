@@ -89,8 +89,7 @@ const MyClasses = () => {
       const response = await fetch(`${API_BASE_URL}/section-courses/assigned`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: abortControllerRef.current.signal
       })
@@ -191,8 +190,7 @@ const MyClasses = () => {
       const response = await fetch(`/api/section-courses/${sectionId}/students`, {
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=300'
+          'Content-Type': 'application/json'
         },
         signal: studentsAbortControllerRef.current.signal
       })

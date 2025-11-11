@@ -94,40 +94,35 @@ const Home = () => {
         fetch(`${API_BASE_URL}/section-courses/assigned`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300'
+            'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
         }),
         fetch(`${API_BASE_URL}/students`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300'
+            'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
         }),
         fetch(`${API_BASE_URL}/users?role=FACULTY`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300'
+            'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
         }),
         fetch(`${API_BASE_URL}/school-terms`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300'
+            'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
         }),
         fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'max-age=300'
+            'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
         })
