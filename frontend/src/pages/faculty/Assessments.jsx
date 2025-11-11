@@ -230,13 +230,14 @@ const Assessments = () => {
   }, [selectedClass?.section_course_id])
 
   // Load students for a class (async, cached)
-  // For grading interface, we need photos, so include them
+  // Cache students WITHOUT photos to save memory, fetch photos on-demand
   const loadStudentsForClass = async (sectionCourseId, cacheKey) => {
     if (!sectionCourseId) return
     
     try {
-      // Include photos for grading interface (needed for student display)
-      const response = await fetch(`/api/section-courses/${sectionCourseId}/students?includePhotos=true`, {
+      // Don't include photos in initial fetch (saves memory)
+      // Photos will be fetched on-demand when needed
+      const response = await fetch(`/api/section-courses/${sectionCourseId}/students`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
@@ -265,13 +266,154 @@ const Assessments = () => {
         setCachedStudentsList(studentsWithClassId)
         cachedClassIdRef.current = sectionCourseId
         
-        // Cache students WITH photos for grading interface (needed for display)
-        // Don't minimize photos for grading interface as they're needed immediately
-        safeSetItem(cacheKey, studentsWithClassId)
-        console.log('💾 [GRADING] Cached students with photos:', studentsWithClassId.length, 'students')
+        // Cache students WITHOUT photos (minimized to save memory)
+        // Photos will be fetched separately when needed
+        safeSetItem(cacheKey, studentsWithClassId, minimizeStudentData)
+        console.log('💾 [GRADING] Cached students (without photos):', studentsWithClassId.length, 'students')
+        
+        // Fetch photos on-demand after a delay (load last)
+        setTimeout(() => {
+          fetchStudentPhotos(studentsWithClassId)
+        }, 500)
       }
     } catch (error) {
       console.error('❌ [GRADING] Error fetching students:', error)
+    }
+  }
+
+  // Fetch student photos on-demand for grades (memory-efficient)
+  const fetchStudentPhotosForGrades = async (students, assessmentId) => {
+    if (!students || students.length === 0) return
+    
+    try {
+      console.log('📸 [GRADING] Fetching photos for', students.length, 'students in grades')
+      
+      // Fetch photos in batches to avoid overwhelming the server
+      const batchSize = 5
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize)
+        
+        const photoPromises = batch.map(async (student) => {
+          try {
+            const response = await fetch(`/api/students/${student.student_id}/photo`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              }
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              // Update grades with photo
+              setGrades(prev => {
+                if (prev[student.enrollment_id]) {
+                  return {
+                    ...prev,
+                    [student.enrollment_id]: {
+                      ...prev[student.enrollment_id],
+                      student_photo: data.photo
+                    }
+                  }
+                }
+                return prev
+              })
+              
+              // Update cached students list
+              setCachedStudentsList(prev => {
+                if (!prev) return prev
+                return prev.map(s => 
+                  s.student_id === student.student_id 
+                    ? { ...s, student_photo: data.photo }
+                    : s
+                )
+              })
+              
+              // Queue image for loading
+              if (data.photo) {
+                imageLoaderService.queueImages([{
+                  src: data.photo,
+                  id: `grade_${assessmentId}_${student.enrollment_id}`
+                }], false)
+              }
+              
+              return { student_id: student.student_id, photo: data.photo }
+            }
+          } catch (error) {
+            console.error(`❌ [GRADING] Error fetching photo for student ${student.student_id}:`, error)
+            return null
+          }
+        })
+        
+        await Promise.all(photoPromises)
+        // Small delay between batches
+        if (i + batchSize < students.length) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      }
+      
+      console.log('✅ [GRADING] Photos fetched and updated for grades')
+    } catch (error) {
+      console.error('❌ [GRADING] Error in fetchStudentPhotosForGrades:', error)
+    }
+  }
+
+  // Fetch student photos on-demand (memory-efficient)
+  const fetchStudentPhotos = async (students) => {
+    if (!students || students.length === 0) return
+    
+    try {
+      // Fetch photos for students that don't have them
+      const studentsNeedingPhotos = students.filter(s => !s.student_photo && s.student_id)
+      
+      if (studentsNeedingPhotos.length === 0) return
+      
+      console.log('📸 [GRADING] Fetching photos for', studentsNeedingPhotos.length, 'students')
+      
+      // Fetch photos in parallel (but limit concurrency to avoid overwhelming)
+      const photoPromises = studentsNeedingPhotos.slice(0, 10).map(async (student) => {
+        try {
+          const response = await fetch(`/api/students/${student.student_id}/photo`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            // Update the student in cachedStudentsList
+            setCachedStudentsList(prev => {
+              if (!prev) return prev
+              return prev.map(s => 
+                s.student_id === student.student_id 
+                  ? { ...s, student_photo: data.photo }
+                  : s
+              )
+            })
+            // Update grades if they exist
+            setGrades(prev => {
+              const enrollmentId = student.enrollment_id
+              if (prev[enrollmentId]) {
+                return {
+                  ...prev,
+                  [enrollmentId]: {
+                    ...prev[enrollmentId],
+                    student_photo: data.photo
+                  }
+                }
+              }
+              return prev
+            })
+            return { student_id: student.student_id, photo: data.photo }
+          }
+        } catch (error) {
+          console.error(`❌ [GRADING] Error fetching photo for student ${student.student_id}:`, error)
+          return null
+        }
+      })
+      
+      await Promise.all(photoPromises)
+      console.log('✅ [GRADING] Photos fetched and updated')
+    } catch (error) {
+      console.error('❌ [GRADING] Error in fetchStudentPhotos:', error)
     }
   }
 
@@ -818,8 +960,9 @@ const Assessments = () => {
         setGradingLoading(true)
       }
       
-      // Include photos for grading interface (needed for student display)
-      const response = await fetch(`/api/grading/assessment/${assessmentId}/grades?includePhotos=true`)
+      // Don't include photos in grades fetch (saves memory)
+      // Photos will be fetched on-demand via fetchStudentPhotos
+      const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
         const text = await response.text()
         let data
@@ -840,9 +983,11 @@ const Assessments = () => {
         // First, add all students (ensures all students are shown even if no grade yet)
         studentsList.forEach(student => {
           gradesMap[student.enrollment_id] = {
+            student_id: student.student_id,
             student_name: student.full_name,
             student_number: student.student_number,
             student_photo: student.student_photo,
+            enrollment_id: student.enrollment_id,
             raw_score: '',
             late_penalty: '',
             feedback: '',
@@ -865,9 +1010,11 @@ const Assessments = () => {
           } else {
             // Grade for student not in our list (shouldn't happen, but handle it)
             gradesMap[grade.enrollment_id] = {
+              student_id: grade.student_id,
               student_name: grade.full_name,
               student_number: grade.student_number,
               student_photo: grade.student_photo,
+              enrollment_id: grade.enrollment_id,
               raw_score: grade.raw_score !== null ? grade.raw_score : '',
               late_penalty: grade.late_penalty !== null ? grade.late_penalty : '',
               feedback: grade.feedback || '',
@@ -885,19 +1032,22 @@ const Assessments = () => {
         safeSetItem(gradesCacheKey, gradesMap, minimizeGradesData)
         console.log('💾 [GRADING] Cached grades for assessment:', assessmentId)
         
-        // Load images asynchronously (last) - only if not already loading
-        if (!imagesReady) {
-          setTimeout(() => {
-            setImagesReady(true)
-            const imagesToLoad = Object.values(gradesMap)
-              .filter(g => g.student_photo)
-              .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
-            if (imagesToLoad.length > 0) {
-              console.log('🖼️ [GRADING] Loading images asynchronously (last):', imagesToLoad.length, 'images')
-              imageLoaderService.queueImages(imagesToLoad, false)
-            }
-          }, 300) // Small delay to ensure grades are displayed first
-        }
+        // Fetch photos on-demand for students in grades
+        setTimeout(() => {
+          const studentsNeedingPhotos = Object.values(gradesMap)
+            .filter(g => g.student_id && !g.student_photo)
+            .map(g => ({ 
+              student_id: g.student_id, 
+              enrollment_id: g.enrollment_id 
+            }))
+          
+          if (studentsNeedingPhotos.length > 0) {
+            fetchStudentPhotosForGrades(studentsNeedingPhotos, assessmentId)
+          }
+          
+          // Enable image loading after photos are fetched
+          setImagesReady(true)
+        }, 300)
       } else {
         // Handle error response
         if (!cachedGrades) {
