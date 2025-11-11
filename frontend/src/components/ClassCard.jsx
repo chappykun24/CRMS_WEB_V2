@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { UserGroupIcon as AttendanceIcon, ClipboardDocumentListIcon as AssessmentsIcon, EllipsisVerticalIcon } from '@heroicons/react/24/solid'
+import { UserGroupIcon as AttendanceIcon, ClipboardDocumentListIcon as AssessmentsIcon, EllipsisVerticalIcon, BookOpenIcon } from '@heroicons/react/24/solid'
 
 const ClassCard = ({
   title,
@@ -14,6 +14,7 @@ const ClassCard = ({
   onClick,
   onAttendance,
   onAssessments,
+  onSyllabus,
   onMore,
   onEdit,
   onArchive
@@ -90,6 +91,18 @@ const ClassCard = ({
         >
           <AssessmentsIcon className="h-5 w-5" />
         </button>
+        {onSyllabus && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onSyllabus()
+            }}
+            className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+            title="Syllabus"
+          >
+            <BookOpenIcon className="h-5 w-5" />
+          </button>
+        )}
         <div className="relative" ref={menuRef}>
           <button
             onClick={(e) => {

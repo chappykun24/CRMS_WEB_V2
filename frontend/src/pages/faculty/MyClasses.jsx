@@ -1465,6 +1465,14 @@ const MyClasses = () => {
                       } 
                     })
                   }}
+                  onSyllabus={() => {
+                    // Navigate to syllabus page with class pre-selected
+                    navigate('/faculty/syllabus', { 
+                      state: { 
+                        selectedClassId: cls.section_course_id
+                      } 
+                    })
+                  }}
                   onMore={() => console.log('More clicked')}
                   onEdit={() => handleEditClass(cls)}
                   onArchive={() => console.log('Archive clicked')}
