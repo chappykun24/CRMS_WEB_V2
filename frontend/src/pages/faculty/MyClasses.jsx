@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 // Removed prefetchFacultyData - data is now fetched per section
 import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
+import { XMarkIcon } from '@heroicons/react/24/solid'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -47,6 +48,12 @@ const MyClasses = () => {
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
   const cachedClassIdRef = useRef(null) // Ref to track which class ID is cached (prevents loops)
+  
+  // Student details modal state
+  const [showStudentModal, setShowStudentModal] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [studentGrades, setStudentGrades] = useState([])
+  const [loadingStudentGrades, setLoadingStudentGrades] = useState(false)
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -263,6 +270,35 @@ const MyClasses = () => {
       console.error('❌ [MYCLASSES] Error in fetchStudentPhotos:', error)
     }
   }
+
+  // Handle student click - open modal with student details and grades
+  const handleStudentClick = useCallback(async (student) => {
+    setSelectedStudent(student)
+    setShowStudentModal(true)
+    setLoadingStudentGrades(true)
+    setStudentGrades([])
+    
+    try {
+      const response = await fetch(`/api/grading/student/${student.enrollment_id}/grades`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (response.ok) {
+        const gradesData = await response.json()
+        setStudentGrades(Array.isArray(gradesData) ? gradesData : [])
+      } else {
+        console.error('Failed to fetch student grades')
+        setStudentGrades([])
+      }
+    } catch (error) {
+      console.error('Error fetching student grades:', error)
+      setStudentGrades([])
+    } finally {
+      setLoadingStudentGrades(false)
+    }
+  }, [])
 
   // Load existing attendance data for a specific date
   const loadExistingAttendanceForDate = useCallback(async (date) => {
@@ -1674,7 +1710,11 @@ const MyClasses = () => {
                       const sequentialNumber = index + 1
                       
                       return (
-                      <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                      <div 
+                        key={student.student_id} 
+                        onClick={() => !isAttendanceMode && handleStudentClick(student)}
+                        className={`flex items-center space-x-3 p-3 bg-gray-50 rounded-lg ${!isAttendanceMode ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+                      >
                         <div className="flex-shrink-0 w-6 text-center">
                           <span className="text-xs font-medium text-gray-500">
                             {sequentialNumber}
@@ -2379,6 +2419,155 @@ const MyClasses = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Details Modal */}
+      {showStudentModal && selectedStudent && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowStudentModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-4">
+                <LazyImage
+                  src={selectedStudent.student_photo}
+                  alt={selectedStudent.full_name}
+                  size="lg"
+                  shape="circle"
+                  className="border border-gray-200"
+                  delayLoad={false}
+                  priority={true}
+                />
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {formatName(selectedStudent.full_name)}
+                  </h2>
+                  <p className="text-sm text-gray-500">SR: {selectedStudent.student_number}</p>
+                  {selectedStudent.contact_email && (
+                    <p className="text-xs text-gray-400 mt-1">{selectedStudent.contact_email}</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStudentModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
+              
+              {loadingStudentGrades ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : studentGrades.length > 0 ? (
+                <div className="space-y-3">
+                  {studentGrades.map((grade) => {
+                    const adjustedScore = grade.adjusted_score ?? null
+                    const percentage = adjustedScore !== null && grade.total_points > 0 
+                      ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
+                      : null
+                    
+                    return (
+                      <div 
+                        key={grade.assessment_id} 
+                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              {grade.assessment_title}
+                            </h4>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                {grade.assessment_type}
+                              </span>
+                              <span>{grade.total_points} pts</span>
+                              <span>{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
+                              {grade.due_date && (
+                                <span>Due: {new Date(grade.due_date).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Raw Score</p>
+                            <p className="font-medium text-gray-900">
+                              {grade.raw_score !== null ? grade.raw_score.toFixed(2) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Late Penalty</p>
+                            <p className="font-medium text-gray-900">
+                              {grade.late_penalty !== null ? grade.late_penalty.toFixed(2) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Adjusted Score</p>
+                            <p className="font-medium text-gray-900">
+                              {adjustedScore !== null ? adjustedScore.toFixed(2) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Percentage</p>
+                            <p className="font-medium text-gray-900">
+                              {percentage !== null ? `${percentage}%` : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 flex items-center gap-4 text-xs">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${
+                            grade.submission_status === 'ontime' 
+                              ? 'bg-green-100 text-green-800'
+                              : grade.submission_status === 'late'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {grade.submission_status === 'ontime' ? 'On Time' : 
+                             grade.submission_status === 'late' ? 'Late' : 'Missing'}
+                          </span>
+                          {grade.graded_at && (
+                            <span className="text-gray-500">
+                              Graded: {new Date(grade.graded_at).toLocaleDateString()}
+                            </span>
+                          )}
+                          {grade.graded_by_name && (
+                            <span className="text-gray-500">
+                              By: {grade.graded_by_name}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {grade.feedback && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs text-gray-500 mb-1">Feedback</p>
+                            <p className="text-sm text-gray-700">{grade.feedback}</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No assessment scores available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
