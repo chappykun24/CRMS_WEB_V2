@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import {
   DocumentTextIcon,
@@ -9,42 +9,122 @@ import {
   MagnifyingGlassIcon
 } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/solid'
+import { API_BASE_URL } from '../../utils/api'
+import programChairCacheService from '../../services/programChairCacheService'
+import { safeSetItem, safeGetItem, minimizeSyllabusData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+import { TableSkeleton, ListSkeleton } from '../../components/skeletons'
+
+// Cache helpers
+const getCachedData = createCacheGetter(programChairCacheService)
+const setCachedData = createCacheSetter(programChairCacheService)
 
 const SyllabusReview = () => {
   const { user } = useAuth()
   const [syllabi, setSyllabi] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSyllabus, setSelectedSyllabus] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const abortControllerRef = useRef(null)
 
-  useEffect(() => {
-    loadPendingSyllabi()
-  }, [])
-
-  const loadPendingSyllabi = async () => {
-    setLoading(true)
+  // Load pending syllabi with caching
+  const loadPendingSyllabi = useCallback(async () => {
+    console.log('🔍 [PROGRAM CHAIR SYLLABUS] loadPendingSyllabi starting')
+    setError(null)
+    
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = 'program_chair_pending_syllabi_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR SYLLABUS] Using session cached pending syllabi')
+      setSyllabi(Array.isArray(sessionCached) ? sessionCached : [])
+      setLoading(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true)
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'program_chair_pending_syllabi'
+    const cachedData = getCachedData('syllabi', cacheKey, 2 * 60 * 1000) // 2 minute cache (frequent updates)
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR SYLLABUS] Using enhanced cached pending syllabi')
+      setSyllabi(Array.isArray(cachedData) ? cachedData : [])
+      setLoading(false)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData, minimizeSyllabusData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController()
+    
     try {
-      const response = await fetch('/api/syllabi', {
+      console.log('🔄 [PROGRAM CHAIR SYLLABUS] Fetching fresh pending syllabi...')
+      const response = await fetch(`${API_BASE_URL}/syllabi`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Cache-Control': 'max-age=120'
+        },
+        signal: abortControllerRef.current.signal
       })
-      if (response.ok) {
-        const data = await response.json()
-        // Filter for syllabi pending review (review_status = 'pending')
-        const pendingSyllabi = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'pending')
-          : []
-        setSyllabi(pendingSyllabi)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch syllabi: ${response.status}`)
       }
+      
+      const data = await response.json()
+      // Filter for syllabi pending review (review_status = 'pending')
+      const pendingSyllabi = Array.isArray(data) 
+        ? data.filter(s => s.review_status === 'pending')
+        : []
+      console.log(`✅ [PROGRAM CHAIR SYLLABUS] Received ${pendingSyllabi.length} pending syllabi`)
+      setSyllabi(pendingSyllabi)
+      
+      // Store minimized data in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, pendingSyllabi, minimizeSyllabusData)
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('syllabi', cacheKey, pendingSyllabi)
     } catch (error) {
-      console.error('Error loading pending syllabi:', error)
+      if (error.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR SYLLABUS] Request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR SYLLABUS] Error loading pending syllabi:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('syllabi', cacheKey, 2 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setError(error.message)
+        setSyllabi([])
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadPendingSyllabi()
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [loadPendingSyllabi])
 
   const handleReview = async (syllabus, reviewStatus) => {
     const statusText = reviewStatus === 'approved' ? 'approve' : reviewStatus === 'rejected' ? 'reject' : 'request revision for'
@@ -54,11 +134,13 @@ const SyllabusReview = () => {
 
     setReviewing(true)
     try {
-      const response = await fetch(`/api/syllabi/${syllabus.syllabus_id}/review`, {
+      const response = await fetch(`${API_BASE_URL}/syllabi/${syllabus.syllabus_id}/review`, {
         method: 'PUT',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({
           reviewed_by: user.user_id,
@@ -68,6 +150,9 @@ const SyllabusReview = () => {
 
       if (response.ok) {
         alert(`Syllabus ${reviewStatus} successfully!`)
+        // Clear cache and reload
+        programChairCacheService.clear('syllabi', 'program_chair_pending_syllabi')
+        safeSetItem('program_chair_pending_syllabi_session', syllabi.filter(s => s.syllabus_id !== syllabus.syllabus_id), minimizeSyllabusData)
         loadPendingSyllabi()
         if (showViewModal) {
           setShowViewModal(false)
@@ -139,8 +224,13 @@ const SyllabusReview = () => {
 
         {/* Syllabi List */}
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-8">
-            <div className="text-center text-gray-500">Loading syllabi...</div>
+          <TableSkeleton rows={6} columns={6} />
+        ) : error ? (
+          <div className="bg-white rounded-lg shadow-sm border border-red-200 p-8">
+            <div className="text-center text-red-600">
+              <p className="font-medium">Error loading syllabi</p>
+              <p className="text-sm text-red-500 mt-1">{error}</p>
+            </div>
           </div>
         ) : filteredSyllabi.length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">

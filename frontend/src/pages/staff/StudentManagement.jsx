@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { prefetchStaffData } from '../../services/dataPrefetchService'
 import { 
   UserPlusIcon, 
@@ -16,6 +16,12 @@ import studentService from '../../services/studentService'
 // Removed studentSpec import - using inline validation instead
 import api, { endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
+import staffCacheService from '../../services/staffCacheService'
+import { safeSetItem, safeGetItem, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+
+// Cache helpers
+const getCachedData = createCacheGetter(staffCacheService)
+const setCachedData = createCacheSetter(staffCacheService)
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -149,71 +155,286 @@ const StudentManagement = () => {
   const [sidebarPhotoFile, setSidebarPhotoFile] = useState(null)
   const [sidebarPhotoPreview, setSidebarPhotoPreview] = useState(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  
+  // Abort controllers for request cancellation
+  const studentsAbortControllerRef = useRef(null)
+  const departmentsAbortControllerRef = useRef(null)
+  const programsAbortControllerRef = useRef(null)
+  const termsAbortControllerRef = useRef(null)
 
-  useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setLoading(true)
-        const data = await studentService.getAllStudents()
-        if (data.success) {
-          setStudents(Array.isArray(data.students) ? data.students : [])
-        } else {
-          setError(data.error || 'Failed to load students')
-        }
-      } catch (e) {
-        setError(e.message || 'Failed to load students')
-      } finally {
-        setLoading(false)
-      }
+  // Fetch students with caching
+  const loadStudents = useCallback(async () => {
+    console.log('🔍 [STAFF STUDENTS] loadStudents starting')
+    setError('')
+    
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = 'staff_students_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using session cached students data')
+      setStudents(Array.isArray(sessionCached) ? sessionCached : [])
+      setLoading(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true)
     }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_students'
+    const cachedData = getCachedData('students', cacheKey, 10 * 60 * 1000) // 10 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using enhanced cached students data')
+      setStudents(Array.isArray(cachedData) ? cachedData : [])
+      setLoading(false)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData, minimizeStudentData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (studentsAbortControllerRef.current) {
+      studentsAbortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    studentsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF STUDENTS] Fetching fresh students...')
+      const data = await studentService.getAllStudents()
+      
+      if (data.success) {
+        const studentsData = Array.isArray(data.students) ? data.students : []
+        console.log(`✅ [STAFF STUDENTS] Received ${studentsData.length} students`)
+        setStudents(studentsData)
+        setError('')
+        
+        // Store minimized data in sessionStorage for instant next load
+        if (!sessionCached) {
+          safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
+        }
+        
+        // Store full data in enhanced cache
+        setCachedData('students', cacheKey, studentsData)
+      } else {
+        throw new Error(data.error || 'Failed to load students')
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [STAFF STUDENTS] Request was aborted')
+        return
+      }
+      console.error('❌ [STAFF STUDENTS] Error loading students:', e)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('students', cacheKey, 10 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setError(e.message || 'Failed to load students')
+        setStudents([])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Fetch departments with caching
+  const loadDepartments = useCallback(async () => {
+    console.log('🔍 [STAFF STUDENTS] loadDepartments starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_departments_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using session cached departments')
+      setDepartments(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_departments'
+    const cachedData = getCachedData('departments', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using enhanced cached departments')
+      setDepartments(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (departmentsAbortControllerRef.current) {
+      departmentsAbortControllerRef.current.abort()
+    }
+    
+    departmentsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF STUDENTS] Fetching fresh departments...')
+      const res = await api.get(endpoints.departments)
+      const departmentsData = Array.isArray(res.data) ? res.data : []
+      console.log(`✅ [STAFF STUDENTS] Received ${departmentsData.length} departments`)
+      setDepartments(departmentsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, departmentsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('departments', cacheKey, departmentsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [STAFF STUDENTS] Departments request was aborted')
+        return
+      }
+      console.error('❌ [STAFF STUDENTS] Error loading departments:', e)
+      // Don't set error for departments as they're optional
+    }
+  }, [])
+
+  // Fetch programs with caching
+  const loadPrograms = useCallback(async () => {
+    console.log('🔍 [STAFF STUDENTS] loadPrograms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_programs_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using session cached programs')
+      setPrograms(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_programs'
+    const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using enhanced cached programs')
+      setPrograms(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (programsAbortControllerRef.current) {
+      programsAbortControllerRef.current.abort()
+    }
+    
+    programsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF STUDENTS] Fetching fresh programs...')
+      const res = await api.get(endpoints.programs)
+      const programsData = Array.isArray(res.data) ? res.data : []
+      console.log(`✅ [STAFF STUDENTS] Received ${programsData.length} programs`)
+      setPrograms(programsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, programsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('programs', cacheKey, programsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [STAFF STUDENTS] Programs request was aborted')
+        return
+      }
+      console.error('❌ [STAFF STUDENTS] Error loading programs:', e)
+      // Don't set error for programs as they're optional
+    }
+  }, [])
+
+  // Fetch terms with caching
+  const loadTerms = useCallback(async () => {
+    console.log('🔍 [STAFF STUDENTS] loadTerms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_terms_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using session cached terms')
+      setTerms(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_terms'
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF STUDENTS] Using enhanced cached terms')
+      setTerms(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (termsAbortControllerRef.current) {
+      termsAbortControllerRef.current.abort()
+    }
+    
+    termsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF STUDENTS] Fetching fresh terms...')
+      const res = await api.get(endpoints.terms)
+      const termsData = Array.isArray(res.data) ? res.data : []
+      console.log(`✅ [STAFF STUDENTS] Received ${termsData.length} terms`)
+      setTerms(termsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, termsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('terms', cacheKey, termsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [STAFF STUDENTS] Terms request was aborted')
+        return
+      }
+      console.error('❌ [STAFF STUDENTS] Error loading terms:', e)
+      // Don't set error for terms as they're optional
+    }
+  }, [])
+
+  // Load all data on mount
+  useEffect(() => {
     loadStudents()
+    loadDepartments()
+    loadPrograms()
+    loadTerms()
     
     // Prefetch data for other staff pages in the background
     setTimeout(() => {
       prefetchStaffData()
     }, 1000)
-  }, [])
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (studentsAbortControllerRef.current) {
+        studentsAbortControllerRef.current.abort()
+      }
+      if (departmentsAbortControllerRef.current) {
+        departmentsAbortControllerRef.current.abort()
+      }
+      if (programsAbortControllerRef.current) {
+        programsAbortControllerRef.current.abort()
+      }
+      if (termsAbortControllerRef.current) {
+        termsAbortControllerRef.current.abort()
+      }
+    }
+  }, [loadStudents, loadDepartments, loadPrograms, loadTerms])
 
   // Reset pagination when filters change
   useEffect(() => {
     resetPagination()
   }, [query, departmentFilter, sortOption])
-
-  useEffect(() => {
-    const loadDepartments = async () => {
-      try {
-        const res = await api.get(endpoints.departments)
-        setDepartments(Array.isArray(res.data) ? res.data : [])
-      } catch (_) {
-        // silently ignore
-      }
-    }
-    loadDepartments()
-  }, [])
-
-  useEffect(() => {
-    const loadPrograms = async () => {
-      try {
-        const res = await api.get(endpoints.programs)
-        setPrograms(Array.isArray(res.data) ? res.data : [])
-      } catch (_) {
-        // silently ignore
-      }
-    }
-    loadPrograms()
-  }, [])
-
-  useEffect(() => {
-    const loadTerms = async () => {
-      try {
-        const res = await api.get(endpoints.terms)
-        setTerms(Array.isArray(res.data) ? res.data : [])
-      } catch (_) {
-        // silently ignore
-      }
-    }
-    loadTerms()
-  }, [])
 
   // Reset sidebar photo states when selected student changes
   useEffect(() => {

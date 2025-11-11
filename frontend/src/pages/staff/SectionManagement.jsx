@@ -1,7 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchStaffData } from '../../services/dataPrefetchService'
+import staffCacheService from '../../services/staffCacheService'
+import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+
+// Cache helpers
+const getCachedData = createCacheGetter(staffCacheService)
+const setCachedData = createCacheSetter(staffCacheService)
 
 const SectionManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -34,56 +40,189 @@ const SectionManagement = () => {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLoadingTerms, setIsLoadingTerms] = useState(true)
   const [selectedSection, setSelectedSection] = useState(null)
+  
+  // Abort controllers for request cancellation
+  const termsAbortControllerRef = useRef(null)
+  const programsAbortControllerRef = useRef(null)
+  const sectionsAbortControllerRef = useRef(null)
+  const specializationsAbortControllerRef = useRef(null)
 
   const API_BASE_URL = '/api'
 
-  // Load school terms when component mounts
-  useEffect(() => {
-    let isMounted = true
-    ;(async () => {
-      try {
-        console.log('Loading school terms...')
-        setIsLoadingTerms(true)
-        const response = await fetch(`${API_BASE_URL}/school-terms`)
-        if (!response.ok) throw new Error(`Failed to fetch school terms: ${response.status}`)
-        const data = await response.json()
-        console.log('School terms loaded:', data)
-        if (isMounted) setTerms(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Error loading school terms:', error)
+  // Load school terms with caching
+  const loadTerms = useCallback(async () => {
+    console.log('🔍 [STAFF SECTIONS] loadTerms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_sections_terms_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using session cached terms')
+      setTerms(Array.isArray(sessionCached) ? sessionCached : [])
+      setIsLoadingTerms(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setIsLoadingTerms(true)
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_sections_terms'
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using enhanced cached terms')
+      setTerms(Array.isArray(cachedData) ? cachedData : [])
+      setIsLoadingTerms(false)
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (termsAbortControllerRef.current) {
+      termsAbortControllerRef.current.abort()
+    }
+    
+    termsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF SECTIONS] Fetching fresh terms...')
+      const response = await fetch(`${API_BASE_URL}/school-terms`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: termsAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch school terms: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log(`✅ [STAFF SECTIONS] Received ${Array.isArray(data) ? data.length : 0} terms`)
+      const termsData = Array.isArray(data) ? data : []
+      setTerms(termsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, termsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('terms', cacheKey, termsData)
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [STAFF SECTIONS] Terms request was aborted')
+        return
+      }
+      console.error('❌ [STAFF SECTIONS] Error loading school terms:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
         setErrorMessage('Failed to load school terms. Please refresh the page.')
         setShowErrorModal(true)
-      } finally {
-        if (isMounted) setIsLoadingTerms(false)
       }
-    })()
+    } finally {
+      setIsLoadingTerms(false)
+    }
+  }, [])
+
+  // Load programs with caching
+  const loadPrograms = useCallback(async () => {
+    console.log('🔍 [STAFF SECTIONS] loadPrograms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'staff_sections_programs_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using session cached programs')
+      setPrograms(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'staff_sections_programs'
+    const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [STAFF SECTIONS] Using enhanced cached programs')
+      setPrograms(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (programsAbortControllerRef.current) {
+      programsAbortControllerRef.current.abort()
+    }
+    
+    programsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [STAFF SECTIONS] Fetching fresh programs...')
+      const response = await fetch(`${API_BASE_URL}/programs`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: programsAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch programs: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log(`✅ [STAFF SECTIONS] Received ${Array.isArray(data) ? data.length : 0} programs`)
+      const programsData = Array.isArray(data) ? data : []
+      setPrograms(programsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, programsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('programs', cacheKey, programsData)
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [STAFF SECTIONS] Programs request was aborted')
+        return
+      }
+      console.error('❌ [STAFF SECTIONS] Error loading programs:', error)
+      // Don't show error modal for programs as they're optional
+    }
+  }, [])
+
+  // Load all data on mount
+  useEffect(() => {
+    loadTerms()
+    loadPrograms()
+    loadSections()
     
     // Prefetch data for other staff pages in the background
     setTimeout(() => {
       prefetchStaffData()
     }, 1000)
     
-    return () => { isMounted = false }
-  }, [])
-
-  // Load programs when component mounts
-  useEffect(() => {
-    let isMounted = true
-    ;(async () => {
-      try {
-        console.log('Loading programs...')
-        const response = await fetch(`${API_BASE_URL}/programs`)
-        if (!response.ok) throw new Error(`Failed to fetch programs: ${response.status}`)
-        const data = await response.json()
-        console.log('Programs loaded:', data)
-        if (isMounted) setPrograms(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Error loading programs:', error)
-        // Don't show error modal for programs as they're optional
+    // Cleanup function to abort pending requests
+    return () => {
+      if (termsAbortControllerRef.current) {
+        termsAbortControllerRef.current.abort()
       }
-    })()
-    return () => { isMounted = false }
-  }, [])
+      if (programsAbortControllerRef.current) {
+        programsAbortControllerRef.current.abort()
+      }
+      if (sectionsAbortControllerRef.current) {
+        sectionsAbortControllerRef.current.abort()
+      }
+      if (specializationsAbortControllerRef.current) {
+        specializationsAbortControllerRef.current.abort()
+      }
+    }
+  }, [loadTerms, loadPrograms, loadSections])
 
   // Load specializations when program is selected
   useEffect(() => {
@@ -219,6 +358,9 @@ const SectionManagement = () => {
       }
       
       setSections(prev => prev.filter(s => s.id !== sectionId))
+      // Clear cache and reload sections
+      staffCacheService.clear('sections', 'staff_sections')
+      safeSetItem('staff_sections_session', sections.filter(s => s.id !== sectionId))
       setSuccessMessage('Section deleted successfully!')
       setShowSuccessModal(true)
     } catch (error) {
@@ -308,9 +450,15 @@ const SectionManagement = () => {
         specializationId: formData.specializationId
       }
       
-      setSections(prev => prev.map(s => 
+      const updatedSections = sections.map(s => 
         s.id === editingSection.id ? updatedSection : s
-      ))
+      )
+      setSections(updatedSections)
+      
+      // Update cache
+      staffCacheService.clear('sections', 'staff_sections')
+      safeSetItem('staff_sections_session', updatedSections)
+      setCachedData('sections', 'staff_sections', updatedSections)
       
       // Update selected section if it was the one being edited
       if (selectedSection?.id === editingSection.id) {
@@ -329,28 +477,6 @@ const SectionManagement = () => {
     }
   }
 
-  useEffect(() => {
-    // Initial load of sections list
-    let isMounted = true
-    ;(async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/section-courses/sections`)
-        if (!response.ok) throw new Error(`Failed to fetch sections: ${response.status}`)
-        const data = await response.json()
-        if (isMounted) setSections(Array.isArray(data) ? data.map(s => ({ 
-          id: s.section_id, 
-          sectionCode: s.section_code, 
-          termId: s.term_id,
-          yearLevel: s.year_level,
-          programId: s.program_id,
-          specializationId: s.specialization_id
-        })) : [])
-      } catch (error) {
-        console.error('Error loading sections:', error)
-      }
-    })()
-    return () => { isMounted = false }
-  }, [])
 
   const handleSave = async () => {
     if (!formData.sectionCode.trim()) {
@@ -418,17 +544,21 @@ const SectionManagement = () => {
       const created = await response.json()
       console.log('Section created successfully:', created)
       
-      setSections(prev => [
-        { 
-          id: created.section_id, 
-          sectionCode: created.section_code, 
-          termId: created.term_id,
-          yearLevel: created.year_level,
-          programId: created.program_id,
-          specializationId: created.specialization_id
-        },
-        ...prev
-      ])
+      const newSection = { 
+        id: created.section_id, 
+        sectionCode: created.section_code, 
+        termId: created.term_id,
+        yearLevel: created.year_level,
+        programId: created.program_id,
+        specializationId: created.specialization_id
+      }
+      const updatedSections = [newSection, ...sections]
+      setSections(updatedSections)
+      
+      // Update cache
+      staffCacheService.clear('sections', 'staff_sections')
+      safeSetItem('staff_sections_session', updatedSections)
+      setCachedData('sections', 'staff_sections', updatedSections)
       
       setSuccessMessage('Section created successfully!')
       setShowSuccessModal(true)

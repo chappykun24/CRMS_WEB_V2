@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { 
   UserGroupIcon, 
@@ -14,12 +14,25 @@ import SyllabusReview from './SyllabusReview'
 import Syllabus from './Syllabus'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { API_BASE_URL } from '../../utils/api'
+import programChairCacheService from '../../services/programChairCacheService'
+import { safeSetItem, safeGetItem, minimizeAnalyticsData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+import { DashboardSkeleton } from '../../components/skeletons'
+
+// Cache helpers
+const getCachedData = createCacheGetter(programChairCacheService)
+const setCachedData = createCacheSetter(programChairCacheService)
+const PROGRAM_CHAIR_DASHBOARD_CACHE_KEY = 'program_chair_dashboard_stats'
+const SESSION_CACHE_KEY = 'program_chair_dashboard_stats_session'
 
 const Home = () => {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+  const [error, setError] = useState(null)
+  const abortControllerRef = useRef(null)
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalClasses: 0,
@@ -30,25 +43,94 @@ const Home = () => {
     activeTerm: null
   })
 
-  useEffect(() => {
-    // Only fetch if authenticated
-    if (isAuthenticated && !authLoading) {
-      fetchDashboardStats()
-    } else if (!authLoading && !isAuthenticated) {
+  // Fetch dashboard stats with caching
+  const fetchDashboardStats = useCallback(async (isBackgroundRefresh = false) => {
+    console.log('🔍 [PROGRAM CHAIR] fetchDashboardStats starting')
+    setError(null)
+    
+    // Check sessionStorage first for instant display
+    const sessionCached = safeGetItem(SESSION_CACHE_KEY)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR] Using session cached dashboard stats')
+      setStats(sessionCached)
       setLoading(false)
+      setInitialLoadComplete(true)
+      // Continue to fetch fresh data in background
+    } else {
+      if (!isBackgroundRefresh) {
+        setLoading(true)
+      }
     }
-  }, [isAuthenticated, authLoading])
-
-  const fetchDashboardStats = async () => {
-    setLoading(true)
+    
+    // Check enhanced cache
+    const cachedData = getCachedData('analytics', PROGRAM_CHAIR_DASHBOARD_CACHE_KEY, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR] Using enhanced cached dashboard stats')
+      setStats(cachedData)
+      setLoading(false)
+      setInitialLoadComplete(true)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(SESSION_CACHE_KEY, cachedData, minimizeAnalyticsData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController()
+    
     try {
+      if (!isBackgroundRefresh && !sessionCached && !cachedData) {
+        setLoading(true)
+      }
+      
+      console.log('🔄 [PROGRAM CHAIR] Fetching fresh dashboard stats...')
       // Fetch all data in parallel
       const [classesRes, studentsRes, facultyRes, termsRes, analyticsRes] = await Promise.all([
-        fetch('/api/section-courses/assigned'),
-        fetch('/api/students'),
-        fetch('/api/users?role=FACULTY'),
-        fetch('/api/school-terms'),
-        fetch('/api/assessments/dean-analytics/sample')
+        fetch(`${API_BASE_URL}/section-courses/assigned`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/students`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/users?role=FACULTY`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/school-terms`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        })
       ])
 
       // Process classes
@@ -149,7 +231,7 @@ const Home = () => {
         }
       }
 
-      setStats({
+      const newStats = {
         totalStudents: studentsCount,
         totalClasses: classesCount,
         totalFaculty: facultyCount,
@@ -157,22 +239,66 @@ const Home = () => {
         avgScore: avgScore.toFixed(1),
         studentsAtRisk: studentsAtRisk,
         activeTerm: activeTerm
-      })
+      }
+      
+      console.log(`✅ [PROGRAM CHAIR] Received dashboard stats`)
+      
+      // Update stats with fresh data
+      setStats(newStats)
+      
+      // Store minimized data in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(SESSION_CACHE_KEY, newStats, minimizeAnalyticsData)
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('analytics', PROGRAM_CHAIR_DASHBOARD_CACHE_KEY, newStats)
       
       setInitialLoadComplete(true)
       
+      if (isBackgroundRefresh) {
+        console.log('✅ [PROGRAM CHAIR] Background refresh completed')
+        setRefreshing(false)
+      }
+      
       // Prefetch data for other pages in the background (non-blocking)
-      // Use setTimeout to ensure it doesn't block the current page render
       setTimeout(() => {
-        console.log('🚀 [ProgramChairDashboard] Starting async prefetch after initial data load')
+        console.log('🚀 [PROGRAM CHAIR] Starting async prefetch after initial data load')
         prefetchProgramChairData()
-      }, 500) // Wait 500ms after main data loads to start prefetching
+      }, 500)
+      
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
+      if (error.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR] Request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR] Error fetching dashboard stats:', error)
+      const sessionCached = safeGetItem(SESSION_CACHE_KEY)
+      const cachedData = getCachedData('analytics', PROGRAM_CHAIR_DASHBOARD_CACHE_KEY, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setError(error.message)
+      }
     } finally {
       setLoading(false)
+      setInitialLoadComplete(true)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Only fetch if authenticated
+    if (isAuthenticated && !authLoading) {
+      fetchDashboardStats(false)
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false)
+    }
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [isAuthenticated, authLoading, fetchDashboardStats])
 
   // Show loading or auth check
   if (authLoading) {
@@ -198,62 +324,7 @@ const Home = () => {
   }
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Key Statistics Cards Skeleton (Top Row) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
-                    <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-32"></div>
-                  </div>
-                  <div className="h-14 w-14 bg-gray-200 rounded-full"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Performance Overview Cards Skeleton (Second Row) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="h-4 bg-gray-200 rounded w-28"></div>
-                  <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
-                </div>
-                <div className="h-7 bg-gray-200 rounded w-20 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-24"></div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quick Access Section Skeleton */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-gray-50 rounded-lg border border-gray-200 p-4 animate-pulse">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1">
-                      <div className="h-12 w-12 bg-gray-200 rounded-lg"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-20"></div>
-                      </div>
-                    </div>
-                    <div className="h-5 w-5 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <DashboardSkeleton showQuickAccess={true} />
   }
 
   return (

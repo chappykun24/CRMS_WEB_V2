@@ -1,9 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
 import { enhancedApi } from '../../utils/api'
 import { TableSkeleton, ListSkeleton, StudentListSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
+import programChairCacheService from '../../services/programChairCacheService'
+import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+
+// Cache helpers
+const getCachedData = createCacheGetter(programChairCacheService)
+const setCachedData = createCacheSetter(programChairCacheService)
 
 const TabButton = ({ isActive, onClick, children }) => (
   <button
@@ -38,8 +44,15 @@ const CourseManagement = () => {
   const [createModalType, setCreateModalType] = useState('') // 'program', 'specialization', 'course'
   const [isEditMode, setIsEditMode] = useState(false)
   const [editIds, setEditIds] = useState({ programId: null, specializationId: null, courseId: null })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [showGeneralSubjects, setShowGeneralSubjects] = useState(false)
+  
+  // Abort controllers for request cancellation
+  const programsAbortControllerRef = useRef(null)
+  const termsAbortControllerRef = useRef(null)
+  const specializationsAbortControllerRef = useRef(null)
+  const coursesAbortControllerRef = useRef(null)
+  const studentsAbortControllerRef = useRef(null)
   
   // Student-related state
   const [students, setStudents] = useState([])
@@ -128,25 +141,88 @@ const CourseManagement = () => {
     })
   }
 
-  // Handle course selection and load students
-  const handleCourseSelect = async (course) => {
+  // Handle course selection and load students - lazy load ONLY when course is clicked
+  const handleCourseSelect = useCallback(async (course) => {
     setSelectedCourse(course)
-    setLoadingStudents(true)
+    
+    // Check sessionStorage first for instant display
+    const courseId = course.course_id
+    const sessionCacheKey = `program_chair_students_${courseId}_session`
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using session cached students')
+      setStudents(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const studentsCacheKey = `program_chair_students_${courseId}`
+    const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000) // 10 minute cache
+    
+    if (cachedStudents && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using enhanced cached students')
+      setStudents(Array.isArray(cachedStudents) ? cachedStudents : [])
+      safeSetItem(sessionCacheKey, cachedStudents)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Only show loading if no cache available
+    if (!sessionCached && !cachedStudents) {
+      setLoadingStudents(true)
+    }
+    
+    // Cancel previous request if still pending
+    if (studentsAbortControllerRef.current) {
+      studentsAbortControllerRef.current.abort()
+    }
+    
+    studentsAbortControllerRef.current = new AbortController()
     
     try {
+      console.log(`🔄 [PROGRAM CHAIR COURSES] Fetching students for course ${courseId}...`)
       // For now, we'll use a placeholder since we need section_course_id
       // In a real implementation, you'd need to get the section_course_id for this course
-      const response = await fetch(`/api/section-courses/${course.course_id}/students`)
-      if (!response.ok) throw new Error(`Failed to fetch students: ${response.status}`)
+      const response = await fetch(`/api/section-courses/${courseId}/students`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: studentsAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch students: ${response.status}`)
+      }
+      
       const studentData = await response.json()
-      setStudents(Array.isArray(studentData) ? studentData : [])
+      console.log(`✅ [PROGRAM CHAIR COURSES] Received ${Array.isArray(studentData) ? studentData.length : 0} students`)
+      const studentsData = Array.isArray(studentData) ? studentData : []
+      setStudents(studentsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, studentsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('students', studentsCacheKey, studentsData)
     } catch (error) {
-      console.error('Error loading students:', error)
-      setStudents([])
+      if (error.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR COURSES] Students request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR COURSES] Error loading students:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000)
+      if (!sessionCached && !cachedStudents) {
+        setStudents([])
+      }
     } finally {
       setLoadingStudents(false)
     }
-  }
+  }, [])
 
   // Handle opening students modal - fetch available students
   const handleOpenStudentsModal = async () => {
@@ -370,19 +446,134 @@ const CourseManagement = () => {
     window.dispatchEvent(event)
   }
 
-  // Load base data
+  // Load programs with caching
+  const loadPrograms = useCallback(async () => {
+    console.log('🔍 [PROGRAM CHAIR COURSES] loadPrograms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'program_chair_programs_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using session cached programs')
+      setPrograms(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'program_chair_programs'
+    const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using enhanced cached programs')
+      setPrograms(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (programsAbortControllerRef.current) {
+      programsAbortControllerRef.current.abort()
+    }
+    
+    programsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [PROGRAM CHAIR COURSES] Fetching fresh programs...')
+      const prog = await enhancedApi.getPrograms()
+      const programsData = Array.isArray(prog) ? prog : []
+      console.log(`✅ [PROGRAM CHAIR COURSES] Received ${programsData.length} programs`)
+      setPrograms(programsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, programsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('programs', cacheKey, programsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR COURSES] Programs request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR COURSES] Error loading programs:', e)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setErrorMessage(e.message || 'Failed to load programs')
+        setShowErrorModal(true)
+      }
+    }
+  }, [])
+
+  // Load terms with caching
+  const loadTerms = useCallback(async () => {
+    console.log('🔍 [PROGRAM CHAIR COURSES] loadTerms starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = 'program_chair_terms_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using session cached terms')
+      setTerms(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = 'program_chair_terms'
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using enhanced cached terms')
+      setTerms(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (termsAbortControllerRef.current) {
+      termsAbortControllerRef.current.abort()
+    }
+    
+    termsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [PROGRAM CHAIR COURSES] Fetching fresh terms...')
+      const term = await enhancedApi.getTerms()
+      const termsData = Array.isArray(term) ? term : []
+      console.log(`✅ [PROGRAM CHAIR COURSES] Received ${termsData.length} terms`)
+      setTerms(termsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, termsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('terms', cacheKey, termsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR COURSES] Terms request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR COURSES] Error loading terms:', e)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setErrorMessage(e.message || 'Failed to load terms')
+        setShowErrorModal(true)
+      }
+    }
+  }, [])
+
+  // Load base data on mount
   useEffect(() => {
     const loadBase = async () => {
       try {
         setLoading(true)
-        
-        const [prog, term] = await Promise.all([
-          enhancedApi.getPrograms(),
-          enhancedApi.getTerms()
-        ])
-        setPrograms(Array.isArray(prog) ? prog : [])
-        setTerms(Array.isArray(term) ? term : [])
+        await Promise.all([loadPrograms(), loadTerms()])
       } catch (e) {
+        console.error('❌ [PROGRAM CHAIR COURSES] Error loading base data:', e)
         setErrorMessage(e.message || 'Failed to load base data')
         setShowErrorModal(true)
       } finally {
@@ -398,7 +589,26 @@ const CourseManagement = () => {
     setTimeout(() => {
       prefetchProgramChairData()
     }, 1000)
-  }, [])
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (programsAbortControllerRef.current) {
+        programsAbortControllerRef.current.abort()
+      }
+      if (termsAbortControllerRef.current) {
+        termsAbortControllerRef.current.abort()
+      }
+      if (specializationsAbortControllerRef.current) {
+        specializationsAbortControllerRef.current.abort()
+      }
+      if (coursesAbortControllerRef.current) {
+        coursesAbortControllerRef.current.abort()
+      }
+      if (studentsAbortControllerRef.current) {
+        studentsAbortControllerRef.current.abort()
+      }
+    }
+  }, [loadPrograms, loadTerms])
 
   // Listen for reset program selection event from header
   useEffect(() => {
@@ -422,67 +632,170 @@ const CourseManagement = () => {
     }
   }, [])
 
-  // Load specializations when program changes
-  useEffect(() => {
-    const loadSpecs = async () => {
-      try {
-        setLoading(true)
-        const list = await enhancedApi.getSpecializations(
-          selectedProgramId ? Number(selectedProgramId) : undefined
-        )
-        setSpecializations(Array.isArray(list) ? list : [])
-        
-        // Log what specializations we got
-        console.log('📋 Loaded specializations:', {
-          total: list?.length || 0,
-          programId: selectedProgramId
-        })
-      } catch (e) {
+  // Load specializations with caching - lazy load ONLY when program is selected
+  const loadSpecializations = useCallback(async (programId) => {
+    if (!programId) {
+      setSpecializations([])
+      return
+    }
+    
+    console.log('🔍 [PROGRAM CHAIR COURSES] loadSpecializations starting for program:', programId)
+    
+    // Check sessionStorage first
+    const sessionCacheKey = `program_chair_specializations_${programId}_session`
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using session cached specializations')
+      setSpecializations(Array.isArray(sessionCached) ? sessionCached : [])
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const cacheKey = `program_chair_specializations_${programId}`
+    const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using enhanced cached specializations')
+      setSpecializations(Array.isArray(cachedData) ? cachedData : [])
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (specializationsAbortControllerRef.current) {
+      specializationsAbortControllerRef.current.abort()
+    }
+    
+    specializationsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [PROGRAM CHAIR COURSES] Fetching fresh specializations...')
+      const list = await enhancedApi.getSpecializations(Number(programId))
+      const specializationsData = Array.isArray(list) ? list : []
+      console.log(`✅ [PROGRAM CHAIR COURSES] Received ${specializationsData.length} specializations`)
+      setSpecializations(specializationsData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, specializationsData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('programs', cacheKey, specializationsData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR COURSES] Specializations request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR COURSES] Error loading specializations:', e)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('programs', cacheKey, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
         setErrorMessage(e.message || 'Failed to load specializations')
         setShowErrorModal(true)
-      } finally {
-        setLoading(false)
       }
     }
-    loadSpecs()
+  }, [])
+
+  // Load specializations when program changes
+  useEffect(() => {
+    if (selectedProgramId) {
+      loadSpecializations(selectedProgramId)
+    } else {
+      setSpecializations([])
+    }
     // Reset specialization and courses when program changes
     setSelectedSpecializationId('')
     setSelectedCourse(null)
-  }, [selectedProgramId])
+  }, [selectedProgramId, loadSpecializations])
 
-  // Load courses function - defined outside useEffect so it can be called from other places
-    const loadCourses = async () => {
-      try {
-        setLoading(true)
+  // Load courses with caching - lazy load ONLY when program/term is selected
+  const loadCourses = useCallback(async () => {
+    if (!selectedProgramId) {
+      setCourses([])
+      return
+    }
+    
+    console.log('🔍 [PROGRAM CHAIR COURSES] loadCourses starting')
+    
+    // Check sessionStorage first
+    const sessionCacheKey = `program_chair_courses_${selectedProgramId}_${selectedTermId || 'all'}_session`
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using session cached courses')
+      setCourses(Array.isArray(sessionCached) ? sessionCached : [])
+      setLoading(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true)
+    }
+    
+    // Check enhanced cache
+    const cacheKey = `program_chair_courses_${selectedProgramId}_${selectedTermId || 'all'}`
+    const cachedData = getCachedData('courses', cacheKey, 5 * 60 * 1000) // 5 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR COURSES] Using enhanced cached courses')
+      setCourses(Array.isArray(cachedData) ? cachedData : [])
+      setLoading(false)
+      safeSetItem(sessionCacheKey, cachedData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (coursesAbortControllerRef.current) {
+      coursesAbortControllerRef.current.abort()
+    }
+    
+    coursesAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [PROGRAM CHAIR COURSES] Fetching fresh courses...')
       // Always fetch ALL courses for the program, regardless of specialization selection
       // We'll filter them on the frontend instead
-        const list = await enhancedApi.getCourses({
-          programId: selectedProgramId ? Number(selectedProgramId) : undefined,
+      const list = await enhancedApi.getCourses({
+        programId: selectedProgramId ? Number(selectedProgramId) : undefined,
         // Remove specializationId filter - we want ALL courses for the program
-          termId: selectedTermId ? Number(selectedTermId) : undefined
-        })
-        setCourses(Array.isArray(list) ? list : [])
-      
-      // Log what courses we got
-      console.log('📥 LOADED COURSES:', {
-        total: list?.length || 0,
-        programId: selectedProgramId,
-        termId: selectedTermId,
-        note: 'Loaded ALL courses for program (filtering on frontend)'
+        termId: selectedTermId ? Number(selectedTermId) : undefined
       })
-      } catch (e) {
+      const coursesData = Array.isArray(list) ? list : []
+      console.log(`✅ [PROGRAM CHAIR COURSES] Received ${coursesData.length} courses`)
+      setCourses(coursesData)
+      
+      // Store in sessionStorage
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, coursesData)
+      }
+      
+      // Store in enhanced cache
+      setCachedData('courses', cacheKey, coursesData)
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR COURSES] Courses request was aborted')
+        return
+      }
+      console.error('❌ [PROGRAM CHAIR COURSES] Error loading courses:', e)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('courses', cacheKey, 5 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
         setErrorMessage(e.message || 'Failed to load courses')
         setShowErrorModal(true)
-      } finally {
-        setLoading(false)
+        setCourses([])
       }
+    } finally {
+      setLoading(false)
     }
+  }, [selectedProgramId, selectedTermId])
 
   // Load courses when any filter changes
   useEffect(() => {
-    loadCourses()
+    if (selectedProgramId) {
+      loadCourses()
+    } else {
+      setCourses([])
+    }
     setSelectedCourse(null)
-  }, [selectedProgramId, selectedTermId]) // Removed selectedSpecializationId dependency
+  }, [selectedProgramId, selectedTermId, loadCourses]) // Removed selectedSpecializationId dependency
 
   // Filtered views for current tab and search
   const filteredPrograms = useMemo(() => {
@@ -1543,3 +1856,4 @@ const CourseManagement = () => {
 }
 
 export default CourseManagement
+
