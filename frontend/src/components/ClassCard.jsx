@@ -42,7 +42,7 @@ const ClassCard = ({
     >
       {/* Banner */}
       <div className="relative h-24" style={{ 
-        backgroundColor: bannerType === 'color' ? bannerColor : 'transparent',
+        backgroundColor: bannerType === 'color' ? bannerColor : (bannerColor || 'transparent'),
         backgroundImage: bannerType === 'image' && bannerImage ? `url(${bannerImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center'

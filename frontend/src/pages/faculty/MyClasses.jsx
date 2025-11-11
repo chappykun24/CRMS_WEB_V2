@@ -1900,6 +1900,7 @@ const MyClasses = () => {
                           onChange={(e) => {
                             const file = e.target.files[0];
                             if (file) {
+                              // Show loading state - keep the last color visible
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 setEditFormData(prev => ({ 
@@ -1918,7 +1919,17 @@ const MyClasses = () => {
                               src={editFormData.bannerImage} 
                               alt="Banner preview" 
                               className="w-full h-20 object-cover rounded-md"
+                              style={{ backgroundColor: editFormData.bannerColor || '#3B82F6' }}
+                              onError={(e) => {
+                                // If image fails to load, fallback to color
+                                e.target.style.display = 'none';
+                              }}
                             />
+                          </div>
+                        )}
+                        {!editFormData.bannerImage && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Current color will be shown as background while image loads
                           </div>
                         )}
                       </div>

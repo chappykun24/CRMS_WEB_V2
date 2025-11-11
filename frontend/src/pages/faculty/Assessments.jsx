@@ -19,7 +19,8 @@ import {
   ClipboardDocumentListIcon,
   UserGroupIcon,
   ClipboardDocumentCheckIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/solid'
 
 const Assessments = () => {
@@ -112,6 +113,29 @@ const Assessments = () => {
   const [savedGradesCount, setSavedGradesCount] = useState(0)
   const [gradingLoading, setGradingLoading] = useState(false)
   const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
+  
+  // Assessment menu state
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const menuRefs = useRef({})
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openMenuId && menuRefs.current[openMenuId]) {
+        if (!menuRefs.current[openMenuId].contains(event.target)) {
+          setOpenMenuId(null)
+        }
+      }
+    }
+    
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openMenuId])
   
   // Cached students list for fast switching between assessments (like attendance)
   const [cachedStudentsList, setCachedStudentsList] = useState(null)
@@ -1348,6 +1372,20 @@ const Assessments = () => {
                             <PlusIcon className="h-5 w-5" />
                           </button>
                         </div>
+                        
+                        {/* Total Weights and Points Summary */}
+                        {filteredAssessments.length > 0 && (
+                          <div className="mb-4 flex items-center gap-4 text-sm flex-shrink-0">
+                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
+                              <span className="text-gray-600 font-medium">Total Weight: </span>
+                              <span className="text-gray-900 font-semibold">{totalWeight.toFixed(2)}%</span>
+                            </div>
+                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
+                              <span className="text-gray-600 font-medium">Total Points: </span>
+                              <span className="text-gray-900 font-semibold">{totalPoints}</span>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -1373,7 +1411,7 @@ const Assessments = () => {
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-12"></th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1389,7 +1427,7 @@ const Assessments = () => {
                                       </td>
                                       <td className="px-4 py-5">
                                         <div className="flex justify-center">
-                                          <div className="h-6 bg-gray-200 rounded-md w-20 skeleton"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-16 skeleton"></div>
                                         </div>
                                       </td>
                                       <td className="px-4 py-5">
@@ -1407,9 +1445,7 @@ const Assessments = () => {
                                         </div>
                                       </td>
                                       <td className="px-6 py-5">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
-                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
+                                        <div className="flex items-center justify-center">
                                           <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
                                         </div>
                                       </td>
@@ -1462,7 +1498,7 @@ const Assessments = () => {
                                       </td>
                                       <td className="px-4 py-5">
                                         <div className="flex justify-center">
-                                          <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                          <span className="text-xs text-gray-700 font-medium">
                                             {assessment.type}
                                           </span>
                                         </div>
@@ -1494,38 +1530,63 @@ const Assessments = () => {
                                         </div>
                                       </td>
                                       <td className="px-6 py-5">
-                                        <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                          <button 
-                                            onClick={() => openEditModal(assessment)} 
-                                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                            title="Edit"
-                                          >
-                                            <PencilIcon className="h-4 w-4" />
-                                          </button>
-                                          {assessment.is_published ? (
-                                            <button 
-                                              onClick={() => handleUnpublishAssessment(assessment.assessment_id)} 
-                                              className="p-1.5 text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors"
-                                              title="Unpublish"
+                                        <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                                          <div className="relative" ref={el => menuRefs.current[assessment.assessment_id] = el}>
+                                            <button
+                                              onClick={() => setOpenMenuId(openMenuId === assessment.assessment_id ? null : assessment.assessment_id)}
+                                              className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                                              title="More options"
                                             >
-                                              <XMarkIcon className="h-4 w-4" />
+                                              <EllipsisVerticalIcon className="h-5 w-5" />
                                             </button>
-                                          ) : (
-                                            <button 
-                                              onClick={() => handlePublishAssessment(assessment.assessment_id)} 
-                                              className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                                              title="Publish"
-                                            >
-                                              <CheckIcon className="h-4 w-4" />
-                                            </button>
-                                          )}
-                                          <button 
-                                            onClick={() => handleDeleteAssessment(assessment.assessment_id)} 
-                                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                            title="Delete"
-                                          >
-                                            <TrashIcon className="h-4 w-4" />
-                                          </button>
+                                            {openMenuId === assessment.assessment_id && (
+                                              <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuId(null)
+                                                    openEditModal(assessment)
+                                                  }}
+                                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                >
+                                                  <PencilIcon className="h-4 w-4" />
+                                                  Edit
+                                                </button>
+                                                {assessment.is_published ? (
+                                                  <button
+                                                    onClick={() => {
+                                                      setOpenMenuId(null)
+                                                      handleUnpublishAssessment(assessment.assessment_id)
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                  >
+                                                    <XMarkIcon className="h-4 w-4" />
+                                                    Unpublish
+                                                  </button>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => {
+                                                      setOpenMenuId(null)
+                                                      handlePublishAssessment(assessment.assessment_id)
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                  >
+                                                    <CheckIcon className="h-4 w-4" />
+                                                    Publish
+                                                  </button>
+                                                )}
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuId(null)
+                                                    handleDeleteAssessment(assessment.assessment_id)
+                                                  }}
+                                                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                >
+                                                  <TrashIcon className="h-4 w-4" />
+                                                  Delete
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
                                       </td>
                                     </tr>
