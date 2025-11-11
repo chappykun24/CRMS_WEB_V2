@@ -153,7 +153,6 @@ const Assessments = () => {
     title: '',
     description: '',
     type: 'Quiz',
-    category: 'Formative',
     total_points: 100,
     weight_percentage: 25,
     due_date: '',
@@ -794,7 +793,6 @@ const Assessments = () => {
       title: assessment.title,
       description: assessment.description || '',
       type: assessment.type,
-      category: assessment.category || 'Formative',
       total_points: assessment.total_points,
       weight_percentage: assessment.weight_percentage,
       due_date: assessment.due_date ? assessment.due_date.split('T')[0] : '',
@@ -815,7 +813,6 @@ const Assessments = () => {
       title: '',
       description: '',
       type: 'Quiz',
-      category: 'Formative',
       total_points: 100,
       weight_percentage: 25,
       due_date: '',
@@ -2097,6 +2094,48 @@ const Assessments = () => {
               <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Assessment</h2>
               
               <form onSubmit={handleCreateAssessment} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Syllabus (Optional)
+                    {assessmentComponents.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600">✓ Framework loaded</span>
+                    )}
+                  </label>
+                  <select
+                    name="syllabus_id"
+                    value={formData.syllabus_id}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">No syllabus linked</option>
+                    {syllabi.length === 0 ? (
+                      <option value="" disabled>No approved syllabi available</option>
+                    ) : (
+                      syllabi.map((syllabus) => (
+                        <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
+                          {syllabus.title} (v{syllabus.version}) - Approved
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Link this assessment to an approved syllabus to connect it with ILOs and course outcomes. 
+                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework.
+                  </p>
+                  {assessmentComponents.length > 0 && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                      <strong>Available assessment types from syllabus:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {assessmentComponents.map((comp, index) => (
+                          <li key={index}>
+                            {comp.type}: {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -2194,7 +2233,7 @@ const Assessments = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Total Points</label>
                     <input
@@ -2241,20 +2280,6 @@ const Assessments = () => {
                       </p>
                     )}
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="Formative">Formative</option>
-                      <option value="Summative">Summative</option>
-                      <option value="Diagnostic">Diagnostic</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2293,6 +2318,36 @@ const Assessments = () => {
                   />
                 </div>
 
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create Assessment'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Assessment Modal */}
+      {showEditModal && editingAssessment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Assessment</h2>
+              
+              <form onSubmit={handleEditAssessment} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Syllabus (Optional)
@@ -2335,36 +2390,6 @@ const Assessments = () => {
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Creating...' : 'Create Assessment'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Assessment Modal */}
-      {showEditModal && editingAssessment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Assessment</h2>
-              
-              <form onSubmit={handleEditAssessment} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -2460,7 +2485,7 @@ const Assessments = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Total Points</label>
                     <input
@@ -2507,20 +2532,6 @@ const Assessments = () => {
                       </p>
                     )}
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="Formative">Formative</option>
-                      <option value="Summative">Summative</option>
-                      <option value="Diagnostic">Diagnostic</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2556,48 +2567,6 @@ const Assessments = () => {
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Syllabus (Optional)
-                    {assessmentComponents.length > 0 && (
-                      <span className="ml-2 text-xs text-green-600">✓ Framework loaded</span>
-                    )}
-                  </label>
-                  <select
-                    name="syllabus_id"
-                    value={formData.syllabus_id}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="">No syllabus linked</option>
-                    {syllabi.length === 0 ? (
-                      <option value="" disabled>No approved syllabi available</option>
-                    ) : (
-                      syllabi.map((syllabus) => (
-                        <option key={syllabus.syllabus_id} value={syllabus.syllabus_id}>
-                          {syllabus.title} (v{syllabus.version}) - Approved
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Link this assessment to an approved syllabus to connect it with ILOs and course outcomes. 
-                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework.
-                  </p>
-                  {assessmentComponents.length > 0 && (
-                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                      <strong>Available assessment types from syllabus:</strong>
-                      <ul className="list-disc list-inside mt-1">
-                        {assessmentComponents.map((comp, index) => (
-                          <li key={index}>
-                            {comp.type}: {comp.weight}% {comp.count ? `(${comp.count} ${comp.count === 1 ? 'item' : 'items'})` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
