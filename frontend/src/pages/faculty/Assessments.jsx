@@ -1363,144 +1363,176 @@ const Assessments = () => {
                       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                         {loading ? (
                           <div className="flex-1 overflow-y-auto min-h-0">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Points
-                                  </th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Weight
-                                  </th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <tr key={i} className="hover:bg-gray-50">
-                                    <td className="px-8 py-4">
-                                      <div className="flex items-center">
-                                        <div className="flex-shrink-0 h-10 w-10">
-                                          <div className="h-10 w-10 rounded-lg bg-gray-200 skeleton"></div>
-                                        </div>
-                                        <div className="ml-4">
-                                          <div className="h-4 bg-gray-200 rounded w-32 skeleton mb-2"></div>
-                                          <div className="h-3 bg-gray-100 rounded w-24 skeleton"></div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="h-4 bg-gray-200 rounded w-8 skeleton"></div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="h-4 bg-gray-200 rounded w-20 skeleton"></div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="h-6 bg-gray-200 rounded-full w-16 skeleton"></div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="flex items-center space-x-2">
-                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                        <div className="h-4 w-4 bg-gray-200 rounded skeleton"></div>
-                                      </div>
-                                    </td>
+                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                              <table className="min-w-full">
+                                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Points</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                  {Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="border-b border-gray-100 last:border-b-0">
+                                      <td className="px-6 py-5">
+                                        <div className="flex items-start">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="h-4 bg-gray-200 rounded w-40 skeleton mb-2"></div>
+                                            <div className="h-3 bg-gray-100 rounded w-32 skeleton"></div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="flex justify-center">
+                                          <div className="h-6 bg-gray-200 rounded-md w-20 skeleton"></div>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="h-4 bg-gray-200 rounded w-20 skeleton mx-auto"></div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="flex justify-center">
+                                          <div className="h-6 bg-gray-200 rounded-md w-16 skeleton"></div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-5">
+                                        <div className="flex items-center justify-center gap-2">
+                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
+                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
+                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         ) : filteredAssessments.length > 0 ? (
                           <div className="flex-1 overflow-y-auto min-h-0">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Points
-                                  </th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Weight
-                                  </th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                  <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredAssessments.map((assessment) => (
-                                  <tr 
-                                    key={assessment.assessment_id} 
-                                    onClick={() => handleAssessmentSelect(assessment)}
-                                    className="hover:bg-gray-50 cursor-pointer"
-                                  >
-                                    <td className="px-6 py-4">
-                                      <div>
-                                        <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
-                                        <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
-                                        {assessment.syllabus_version && (
-                                          <div className="text-xs mt-1">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                              assessment.syllabus_approval_status === 'approved' 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                              v{assessment.syllabus_version}
-                                              {assessment.syllabus_approval_status !== 'approved' && (
-                                                <span className="ml-1 text-xs">- {assessment.syllabus_approval_status || 'Pending Approval'}</span>
-                                              )}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {assessment.type}
-                                      </span>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="text-sm text-gray-900">{assessment.total_points}</div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="text-sm text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}%</div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="text-sm text-gray-900">
-                                        {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : '—'}
-                                      </div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assessment.status)}`}>
-                                        {assessment.status}
-                                      </span>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                      <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-                                        <button onClick={() => openEditModal(assessment)} className="text-red-600 hover:text-red-900"><PencilIcon className="h-4 w-4" /></button>
-                                        {assessment.is_published ? (
-                                          <button onClick={() => handleUnpublishAssessment(assessment.assessment_id)} className="text-yellow-600 hover:text-yellow-900"><XMarkIcon className="h-4 w-4" /></button>
-                                        ) : (
-                                          <button onClick={() => handlePublishAssessment(assessment.assessment_id)} className="text-green-600 hover:text-green-900"><CheckIcon className="h-4 w-4" /></button>
-                                        )}
-                                        <button onClick={() => handleDeleteAssessment(assessment.assessment_id)} className="text-red-600 hover:text-red-900"><TrashIcon className="h-4 w-4" /></button>
-                                      </div>
-                                    </td>
+                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                              <table className="min-w-full">
+                                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
+                                  <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Points</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                  {filteredAssessments.map((assessment, index) => (
+                                    <tr 
+                                      key={assessment.assessment_id} 
+                                      onClick={() => handleAssessmentSelect(assessment)}
+                                      className="hover:bg-red-50/30 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                                    >
+                                      <td className="px-6 py-5">
+                                        <div className="flex items-start">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <h3 className="text-sm font-semibold text-gray-900 truncate">{assessment.title}</h3>
+                                              {assessment.syllabus_version && (
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
+                                                  assessment.syllabus_approval_status === 'approved' 
+                                                    ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                    : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                }`}>
+                                                  v{assessment.syllabus_version}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{assessment.description || 'No description'}</p>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="flex justify-center">
+                                          <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                            {assessment.type}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="text-center">
+                                          <span className="text-sm font-semibold text-gray-900">{assessment.total_points}</span>
+                                          <span className="text-xs text-gray-500 ml-1">pts</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="text-center">
+                                          <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
+                                          <span className="text-xs text-gray-500 ml-1">%</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="text-center">
+                                          <span className="text-sm text-gray-700">
+                                            {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="flex justify-center">
+                                          <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
+                                            {assessment.status}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-5">
+                                        <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                          <button 
+                                            onClick={() => openEditModal(assessment)} 
+                                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Edit"
+                                          >
+                                            <PencilIcon className="h-4 w-4" />
+                                          </button>
+                                          {assessment.is_published ? (
+                                            <button 
+                                              onClick={() => handleUnpublishAssessment(assessment.assessment_id)} 
+                                              className="p-1.5 text-gray-600 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors"
+                                              title="Unpublish"
+                                            >
+                                              <XMarkIcon className="h-4 w-4" />
+                                            </button>
+                                          ) : (
+                                            <button 
+                                              onClick={() => handlePublishAssessment(assessment.assessment_id)} 
+                                              className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                                              title="Publish"
+                                            >
+                                              <CheckIcon className="h-4 w-4" />
+                                            </button>
+                                          )}
+                                          <button 
+                                            onClick={() => handleDeleteAssessment(assessment.assessment_id)} 
+                                            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Delete"
+                                          >
+                                            <TrashIcon className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         ) : (
                           <div className="flex-1 flex items-center justify-center py-16">
