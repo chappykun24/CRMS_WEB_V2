@@ -110,17 +110,22 @@ router.post('/submit-grades', async (req, res) => {
 });
 
 // GET /api/grading/assessment/:id/grades - Get all grades for an assessment
+// Memory optimization: Exclude photos by default (photos are large base64 strings)
 router.get('/assessment/:id/grades', async (req, res) => {
   const { id } = req.params;
+  const includePhotos = req.query.includePhotos === 'true';
   
   try {
+    // Exclude photos by default to save memory
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
+    
     const query = `
       SELECT 
         s.student_id,
         s.student_number,
         s.full_name,
         s.contact_email,
-        s.student_photo,
+        ${photoField},
         ce.enrollment_id,
         sub.submission_id,
         sub.total_score,
@@ -272,10 +277,15 @@ router.get('/class/:sectionCourseId/summary', async (req, res) => {
 });
 
 // GET /api/grading/class/:sectionCourseId/student-grades - Get all students with their total grades for a class
+// Memory optimization: Exclude photos by default (photos are large base64 strings)
 router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
   const { sectionCourseId } = req.params;
+  const includePhotos = req.query.includePhotos === 'true';
   
   try {
+    // Exclude photos by default to save memory
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
+    
     const query = `
       WITH student_assessments AS (
         SELECT 
@@ -283,7 +293,7 @@ router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
           ce.student_id,
           s.student_number,
           s.full_name,
-          s.student_photo,
+          ${photoField},
           a.assessment_id,
           a.title as assessment_title,
           a.total_points,
@@ -324,17 +334,23 @@ router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
 });
 
 // GET /api/grading/class/:sectionCourseId/assessment-scores - Get all students with their scores for each assessment
+// Memory optimization: Exclude photos by default (photos are large base64 strings)
+// Use ?includePhotos=true to include photos, or fetch photos separately
 router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
   const { sectionCourseId } = req.params;
+  const includePhotos = req.query.includePhotos === 'true';
   
   try {
+    // Exclude photos by default to save memory
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
+    
     const query = `
       SELECT 
         ce.enrollment_id,
         ce.student_id,
         s.student_number,
         s.full_name,
-        s.student_photo,
+        ${photoField},
         a.assessment_id,
         a.title as assessment_title,
         a.type as assessment_type,

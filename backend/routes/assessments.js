@@ -330,10 +330,15 @@ router.delete('/:id', async (req, res) => {
 });
 
 // GET /api/assessments/:id/students - Get students enrolled in the assessment's class
+// Memory optimization: Exclude photos by default (photos are large base64 strings)
 router.get('/:id/students', async (req, res) => {
   const { id } = req.params;
+  const includePhotos = req.query.includePhotos === 'true';
   
   try {
+    // Exclude photos by default to save memory
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
+    
     const query = `
       SELECT 
         ce.enrollment_id,
@@ -341,7 +346,7 @@ router.get('/:id/students', async (req, res) => {
         s.student_number,
         s.full_name,
         s.contact_email,
-        s.student_photo,
+        ${photoField},
         sub.submission_id,
         sub.total_score,
         sub.raw_score,

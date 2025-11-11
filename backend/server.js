@@ -1853,6 +1853,37 @@ app.delete('/api/students/:id', async (req, res) => {
   }
 });
 
+// Get student photo by student_id (memory-efficient endpoint)
+app.get('/api/students/:id/photo', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📸 [STUDENT PHOTO] Fetching photo for student: ${id}`);
+    
+    const result = await db.query(
+      `SELECT student_photo 
+       FROM students 
+       WHERE student_id = $1`,
+      [id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    const photo = result.rows[0].student_photo;
+    if (!photo) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+    
+    // Set cache headers for photo
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    res.json({ photo });
+  } catch (error) {
+    console.error('❌ [STUDENT PHOTO] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Upload student photo (base64)
 app.post('/api/students/upload-photo', async (req, res) => {
   try {
@@ -3041,10 +3072,16 @@ app.post('/api/syllabus/draft', async (req, res) => {
 });
 
 // Students in a section_course
+// Memory optimization: Exclude photos by default (photos are large base64 strings)
+// Use ?includePhotos=true to include photos, or fetch photos separately via /api/students/:id/photo
 app.get('/api/section-courses/:id/students', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🔍 [STUDENTS] Fetching students for section course: ${id}`);
+    const includePhotos = req.query.includePhotos === 'true';
+    console.log(`🔍 [STUDENTS] Fetching students for section course: ${id} (photos: ${includePhotos ? 'included' : 'excluded'})`);
+    
+    // Exclude photos by default to save memory (photos are large base64 strings)
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
     
     const result = await db.query(
       `SELECT 
@@ -3054,7 +3091,7 @@ app.get('/api/section-courses/:id/students', async (req, res) => {
         s.student_id, 
         s.full_name, 
         s.student_number, 
-        s.student_photo
+        ${photoField}
        FROM course_enrollments ce
        JOIN students s ON ce.student_id = s.student_id
        WHERE ce.section_course_id = $1
