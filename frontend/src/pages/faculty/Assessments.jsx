@@ -107,6 +107,10 @@ const Assessments = () => {
   const [originalGrades, setOriginalGrades] = useState({}) // Store original grades for change detection
   const [isSubmittingGrades, setIsSubmittingGrades] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorModalMessage, setErrorModalMessage] = useState('')
+  const [savedGradesCount, setSavedGradesCount] = useState(0)
   const [gradingLoading, setGradingLoading] = useState(false)
   const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
   
@@ -1145,10 +1149,17 @@ const Assessments = () => {
       })
 
       if (response.ok) {
+        const result = await response.json()
+        const savedCount = result.total_graded || gradesArray.length
+        
+        // Show success modal
+        setSavedGradesCount(savedCount)
+        setShowSuccessModal(true)
         setSuccessMessage('Grades saved successfully!')
-        setTimeout(() => setSuccessMessage(''), 3000)
+        
         // Clear error message
         setError('')
+        
         // Update original grades to reflect saved state
         setOriginalGrades(JSON.parse(JSON.stringify(grades)))
         
@@ -1158,13 +1169,24 @@ const Assessments = () => {
           safeSetItem(gradesCacheKey, grades, minimizeGradesData)
           console.log('💾 [GRADING] Updated cache after saving grades')
         }
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setSuccessMessage('')
+        }, 5000)
       } else {
-        const error = await response.json()
-        setError(error.error || 'Failed to save grades')
+        const errorData = await response.json()
+        const errorMsg = errorData.error || 'Failed to save grades'
+        setError(errorMsg)
+        setErrorModalMessage(errorMsg)
+        setShowErrorModal(true)
       }
     } catch (error) {
       console.error('Error submitting grades:', error)
-      setError('Failed to save grades')
+      const errorMsg = error.message || 'Failed to save grades. Please check your connection and try again.'
+      setError(errorMsg)
+      setErrorModalMessage(errorMsg)
+      setShowErrorModal(true)
     } finally {
       setIsSubmittingGrades(false)
     }
@@ -1185,6 +1207,68 @@ const Assessments = () => {
 
   return (
     <>
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSuccessModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full">
+                <CheckIcon className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Grades Saved Successfully!
+            </h3>
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Successfully saved grades for <span className="font-semibold text-gray-900">{savedGradesCount}</span> {savedGradesCount === 1 ? 'student' : 'students'}
+            </p>
+            {selectedAssessment && (
+              <p className="text-xs text-gray-500 text-center mb-6">
+                Assessment: <span className="font-medium">{selectedAssessment.title}</span>
+              </p>
+            )}
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowErrorModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
+                <XMarkIcon className="h-8 w-8 text-red-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Failed to Save Grades
+            </h3>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              {errorModalMessage}
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  setShowErrorModal(false)
+                  setErrorModalMessage('')
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <style>{`
         .assessment-card {
           transition: all 0.2s ease-in-out;
