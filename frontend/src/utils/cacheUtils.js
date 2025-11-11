@@ -44,9 +44,35 @@ export const minimizeStudentData = (students) => {
     student_number: student.student_number,
     full_name: student.full_name,
     contact_email: student.contact_email,
+    classId: student.classId,
     // Exclude student_photo (large base64)
     _has_photo: !!student.student_photo
   }));
+};
+
+/**
+ * Minimize grades data by removing large fields (base64 images)
+ * Only keeps essential grading data
+ */
+export const minimizeGradesData = (gradesMap) => {
+  if (!gradesMap || typeof gradesMap !== 'object') return gradesMap;
+  
+  const minimized = {};
+  Object.entries(gradesMap).forEach(([enrollmentId, gradeData]) => {
+    minimized[enrollmentId] = {
+      enrollment_id: gradeData.enrollment_id,
+      student_name: gradeData.student_name,
+      student_number: gradeData.student_number,
+      raw_score: gradeData.raw_score,
+      late_penalty: gradeData.late_penalty,
+      feedback: gradeData.feedback,
+      submission_status: gradeData.submission_status,
+      due_date: gradeData.due_date,
+      // Exclude student_photo (large base64)
+      _has_photo: !!gradeData.student_photo
+    };
+  });
+  return minimized;
 };
 
 /**

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
-import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData, minimizeGradesData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import LazyImage from '../../components/LazyImage'
 import imageLoaderService from '../../services/imageLoaderService'
@@ -35,11 +35,12 @@ const Assessments = () => {
   // Tab navigation - check location state for default tab
   const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'assessments')
   
-  // Clear assessment grades cache when switching tabs and notify Header
+  // Clear cache when switching tabs/interfaces
   useEffect(() => {
-    // Clear all assessment grades cache when leaving grading tab
+    // Clear grading-related cache when leaving grading tab
     if (activeTab !== 'grading') {
       try {
+        // Clear assessment grades cache (per assessment, can be large)
         const keysToRemove = []
         for (let i = 0; i < sessionStorage.length; i++) {
           const key = sessionStorage.key(i)
@@ -51,8 +52,16 @@ const Assessments = () => {
         if (keysToRemove.length > 0) {
           console.log(`🧹 [CACHE] Cleared ${keysToRemove.length} assessment grades cache entries`)
         }
+        
+        // Clear in-memory grading state (keep students cache for faster re-entry)
+        setGrades({})
+        setOriginalGrades({})
+        setSelectedAssessment(null)
+        setImagesReady(false)
+        
+        console.log('🧹 [CACHE] Cleared in-memory grading state')
       } catch (error) {
-        console.error('Error clearing assessment grades cache:', error)
+        console.error('❌ [CACHE] Error clearing grading cache:', error)
       }
     }
     
@@ -67,6 +76,11 @@ const Assessments = () => {
     }
   }, [activeTab])
   
+  // Update ref when selectedClass changes
+  useEffect(() => {
+    selectedClassRef.current = selectedClass
+  }, [selectedClass])
+
   // Notify Header when selected class changes
   useEffect(() => {
     if (selectedClass) {
@@ -94,6 +108,11 @@ const Assessments = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [gradingLoading, setGradingLoading] = useState(false)
   const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
+  
+  // Cached students list for fast switching between assessments (like attendance)
+  const [cachedStudentsList, setCachedStudentsList] = useState(null)
+  const cachedClassIdRef = useRef(null)
+  const selectedClassRef = useRef(selectedClass)
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -176,14 +195,150 @@ const Assessments = () => {
       loadClasses()
   }, [user, location.state])
 
-  // Load assessments ONLY when class is selected (lazy loading)
+  // Cache students list when class is selected (for fast assessment switching)
   useEffect(() => {
     if (!selectedClass) {
-      // Clear assessments when no class is selected
+      // Clear cache when no class is selected
+      setCachedStudentsList(null)
+      cachedClassIdRef.current = null
+      return
+    }
+    
+    const currentClassId = selectedClass.section_course_id
+    
+    // Only cache if we haven't cached for this class yet
+    if (cachedClassIdRef.current === currentClassId) {
+      return // Already cached for this class
+    }
+    
+    // Check for cached students first
+    const studentsCacheKey = `students_${currentClassId}`
+    const cachedStudents = safeGetItem(studentsCacheKey)
+    
+    if (cachedStudents && Array.isArray(cachedStudents) && cachedStudents.length > 0) {
+      // Verify cached students belong to current class
+      const cachedClassId = cachedStudents[0]?.classId || cachedStudents[0]?.section_course_id
+      if (cachedClassId === currentClassId) {
+        console.log('✅ [GRADING] Using cached students:', cachedStudents.length, 'students')
+        setCachedStudentsList(cachedStudents)
+        cachedClassIdRef.current = currentClassId
+      }
+    }
+    
+    // Fetch students asynchronously in background (non-blocking)
+    loadStudentsForClass(currentClassId, studentsCacheKey)
+  }, [selectedClass?.section_course_id])
+
+  // Load students for a class (async, cached)
+  const loadStudentsForClass = async (sectionCourseId, cacheKey) => {
+    if (!sectionCourseId) return
+    
+    try {
+      const response = await fetch(`/api/section-courses/${sectionCourseId}/students`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (response.ok) {
+        const studentsData = await response.json()
+        const studentsList = Array.isArray(studentsData) ? studentsData : []
+        
+        // Sort by last name
+        studentsList.sort((a, b) => {
+          const lastNameA = extractSurname(a.full_name || '')
+          const lastNameB = extractSurname(b.full_name || '')
+          if (lastNameA !== lastNameB) {
+            return lastNameA.localeCompare(lastNameB)
+          }
+          return (a.full_name || '').localeCompare(b.full_name || '')
+        })
+        
+        // Add class ID to students for verification
+        const studentsWithClassId = studentsList.map(student => ({
+          ...student,
+          classId: sectionCourseId
+        }))
+        
+        setCachedStudentsList(studentsWithClassId)
+        cachedClassIdRef.current = sectionCourseId
+        
+        // Cache students (minimized - without photos)
+        safeSetItem(cacheKey, studentsWithClassId, minimizeStudentData)
+        console.log('💾 [GRADING] Cached students:', studentsWithClassId.length, 'students')
+      }
+    } catch (error) {
+      console.error('❌ [GRADING] Error fetching students:', error)
+    }
+  }
+
+  // Clear cache when switching classes
+  useEffect(() => {
+    if (!selectedClass) {
+      // Clear all cache when no class is selected
       setAssessments([])
       setSelectedAssessment(null)
       setGrades({})
+      setOriginalGrades({})
       setSyllabi([])
+      setCachedStudentsList(null)
+      cachedClassIdRef.current = null
+      setImagesReady(false)
+      
+      // Clear sessionStorage cache for this class
+      try {
+        const keysToRemove = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && (
+            key.startsWith('assessment_grades_') ||
+            key.startsWith('assessments_')
+          )) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key))
+        if (keysToRemove.length > 0) {
+          console.log(`🧹 [CACHE] Cleared ${keysToRemove.length} assessment cache entries`)
+        }
+      } catch (error) {
+        console.error('❌ [CACHE] Error clearing assessment cache:', error)
+      }
+      return
+    }
+    
+    // Clear previous class cache when switching to a new class
+    const currentClassId = selectedClass.section_course_id
+    if (cachedClassIdRef.current && cachedClassIdRef.current !== currentClassId) {
+      console.log('🔄 [CACHE] Switching classes - clearing previous class cache')
+      setCachedStudentsList(null)
+      setGrades({})
+      setOriginalGrades({})
+      setSelectedAssessment(null)
+      setImagesReady(false)
+      
+      // Clear all assessment grades cache (from previous class)
+      try {
+        const keysToRemove = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && key.startsWith('assessment_grades_')) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key))
+        if (keysToRemove.length > 0) {
+          console.log(`🧹 [CACHE] Cleared ${keysToRemove.length} previous class grades cache`)
+        }
+      } catch (error) {
+        console.error('❌ [CACHE] Error clearing previous class cache:', error)
+      }
+    }
+  }, [selectedClass?.section_course_id])
+
+  // Load assessments ONLY when class is selected (lazy loading)
+  useEffect(() => {
+    if (!selectedClass) {
       return
     }
     
@@ -555,108 +710,225 @@ const Assessments = () => {
     }
   }
 
-  // Grading functions - lazy load grades ONLY when assessment is selected
-  const loadGrades = async (assessmentId) => {
+  // Grading functions - optimized with caching like attendance
+  const loadGrades = useCallback(async (assessmentId) => {
     if (!assessmentId) return
     
-    // Check cache first for instant display
+    const currentSelectedClass = selectedClassRef.current || selectedClass
+    if (!currentSelectedClass) {
+      console.warn('⚠️ [GRADING] No class selected, cannot load grades')
+      return
+    }
+    
+    const currentClassId = currentSelectedClass.section_course_id
     const gradesCacheKey = `assessment_grades_${assessmentId}`
-    const cached = safeGetItem(gradesCacheKey)
     
     // Reset images ready state when assessment changes
     setImagesReady(false)
+    setError('')
     
-    // Show cached data immediately if available
-    if (cached) {
-      setGrades(cached)
-      // Store original grades from cache
-      setOriginalGrades(JSON.parse(JSON.stringify(cached)))
-      // Delay image loading - show names and grades first, then load images
+    // Step 1: Use cached students list (instant display)
+    let studentsToUse = null
+    if (cachedStudentsList && cachedStudentsList.length > 0) {
+      const cachedClassId = cachedStudentsList[0]?.classId || cachedStudentsList[0]?.section_course_id
+      if (cachedClassId === currentClassId) {
+        studentsToUse = cachedStudentsList
+        console.log('✅ [GRADING] Using cached students:', studentsToUse.length, 'students')
+      } else {
+        console.warn('⚠️ [GRADING] Cached students do not match current class')
+      }
+    }
+    
+    // Step 2: Check cache for grades (instant display)
+    const cachedGrades = safeGetItem(gradesCacheKey)
+    if (cachedGrades && studentsToUse) {
+      console.log('✅ [GRADING] Using cached grades for assessment:', assessmentId)
+      
+      // Merge cached grades with students (in case students were updated)
+      const mergedGrades = {}
+      studentsToUse.forEach(student => {
+        const cachedGrade = cachedGrades[student.enrollment_id]
+        if (cachedGrade) {
+          mergedGrades[student.enrollment_id] = {
+            ...cachedGrade,
+            student_name: student.full_name || cachedGrade.student_name,
+            student_number: student.student_number || cachedGrade.student_number,
+            student_photo: student.student_photo || cachedGrade.student_photo
+          }
+        } else {
+          // New student not in cached grades - create empty entry
+          mergedGrades[student.enrollment_id] = {
+            student_name: student.full_name,
+            student_number: student.student_number,
+            student_photo: student.student_photo,
+            raw_score: '',
+            late_penalty: '',
+            feedback: '',
+            submission_status: 'missing',
+            due_date: null
+          }
+        }
+      })
+      
+      setGrades(mergedGrades)
+      setOriginalGrades(JSON.parse(JSON.stringify(mergedGrades)))
+      
+      // Delay image loading
       setTimeout(() => {
         setImagesReady(true)
-        const imagesToLoad = Object.values(cached)
+        const imagesToLoad = Object.values(mergedGrades)
           .filter(g => g.student_photo)
           .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
         if (imagesToLoad.length > 0) {
-          // Load images with lazy loading (not immediate)
           imageLoaderService.queueImages(imagesToLoad, false)
         }
-      }, 300) // Small delay to ensure names/grades render first
+      }, 100)
+    } else if (studentsToUse) {
+      // No cached grades, but we have students - show students immediately
+      console.log('📋 [GRADING] Showing students while grades load...')
+      const initialGrades = {}
+      studentsToUse.forEach(student => {
+        initialGrades[student.enrollment_id] = {
+          student_name: student.full_name,
+          student_number: student.student_number,
+          student_photo: student.student_photo,
+          raw_score: '',
+          late_penalty: '',
+          feedback: '',
+          submission_status: 'missing',
+          due_date: null
+        }
+      })
+      setGrades(initialGrades)
+      setOriginalGrades(JSON.parse(JSON.stringify(initialGrades)))
+      
+      // Delay image loading
+      setTimeout(() => {
+        setImagesReady(true)
+        const imagesToLoad = studentsToUse
+          .filter(s => s.student_photo)
+          .map((s, idx) => ({ src: s.student_photo, id: `grade_${assessmentId}_${s.enrollment_id || idx}` }))
+        if (imagesToLoad.length > 0) {
+          imageLoaderService.queueImages(imagesToLoad, false)
+        }
+      }, 100)
     }
     
+    // Step 3: Fetch fresh grades asynchronously in background
     try {
-      setGradingLoading(true)
-      setError('') // Clear previous errors
+      // Only show loading if no cache available
+      if (!cachedGrades) {
+        setGradingLoading(true)
+      }
       
       const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
       if (response.ok) {
-        // Check if response is valid JSON before parsing
         const text = await response.text()
         let data
         try {
           data = JSON.parse(text)
         } catch (parseError) {
-          console.error('Error parsing JSON response:', parseError)
-          setError('Failed to parse server response. The data may be corrupted.')
+          console.error('❌ [GRADING] Error parsing JSON response:', parseError)
+          if (!cachedGrades) {
+            setError('Failed to parse server response. The data may be corrupted.')
+          }
           return
         }
+        
+        // Merge grades with students (use cached students if available)
+        const studentsList = studentsToUse || cachedStudentsList || []
         const gradesMap = {}
-        data.forEach(grade => {
-          gradesMap[grade.enrollment_id] = {
-            student_name: grade.full_name,
-            student_number: grade.student_number,
-            student_photo: grade.student_photo,
-            raw_score: grade.raw_score !== null ? grade.raw_score : '',
-            late_penalty: grade.late_penalty !== null ? grade.late_penalty : '',
-            feedback: grade.feedback || '',
-            submission_status: grade.submission_status || 'missing',
-            due_date: grade.due_date
+        
+        // First, add all students (ensures all students are shown even if no grade yet)
+        studentsList.forEach(student => {
+          gradesMap[student.enrollment_id] = {
+            student_name: student.full_name,
+            student_number: student.student_number,
+            student_photo: student.student_photo,
+            raw_score: '',
+            late_penalty: '',
+            feedback: '',
+            submission_status: 'missing',
+            due_date: null
           }
         })
-        // Set grades first (names and scores) - this renders immediately
+        
+        // Then, update with actual grades from API
+        data.forEach(grade => {
+          if (gradesMap[grade.enrollment_id]) {
+            gradesMap[grade.enrollment_id] = {
+              ...gradesMap[grade.enrollment_id],
+              raw_score: grade.raw_score !== null ? grade.raw_score : '',
+              late_penalty: grade.late_penalty !== null ? grade.late_penalty : '',
+              feedback: grade.feedback || '',
+              submission_status: grade.submission_status || 'missing',
+              due_date: grade.due_date
+            }
+          } else {
+            // Grade for student not in our list (shouldn't happen, but handle it)
+            gradesMap[grade.enrollment_id] = {
+              student_name: grade.full_name,
+              student_number: grade.student_number,
+              student_photo: grade.student_photo,
+              raw_score: grade.raw_score !== null ? grade.raw_score : '',
+              late_penalty: grade.late_penalty !== null ? grade.late_penalty : '',
+              feedback: grade.feedback || '',
+              submission_status: grade.submission_status || 'missing',
+              due_date: grade.due_date
+            }
+          }
+        })
+        
+        // Update grades (this will overwrite cached data with fresh data)
         setGrades(gradesMap)
-        // Store original grades as deep copy for change detection
         setOriginalGrades(JSON.parse(JSON.stringify(gradesMap)))
         
-        // Delay image loading - show names and grades first, then load images asynchronously
+        // Cache grades (minimized - without photos)
+        safeSetItem(gradesCacheKey, gradesMap, minimizeGradesData)
+        console.log('💾 [GRADING] Cached grades for assessment:', assessmentId)
+        
+        // Load images asynchronously
         setTimeout(() => {
-          setImagesReady(true) // Enable image loading in UI after essential data is displayed
-          const imagesToLoad = data
+          setImagesReady(true)
+          const imagesToLoad = Object.values(gradesMap)
             .filter(g => g.student_photo)
-            .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id}` }))
-          // Load images with lazy loading (not immediate) - images load last
-          imageLoaderService.queueImages(imagesToLoad, false)
-        }, 300) // Small delay to ensure names/grades render first
-        // Don't cache assessment grades - they're too large (can be 9+ MB)
-        // safeSetItem(gradesCacheKey, gradesMap)
+            .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
+          if (imagesToLoad.length > 0) {
+            imageLoaderService.queueImages(imagesToLoad, false)
+          }
+        }, 100)
       } else {
-        // Handle error response - check if it's valid JSON
-        try {
-          const errorText = await response.text()
-          let errorData
+        // Handle error response
+        if (!cachedGrades) {
           try {
-            errorData = JSON.parse(errorText)
-            setError(errorData.error || 'Failed to load grades')
-          } catch (parseError) {
+            const errorText = await response.text()
+            let errorData
+            try {
+              errorData = JSON.parse(errorText)
+              setError(errorData.error || 'Failed to load grades')
+            } catch (parseError) {
+              setError(`Failed to load grades (${response.status} ${response.statusText})`)
+            }
+          } catch (error) {
             setError(`Failed to load grades (${response.status} ${response.statusText})`)
           }
-        } catch (error) {
-          setError(`Failed to load grades (${response.status} ${response.statusText})`)
         }
       }
     } catch (error) {
-      console.error('Error loading grades:', error)
-      if (error.message && error.message.includes('JSON')) {
-        setError('Failed to parse server response. Please try again.')
-      } else if (error.message && error.message.includes('fetch')) {
-        setError('Network error. Please check your connection and try again.')
-      } else {
-        setError('Failed to load grades')
+      console.error('❌ [GRADING] Error loading grades:', error)
+      if (!cachedGrades) {
+        if (error.message && error.message.includes('JSON')) {
+          setError('Failed to parse server response. Please try again.')
+        } else if (error.message && error.message.includes('fetch')) {
+          setError('Network error. Please check your connection and try again.')
+        } else {
+          setError('Failed to load grades')
+        }
       }
     } finally {
       setGradingLoading(false)
     }
-  }
+  }, [selectedClass, cachedStudentsList])
 
   const handleGradeChange = (enrollmentId, field, value) => {
     setGrades(prev => ({
@@ -713,6 +985,13 @@ const Assessments = () => {
         setError('')
         // Update original grades to reflect saved state
         setOriginalGrades(JSON.parse(JSON.stringify(grades)))
+        
+        // Update cache with saved grades
+        if (selectedAssessment?.assessment_id) {
+          const gradesCacheKey = `assessment_grades_${selectedAssessment.assessment_id}`
+          safeSetItem(gradesCacheKey, grades, minimizeGradesData)
+          console.log('💾 [GRADING] Updated cache after saving grades')
+        }
       } else {
         const error = await response.json()
         setError(error.error || 'Failed to save grades')
