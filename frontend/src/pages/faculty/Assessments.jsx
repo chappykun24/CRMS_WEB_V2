@@ -1358,7 +1358,7 @@ const Assessments = () => {
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
                                 <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="w-[240px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
+                                  <div className="w-[260px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Raw</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Penalty</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Adjusted</div>
@@ -1368,9 +1368,9 @@ const Assessments = () => {
                                 <ul className="divide-y divide-gray-200">
                                   {Array.from({ length: 8 }).map((_, i) => (
                                     <li key={i} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50">
-                                      <div className="w-[240px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
+                                      <div className="w-[260px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
                                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
                                           <div className="h-4 bg-gray-200 rounded w-32 animate-pulse mb-1.5"></div>
                                           <div className="h-3 bg-gray-100 rounded w-24 animate-pulse"></div>
                                         </div>
@@ -1408,7 +1408,7 @@ const Assessments = () => {
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
                                 <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="w-[240px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
+                                  <div className="w-[260px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Raw</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Penalty</div>
                                   <div className="w-[100px] flex-shrink-0 px-3">Adjusted</div>
@@ -1428,7 +1428,7 @@ const Assessments = () => {
                                     })
                                     .map(([enrollmentId, gradeData]) => (
                                     <li key={enrollmentId} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50 bg-white">
-                                      <div className="w-[240px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
+                                      <div className="w-[260px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
                                         {!imagesReady ? (
                                           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
                                         ) : (
@@ -1443,10 +1443,10 @@ const Assessments = () => {
                                           />
                                         )}
                                         <div className="flex-1 min-w-0 overflow-hidden">
-                                          <div className="text-sm font-medium text-gray-900 truncate" title={formatName(gradeData.student_name) || 'Student'}>
+                                          <div className="text-sm font-medium text-gray-900 truncate leading-tight" title={formatName(gradeData.student_name) || 'Student'}>
                                             {formatName(gradeData.student_name) || 'Student'}
                                           </div>
-                                          <div className="text-xs text-gray-500 truncate">SR: {gradeData.student_number || 'N/A'}</div>
+                                          <div className="text-xs text-gray-500 truncate leading-tight mt-1">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
                                       <div className="w-[100px] flex-shrink-0 px-3">
