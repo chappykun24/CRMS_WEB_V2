@@ -1346,19 +1346,6 @@ const Assessments = () => {
                             <PlusIcon className="h-5 w-5" />
                           </button>
                         </div>
-                        {/* Total Weight and Points Summary */}
-                        {filteredAssessments.length > 0 && (
-                          <div className="mb-4 flex items-center gap-4 text-sm flex-shrink-0">
-                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
-                              <span className="text-gray-600 font-medium">Total Weight: </span>
-                              <span className="text-gray-900 font-semibold">{totalWeight.toFixed(2)}%</span>
-                            </div>
-                            <div className="px-3 py-1.5 bg-gray-100 rounded-lg">
-                              <span className="text-gray-600 font-medium">Total Points: </span>
-                              <span className="text-gray-900 font-semibold">{totalPoints}</span>
-                            </div>
-                          </div>
-                        )}
                       </>
                     )}
 
@@ -1380,10 +1367,10 @@ const Assessments = () => {
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
+                                    Points
                                   </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
+                                    Weight
                                   </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -1439,10 +1426,10 @@ const Assessments = () => {
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
+                                    Points
                                   </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
+                                    Weight
                                   </th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                                   <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
