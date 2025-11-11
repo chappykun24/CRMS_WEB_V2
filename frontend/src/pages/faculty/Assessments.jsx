@@ -1709,8 +1709,8 @@ const Assessments = () => {
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="flex-1 min-w-[140px] px-1.5">Feedback</div>
-                                  <div className="w-[170px] flex-shrink-0 px-1.5">Status / %</div>
+                                  <div className="w-[100px] flex-shrink-0 px-1.5">Feedback</div>
+                                  <div className="flex-1 min-w-[200px] px-1.5">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
@@ -1731,10 +1731,10 @@ const Assessments = () => {
                                       <div className="w-[65px] flex-shrink-0 px-1.5">
                                         <div className="h-4 bg-gray-200 rounded w-12 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="flex-1 min-w-[140px] px-1.5">
+                                      <div className="w-[100px] flex-shrink-0 px-1.5">
                                         <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[170px] flex-shrink-0 px-1.5">
+                                      <div className="flex-1 min-w-[200px] px-1.5">
                                         <div className="flex items-center gap-1.5">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <div className="h-6 bg-gray-200 rounded w-14 animate-pulse"></div>
@@ -1759,8 +1759,8 @@ const Assessments = () => {
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="flex-1 min-w-[140px] px-1.5">Feedback</div>
-                                  <div className="w-[170px] flex-shrink-0 px-1.5 whitespace-nowrap">Status / %</div>
+                                  <div className="w-[100px] flex-shrink-0 px-1.5">Feedback</div>
+                                  <div className="flex-1 min-w-[200px] px-1.5 whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -1820,7 +1820,7 @@ const Assessments = () => {
                                       <div className="w-[65px] flex-shrink-0 px-1.5 text-xs font-medium text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="flex-1 min-w-[140px] px-1.5">
+                                      <div className="w-[100px] flex-shrink-0 px-1.5">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
@@ -1830,7 +1830,7 @@ const Assessments = () => {
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="w-[170px] flex-shrink-0 px-1.5">
+                                      <div className="flex-1 min-w-[200px] px-1.5">
                                         <div className="flex items-center gap-1.5">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
