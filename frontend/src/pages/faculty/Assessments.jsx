@@ -1709,8 +1709,8 @@ const Assessments = () => {
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="w-[100px] flex-shrink-0 px-1.5">Feedback</div>
-                                  <div className="flex-1 min-w-[200px] px-1.5">Status / %</div>
+                                  <div className="w-[80px] flex-shrink-0 px-1.5">Feedback</div>
+                                  <div className="flex-1 min-w-[250px] px-1.5">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
@@ -1731,10 +1731,10 @@ const Assessments = () => {
                                       <div className="w-[65px] flex-shrink-0 px-1.5">
                                         <div className="h-4 bg-gray-200 rounded w-12 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[100px] flex-shrink-0 px-1.5">
+                                      <div className="w-[80px] flex-shrink-0 px-1.5">
                                         <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="flex-1 min-w-[200px] px-1.5">
+                                      <div className="flex-1 min-w-[250px] px-1.5">
                                         <div className="flex items-center gap-1.5">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <div className="h-6 bg-gray-200 rounded w-14 animate-pulse"></div>
@@ -1759,8 +1759,8 @@ const Assessments = () => {
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Raw</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Penalty</div>
                                   <div className="w-[65px] flex-shrink-0 px-1.5">Adjusted</div>
-                                  <div className="w-[100px] flex-shrink-0 px-1.5">Feedback</div>
-                                  <div className="flex-1 min-w-[200px] px-1.5 whitespace-nowrap">Status / %</div>
+                                  <div className="w-[80px] flex-shrink-0 px-1.5">Feedback</div>
+                                  <div className="flex-1 min-w-[250px] px-1.5 whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -1820,7 +1820,7 @@ const Assessments = () => {
                                       <div className="w-[65px] flex-shrink-0 px-1.5 text-xs font-medium text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="w-[100px] flex-shrink-0 px-1.5">
+                                      <div className="w-[80px] flex-shrink-0 px-1.5">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
@@ -1830,12 +1830,12 @@ const Assessments = () => {
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="flex-1 min-w-[200px] px-1.5">
-                                        <div className="flex items-center gap-1.5">
+                                      <div className="flex-1 min-w-[250px] px-1.5 flex-shrink-0">
+                                        <div className="flex items-center gap-2 justify-start">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'ontime'
                                                   ? 'bg-green-100 text-green-800 border border-green-300'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
@@ -1846,7 +1846,7 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'late'
                                                   ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
@@ -1857,7 +1857,7 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'missing'
                                                   ? 'bg-red-100 text-red-800 border border-red-300'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
@@ -1867,7 +1867,7 @@ const Assessments = () => {
                                               Missing
                                             </button>
                                           </div>
-                                          <div className="text-[10px] font-semibold text-gray-900 whitespace-nowrap">
+                                          <div className="text-xs font-semibold text-gray-900 whitespace-nowrap ml-1">
                                             {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
                                           </div>
                                         </div>
