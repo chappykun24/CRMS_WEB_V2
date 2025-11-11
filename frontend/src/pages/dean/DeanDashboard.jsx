@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { 
   UserGroupIcon, 
@@ -13,49 +13,15 @@ import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
-import { setLocalStorageItem, getLocalStorageItem, removeLocalStorageItem } from '../../utils/localStorageManager'
 import { API_BASE_URL } from '../../utils/api'
+import deanCacheService from '../../services/deanCacheService'
+import { safeSetItem, safeGetItem, minimizeAnalyticsData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 
-// Cache key for localStorage
+// Cache helpers
+const getCachedData = createCacheGetter(deanCacheService)
+const setCachedData = createCacheSetter(deanCacheService)
 const DEAN_DASHBOARD_CACHE_KEY = 'dean_dashboard_stats'
-const CACHE_MAX_AGE = 30 * 60 * 1000 // 30 minutes
-
-// Cache utility functions
-const getCachedStats = () => {
-  try {
-    const cached = getLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY)
-    if (!cached) return null
-    
-    const { stats, timestamp } = cached
-    const age = Date.now() - timestamp
-    
-    // Return cached data if it's not too old
-    if (age < CACHE_MAX_AGE) {
-      console.log('📦 [DeanDashboard] Loading cached stats (age:', Math.round(age / 1000), 'seconds)')
-      return stats
-    } else {
-      console.log('⏰ [DeanDashboard] Cached stats expired, removing from cache')
-      removeLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY)
-      return null
-    }
-  } catch (error) {
-    console.error('❌ [DeanDashboard] Error reading cache:', error)
-    return null
-  }
-}
-
-const setCachedStats = (stats) => {
-  const cacheData = {
-    stats,
-    timestamp: Date.now()
-  }
-  const success = setLocalStorageItem(DEAN_DASHBOARD_CACHE_KEY, cacheData)
-  if (success) {
-    console.log('💾 [DeanDashboard] Stats cached successfully')
-  } else {
-    console.warn('⚠️ [DeanDashboard] Failed to cache stats (quota exceeded)')
-  }
-}
+const SESSION_CACHE_KEY = 'dean_dashboard_stats_session'
 
 const Home = () => {
   const navigate = useNavigate()
@@ -63,6 +29,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+  const abortControllerRef = useRef(null)
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalClasses: 0,
@@ -73,47 +40,94 @@ const Home = () => {
     activeTerm: null
   })
 
-  useEffect(() => {
-    // Only fetch if authenticated
-    if (isAuthenticated && !authLoading) {
-      // Try to load from cache first
-      const cachedStats = getCachedStats()
-      
-      if (cachedStats) {
-        // We have cached data - show it immediately
-        console.log('✅ [DeanDashboard] Loading cached stats, showing immediately')
-        setStats(cachedStats)
-        setLoading(false) // Hide loading spinner since we have cached data
-        
-        // Fetch fresh data in background
-        setRefreshing(true)
-        fetchDashboardStats(true) // Pass true to indicate background refresh
-      } else {
-        // No cache available, fetch normally with loading spinner
-        console.log('🔄 [DeanDashboard] No cache found, fetching fresh data')
-        fetchDashboardStats(false)
-      }
-    } else if (!authLoading && !isAuthenticated) {
+  // Fetch dashboard stats with caching and lazy loading
+  const fetchDashboardStats = useCallback(async (isBackgroundRefresh = false) => {
+    console.log('🔍 [DEAN] fetchDashboardStats starting')
+    setError(null)
+    
+    // Check sessionStorage first for instant display
+    const sessionCached = safeGetItem(SESSION_CACHE_KEY)
+    
+    if (sessionCached) {
+      console.log('📦 [DEAN] Using session cached dashboard stats')
+      setStats(sessionCached)
       setLoading(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authLoading])
-
-  const fetchDashboardStats = async (isBackgroundRefresh = false) => {
-    // Only show loading spinner if this is the initial load (not a background refresh)
-    if (!isBackgroundRefresh) {
-      setLoading(true)
+      setInitialLoadComplete(true)
+      // Continue to fetch fresh data in background
+    } else {
+      if (!isBackgroundRefresh) {
+        setLoading(true)
+      }
     }
     
+    // Check enhanced cache
+    const cachedData = getCachedData('analytics', DEAN_DASHBOARD_CACHE_KEY, 30 * 60 * 1000) // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [DEAN] Using enhanced cached dashboard stats')
+      setStats(cachedData)
+      setLoading(false)
+      setInitialLoadComplete(true)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(SESSION_CACHE_KEY, cachedData, minimizeAnalyticsData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController()
+    
     try {
-      console.log('🔄 [DeanDashboard] Fetching fresh dashboard stats...')
+      if (!isBackgroundRefresh && !sessionCached && !cachedData) {
+        setLoading(true)
+      }
+      
+      console.log('🔄 [DEAN] Fetching fresh dashboard stats...')
       // Fetch all data in parallel
       const [classesRes, studentsRes, facultyRes, termsRes, analyticsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/section-courses/assigned`),
-        fetch(`${API_BASE_URL}/students`),
-        fetch(`${API_BASE_URL}/users?role=FACULTY`),
-        fetch(`${API_BASE_URL}/school-terms`),
-        fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`)
+        fetch(`${API_BASE_URL}/section-courses/assigned`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/students`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/users?role=FACULTY`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/school-terms`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        }),
+        fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=300'
+          },
+          signal: abortControllerRef.current.signal
+        })
       ])
 
       // Process classes
@@ -236,38 +250,64 @@ const Home = () => {
         activeTerm: activeTerm
       }
       
+      console.log(`✅ [DEAN] Received dashboard stats`)
+      
       // Update stats with fresh data
       setStats(newStats)
       
-      // Cache the fresh data
-      setCachedStats(newStats)
+      // Store minimized data in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(SESSION_CACHE_KEY, newStats, minimizeAnalyticsData)
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('analytics', DEAN_DASHBOARD_CACHE_KEY, newStats)
       
       setInitialLoadComplete(true)
       
       if (isBackgroundRefresh) {
-        console.log('✅ [DeanDashboard] Background refresh completed')
+        console.log('✅ [DEAN] Background refresh completed')
         setRefreshing(false)
       }
       
       // Prefetch data for other pages in the background (non-blocking)
-      // Use setTimeout to ensure it doesn't block the current page render
       setTimeout(() => {
-        console.log('🚀 [DeanDashboard] Starting async prefetch after initial data load')
+        console.log('🚀 [DEAN] Starting async prefetch after initial data load')
         prefetchDeanData()
-      }, 500) // Wait 500ms after main data loads to start prefetching
+      }, 500)
+      
     } catch (error) {
-      console.error('❌ [DeanDashboard] Error fetching dashboard stats:', error)
-      // If this is a background refresh and it fails, we keep showing cached data
-      if (isBackgroundRefresh) {
-        console.warn('⚠️ [DeanDashboard] Background refresh failed, keeping cached data')
-        setRefreshing(false)
+      if (error.name === 'AbortError') {
+        console.log('🚫 [DEAN] Request was aborted')
+        return
+      }
+      console.error('❌ [DEAN] Error fetching dashboard stats:', error)
+      const sessionCached = safeGetItem(SESSION_CACHE_KEY)
+      const cachedData = getCachedData('analytics', DEAN_DASHBOARD_CACHE_KEY, 30 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setError(error.message)
       }
     } finally {
-      if (!isBackgroundRefresh) {
-        setLoading(false)
+      setLoading(false)
+      setInitialLoadComplete(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Only fetch if authenticated
+    if (isAuthenticated && !authLoading) {
+      fetchDashboardStats(false)
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false)
+    }
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
       }
     }
-  }
+  }, [isAuthenticated, authLoading, fetchDashboardStats])
 
   // Show loading or auth check
   if (authLoading) {

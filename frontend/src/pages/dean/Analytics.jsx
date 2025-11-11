@@ -1,9 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
 import { API_BASE_URL } from '../../utils/api';
+import deanCacheService from '../../services/deanCacheService';
+import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
+
+// Cache helpers
+const getCachedData = createCacheGetter(deanCacheService);
+const setCachedData = createCacheSetter(deanCacheService);
 import {
   PieChart,
   Pie,
@@ -31,44 +37,119 @@ const Analytics = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [schoolTerms, setSchoolTerms] = useState([]);
   const [selectedTermId, setSelectedTermId] = useState('');
+  const abortControllerRef = useRef(null);
+  const termsAbortControllerRef = useRef(null);
+  const progressIntervalRef = useRef(null);
 
-  // Fetch school terms on component mount (check prefetch first)
-  useEffect(() => {
-    // Check prefetch cache first
-    const prefetchedTerms = getPrefetchedSchoolTerms();
-    if (prefetchedTerms && Array.isArray(prefetchedTerms)) {
-      console.log('📦 [Analytics] Using prefetched school terms');
-      setSchoolTerms(prefetchedTerms);
-      const activeTerm = prefetchedTerms.find(t => t.is_active);
+  // Fetch school terms with caching
+  const fetchSchoolTerms = useCallback(async () => {
+    console.log('🔍 [DEAN ANALYTICS] fetchSchoolTerms starting');
+    
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = 'dean_school_terms_session';
+    const sessionCached = safeGetItem(sessionCacheKey);
+    
+    if (sessionCached) {
+      console.log('📦 [DEAN ANALYTICS] Using session cached school terms');
+      setSchoolTerms(sessionCached);
+      const activeTerm = sessionCached.find(t => t.is_active);
       if (activeTerm) {
         setSelectedTermId(activeTerm.term_id.toString());
       }
-    } else {
-      // Fallback to fetch if not in cache
-      fetch(`${API_BASE_URL}/school-terms`)
-        .then(res => {
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            return res.json();
-          }
-          throw new Error('Response is not JSON');
-        })
-        .then(terms => {
-          setSchoolTerms(terms);
-          // Set the active term as default if available
-          const activeTerm = terms.find(t => t.is_active);
-          if (activeTerm) {
-            setSelectedTermId(activeTerm.term_id.toString());
-          }
-        })
-        .catch(err => console.error('Failed to fetch school terms:', err));
+      // Continue to fetch fresh data in background
     }
+    
+    // Check enhanced cache
+    const cacheKey = 'dean_school_terms';
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000); // 30 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [DEAN ANALYTICS] Using enhanced cached school terms');
+      setSchoolTerms(cachedData);
+      const activeTerm = cachedData.find(t => t.is_active);
+      if (activeTerm) {
+        setSelectedTermId(activeTerm.term_id.toString());
+      }
+      // Cache in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData);
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (termsAbortControllerRef.current) {
+      termsAbortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    termsAbortControllerRef.current = new AbortController();
+    
+    try {
+      console.log('🔄 [DEAN ANALYTICS] Fetching fresh school terms...');
+      const response = await fetch(`${API_BASE_URL}/school-terms`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: termsAbortControllerRef.current.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch school terms: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
+      }
+      
+      const terms = await response.json();
+      console.log(`✅ [DEAN ANALYTICS] Received ${Array.isArray(terms) ? terms.length : 0} school terms`);
+      
+      const termsData = Array.isArray(terms) ? terms : [];
+      setSchoolTerms(termsData);
+      
+      // Set the active term as default if available
+      const activeTerm = termsData.find(t => t.is_active);
+      if (activeTerm) {
+        setSelectedTermId(activeTerm.term_id.toString());
+      }
+      
+      // Store in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, termsData);
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('terms', cacheKey, termsData);
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [DEAN ANALYTICS] School terms request was aborted');
+        return;
+      }
+      console.error('❌ [DEAN ANALYTICS] Error fetching school terms:', error);
+      if (!sessionCached && !cachedData) {
+        setError(error.message);
+      }
+    }
+  }, []);
+
+  // Fetch school terms on component mount
+  useEffect(() => {
+    fetchSchoolTerms();
     
     // Prefetch data for other dean pages in the background
     setTimeout(() => {
-      prefetchDeanData()
-    }, 1000)
-  }, []);
+      prefetchDeanData();
+    }, 1000);
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (termsAbortControllerRef.current) {
+        termsAbortControllerRef.current.abort();
+      }
+    };
+  }, [fetchSchoolTerms]);
 
   // Auto-load analytics when component mounts or when school terms are loaded
   useEffect(() => {
@@ -99,62 +180,101 @@ const Analytics = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTermId]);
 
-  const handleFetch = () => {
-    console.log('🔍 [Analytics] Starting fetch...');
+  const handleFetch = useCallback(() => {
+    console.log('🔍 [DEAN ANALYTICS] Starting fetch...');
     
-    // Check prefetch cache first
-    const prefetchedData = getPrefetchedAnalytics(selectedTermId || null);
-    if (prefetchedData) {
-      console.log('📦 [Analytics] Using prefetched data');
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = `dean_analytics_${selectedTermId || 'all'}_session`;
+    const sessionCached = safeGetItem(sessionCacheKey);
+    
+    if (sessionCached && sessionCached.success) {
+      console.log('📦 [DEAN ANALYTICS] Using session cached analytics data');
+      setData(sessionCached.data || []);
+      setClusterMeta(sessionCached.clustering || { enabled: false });
+      setHasFetched(true);
       setLoading(false);
       setProgress(100);
       setError(null);
       
-      if (prefetchedData.success) {
-        setData(prefetchedData.data || []);
-        setClusterMeta(prefetchedData.clustering || { enabled: false });
-        setHasFetched(true);
-        
-        // Log cluster distribution
-        const clusterCounts = (prefetchedData.data || []).reduce((acc, row) => {
-          let cluster = row.cluster_label;
-          if (!cluster || 
-              cluster === null || 
-              cluster === undefined ||
-              (typeof cluster === 'number' && isNaN(cluster)) ||
-              (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-            cluster = 'Not Clustered';
-          }
-          acc[cluster] = (acc[cluster] || 0) + 1;
-          return acc;
-        }, {});
-        console.log('📈 [Analytics] Cluster distribution (from cache):', clusterCounts);
-      }
-      
-      setTimeout(() => setLoading(false), 100);
-      return;
+      // Log cluster distribution
+      const clusterCounts = (sessionCached.data || []).reduce((acc, row) => {
+        let cluster = row.cluster_label;
+        if (!cluster || 
+            cluster === null || 
+            cluster === undefined ||
+            (typeof cluster === 'number' && isNaN(cluster)) ||
+            (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+          cluster = 'Not Clustered';
+        }
+        acc[cluster] = (acc[cluster] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📈 [DEAN ANALYTICS] Cluster distribution (from session cache):', clusterCounts);
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true);
+      setProgress(0);
     }
     
-    setLoading(true);
-    setProgress(0);
-    setError(null);
+    // Check enhanced cache
+    const cacheKey = `dean_analytics_${selectedTermId || 'all'}`;
+    const cachedData = getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
+    if (cachedData && cachedData.success && !sessionCached) {
+      console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
+      setData(cachedData.data || []);
+      setClusterMeta(cachedData.clustering || { enabled: false });
+      setHasFetched(true);
+      setLoading(false);
+      setProgress(100);
+      setError(null);
+      
+      // Cache in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData);
+      // Continue to fetch fresh data in background
+    }
     
-    // Simulate progress updates
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 300);
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
+    // Only show loading if no cache available
+    const hasCache = sessionCached || cachedData;
+    if (!hasCache) {
+      setLoading(true);
+      setProgress(0);
+      
+      // Simulate progress updates (only if not using cache)
+      progressIntervalRef.current = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current);
+              progressIntervalRef.current = null;
+            }
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+    }
+    setError(null);
 
     const url = selectedTermId 
       ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${selectedTermId}`
       : `${API_BASE_URL}/assessments/dean-analytics/sample`;
     
-    fetch(url)
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300'
+      },
+      signal: abortControllerRef.current.signal
+    })
       .then(async (res) => {
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
@@ -216,13 +336,21 @@ const Analytics = () => {
         }
       })
       .then((json) => {
-        console.log('✅ [Analytics] Received data:', json);
-        console.log('🎯 [Analytics] Clustering enabled:', json.clustering?.enabled);
-        console.log('📊 [Analytics] Sample data:', json.data?.slice(0, 3));
+        console.log('✅ [DEAN ANALYTICS] Received data:', json);
+        console.log('🎯 [DEAN ANALYTICS] Clustering enabled:', json.clustering?.enabled);
+        console.log('📊 [DEAN ANALYTICS] Sample data:', json.data?.slice(0, 3));
         
         if (json.success) {
           setData(json.data || []);
           setClusterMeta(json.clustering || { enabled: false });
+          
+          // Store in sessionStorage for instant next load
+          const sessionCacheKey = `dean_analytics_${selectedTermId || 'all'}_session`;
+          safeSetItem(sessionCacheKey, json);
+          
+          // Store full data in enhanced cache
+          const cacheKey = `dean_analytics_${selectedTermId || 'all'}`;
+          setCachedData('analytics', cacheKey, json);
           
           // Log cluster distribution with detailed logging
           const clusterCounts = json.data?.reduce((acc, row) => {
@@ -237,15 +365,19 @@ const Analytics = () => {
             acc[cluster] = (acc[cluster] || 0) + 1;
             return acc;
           }, {});
-          console.log('📈 [Analytics] Cluster distribution:', clusterCounts);
-          console.log('🔍 [Analytics] Sample row with cluster:', json.data?.[0]);
-          console.log('🔍 [Analytics] Clustering enabled status:', json.clustering?.enabled);
-          console.log('🔍 [Analytics] Backend platform:', json.clustering?.backendPlatform);
-          console.log('🔍 [Analytics] Clustering API platform:', json.clustering?.apiPlatform);
+          console.log('📈 [DEAN ANALYTICS] Cluster distribution:', clusterCounts);
+          console.log('🔍 [DEAN ANALYTICS] Sample row with cluster:', json.data?.[0]);
+          console.log('🔍 [DEAN ANALYTICS] Clustering enabled status:', json.clustering?.enabled);
+          console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
+          console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
         } else {
           setError('Failed to load analytics');
         }
         
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
         setProgress(100);
         setTimeout(() => setLoading(false), 500);
         setHasFetched(true);
@@ -259,12 +391,26 @@ const Analytics = () => {
         } catch {}
       })
       .catch((err) => {
-        console.error('❌ [Analytics] Fetch error:', err);
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        
+        if (err.name === 'AbortError') {
+          console.log('🚫 [DEAN ANALYTICS] Request was aborted');
+          return;
+        }
+        
+        console.error('❌ [DEAN ANALYTICS] Fetch error:', err);
         // Display more specific error messages
         const errorMessage = err?.message || 'Unable to fetch analytics';
-        setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
-          ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
-          : errorMessage);
+        const sessionCached = safeGetItem(`dean_analytics_${selectedTermId || 'all'}_session`);
+        const cachedData = getCachedData('analytics', `dean_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
+        if (!sessionCached && !cachedData) {
+          setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
+            ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
+            : errorMessage);
+        }
         setProgress(0);
         setLoading(false);
         setHasFetched(true);
@@ -272,7 +418,7 @@ const Analytics = () => {
           trackEvent('dean_analytics_error', { message: String(err?.message || err) });
         } catch {}
       });
-  };
+  }, [selectedTermId]);
 
   const getClusterStyle = (label) => {
     // Handle null, undefined, NaN, empty string, or 'nan' string

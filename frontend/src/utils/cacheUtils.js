@@ -200,3 +200,59 @@ export const getCacheSize = () => {
   }
 };
 
+/**
+ * Helper function to create getCachedData wrapper for cache services
+ * This allows components to use a consistent API across different cache services
+ */
+export const createCacheGetter = (cacheService) => {
+  return (cacheType, key, maxAge = 300000) => {
+    return cacheService.get(cacheType, key, maxAge);
+  };
+};
+
+/**
+ * Helper function to create setCachedData wrapper for cache services
+ */
+export const createCacheSetter = (cacheService) => {
+  return (cacheType, key, data) => {
+    return cacheService.set(cacheType, key, data);
+  };
+};
+
+/**
+ * Minimize analytics data by removing unnecessary fields
+ */
+export const minimizeAnalyticsData = (analytics) => {
+  if (!analytics || typeof analytics !== 'object') return analytics;
+  
+  // Keep only essential analytics data, exclude large computed fields if any
+  return {
+    totalClasses: analytics.totalClasses,
+    totalStudents: analytics.totalStudents,
+    totalAssessments: analytics.totalAssessments,
+    averageGrade: analytics.averageGrade,
+    // Add other essential fields as needed
+    // Exclude large arrays or computed data that can be recalculated
+  };
+};
+
+/**
+ * Minimize syllabus data by removing large fields
+ */
+export const minimizeSyllabusData = (syllabi) => {
+  if (!Array.isArray(syllabi)) return syllabi;
+  
+  return syllabi.map(syllabus => ({
+    syllabus_id: syllabus.syllabus_id,
+    title: syllabus.title,
+    description: syllabus.description,
+    version: syllabus.version,
+    review_status: syllabus.review_status,
+    approval_status: syllabus.approval_status,
+    created_at: syllabus.created_at,
+    section_course_id: syllabus.section_course_id,
+    // Exclude large fields like full syllabus content if not needed for list view
+    _has_content: !!syllabus.content
+  }));
+};
+

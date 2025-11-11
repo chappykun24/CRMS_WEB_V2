@@ -1,47 +1,41 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 import { getPrefetchedClasses } from '../../services/dataPrefetchService'
 import { API_BASE_URL } from '../../utils/api'
+import deanCacheService from '../../services/deanCacheService'
+import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+
+// Cache helpers
+const getCachedData = createCacheGetter(deanCacheService);
+const setCachedData = createCacheSetter(deanCacheService);
 
 const MyClasses = () => {
   const [query, setQuery] = useState('')
   const [classes, setClasses] = useState([])
   const [loadingClasses, setLoadingClasses] = useState(true)
+  const [error, setError] = useState(null)
+  const abortControllerRef = useRef(null)
+  const studentsAbortControllerRef = useRef(null)
   
   // Class selection and students
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
 
-  // Handle class selection
-  const handleClassSelect = async (classItem) => {
-    setSelectedClass(classItem)
-    setLoadingStudents(true)
+  // Fetch classes with caching
+  const fetchClasses = useCallback(async () => {
+    console.log('🔍 [DEAN MYCLASSES] fetchClasses starting')
+    setError(null)
     
-    try {
-      const response = await fetch(`/api/section-courses/${classItem.id}/students`)
-      if (!response.ok) throw new Error(`Failed to fetch students: ${response.status}`)
-      const studentData = await response.json()
-      setStudents(Array.isArray(studentData) ? studentData : [])
-    } catch (error) {
-      console.error('Error loading students:', error)
-      setStudents([])
-    } finally {
-      setLoadingStudents(false)
-    }
-  }
-
-  // Load existing section courses when component mounts (check prefetch first)
-  useEffect(() => {
-    let isMounted = true
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = 'dean_classes_session'
+    const sessionCached = safeGetItem(sessionCacheKey)
     
-    // Check prefetch cache first
-    const prefetchedClasses = getPrefetchedClasses()
-    if (prefetchedClasses && Array.isArray(prefetchedClasses)) {
-      console.log('📦 [MyClasses] Using prefetched classes data')
-      const formattedClasses = prefetchedClasses.map(item => ({
+    if (sessionCached) {
+      console.log('📦 [DEAN MYCLASSES] Using session cached classes data')
+      const formattedClasses = sessionCached.map(item => ({
         id: String(item.section_course_id),
         title: item.course_title,
         code: item.course_code,
@@ -54,47 +48,203 @@ const MyClasses = () => {
       }))
       setClasses(formattedClasses)
       setLoadingClasses(false)
-      return
+      // Continue to fetch fresh data in background
+    } else {
+      setLoadingClasses(true)
     }
     
-    // Fallback to fetch if not in cache
-    ;(async () => {
-      try {
-        setLoadingClasses(true)
-        const response = await fetch(`${API_BASE_URL}/section-courses/assigned`)
-        if (!response.ok) throw new Error(`Failed to fetch assigned courses: ${response.status}`)
-        
-        const contentType = response.headers.get('content-type')
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Response is not JSON')
-        }
-        
-        const data = await response.json()
-        if (isMounted) {
-          const formattedClasses = data.map(item => ({
-            id: String(item.section_course_id),
-            title: item.course_title,
-            code: item.course_code,
-            section: item.section_code,
-            instructor: item.faculty_name,
-            bannerType: item.banner_type || 'color',
-            bannerColor: item.banner_color || '#3B82F6',
-            bannerImage: item.banner_image,
-            avatarUrl: item.faculty_avatar
-          }))
-          setClasses(formattedClasses)
-        }
-      } catch (error) {
-        console.error('Error loading assigned courses:', error)
-        if (isMounted) setClasses([])
-      } finally {
-        if (isMounted) setLoadingClasses(false)
+    // Check enhanced cache
+    const cacheKey = 'dean_classes'
+    const cachedData = getCachedData('classes', cacheKey, 5 * 60 * 1000) // 5 minute cache
+    if (cachedData && !sessionCached) {
+      console.log('📦 [DEAN MYCLASSES] Using enhanced cached classes data')
+      const formattedClasses = cachedData.map(item => ({
+        id: String(item.section_course_id),
+        title: item.course_title,
+        code: item.course_code,
+        section: item.section_code,
+        instructor: item.faculty_name,
+        bannerType: item.banner_type || 'color',
+        bannerColor: item.banner_color || '#3B82F6',
+        bannerImage: item.banner_image,
+        avatarUrl: item.faculty_avatar
+      }))
+      setClasses(formattedClasses)
+      setLoadingClasses(false)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData, minimizeClassData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController()
+    
+    try {
+      console.log('🔄 [DEAN MYCLASSES] Fetching fresh classes...')
+      const response = await fetch(`${API_BASE_URL}/section-courses/assigned`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: abortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch assigned courses: ${response.status}`)
       }
-    })()
-    return () => {
-      isMounted = false
+      
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON')
+      }
+      
+      const data = await response.json()
+      console.log(`✅ [DEAN MYCLASSES] Received ${Array.isArray(data) ? data.length : 0} classes`)
+      
+      const classesData = Array.isArray(data) ? data : []
+      const formattedClasses = classesData.map(item => ({
+        id: String(item.section_course_id),
+        title: item.course_title,
+        code: item.course_code,
+        section: item.section_code,
+        instructor: item.faculty_name,
+        bannerType: item.banner_type || 'color',
+        bannerColor: item.banner_color || '#3B82F6',
+        bannerImage: item.banner_image,
+        avatarUrl: item.faculty_avatar
+      }))
+      setClasses(formattedClasses)
+      
+      // Store minimized data in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, classesData, minimizeClassData)
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('classes', cacheKey, classesData)
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [DEAN MYCLASSES] Request was aborted')
+        return
+      }
+      console.error('❌ [DEAN MYCLASSES] Error fetching classes:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedData = getCachedData('classes', cacheKey, 5 * 60 * 1000)
+      if (!sessionCached && !cachedData) {
+        setError(error.message)
+        setClasses([])
+      }
+    } finally {
+      setLoadingClasses(false)
     }
   }, [])
+
+  // Handle class selection - lazy load students ONLY when class is clicked
+  const handleClassSelect = useCallback(async (classItem) => {
+    setSelectedClass(classItem)
+    
+    // Check sessionStorage first for instant display
+    const sectionId = classItem.id
+    const sessionCacheKey = `dean_students_${sectionId}_session`
+    const sessionCached = safeGetItem(sessionCacheKey)
+    
+    if (sessionCached) {
+      console.log('📦 [DEAN MYCLASSES] Using session cached students data')
+      setStudents(sessionCached)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Check enhanced cache
+    const studentsCacheKey = `dean_students_${sectionId}`
+    const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000) // 10 minute cache
+    
+    if (cachedStudents && !sessionCached) {
+      console.log('📦 [DEAN MYCLASSES] Using enhanced cached students data')
+      setStudents(cachedStudents)
+      // Cache minimized data in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedStudents, minimizeStudentData)
+      // Continue to fetch fresh data in background
+    }
+    
+    // Only show loading if no cache available
+    if (!sessionCached && !cachedStudents) {
+      setLoadingStudents(true)
+    }
+    
+    // Cancel previous request if still pending
+    if (studentsAbortControllerRef.current) {
+      studentsAbortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    studentsAbortControllerRef.current = new AbortController()
+    
+    try {
+      console.log(`🔄 [DEAN MYCLASSES] Fetching students for class ${sectionId}...`)
+      const response = await fetch(`/api/section-courses/${sectionId}/students`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=300'
+        },
+        signal: studentsAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch students: ${response.status}`)
+      }
+      
+      const studentData = await response.json()
+      console.log(`✅ [DEAN MYCLASSES] Received ${Array.isArray(studentData) ? studentData.length : 0} students`)
+      
+      const studentsData = Array.isArray(studentData) ? studentData : []
+      setStudents(studentsData)
+      
+      // Store minimized data in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('students', studentsCacheKey, studentsData)
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [DEAN MYCLASSES] Students request was aborted')
+        return
+      }
+      console.error('❌ [DEAN MYCLASSES] Error loading students:', error)
+      const sessionCached = safeGetItem(sessionCacheKey)
+      const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000)
+      if (!sessionCached && !cachedStudents) {
+        setStudents([])
+      }
+    } finally {
+      setLoadingStudents(false)
+    }
+  }, [])
+
+  // Load classes when component mounts
+  useEffect(() => {
+    fetchClasses()
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      if (studentsAbortControllerRef.current) {
+        studentsAbortControllerRef.current.abort()
+      }
+    }
+  }, [fetchClasses])
 
   const filtered = useMemo(() => {
     if (!query) return classes
