@@ -230,11 +230,13 @@ const Assessments = () => {
   }, [selectedClass?.section_course_id])
 
   // Load students for a class (async, cached)
+  // For grading interface, we need photos, so include them
   const loadStudentsForClass = async (sectionCourseId, cacheKey) => {
     if (!sectionCourseId) return
     
     try {
-      const response = await fetch(`/api/section-courses/${sectionCourseId}/students`, {
+      // Include photos for grading interface (needed for student display)
+      const response = await fetch(`/api/section-courses/${sectionCourseId}/students?includePhotos=true`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
@@ -263,9 +265,10 @@ const Assessments = () => {
         setCachedStudentsList(studentsWithClassId)
         cachedClassIdRef.current = sectionCourseId
         
-        // Cache students (minimized - without photos)
-        safeSetItem(cacheKey, studentsWithClassId, minimizeStudentData)
-        console.log('💾 [GRADING] Cached students:', studentsWithClassId.length, 'students')
+        // Cache students WITH photos for grading interface (needed for display)
+        // Don't minimize photos for grading interface as they're needed immediately
+        safeSetItem(cacheKey, studentsWithClassId)
+        console.log('💾 [GRADING] Cached students with photos:', studentsWithClassId.length, 'students')
       }
     } catch (error) {
       console.error('❌ [GRADING] Error fetching students:', error)
@@ -815,7 +818,8 @@ const Assessments = () => {
         setGradingLoading(true)
       }
       
-      const response = await fetch(`/api/grading/assessment/${assessmentId}/grades`)
+      // Include photos for grading interface (needed for student display)
+      const response = await fetch(`/api/grading/assessment/${assessmentId}/grades?includePhotos=true`)
       if (response.ok) {
         const text = await response.text()
         let data

@@ -49,12 +49,13 @@ router.post('/submit-grades', async (req, res) => {
         if (existingSubmission.rows.length > 0) {
           // Update existing submission
           // Use adjusted_score for total_score (they should be the same)
+          // Explicitly cast null values to proper types for PostgreSQL
           const updateQuery = `
             UPDATE submissions SET
-              total_score = $1,
-              raw_score = $2,
-              adjusted_score = $3,
-              late_penalty = $4,
+              total_score = $1::NUMERIC,
+              raw_score = $2::NUMERIC,
+              adjusted_score = $3::NUMERIC,
+              late_penalty = $4::NUMERIC,
               graded_at = CURRENT_TIMESTAMP,
               graded_by = $5,
               status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
@@ -81,11 +82,12 @@ router.post('/submit-grades', async (req, res) => {
           // Create new submission
           // Use adjusted_score for total_score (they should be the same)
           // Only set status to 'graded' if there's an actual score
+          // Explicitly cast null values to proper types for PostgreSQL
           const insertQuery = `
             INSERT INTO submissions (
               enrollment_id, assessment_id, total_score, raw_score, 
               adjusted_score, late_penalty, graded_by, status, submission_status, remarks
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END, $8, $9)
+            ) VALUES ($1, $2, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7, CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END, $8, $9)
             RETURNING submission_id, total_score, adjusted_score, submission_status
           `;
           
@@ -188,12 +190,13 @@ router.put('/grade/:submissionId', async (req, res) => {
       ? null 
       : Math.max(0, numericRawScore - (late_penalty || 0));
     
+    // Explicitly cast null values to proper types for PostgreSQL
     const query = `
       UPDATE submissions SET
-        total_score = $1,
-        raw_score = $2,
-        adjusted_score = $3,
-        late_penalty = $4,
+        total_score = $1::NUMERIC,
+        raw_score = $2::NUMERIC,
+        adjusted_score = $3::NUMERIC,
+        late_penalty = $4::NUMERIC,
         graded_at = CURRENT_TIMESTAMP,
         graded_by = $5,
         status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
