@@ -2425,153 +2425,211 @@ const MyClasses = () => {
       )}
 
       {/* Student Details Modal */}
-      {showStudentModal && selectedStudent && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowStudentModal(false)}
-        >
+      {showStudentModal && selectedStudent && (() => {
+        // Calculate final grade
+        const calculateFinalGrade = () => {
+          if (!studentGrades || studentGrades.length === 0) return null
+          
+          let totalWeightedScore = 0
+          let totalWeight = 0
+          
+          studentGrades.forEach(grade => {
+            const weight = parseFloat(grade.weight_percentage || 0)
+            totalWeight += weight
+            
+            if (grade.adjusted_score !== null && grade.total_points > 0) {
+              const percentage = (grade.adjusted_score / grade.total_points) * 100
+              totalWeightedScore += (percentage * weight) / 100
+            }
+          })
+          
+          if (totalWeight === 0) return null
+          
+          // Final grade is the sum of weighted scores
+          return totalWeightedScore
+        }
+        
+        const finalGrade = calculateFinalGrade()
+        const finalGradeDisplay = finalGrade !== null ? finalGrade.toFixed(2) : 'N/A'
+        const finalGradeColor = finalGrade !== null 
+          ? finalGrade >= 90 ? 'text-green-600' 
+            : finalGrade >= 75 ? 'text-blue-600' 
+            : finalGrade >= 60 ? 'text-yellow-600' 
+            : 'text-red-600'
+          : 'text-gray-500'
+        
+        return (
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowStudentModal(false)}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-4">
-                <LazyImage
-                  src={selectedStudent.student_photo}
-                  alt={selectedStudent.full_name}
-                  size="lg"
-                  shape="circle"
-                  className="border border-gray-200"
-                  delayLoad={false}
-                  priority={true}
-                />
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {formatName(selectedStudent.full_name)}
-                  </h2>
-                  <p className="text-sm text-gray-500">SR: {selectedStudent.student_number}</p>
-                  {selectedStudent.contact_email && (
-                    <p className="text-xs text-gray-400 mt-1">{selectedStudent.contact_email}</p>
-                  )}
+            <div 
+              className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header with Final Score */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center space-x-4 flex-1">
+                    <LazyImage
+                      src={selectedStudent.student_photo}
+                      alt={selectedStudent.full_name}
+                      size="lg"
+                      shape="circle"
+                      className="border-2 border-white shadow-sm"
+                      delayLoad={false}
+                      priority={true}
+                    />
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {formatName(selectedStudent.full_name)}
+                      </h2>
+                      <div className="flex items-center gap-4 mt-1">
+                        <p className="text-sm text-gray-600">SR: {selectedStudent.student_number}</p>
+                        {selectedStudent.contact_email && (
+                          <p className="text-xs text-gray-500">{selectedStudent.contact_email}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Final Score Display */}
+                  <div className="flex items-center gap-6 mr-4">
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Final Grade</p>
+                      <p className={`text-4xl font-bold ${finalGradeColor}`}>
+                        {finalGradeDisplay}%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowStudentModal(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => setShowStudentModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
-              
-              {loadingStudentGrades ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-              ) : studentGrades.length > 0 ? (
-                <div className="space-y-3">
-                  {studentGrades.map((grade) => {
-                    const adjustedScore = grade.adjusted_score ?? null
-                    const percentage = adjustedScore !== null && grade.total_points > 0 
-                      ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
-                      : null
-                    
-                    return (
-                      <div 
-                        key={grade.assessment_id} 
-                        className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-gray-900">
-                              {grade.assessment_title}
-                            </h4>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                                {grade.assessment_type}
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
+                
+                {loadingStudentGrades ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  </div>
+                ) : studentGrades.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {studentGrades.map((grade) => {
+                      const adjustedScore = grade.adjusted_score ?? null
+                      const percentage = adjustedScore !== null && grade.total_points > 0 
+                        ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
+                        : null
+                      const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
+                        ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
+                        : null
+                      
+                      return (
+                        <div 
+                          key={grade.assessment_id} 
+                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          {/* Assessment Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-base font-semibold text-gray-900 truncate">
+                                {grade.assessment_title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {grade.assessment_type}
+                                </span>
+                                <span className="text-xs text-gray-600">{grade.total_points} pts</span>
+                                <span className="text-xs text-gray-600">{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
+                                {grade.due_date && (
+                                  <span className="text-xs text-gray-500">Due: {new Date(grade.due_date).toLocaleDateString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Scores Grid - More Compact */}
+                          <div className="grid grid-cols-4 gap-3 mb-3">
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Raw</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Penalty</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Adjusted</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-blue-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">%</p>
+                              <p className="text-sm font-semibold text-blue-700">
+                                {percentage !== null ? `${percentage}%` : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Weighted Score and Status */}
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                grade.submission_status === 'ontime' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : grade.submission_status === 'late'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {grade.submission_status === 'ontime' ? 'On Time' : 
+                                 grade.submission_status === 'late' ? 'Late' : 'Missing'}
                               </span>
-                              <span>{grade.total_points} pts</span>
-                              <span>{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
-                              {grade.due_date && (
-                                <span>Due: {new Date(grade.due_date).toLocaleDateString()}</span>
+                              {weightedScore !== null && (
+                                <span className="text-xs text-gray-600">
+                                  Weighted: <span className="font-semibold">{weightedScore}%</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {grade.graded_at && (
+                                <span>{new Date(grade.graded_at).toLocaleDateString()}</span>
                               )}
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Raw Score</p>
-                            <p className="font-medium text-gray-900">
-                              {grade.raw_score !== null ? grade.raw_score.toFixed(2) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Late Penalty</p>
-                            <p className="font-medium text-gray-900">
-                              {grade.late_penalty !== null ? grade.late_penalty.toFixed(2) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Adjusted Score</p>
-                            <p className="font-medium text-gray-900">
-                              {adjustedScore !== null ? adjustedScore.toFixed(2) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Percentage</p>
-                            <p className="font-medium text-gray-900">
-                              {percentage !== null ? `${percentage}%` : '—'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3 flex items-center gap-4 text-xs">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full font-medium ${
-                            grade.submission_status === 'ontime' 
-                              ? 'bg-green-100 text-green-800'
-                              : grade.submission_status === 'late'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {grade.submission_status === 'ontime' ? 'On Time' : 
-                             grade.submission_status === 'late' ? 'Late' : 'Missing'}
-                          </span>
-                          {grade.graded_at && (
-                            <span className="text-gray-500">
-                              Graded: {new Date(grade.graded_at).toLocaleDateString()}
-                            </span>
-                          )}
-                          {grade.graded_by_name && (
-                            <span className="text-gray-500">
-                              By: {grade.graded_by_name}
-                            </span>
+                          
+                          {/* Feedback */}
+                          {grade.feedback && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs font-medium text-gray-500 mb-1">Feedback</p>
+                              <p className="text-xs text-gray-700 leading-relaxed">{grade.feedback}</p>
+                            </div>
                           )}
                         </div>
-                        
-                        {grade.feedback && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs text-gray-500 mb-1">Feedback</p>
-                            <p className="text-sm text-gray-700">{grade.feedback}</p>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">No assessment scores available</p>
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                    <p className="text-gray-500">No assessment scores available</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
