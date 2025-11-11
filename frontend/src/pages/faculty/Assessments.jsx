@@ -1331,14 +1331,14 @@ const Assessments = () => {
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
                                         <div className="text-sm text-gray-500">{assessment.description || 'No description'}</div>
-                                        {assessment.syllabus_title && (
+                                        {assessment.syllabus_version && (
                                           <div className="text-xs mt-1">
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                               assessment.syllabus_approval_status === 'approved' 
                                                 ? 'bg-green-100 text-green-800' 
                                                 : 'bg-yellow-100 text-yellow-800'
                                             }`}>
-                                              📋 {assessment.syllabus_title} (v{assessment.syllabus_version})
+                                              v{assessment.syllabus_version}
                                               {assessment.syllabus_approval_status !== 'approved' && (
                                                 <span className="ml-1 text-xs">- {assessment.syllabus_approval_status || 'Pending Approval'}</span>
                                               )}
@@ -1356,7 +1356,7 @@ const Assessments = () => {
                                       <div className="text-sm text-gray-900">{assessment.total_points}</div>
                                     </td>
                                     <td className="px-8 py-4">
-                                      <div className="text-sm text-gray-900">{assessment.weight_percentage}%</div>
+                                      <div className="text-sm text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}%</div>
                                     </td>
                                     <td className="px-8 py-4">
                                       <div className="text-sm text-gray-900">
