@@ -202,6 +202,68 @@ const MyClasses = () => {
     return `${lastName}, ${firstAndMiddle}`
   }
 
+  // Fetch student photos on-demand
+  const fetchStudentPhotos = async (students) => {
+    if (!students || students.length === 0) return
+    
+    try {
+      console.log('📸 [MYCLASSES] Fetching photos for', students.length, 'students')
+      
+      // Fetch photos in batches to avoid overwhelming the server
+      const batchSize = 5
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize)
+        
+        const photoPromises = batch.map(async (student) => {
+          try {
+            const response = await fetch(`/api/students/${student.student_id}/photo`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              }
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              // Update students with photo
+              setStudents(prev => {
+                if (!prev) return prev
+                return prev.map(s => 
+                  s.student_id === student.student_id 
+                    ? { ...s, student_photo: data.photo }
+                    : s
+                )
+              })
+              
+              // Queue image for loading
+              if (data.photo) {
+                imageLoaderService.queueImages([{
+                  src: data.photo,
+                  id: `student_${student.student_id}`
+                }], false)
+              }
+              
+              return { student_id: student.student_id, photo: data.photo }
+            }
+          } catch (error) {
+            console.error(`❌ [MYCLASSES] Error fetching photo for student ${student.student_id}:`, error)
+            return null
+          }
+        })
+        
+        await Promise.all(photoPromises)
+        
+        // Small delay between batches
+        if (i + batchSize < students.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+      
+      console.log('✅ [MYCLASSES] Photos fetched and updated')
+    } catch (error) {
+      console.error('❌ [MYCLASSES] Error in fetchStudentPhotos:', error)
+    }
+  }
+
   // Load existing attendance data for a specific date
   const loadExistingAttendanceForDate = useCallback(async (date) => {
     if (!selectedClass || !date) return
@@ -1244,6 +1306,10 @@ const MyClasses = () => {
       console.log('✅ [FACULTY] Attendance cache reset complete - all cached data cleared for new class')
     }
     
+    // Update breadcrumb immediately on first click (before state update)
+    saveSelectedClass(classItem)
+    dispatchSelectedClassChange(classItem)
+    
     setSelectedClass(classItem)
     setIsAttendanceMode(false) // Reset attendance mode when selecting different class
     
@@ -1254,12 +1320,6 @@ const MyClasses = () => {
       session_type: 'Lecture',
       meeting_type: 'Face-to-Face'
     })
-    
-    // Save selected class to localStorage for Header breadcrumb (using safe storage)
-    saveSelectedClass(classItem)
-    
-    // Dispatch custom event to notify Header of change
-    dispatchSelectedClassChange(classItem)
     
     // Check sessionStorage first for instant display
     const sectionId = classItem.section_course_id
@@ -1322,13 +1382,8 @@ const MyClasses = () => {
       // Load images immediately after essential data is displayed
       requestAnimationFrame(() => {
         setImagesLoaded(true) // Enable image loading in UI immediately
-        const imagesToLoad = sortedStudents
-          .filter(s => s.student_photo)
-          .map(s => ({ src: s.student_photo, id: `student_${s.student_id}` }))
-        if (imagesToLoad.length > 0) {
-          // Load images immediately in parallel (no batching delay)
-          imageLoaderService.queueImages(imagesToLoad, true)
-        }
+        // Fetch photos on-demand since API doesn't include them by default
+        fetchStudentPhotos(sortedStudents)
       })
       
     } catch (error) {
