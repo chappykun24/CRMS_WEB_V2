@@ -69,73 +69,87 @@ const ClassCard = ({
         <div className="text-sm text-gray-800">{instructor}</div>
       </div>
 
-      {/* Actions */}
-      <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onAttendance()
-          }}
-          className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-          title="Attendance"
-        >
-          <AttendanceIcon className="h-5 w-5" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onAssessments()
-          }}
-          className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-          title="Grading"
-        >
-          <AssessmentsIcon className="h-5 w-5" />
-        </button>
-        {onSyllabus && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onSyllabus()
-            }}
-            className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-            title="Syllabus"
-          >
-            <BookOpenIcon className="h-5 w-5" />
-          </button>
-        )}
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setMenuOpen((v) => !v)
-              if (onMore) onMore()
-            }}
-            className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-            title="More"
-          >
-            <EllipsisVerticalIcon className="h-5 w-5" />
-          </button>
-          {menuOpen && (
-            <div
-              className="absolute right-0 bottom-full mb-1 z-20 w-36 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+      {/* Actions - render only if any handlers provided */}
+      {(onAttendance || onAssessments || onSyllabus || onMore || onEdit || onArchive) && (
+        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+          {onAttendance && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAttendance()
+              }}
+              className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+              title="Attendance"
             >
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                onClick={() => { setMenuOpen(false); if (onEdit) onEdit(); }}
-              >
-                Edit
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
-                onClick={() => { setMenuOpen(false); if (onArchive) onArchive(); }}
-              >
-                Archive
-              </button>
+              <AttendanceIcon className="h-5 w-5" />
+            </button>
+          )}
+          {onAssessments && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAssessments()
+              }}
+              className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+              title="Grading"
+            >
+              <AssessmentsIcon className="h-5 w-5" />
+            </button>
+          )}
+          {onSyllabus && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onSyllabus()
+              }}
+              className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+              title="Syllabus"
+            >
+              <BookOpenIcon className="h-5 w-5" />
+            </button>
+          )}
+          {(onMore || onEdit || onArchive) && (
+            <div className="relative" ref={menuRef}>
+              {onMore && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setMenuOpen((v) => !v)
+                    onMore()
+                  }}
+                  className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+                  title="More"
+                >
+                  <EllipsisVerticalIcon className="h-5 w-5" />
+                </button>
+              )}
+              {menuOpen && (
+                <div
+                  className="absolute right-0 bottom-full mb-1 z-20 w-36 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {onEdit && (
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => { setMenuOpen(false); onEdit(); }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {onArchive && (
+                    <button
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
+                      onClick={() => { setMenuOpen(false); onArchive(); }}
+                    >
+                      Archive
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

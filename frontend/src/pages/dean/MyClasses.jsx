@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/solid'
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 import LazyImage from '../../components/LazyImage'
@@ -20,15 +20,30 @@ const MyClasses = () => {
   const abortControllerRef = useRef(null)
   const studentsAbortControllerRef = useRef(null)
   
+  // Modal states
+  const [showStudentStatsModal, setShowStudentStatsModal] = useState(false)
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false)
+  
   // Class selection and students
   const [selectedClass, setSelectedClass] = useState(null)
   const [students, setStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
-  // Selected student stats
-  const [selectedStudentId, setSelectedStudentId] = useState(null)
-  const [studentStats, setStudentStats] = useState({ gradePercent: null, attendancePercent: null, gradedAssessments: 0, totalAssessments: 0 })
-  const [loadingStats, setLoadingStats] = useState(false)
-  const statsCacheRef = useRef(new Map()) // key: `${sectionId}:${studentId}` -> stats
+  
+  // Selected student for modal
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [studentGrades, setStudentGrades] = useState([])
+  const [loadingStudentGrades, setLoadingStudentGrades] = useState(false)
+  const [studentAttendancePercent, setStudentAttendancePercent] = useState(null)
+  
+  // Attendance modal state
+  const [sessionList, setSessionList] = useState([])
+  const [sessionData, setSessionData] = useState({})
+  const [loadingFullAttendance, setLoadingFullAttendance] = useState(false)
+  const [loadingSession, setLoadingSession] = useState({})
+  const [activeSessionTab, setActiveSessionTab] = useState(0)
+  const [imagesLoaded, setImagesLoaded] = useState(false)
+  const [cachedStudentsList, setCachedStudentsList] = useState(null)
+  const attendanceAbortControllerRef = useRef(null)
 
   // Helper function to enrich minimized data with images from enhanced cache
   const enrichWithImages = useCallback((minimizedClasses, fullClassesData) => {
@@ -225,11 +240,9 @@ const MyClasses = () => {
     })
   }, [])
 
-  // Handle class selection - lazy load students ONLY when class is clicked
+  // Handle class selection - loads students in sidebar
   const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
-    setSelectedStudentId(null)
-    setStudentStats({ gradePercent: null, attendancePercent: null, gradedAssessments: 0, totalAssessments: 0 })
     
     // Check sessionStorage first for instant display
     const sectionId = classItem.id
@@ -320,57 +333,242 @@ const MyClasses = () => {
       setLoadingStudents(false)
     }
   }, [enrichStudentsWithPhotos])
-
-  // Fetch stats for a specific student in the selected class
-  const fetchStudentStats = useCallback(async (sectionId, studentId) => {
-    if (!sectionId || !studentId) return
-    const cacheKey = `${sectionId}:${studentId}`
-    const cached = statsCacheRef.current.get(cacheKey)
-    if (cached) {
-      setStudentStats(cached)
+  
+  // Handle student click - opens student modal with detailed grades (like faculty interface)
+  const handleStudentClick = useCallback(async (student) => {
+    setSelectedStudent(student)
+    setShowStudentStatsModal(true)
+    setLoadingStudentGrades(true)
+    setStudentGrades([])
+    setStudentAttendancePercent(null)
+    
+    const sectionId = selectedClass?.id
+    if (!sectionId || !student.enrollment_id) {
+      setLoadingStudentGrades(false)
       return
     }
-    setLoadingStats(true)
+    
     try {
-      // Fetch attendance stats for the class
-      const [attendanceRes, gradesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/attendance/stats/${sectionId}`, {
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+      // Fetch detailed student grades and attendance in parallel
+      const [gradesRes, attendanceRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/grading/student/${student.enrollment_id}/grades`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         }),
-        fetch(`${API_BASE_URL}/grading/class/${sectionId}/student-grades`, {
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        fetch(`${API_BASE_URL}/attendance/stats/${sectionId}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         })
       ])
-
-      let attendancePercent = null
+      
+      // Process grades
+      if (gradesRes.ok) {
+        const gradesData = await gradesRes.json()
+        setStudentGrades(Array.isArray(gradesData) ? gradesData : [])
+      } else {
+        console.error('Failed to fetch student grades')
+        setStudentGrades([])
+      }
+      
+      // Process attendance
       if (attendanceRes.ok) {
         const attendanceJson = await attendanceRes.json().catch(() => null)
         const list = attendanceJson?.data || attendanceJson || []
-        const found = Array.isArray(list) ? list.find(s => String(s.student_id) === String(studentId)) : null
-        attendancePercent = found?.attendance_percentage !== undefined ? Number(found.attendance_percentage) : null
+        const found = Array.isArray(list) ? list.find(s => String(s.student_id) === String(student.student_id)) : null
+        setStudentAttendancePercent(found?.attendance_percentage !== undefined ? Number(found.attendance_percentage) : null)
       }
-
-      let gradePercent = null
-      let gradedAssessments = 0
-      let totalAssessments = 0
-      if (gradesRes.ok) {
-        const gradesList = await gradesRes.json().catch(() => [])
-        const found = Array.isArray(gradesList) ? gradesList.find(s => String(s.student_id) === String(studentId)) : null
-        gradePercent = found?.total_grade !== undefined && found?.total_grade !== null ? Number(found.total_grade) : null
-        gradedAssessments = found?.graded_assessments || 0
-        totalAssessments = found?.total_assessments || 0
-      }
-
-      const stats = { gradePercent, attendancePercent, gradedAssessments, totalAssessments }
-      setStudentStats(stats)
-      statsCacheRef.current.set(cacheKey, stats)
-    } catch (e) {
-      // Keep UI graceful on errors
-      console.error('❌ [DEAN MYCLASSES] Error fetching student stats:', e)
+    } catch (error) {
+      console.error('❌ [DEAN MYCLASSES] Error fetching student data:', error)
+      setStudentGrades([])
     } finally {
-      setLoadingStats(false)
+      setLoadingStudentGrades(false)
     }
-  }, [])
+  }, [selectedClass])
+  
+  // Load session data - defined before handleOpenAttendanceModal to avoid dependency issues
+  const loadSessionData = useCallback(async (session, tabIndex, currentSessionData, currentStudents, currentCachedStudents) => {
+    if (!session || !selectedClass) return
+    
+    const sessionKey = session.session_key
+    if (currentSessionData?.[sessionKey]?.loaded) {
+      setActiveSessionTab(tabIndex)
+      return
+    }
+    
+    setLoadingSession(prev => ({ ...prev, [sessionKey]: true }))
+    
+    try {
+      // Fetch attendance for this session
+      const response = await fetch(`${API_BASE_URL}/attendance/session/${session.session_id}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch session data: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      const attendanceRecords = Array.isArray(result.data) ? result.data : []
+      
+      // Get students list (use cached if available)
+      let studentsList = currentCachedStudents || currentStudents
+      if (studentsList.length === 0) {
+        // Fetch students if not available
+        const studentsResponse = await fetch(`${API_BASE_URL}/section-courses/${selectedClass.id}/students?includePhotos=true`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+        if (studentsResponse.ok) {
+          const studentsData = await studentsResponse.json()
+          studentsList = Array.isArray(studentsData) ? studentsData : []
+        }
+      }
+      
+      // Create attendance map
+      const attendanceMap = new Map()
+      attendanceRecords.forEach(record => {
+        attendanceMap.set(record.enrollment_id, {
+          ...record,
+          session_date: record.session_date || session.session_date,
+          title: record.title || session.title,
+          session_type: record.session_type || session.session_type,
+          meeting_type: record.meeting_type || session.meeting_type
+        })
+      })
+      
+      // Merge students with attendance data
+      const sessionRecords = studentsList.map(student => {
+        const attendanceRecord = attendanceMap.get(student.enrollment_id)
+        if (attendanceRecord) {
+          return {
+            ...student,
+            status: attendanceRecord.status,
+            remarks: attendanceRecord.remarks || null,
+            session_date: attendanceRecord.session_date,
+            title: attendanceRecord.title
+          }
+        } else {
+          return {
+            ...student,
+            status: null,
+            remarks: null,
+            session_date: session.session_date,
+            title: session.title
+          }
+        }
+      })
+      
+      // Calculate status counts
+      const statusCounts = sessionRecords.reduce((acc, record) => {
+        if (record.status) {
+          acc[record.status] = (acc[record.status] || 0) + 1
+        }
+        return acc
+      }, {})
+      
+      // Store session data
+      setSessionData(prev => ({
+        ...prev,
+        [sessionKey]: {
+          records: sessionRecords,
+          statusCounts,
+          loaded: true
+        }
+      }))
+      
+      setActiveSessionTab(tabIndex)
+    } catch (error) {
+      console.error('❌ [DEAN MYCLASSES] Error loading session data:', error)
+    } finally {
+      setLoadingSession(prev => {
+        const updated = { ...prev }
+        delete updated[sessionKey]
+        return updated
+      })
+    }
+  }, [selectedClass])
+  
+  // Handle opening attendance modal
+  const handleOpenAttendanceModal = useCallback(async () => {
+    if (!selectedClass) return
+    
+    setShowAttendanceModal(true)
+    setLoadingFullAttendance(true)
+    setSessionList([])
+    setSessionData({})
+    setActiveSessionTab(0)
+    setImagesLoaded(false)
+    setCachedStudentsList(students.length > 0 ? students : null)
+    
+    // Cancel previous request if still pending
+    if (attendanceAbortControllerRef.current) {
+      attendanceAbortControllerRef.current.abort()
+    }
+    
+    attendanceAbortControllerRef.current = new AbortController()
+    
+    try {
+      // Fetch session list
+      const response = await fetch(`${API_BASE_URL}/attendance/sessions/${selectedClass.id}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        signal: attendanceAbortControllerRef.current.signal
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sessions: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      const sessions = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])
+      
+      // Format sessions for display
+      const formattedSessions = sessions.map(session => ({
+        session_id: session.session_id,
+        session_key: `${session.session_id}_${session.session_date}`,
+        session_date: session.session_date,
+        title: session.title || `Session ${new Date(session.session_date).toLocaleDateString()}`,
+        session_type: session.session_type,
+        meeting_type: session.meeting_type,
+        student_count: session.student_count || 0
+      }))
+      
+      setSessionList(formattedSessions)
+      
+      // Load first session data immediately
+      if (formattedSessions.length > 0) {
+        loadSessionData(formattedSessions[0], 0, {}, students, students.length > 0 ? students : null)
+      }
+      
+      setImagesLoaded(true)
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [DEAN MYCLASSES] Attendance request was aborted')
+        return
+      }
+      console.error('❌ [DEAN MYCLASSES] Error loading attendance sessions:', error)
+    } finally {
+      setLoadingFullAttendance(false)
+    }
+  }, [selectedClass, students, loadSessionData])
+  
+  // Handle tab change in attendance modal
+  const handleTabChange = useCallback((tabIndex) => {
+    if (tabIndex < 0 || tabIndex >= sessionList.length) return
+    const session = sessionList[tabIndex]
+    loadSessionData(session, tabIndex, sessionData, students, cachedStudentsList)
+  }, [sessionList, sessionData, students, cachedStudentsList, loadSessionData])
 
   // Load classes when component mounts
   useEffect(() => {
@@ -383,6 +581,9 @@ const MyClasses = () => {
       }
       if (studentsAbortControllerRef.current) {
         studentsAbortControllerRef.current.abort()
+      }
+      if (attendanceAbortControllerRef.current) {
+        attendanceAbortControllerRef.current.abort()
       }
     }
   }, [fetchClasses, enrichWithImages, enrichStudentsWithPhotos])
@@ -456,9 +657,6 @@ const MyClasses = () => {
                         avatarUrl={cls.avatarUrl}
                         isSelected={selectedClass?.id === cls.id}
                         onClick={() => handleClassSelect(cls)}
-                        onAttendance={() => {}}
-                        onAssessments={() => {}}
-                        onMore={() => {}}
                       />
                     ))}
                   </div>
@@ -478,48 +676,13 @@ const MyClasses = () => {
                       <div><span className="font-medium">Section:</span> {selectedClass.section}</div>
                       <div><span className="font-medium">Instructor:</span> {selectedClass.instructor}</div>
                     </div>
+                    <button
+                      onClick={handleOpenAttendanceModal}
+                      className="mt-3 w-full px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      View Attendance
+                    </button>
                   </div>
-
-                  {/* Selected Student Statistics */}
-                  {selectedStudentId && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-900">Student Statistics</span>
-                        {loadingStats && <span className="text-xs text-gray-500">Loading...</span>}
-                      </div>
-                      {/* Grade Progress */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600">Total Grade</span>
-                          <span className="text-xs font-medium text-gray-900">{studentStats.gradePercent ?? '—'}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-green-500 h-2 rounded-full transition-all"
-                            style={{ width: `${Math.max(0, Math.min(100, Number(studentStats.gradePercent || 0)))}%` }}
-                          />
-                        </div>
-                        {studentStats.totalAssessments > 0 && (
-                          <div className="mt-1 text-[11px] text-gray-500">
-                            {studentStats.gradedAssessments}/{studentStats.totalAssessments} assessments graded
-                          </div>
-                        )}
-                      </div>
-                      {/* Attendance Progress */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600">Attendance</span>
-                          <span className="text-xs font-medium text-gray-900">{studentStats.attendancePercent ?? '—'}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full transition-all"
-                            style={{ width: `${Math.max(0, Math.min(100, Number(studentStats.attendancePercent || 0)))}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Students List */}
                   <div className="flex-1 min-h-0">
@@ -540,11 +703,8 @@ const MyClasses = () => {
                         {students.map((student) => (
                           <div 
                             key={student.student_id} 
-                            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedStudentId === student.student_id ? 'bg-red-50 ring-1 ring-red-200' : 'bg-gray-50 hover:bg-gray-100'}`}
-                            onClick={() => {
-                              setSelectedStudentId(student.student_id)
-                              fetchStudentStats(selectedClass?.id, student.student_id)
-                            }}
+                            className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors bg-gray-50 hover:bg-gray-100"
+                            onClick={() => handleStudentClick(student)}
                           >
                             <div className="flex-shrink-0">
                               <LazyImage
@@ -607,6 +767,502 @@ const MyClasses = () => {
           </div>
         </div>
       </div>
+
+      {/* Student Details Modal - Matches Faculty Interface */}
+      {showStudentStatsModal && selectedStudent && (() => {
+        // Calculate final grade from detailed grades
+        const calculateFinalGrade = () => {
+          if (!studentGrades || studentGrades.length === 0) return null
+          
+          let totalWeightedScore = 0
+          let totalWeight = 0
+          
+          studentGrades.forEach(grade => {
+            const weight = parseFloat(grade.weight_percentage || 0)
+            totalWeight += weight
+            
+            if (grade.adjusted_score !== null && grade.total_points > 0) {
+              const percentage = (grade.adjusted_score / grade.total_points) * 100
+              totalWeightedScore += (percentage * weight) / 100
+            }
+          })
+          
+          if (totalWeight === 0) return null
+          
+          // Final grade is the sum of weighted scores
+          return totalWeightedScore
+        }
+        
+        const finalGrade = calculateFinalGrade()
+        const finalGradeDisplay = finalGrade !== null ? finalGrade.toFixed(2) : 'N/A'
+        const finalGradeColor = finalGrade !== null 
+          ? finalGrade >= 90 ? 'text-green-600' 
+            : finalGrade >= 75 ? 'text-blue-600' 
+            : finalGrade >= 60 ? 'text-yellow-600' 
+            : 'text-red-600'
+          : 'text-gray-500'
+        
+        // Format student name helper
+        const formatName = (name) => {
+          if (!name) return ''
+          return name.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          ).join(' ')
+        }
+        
+        return (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowStudentStatsModal(false)}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header with Final Score */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                <div className="flex items-center justify-between p-5">
+                  <div className="flex items-center space-x-4 flex-1">
+                    <LazyImage
+                      src={selectedStudent.student_photo}
+                      alt={selectedStudent.full_name}
+                      size="lg"
+                      shape="circle"
+                      className="border-2 border-white shadow-sm"
+                      delayLoad={false}
+                      priority={true}
+                    />
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {formatName(selectedStudent.full_name)}
+                      </h2>
+                      <div className="flex items-center gap-4 mt-1">
+                        <p className="text-sm text-gray-600">SR: {selectedStudent.student_number}</p>
+                        {selectedStudent.contact_email && (
+                          <p className="text-xs text-gray-500">{selectedStudent.contact_email}</p>
+                        )}
+                        {studentAttendancePercent !== null && (
+                          <p className="text-xs text-gray-500">
+                            Attendance: <span className="font-medium">{studentAttendancePercent.toFixed(1)}%</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Final Score Display */}
+                  <div className="flex items-center gap-6 mr-4">
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Final Grade</p>
+                      <p className={`text-4xl font-bold ${finalGradeColor}`}>
+                        {finalGradeDisplay}%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowStudentStatsModal(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
+                
+                {loadingStudentGrades ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+                  </div>
+                ) : studentGrades.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {studentGrades.map((grade) => {
+                      const adjustedScore = grade.adjusted_score ?? null
+                      const percentage = adjustedScore !== null && grade.total_points > 0 
+                        ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
+                        : null
+                      const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
+                        ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
+                        : null
+                      
+                      return (
+                        <div 
+                          key={grade.assessment_id} 
+                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          {/* Assessment Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-base font-semibold text-gray-900 truncate">
+                                {grade.assessment_title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {grade.assessment_type}
+                                </span>
+                                <span className="text-xs text-gray-600">{grade.total_points} pts</span>
+                                <span className="text-xs text-gray-600">{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
+                                {grade.due_date && (
+                                  <span className="text-xs text-gray-500">Due: {new Date(grade.due_date).toLocaleDateString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Scores Grid */}
+                          <div className="grid grid-cols-4 gap-3 mb-3">
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Raw</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Penalty</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Adjusted</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-blue-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">%</p>
+                              <p className="text-sm font-semibold text-blue-700">
+                                {percentage !== null ? `${percentage}%` : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Weighted Score and Status */}
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                grade.submission_status === 'ontime' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : grade.submission_status === 'late'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {grade.submission_status === 'ontime' ? 'On Time' : 
+                                 grade.submission_status === 'late' ? 'Late' : 'Missing'}
+                              </span>
+                              {weightedScore !== null && (
+                                <span className="text-xs text-gray-600">
+                                  Weighted: <span className="font-semibold">{weightedScore}%</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {grade.graded_at && (
+                                <span>{new Date(grade.graded_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Feedback */}
+                          {grade.feedback && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs font-medium text-gray-500 mb-1">Feedback</p>
+                              <p className="text-xs text-gray-700 leading-relaxed">{grade.feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                    <p className="text-gray-500">No assessment scores available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Attendance Records Modal */}
+      {showAttendanceModal && selectedClass && (
+        <div 
+          data-attendance-modal
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAttendanceModal(false)
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Attendance Records</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedClass.title} • {
+                    loadingFullAttendance ? (
+                      <span className="inline-block h-4 bg-gray-200 rounded w-20 animate-pulse align-middle"></span>
+                    ) : (
+                      `${sessionList.reduce((sum, session) => sum + session.student_count, 0)} total records`
+                    )
+                  }
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAttendanceModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body - Tabs for Sessions */}
+            <div className="flex-1 flex flex-col min-h-0">
+              {loadingFullAttendance ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+                </div>
+              ) : sessionList.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  <p>No attendance records found.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Session Tabs */}
+                  <div className="border-b border-gray-200 px-4 pt-2">
+                    <div className="flex space-x-1 overflow-x-auto">
+                      {sessionList.map((session, sessionIndex) => {
+                        const formatDate = (dateString) => {
+                          if (!dateString) return 'N/A'
+                          const date = new Date(dateString)
+                          return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric'
+                          })
+                        }
+                        
+                        const sessionDataItem = sessionData[session.session_key]
+                        const statusCounts = sessionDataItem?.statusCounts || {}
+                        const totalAbsent = statusCounts.absent || 0
+                        const isLoading = loadingSession[session.session_key]
+                        
+                        return (
+                          <button
+                            key={`tab-${sessionIndex}`}
+                            onClick={() => handleTabChange(sessionIndex)}
+                            disabled={isLoading}
+                            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                              activeSessionTab === sessionIndex
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{formatDate(session.session_date)}</span>
+                              <span className="text-xs text-gray-400">({session.student_count})</span>
+                              {isLoading && (
+                                <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                              )}
+                              {!isLoading && totalAbsent > 0 && (
+                                <span className="w-2 h-2 bg-red-500 rounded-full" title={`${totalAbsent} absent`}></span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Active Session Content */}
+                  <div className="flex-1 overflow-auto p-4">
+                    {sessionList[activeSessionTab] && (() => {
+                      const session = sessionList[activeSessionTab]
+                      const sessionDataItem = sessionData[session.session_key]
+                      const isLoadingSession = loadingSession[session.session_key]
+                      
+                      const formatDate = (dateString) => {
+                        if (!dateString) return 'N/A'
+                        const date = new Date(dateString)
+                        return date.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      }
+                      
+                      if (!sessionDataItem && (!cachedStudentsList || cachedStudentsList.length === 0)) {
+                        return (
+                          <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+                          </div>
+                        )
+                      }
+                      
+                      let records, statusCounts
+                      if (sessionDataItem) {
+                        records = sessionDataItem.records || []
+                        statusCounts = sessionDataItem.statusCounts || {}
+                      } else {
+                        records = (cachedStudentsList || students || []).map(student => ({
+                          ...student,
+                          status: null,
+                          remarks: null,
+                          session_date: session.session_date,
+                          title: session.title
+                        }))
+                        statusCounts = {}
+                      }
+                      
+                      const isAttendanceLoading = isLoadingSession || (sessionDataItem && !sessionDataItem.loaded)
+                      
+                      return (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Session Header */}
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-semibold text-gray-900">
+                                    {session.title}
+                                  </h3>
+                                  {isAttendanceLoading && (
+                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" title="Loading attendance data..."></div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <p className="text-xs text-gray-500">
+                                    {formatDate(session.session_date)} • {records.length} students
+                                  </p>
+                                  {session.session_type && (
+                                    <>
+                                      <span className="text-xs text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500">{session.session_type}</span>
+                                    </>
+                                  )}
+                                  {session.meeting_type && (
+                                    <>
+                                      <span className="text-xs text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500">{session.meeting_type}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs">
+                                {statusCounts.present && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                                    {statusCounts.present} Present
+                                  </span>
+                                )}
+                                {statusCounts.absent && (
+                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
+                                    {statusCounts.absent} Absent
+                                  </span>
+                                )}
+                                {statusCounts.late && (
+                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                    {statusCounts.late} Late
+                                  </span>
+                                )}
+                                {statusCounts.excuse && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                    {statusCounts.excuse} Excuse
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Students Grid - 3 Columns */}
+                          <div className="overflow-x-auto p-4">
+                            <div className="grid grid-cols-3 gap-3">
+                              {records.map((record, recordIndex) => {
+                                const statusColors = {
+                                  present: 'bg-green-100 text-green-800',
+                                  absent: 'bg-red-100 text-red-800',
+                                  late: 'bg-yellow-100 text-yellow-800',
+                                  excuse: 'bg-blue-100 text-blue-800'
+                                }
+                                
+                                return (
+                                  <div 
+                                    key={`record-${recordIndex}`} 
+                                    className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                      <div className="flex-shrink-0">
+                                        <LazyImage
+                                          src={record.student_photo || null}
+                                          alt={record.full_name}
+                                          size="xs"
+                                          shape="circle"
+                                          className="border border-gray-200"
+                                          delayLoad={!imagesLoaded}
+                                          priority={false}
+                                        />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                          {record.full_name}
+                                        </div>
+                                        <div className="text-xs text-gray-500 truncate">
+                                          {record.student_number}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                                      {record.status ? (
+                                        <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full whitespace-nowrap ${
+                                          statusColors[record.status] || 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                                        </span>
+                                      ) : (
+                                        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" title="Loading attendance..."></div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between p-4 border-t border-gray-200">
+              <div className="text-xs text-gray-500">
+                {loadingFullAttendance ? (
+                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                ) : (
+                  <>
+                    {sessionList.length} session{sessionList.length !== 1 ? 's' : ''} recorded
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => setShowAttendanceModal(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
