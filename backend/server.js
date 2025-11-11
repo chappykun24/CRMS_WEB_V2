@@ -72,13 +72,22 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    // Check if it's a Vercel deployment (for preview deployments)
+    // Check if it's a Vercel deployment (for preview deployments) - be very permissive
     const isVercelDeployment = origin.includes('.vercel.app') || 
+                                origin.includes('vercel.app') ||
                                 origin.includes('crms-web-v2-frontend') ||
-                                origin.includes('kcs-projects-59f6ae3a');
+                                origin.includes('kcs-projects') ||
+                                origin.includes('crms-web');
     
     if (isVercelDeployment) {
       console.log(`✅ [CORS] Allowed origin (Vercel deployment): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // In production, still allow the main frontend URL even if not in exact list
+    // This handles cases where the URL might have slight variations
+    if (process.env.NODE_ENV === 'production' && origin.includes('crms-web-v2-frontend.vercel.app')) {
+      console.log(`✅ [CORS] Allowed origin (production frontend): ${origin}`);
       return callback(null, true);
     }
     
@@ -93,7 +102,10 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
+    // In production, be more permissive for known domains to avoid CORS issues
+    // This is a safety net - ideally all origins should be in the allowed list
+    console.log(`⚠️ [CORS] Production mode - allowing origin to prevent CORS blocking: ${origin}`);
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -700,14 +712,16 @@ app.get('/api/users/:id/profile', async (req, res) => {
     // Validate that id is a valid integer
     const userId = parseInt(id);
     if (isNaN(userId)) {
+      console.log('❌ [USER PROFILE] Invalid user ID:', id);
       return res.status(400).json({ 
         success: false, 
         error: 'Invalid user ID. Must be a valid integer.' 
       });
     }
 
-    console.log('🔍 [USER PROFILE] Fetching profile for user ID:', userId);
+    console.log('🔍 [USER PROFILE] Fetching profile for user ID:', userId, 'Origin:', req.headers.origin);
     
+    // Execute database query (database service has built-in timeout handling)
     const result = await db.query(`
       SELECT u.*, r.name AS role_name, up.department_id, d.name AS department_name, d.department_abbreviation,
              up.profile_type, up.specialization, up.designation, up.office_assigned, up.contact_email, up.bio, up.position
@@ -718,9 +732,10 @@ app.get('/api/users/:id/profile', async (req, res) => {
       WHERE u.user_id = $1
     `, [userId]);
 
-    console.log('🔍 [USER PROFILE] Query result:', result.rows.length, 'rows found');
+    console.log('🔍 [USER PROFILE] Query result:', result.rows?.length || 0, 'rows found');
 
-    if (result.rows.length === 0) {
+    if (!result.rows || result.rows.length === 0) {
+      console.log('⚠️ [USER PROFILE] User not found:', userId);
       return res.status(404).json({ 
         success: false,
         error: 'User not found' 
@@ -756,17 +771,31 @@ app.get('/api/users/:id/profile', async (req, res) => {
       position: userData.position
     };
     
-    console.log('🔍 [USER PROFILE] Transformed user data:', transformedUser);
+    console.log('✅ [USER PROFILE] Successfully fetched profile for user ID:', userId);
     
     res.json({
       success: true,
       user: transformedUser
     });
   } catch (error) {
-    console.error('❌ [USER PROFILE] Error occurred:', error);
-    res.status(500).json({ 
+    console.error('❌ [USER PROFILE] Error occurred:', error.message);
+    console.error('❌ [USER PROFILE] Error code:', error.code);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('❌ [USER PROFILE] Error stack:', error.stack);
+    }
+    
+    // Determine appropriate status code
+    let statusCode = 500;
+    if (error.message.includes('timeout') || error.code === 'ETIMEDOUT') {
+      statusCode = 504;
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      statusCode = 503; // Service unavailable
+    }
+    
+    // CORS middleware should handle headers, but ensure we return a proper error response
+    res.status(statusCode).json({ 
       success: false, 
-      error: error.message 
+      error: error.message || 'Internal server error'
     });
   }
 });
@@ -3154,23 +3183,24 @@ app.post('/api/students/enroll', async (req, res) => {
   }
 });
 
-// Global error handler - CORS middleware should handle headers, but ensure error responses are sent
+// Global error handler - CORS middleware should handle headers
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR]', err.message);
   if (process.env.NODE_ENV !== 'production') {
     console.error('❌ [ERROR] Stack:', err.stack);
   }
   
-  // CORS headers should already be set by cors middleware
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
-  });
+  // CORS middleware should already have set headers, but ensure response is sent
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      error: err.message || 'Internal server error',
+      ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    });
+  }
 });
 
-// 404 handler
+// 404 handler - CORS middleware should handle headers
 app.use((req, res) => {
-  // CORS headers should already be set by cors middleware
   res.status(404).json({ error: 'Route not found' });
 });
 

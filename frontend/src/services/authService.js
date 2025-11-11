@@ -111,7 +111,18 @@ class AuthService {
       const { data } = await api.get(`${endpoints.users}/${userId}/profile`);
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Get user error:', error);
+      // Handle network errors (CORS, timeout, connection refused, etc.)
+      if (!error.response) {
+        // Network error - server might be down or unreachable
+        console.error('Get user error (network):', error.message);
+        return {
+          success: false,
+          error: 'Network error - unable to connect to server. Please try again later.'
+        };
+      }
+      
+      // Handle HTTP errors
+      console.error('Get user error:', error.response?.status, error.response?.data?.error || error.message);
       return {
         success: false,
         error: error.response?.data?.error || error.message
