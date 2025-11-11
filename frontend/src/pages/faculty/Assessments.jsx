@@ -739,25 +739,45 @@ const Assessments = () => {
       }
     }
     
-    // Step 2: Check cache for grades (instant display)
+    // Step 2: Check cache for grades
     const cachedGrades = safeGetItem(gradesCacheKey)
-    if (cachedGrades && studentsToUse) {
-      console.log('✅ [GRADING] Using cached grades for assessment:', assessmentId)
+    
+    // Step 3: Show students immediately (if available) - load data first, images last
+    if (studentsToUse && studentsToUse.length > 0) {
+      console.log('📋 [GRADING] Showing students immediately (data first, images last)')
       
-      // Merge cached grades with students (in case students were updated)
-      const mergedGrades = {}
-      studentsToUse.forEach(student => {
-        const cachedGrade = cachedGrades[student.enrollment_id]
-        if (cachedGrade) {
-          mergedGrades[student.enrollment_id] = {
-            ...cachedGrade,
-            student_name: student.full_name || cachedGrade.student_name,
-            student_number: student.student_number || cachedGrade.student_number,
-            student_photo: student.student_photo || cachedGrade.student_photo
+      let initialGrades = {}
+      
+      if (cachedGrades) {
+        console.log('✅ [GRADING] Merging cached grades with students')
+        // Merge cached grades with students
+        studentsToUse.forEach(student => {
+          const cachedGrade = cachedGrades[student.enrollment_id]
+          if (cachedGrade) {
+            initialGrades[student.enrollment_id] = {
+              ...cachedGrade,
+              student_name: student.full_name || cachedGrade.student_name,
+              student_number: student.student_number || cachedGrade.student_number,
+              student_photo: student.student_photo || cachedGrade.student_photo
+            }
+          } else {
+            // New student not in cached grades - create empty entry
+            initialGrades[student.enrollment_id] = {
+              student_name: student.full_name,
+              student_number: student.student_number,
+              student_photo: student.student_photo,
+              raw_score: '',
+              late_penalty: '',
+              feedback: '',
+              submission_status: 'missing',
+              due_date: null
+            }
           }
-        } else {
-          // New student not in cached grades - create empty entry
-          mergedGrades[student.enrollment_id] = {
+        })
+      } else {
+        // No cached grades - create empty entries for all students
+        studentsToUse.forEach(student => {
+          initialGrades[student.enrollment_id] = {
             student_name: student.full_name,
             student_number: student.student_number,
             student_photo: student.student_photo,
@@ -767,54 +787,28 @@ const Assessments = () => {
             submission_status: 'missing',
             due_date: null
           }
-        }
-      })
+        })
+      }
       
-      setGrades(mergedGrades)
-      setOriginalGrades(JSON.parse(JSON.stringify(mergedGrades)))
+      // Show students data immediately (without images)
+      setGrades(initialGrades)
+      setOriginalGrades(JSON.parse(JSON.stringify(initialGrades)))
+      setImagesReady(false) // Keep images disabled initially
       
-      // Delay image loading
+      // Load images asynchronously after a delay (load last)
       setTimeout(() => {
         setImagesReady(true)
-        const imagesToLoad = Object.values(mergedGrades)
+        const imagesToLoad = Object.values(initialGrades)
           .filter(g => g.student_photo)
           .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
         if (imagesToLoad.length > 0) {
+          console.log('🖼️ [GRADING] Loading images asynchronously (last):', imagesToLoad.length, 'images')
           imageLoaderService.queueImages(imagesToLoad, false)
         }
-      }, 100)
-    } else if (studentsToUse) {
-      // No cached grades, but we have students - show students immediately
-      console.log('📋 [GRADING] Showing students while grades load...')
-      const initialGrades = {}
-      studentsToUse.forEach(student => {
-        initialGrades[student.enrollment_id] = {
-          student_name: student.full_name,
-          student_number: student.student_number,
-          student_photo: student.student_photo,
-          raw_score: '',
-          late_penalty: '',
-          feedback: '',
-          submission_status: 'missing',
-          due_date: null
-        }
-      })
-      setGrades(initialGrades)
-      setOriginalGrades(JSON.parse(JSON.stringify(initialGrades)))
-      
-      // Delay image loading
-      setTimeout(() => {
-        setImagesReady(true)
-        const imagesToLoad = studentsToUse
-          .filter(s => s.student_photo)
-          .map((s, idx) => ({ src: s.student_photo, id: `grade_${assessmentId}_${s.enrollment_id || idx}` }))
-        if (imagesToLoad.length > 0) {
-          imageLoaderService.queueImages(imagesToLoad, false)
-        }
-      }, 100)
+      }, 500) // Delay image loading to show data first
     }
     
-    // Step 3: Fetch fresh grades asynchronously in background
+    // Step 4: Fetch fresh grades asynchronously in background
     try {
       // Only show loading if no cache available
       if (!cachedGrades) {
@@ -887,16 +881,19 @@ const Assessments = () => {
         safeSetItem(gradesCacheKey, gradesMap, minimizeGradesData)
         console.log('💾 [GRADING] Cached grades for assessment:', assessmentId)
         
-        // Load images asynchronously
-        setTimeout(() => {
-          setImagesReady(true)
-          const imagesToLoad = Object.values(gradesMap)
-            .filter(g => g.student_photo)
-            .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
-          if (imagesToLoad.length > 0) {
-            imageLoaderService.queueImages(imagesToLoad, false)
-          }
-        }, 100)
+        // Load images asynchronously (last) - only if not already loading
+        if (!imagesReady) {
+          setTimeout(() => {
+            setImagesReady(true)
+            const imagesToLoad = Object.values(gradesMap)
+              .filter(g => g.student_photo)
+              .map((g, idx) => ({ src: g.student_photo, id: `grade_${assessmentId}_${g.enrollment_id || idx}` }))
+            if (imagesToLoad.length > 0) {
+              console.log('🖼️ [GRADING] Loading images asynchronously (last):', imagesToLoad.length, 'images')
+              imageLoaderService.queueImages(imagesToLoad, false)
+            }
+          }, 300) // Small delay to ensure grades are displayed first
+        }
       } else {
         // Handle error response
         if (!cachedGrades) {
@@ -1356,48 +1353,48 @@ const Assessments = () => {
                             Grades for: {selectedAssessment.title} <span className="text-xs sm:text-sm text-gray-600">({selectedAssessment.total_points} pts)</span>
                           </h2>
                         </div>
-                        {gradingLoading ? (
+                        {(gradingLoading && Object.keys(grades).length === 0) ? (
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                              <div className="min-w-[900px]">
+                              <div className="w-full">
                                 <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-3">Student</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Raw</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Penalty</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Adjusted</div>
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Feedback</div>
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Status / Percent</div>
+                                  <div className="w-[240px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="flex-1 min-w-[200px] px-3">Feedback</div>
+                                  <div className="w-[240px] flex-shrink-0 px-3">Status / Percent</div>
                                 </div>
                                 <ul className="divide-y divide-gray-200">
-                                  {Array.from({ length: 5 }).map((_, i) => (
+                                  {Array.from({ length: 8 }).map((_, i) => (
                                     <li key={i} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50">
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-3 border-r border-gray-100">
-                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 skeleton animate-pulse"></div>
+                                      <div className="w-[240px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
+                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
                                         <div className="flex-1 min-w-0">
-                                          <div className="h-4 bg-gray-200 rounded w-28 skeleton animate-pulse mb-1.5"></div>
-                                          <div className="h-3 bg-gray-100 rounded w-20 skeleton animate-pulse"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse mb-1.5"></div>
+                                          <div className="h-3 bg-gray-100 rounded w-24 animate-pulse"></div>
                                         </div>
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
-                                        <div className="h-9 bg-gray-200 rounded skeleton animate-pulse"></div>
+                                      <div className="w-[100px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
-                                        <div className="h-9 bg-gray-200 rounded skeleton animate-pulse"></div>
+                                      <div className="w-[100px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
-                                        <div className="h-5 bg-gray-200 rounded w-12 skeleton animate-pulse mx-auto"></div>
+                                      <div className="w-[100px] flex-shrink-0 px-3">
+                                        <div className="h-5 bg-gray-200 rounded w-14 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
-                                        <div className="h-14 bg-gray-200 rounded skeleton animate-pulse"></div>
+                                      <div className="flex-1 min-w-[200px] px-3">
+                                        <div className="h-14 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                      <div className="w-[240px] flex-shrink-0 px-3">
                                         <div className="flex items-center gap-2">
                                           <div className="flex gap-1.5 flex-shrink-0">
-                                            <div className="h-7 bg-gray-200 rounded w-16 skeleton animate-pulse"></div>
-                                            <div className="h-7 bg-gray-200 rounded w-14 skeleton animate-pulse"></div>
-                                            <div className="h-7 bg-gray-200 rounded w-16 skeleton animate-pulse"></div>
+                                            <div className="h-7 bg-gray-200 rounded w-18 animate-pulse"></div>
+                                            <div className="h-7 bg-gray-200 rounded w-16 animate-pulse"></div>
+                                            <div className="h-7 bg-gray-200 rounded w-18 animate-pulse"></div>
                                           </div>
-                                          <div className="h-4 bg-gray-200 rounded w-12 skeleton animate-pulse"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-14 animate-pulse"></div>
                                         </div>
                                       </div>
                                     </li>
@@ -1409,14 +1406,14 @@ const Assessments = () => {
                         ) : Object.keys(grades).length > 0 ? (
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                              <div className="min-w-[900px]">
+                              <div className="w-full">
                                 <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-3">Student</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Raw</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Penalty</div>
-                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Adjusted</div>
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Feedback</div>
-                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Status / Percent</div>
+                                  <div className="w-[240px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-4">Student</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="w-[100px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="flex-1 min-w-[200px] px-3">Feedback</div>
+                                  <div className="w-[240px] flex-shrink-0 px-3 whitespace-nowrap">Status / Percent</div>
                                 </div>
                                 <ul className="divide-y divide-gray-200">
                                   {Object.entries(grades)
@@ -1431,22 +1428,28 @@ const Assessments = () => {
                                     })
                                     .map(([enrollmentId, gradeData]) => (
                                     <li key={enrollmentId} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50 bg-white">
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-3 border-r border-gray-100">
-                                        <LazyImage
-                                          src={gradeData.student_photo} 
-                                          alt={gradeData.student_name || 'Student'}
-                                          size="md"
-                                          shape="circle"
-                                          className="border border-gray-200 flex-shrink-0"
-                                          delayLoad={!imagesReady}
-                                          priority={false}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="text-sm font-medium text-gray-900 truncate">{formatName(gradeData.student_name) || 'Student'}</div>
+                                      <div className="w-[240px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-4 border-r border-gray-100">
+                                        {!imagesReady ? (
+                                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+                                        ) : (
+                                          <LazyImage
+                                            src={gradeData.student_photo} 
+                                            alt={gradeData.student_name || 'Student'}
+                                            size="md"
+                                            shape="circle"
+                                            className="border border-gray-200 flex-shrink-0"
+                                            delayLoad={false}
+                                            priority={false}
+                                          />
+                                        )}
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                          <div className="text-sm font-medium text-gray-900 truncate" title={formatName(gradeData.student_name) || 'Student'}>
+                                            {formatName(gradeData.student_name) || 'Student'}
+                                          </div>
                                           <div className="text-xs text-gray-500 truncate">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
+                                      <div className="w-[100px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
@@ -1457,7 +1460,7 @@ const Assessments = () => {
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
+                                      <div className="w-[100px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
@@ -1467,10 +1470,10 @@ const Assessments = () => {
                                           disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
                                         />
                                       </div>
-                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3 text-sm font-medium text-gray-900 text-center">
+                                      <div className="w-[100px] flex-shrink-0 px-3 text-sm font-medium text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(2)}
                                       </div>
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                      <div className="flex-1 min-w-[200px] px-3">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
@@ -1480,7 +1483,7 @@ const Assessments = () => {
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                      <div className="w-[240px] flex-shrink-0 px-3">
                                         <div className="flex items-center gap-2">
                                           <div className="flex gap-1.5 flex-shrink-0">
                                             <button
