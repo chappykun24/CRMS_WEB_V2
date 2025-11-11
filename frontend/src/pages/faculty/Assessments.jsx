@@ -509,6 +509,14 @@ const Assessments = () => {
     setShowCreateModal(true)
   }
 
+  // Helper function to extract surname (last word) for alphabetical sorting
+  const extractSurname = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }
+
   // Helper function to format name as "Last name, First name Middle"
   const formatName = (fullName) => {
     if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
@@ -1072,45 +1080,45 @@ const Assessments = () => {
                         {gradingLoading ? (
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                              <div className="min-w-[800px]">
-                                <div className="px-4 sm:px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
-                                  <div className="min-w-[200px] w-[200px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-2">Student</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Raw</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Penalty</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Adjusted</div>
-                                  <div className="min-w-[200px] w-[200px] flex-shrink-0 px-2">Feedback</div>
-                                  <div className="min-w-[180px] w-[180px] flex-shrink-0 px-2">Status / Percent</div>
+                              <div className="min-w-[900px]">
+                                <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-3">Student</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Feedback</div>
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Status / Percent</div>
                                 </div>
                                 <ul className="divide-y divide-gray-200">
                                   {Array.from({ length: 5 }).map((_, i) => (
-                                    <li key={i} className="flex items-center px-4 sm:px-6 py-3 hover:bg-gray-50">
-                                      <div className="min-w-[200px] w-[200px] flex-shrink-0 flex items-center space-x-3 sticky left-0 bg-white z-30 pr-2 border-r border-gray-100">
-                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 skeleton"></div>
+                                    <li key={i} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50">
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-3 border-r border-gray-100">
+                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 skeleton animate-pulse"></div>
                                         <div className="flex-1 min-w-0">
-                                          <div className="h-4 bg-gray-200 rounded w-24 skeleton mb-1"></div>
-                                          <div className="h-3 bg-gray-100 rounded w-16 skeleton"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-28 skeleton animate-pulse mb-1.5"></div>
+                                          <div className="h-3 bg-gray-100 rounded w-20 skeleton animate-pulse"></div>
                                         </div>
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">
-                                        <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded skeleton animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">
-                                        <div className="h-8 bg-gray-200 rounded skeleton"></div>
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-9 bg-gray-200 rounded skeleton animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">
-                                        <div className="h-4 bg-gray-200 rounded w-8 skeleton mx-auto"></div>
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-5 bg-gray-200 rounded w-12 skeleton animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="min-w-[200px] w-[200px] flex-shrink-0 px-2">
-                                        <div className="h-12 bg-gray-200 rounded skeleton"></div>
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                        <div className="h-14 bg-gray-200 rounded skeleton animate-pulse"></div>
                                       </div>
-                                      <div className="min-w-[180px] w-[180px] flex-shrink-0 px-2">
-                                        <div className="flex items-center gap-1.5">
-                                          <div className="flex gap-1 flex-1">
-                                            <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
-                                            <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
-                                            <div className="h-6 bg-gray-200 rounded flex-1 skeleton"></div>
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex gap-1.5 flex-shrink-0">
+                                            <div className="h-7 bg-gray-200 rounded w-16 skeleton animate-pulse"></div>
+                                            <div className="h-7 bg-gray-200 rounded w-14 skeleton animate-pulse"></div>
+                                            <div className="h-7 bg-gray-200 rounded w-16 skeleton animate-pulse"></div>
                                           </div>
-                                          <div className="h-3 bg-gray-200 rounded w-10 skeleton"></div>
+                                          <div className="h-4 bg-gray-200 rounded w-12 skeleton animate-pulse"></div>
                                         </div>
                                       </div>
                                     </li>
@@ -1122,25 +1130,35 @@ const Assessments = () => {
                         ) : Object.keys(grades).length > 0 ? (
                           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                              <div className="min-w-[800px]">
-                                <div className="px-4 sm:px-6 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase">
-                                  <div className="min-w-[200px] w-[200px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-2">Student</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Raw</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Penalty</div>
-                                  <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">Adjusted</div>
-                                  <div className="min-w-[200px] w-[200px] flex-shrink-0 px-2">Feedback</div>
-                                  <div className="min-w-[180px] w-[180px] flex-shrink-0 px-2">Status / Percent</div>
+                              <div className="min-w-[900px]">
+                                <div className="px-4 sm:px-6 py-3 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-xs font-medium text-gray-600 uppercase tracking-wide">
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-3">Student</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Raw</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Penalty</div>
+                                  <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Feedback</div>
+                                  <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">Status / Percent</div>
                                 </div>
                                 <ul className="divide-y divide-gray-200">
-                                  {Object.entries(grades).map(([enrollmentId, gradeData]) => (
-                                    <li key={enrollmentId} className="flex items-center px-4 sm:px-6 py-3 hover:bg-gray-50 bg-white">
-                                      <div className="min-w-[200px] w-[200px] flex-shrink-0 flex items-center space-x-3 sticky left-0 bg-white z-30 pr-2 border-r border-gray-100">
+                                  {Object.entries(grades)
+                                    .sort(([enrollmentIdA, gradeDataA], [enrollmentIdB, gradeDataB]) => {
+                                      const aLast = extractSurname(gradeDataA.student_name || '')
+                                      const bLast = extractSurname(gradeDataB.student_name || '')
+                                      if (aLast === bLast) {
+                                        // If last names are the same, sort by full name
+                                        return (gradeDataA.student_name || '').localeCompare(gradeDataB.student_name || '')
+                                      }
+                                      return aLast.localeCompare(bLast)
+                                    })
+                                    .map(([enrollmentId, gradeData]) => (
+                                    <li key={enrollmentId} className="flex items-center px-4 sm:px-6 py-4 hover:bg-gray-50 bg-white">
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 flex items-center gap-3 sticky left-0 bg-white z-30 pr-3 border-r border-gray-100">
                                         <LazyImage
                                           src={gradeData.student_photo} 
                                           alt={gradeData.student_name || 'Student'}
                                           size="md"
                                           shape="circle"
-                                          className="border border-gray-200"
+                                          className="border border-gray-200 flex-shrink-0"
                                           delayLoad={!imagesReady}
                                           priority={false}
                                         />
@@ -1149,48 +1167,48 @@ const Assessments = () => {
                                           <div className="text-xs text-gray-500 truncate">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                          className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                          className="w-full p-2 text-sm rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
                                           max={selectedAssessment.total_points}
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2">
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                          className="w-full p-1.5 text-sm rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                                          className="w-full p-2 text-sm rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
                                           disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
                                         />
                                       </div>
-                                      <div className="min-w-[80px] w-[80px] flex-shrink-0 px-2 text-sm font-medium text-gray-900 text-center">
-                                        {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)}
+                                      <div className="min-w-[90px] w-[90px] flex-shrink-0 px-3 text-sm font-medium text-gray-900 text-center">
+                                        {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(2)}
                                       </div>
-                                      <div className="min-w-[200px] w-[200px] flex-shrink-0 px-2">
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                                          className="w-full p-1.5 text-xs rounded-md border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none"
+                                          className="w-full p-2 text-xs rounded-md border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none transition-colors"
                                           rows="2"
                                           placeholder="Feedback..."
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="min-w-[180px] w-[180px] flex-shrink-0 px-2">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <div className="flex gap-1 flex-1 min-w-0">
+                                      <div className="min-w-[220px] w-[220px] flex-shrink-0 px-3">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex gap-1.5 flex-shrink-0">
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                              className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-1 min-w-0 ${
+                                              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'ontime'
-                                                  ? 'bg-green-100 text-green-800 border border-green-300'
+                                                  ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="On Time"
@@ -1199,9 +1217,9 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                              className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-1 min-w-0 ${
+                                              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'late'
-                                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="Late"
@@ -1210,9 +1228,9 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                              className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-1 min-w-0 ${
+                                              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'missing'
-                                                  ? 'bg-red-100 text-red-800 border border-red-300'
+                                                  ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
                                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                                               }`}
                                               title="Missing"
@@ -1220,7 +1238,7 @@ const Assessments = () => {
                                               Missing
                                             </button>
                                           </div>
-                                          <div className="text-xs font-medium text-gray-900 whitespace-nowrap">
+                                          <div className="text-xs font-semibold text-gray-900 whitespace-nowrap ml-1">
                                             {gradeData.submission_status === 'missing' ? '—' : calculatePercentage(calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points), selectedAssessment.total_points) + '%'}
                                           </div>
                                         </div>
