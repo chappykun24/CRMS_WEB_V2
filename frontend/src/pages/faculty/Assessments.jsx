@@ -1196,6 +1196,8 @@ const Assessments = () => {
     setSelectedAssessment(assessment)
     setOriginalGrades({}) // Reset original grades when selecting new assessment
     loadGrades(assessment.assessment_id)
+    // Switch to grading tab when assessment is selected
+    setActiveTab('grading')
   }
 
   return (
@@ -1438,7 +1440,11 @@ const Assessments = () => {
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-200">
                                 {filteredAssessments.map((assessment) => (
-                                  <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                                  <tr 
+                                    key={assessment.assessment_id} 
+                                    onClick={() => handleAssessmentSelect(assessment)}
+                                    className="hover:bg-gray-50 cursor-pointer"
+                                  >
                                     <td className="px-6 py-4">
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{assessment.title}</div>
@@ -1481,7 +1487,7 @@ const Assessments = () => {
                                       </span>
                                     </td>
                                     <td className="px-8 py-4">
-                                      <div className="flex items-center space-x-2">
+                                      <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
                                         <button onClick={() => openEditModal(assessment)} className="text-red-600 hover:text-red-900"><PencilIcon className="h-4 w-4" /></button>
                                         {assessment.is_published ? (
                                           <button onClick={() => handleUnpublishAssessment(assessment.assessment_id)} className="text-yellow-600 hover:text-yellow-900"><XMarkIcon className="h-4 w-4" /></button>
