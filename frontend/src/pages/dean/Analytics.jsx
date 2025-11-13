@@ -17,7 +17,6 @@ const AnalyticsTableSkeleton = () => (
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Section</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
-            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Department</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
             <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
@@ -35,9 +34,6 @@ const AnalyticsTableSkeleton = () => (
               </td>
               <td className="px-3 py-2">
                 <div className="h-3 bg-gray-200 rounded w-20"></div>
-              </td>
-              <td className="px-3 py-2">
-                <div className="h-3 bg-gray-200 rounded w-24"></div>
               </td>
               <td className="px-3 py-2">
                 <div className="space-y-1">
@@ -1304,7 +1300,6 @@ const Analytics = () => {
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Section</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Department</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
@@ -1332,9 +1327,6 @@ const Analytics = () => {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.program_abbreviation || row.program_name || 'N/A'}
-                              </td>
-                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
-                                {row.department_abbreviation || row.department_name || 'N/A'}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-gray-600">
                                 <div className="text-xs">
