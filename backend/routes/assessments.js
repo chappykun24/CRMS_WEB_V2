@@ -584,10 +584,59 @@ router.get('/dean-analytics/sample', async (req, res) => {
           ),
           0
         )::NUMERIC AS average_score,
-        -- ILO-weighted score: average score weighted by ILO coverage (if available)
-        -- For now, use average_score as base. ILO weighting can be enhanced later.
-        -- This field is provided for future enhancement with ILO-based weighting
-        NULL::NUMERIC AS ilo_weighted_score,
+        -- ILO-weighted score: calculates student performance weighted by ILO coverage from submissions
+        -- Relationship: Submissions → Assessments → ILOs (via assessment_ilo_weights)
+        -- Formula: For each submission, calculate weighted score based on ILO weights
+        -- Weight = (submission_score / assessment_total_points) * sum_of_ILO_weights
+        -- This prioritizes performance on assessments that cover important ILOs
+        COALESCE(
+          (
+            WITH ilo_weighted_submissions AS (
+              SELECT 
+                sub.submission_id,
+                sub.total_score,
+                a.total_points,
+                -- Sum of ILO weights for this assessment (normalized to 0-1)
+                COALESCE(SUM(aiw.weight_percentage) / 100.0, 0) as total_ilo_weight
+              FROM course_enrollments ce_ilo
+              INNER JOIN section_courses sc_ilo ON ce_ilo.section_course_id = sc_ilo.section_course_id
+              INNER JOIN assessments a ON sc_ilo.section_course_id = a.section_course_id
+              LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+              LEFT JOIN submissions sub ON (
+                ce_ilo.enrollment_id = sub.enrollment_id 
+                AND sub.assessment_id = a.assessment_id
+                AND sub.total_score IS NOT NULL
+              )
+              WHERE ce_ilo.student_id = s.student_id
+                AND ce_ilo.status = 'enrolled'
+                ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
+              GROUP BY sub.submission_id, sub.total_score, a.total_points
+              HAVING sub.submission_id IS NOT NULL AND a.total_points > 0
+            )
+            SELECT ROUND(
+              AVG(
+                CASE 
+                  WHEN total_ilo_weight > 0
+                  THEN (total_score / total_points) * 100 * total_ilo_weight
+                  ELSE (total_score / total_points) * 100
+                END
+              )::NUMERIC,
+              2
+            )
+            FROM ilo_weighted_submissions
+          ),
+          -- Fallback: if no ILO mappings exist, use average_score
+          (
+            SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
+            FROM course_enrollments ce_fallback
+            INNER JOIN section_courses sc_fallback ON ce_fallback.section_course_id = sc_fallback.section_course_id
+            INNER JOIN submissions sub ON ce_fallback.enrollment_id = sub.enrollment_id
+            WHERE ce_fallback.student_id = s.student_id
+              AND ce_fallback.status = 'enrolled'
+              AND sub.total_score IS NOT NULL
+              ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
+          )
+        )::NUMERIC AS ilo_weighted_score,
         -- Average submission status score: converts ontime=0, late=1, missing=2 to numerical average
         COALESCE(
           (
