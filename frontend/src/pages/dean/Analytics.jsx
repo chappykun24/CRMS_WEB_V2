@@ -830,6 +830,23 @@ const Analytics = () => {
     return Array.from(clusters).sort();
   }, [data]);
 
+  // Helper function to format name as "Lastname, Firstname"
+  const formatName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    const lastName = parts[parts.length - 1];
+    const firstName = parts.slice(0, -1).join(' ');
+    return `${lastName}, ${firstName}`;
+  };
+
+  // Helper function to get last name for sorting
+  const getLastName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1] || '';
+  };
+
   // Filter data based on search and selected cluster
   const filteredData = useMemo(() => {
     let filtered = data;
@@ -858,6 +875,18 @@ const Analytics = () => {
         (row.student_number || '').toLowerCase().includes(query)
       );
     }
+
+    // Sort alphabetically by last name
+    filtered = [...filtered].sort((a, b) => {
+      const lastNameA = getLastName(a.full_name || '').toLowerCase();
+      const lastNameB = getLastName(b.full_name || '').toLowerCase();
+      if (lastNameA < lastNameB) return -1;
+      if (lastNameA > lastNameB) return 1;
+      // If last names are equal, sort by first name
+      const firstNameA = (a.full_name || '').split(/\s+/).slice(0, -1).join(' ').toLowerCase();
+      const firstNameB = (b.full_name || '').split(/\s+/).slice(0, -1).join(' ').toLowerCase();
+      return firstNameA.localeCompare(firstNameB);
+    });
 
     return filtered;
   }, [data, selectedCluster, searchQuery]);
@@ -1029,10 +1058,6 @@ const Analytics = () => {
         }
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
-        </div>
 
         {/* Progress Bar */}
         {loading && (
@@ -1277,7 +1302,7 @@ const Analytics = () => {
                                 loadStudentPhoto(row.student_id);
                               }}
                             >
-                              <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 text-xs">{row.full_name}</td>
+                              <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 text-xs">{formatName(row.full_name)}</td>
                               <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.section_code || 'N/A'}
                               </td>
@@ -1369,11 +1394,11 @@ const Analytics = () => {
 
             {/* Right Sidebar - Statistics and Charts */}
             <div className="w-72 flex-shrink-0 space-y-3 overflow-y-auto max-h-[calc(100vh-80px)]">
-              {/* Statistics Cards */}
+              {/* Statistics Cards - 2x2 Grid */}
               {loading && !stats ? (
                 <StatisticsCardsSkeleton />
               ) : stats && (
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-3">
                     <p className="text-xs text-gray-500 mb-1">Total Students</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -1389,6 +1414,156 @@ const Analytics = () => {
                   <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-3">
                     <p className="text-xs text-purple-600 mb-1">Avg Submission Rate</p>
                     <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Scatter Plot Charts - Show First */}
+              {!chartsLoaded && (
+                <ChartsSkeleton />
+              )}
+              {chartData && chartsLoaded && (
+                <div className="space-y-3">
+                  {/* Scatter Plot: Attendance vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance vs Score</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          name="Attendance %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          range={[50, 400]}
+                          name="Submission Rate %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
+                                  <p className="font-semibold">{data.name}</p>
+                                  <p>Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p>Score: {data.score.toFixed(1)}</p>
+                                  <p>Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p>Cluster: {data.cluster}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#10b981"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            // Color by cluster
+                            const clusterColors = {
+                              'Excellent Performance': '#10b981',
+                              'On Track': '#3b82f6',
+                              'Performing Well': '#3b82f6',
+                              'Needs Improvement': '#f59e0b',
+                              'Needs Guidance': '#f59e0b',
+                              'At Risk': '#ef4444',
+                              'Needs Support': '#ef4444'
+                            };
+                            const color = clusterColors[payload.cluster] || '#9ca3af';
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Scatter Plot: Submission Rate vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Submission Rate vs Score</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          name="Submission Rate %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5 }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          range={[50, 400]}
+                          name="Attendance %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
+                                  <p className="font-semibold">{data.name}</p>
+                                  <p>Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p>Score: {data.score.toFixed(1)}</p>
+                                  <p>Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p>Cluster: {data.cluster}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#10b981"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            // Color by cluster
+                            const clusterColors = {
+                              'Excellent Performance': '#10b981',
+                              'On Track': '#3b82f6',
+                              'Performing Well': '#3b82f6',
+                              'Needs Improvement': '#f59e0b',
+                              'Needs Guidance': '#f59e0b',
+                              'At Risk': '#ef4444',
+                              'Needs Support': '#ef4444'
+                            };
+                            const color = clusterColors[payload.cluster] || '#9ca3af';
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               )}
@@ -1462,164 +1637,6 @@ const Analytics = () => {
                         <Tooltip />
                         <Bar dataKey="students" fill="#8b5cf6" name="Students" />
                       </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Scatter Plot: Attendance vs Score */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance vs Score</h3>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <ScatterChart data={chartData.scatterData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          type="number" 
-                          dataKey="attendance" 
-                          name="Attendance %" 
-                          domain={[0, 100]}
-                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
-                          tick={{ fontSize: 9 }}
-                        />
-                        <YAxis 
-                          type="number" 
-                          dataKey="score" 
-                          name="Score" 
-                          domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-                          tick={{ fontSize: 9 }}
-                        />
-                        <ZAxis 
-                          type="number" 
-                          dataKey="submissionRate" 
-                          range={[50, 400]}
-                          name="Submission Rate %"
-                        />
-                        <Tooltip 
-                          cursor={{ strokeDasharray: '3 3' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload[0]) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 mb-2">{data.name}</p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Attendance:</span> {data.attendance.toFixed(1)}%
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Score:</span> {data.score.toFixed(1)}
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Submission Rate:</span> {data.submissionRate.toFixed(1)}%
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    <span className="font-medium">Cluster:</span> {data.cluster}
-                                  </p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend />
-                        <Scatter 
-                          name="Students" 
-                          data={chartData.scatterData} 
-                          fill="#3b82f6"
-                          shape={(props) => {
-                            const { cx, cy, payload } = props;
-                            // Color by cluster
-                            const clusterColors = {
-                              'Excellent Performance': '#10b981',
-                              'On Track': '#3b82f6',
-                              'Performing Well': '#3b82f6',
-                              'Needs Improvement': '#f59e0b',
-                              'Needs Guidance': '#f59e0b',
-                              'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444'
-                            };
-                            const color = clusterColors[payload.cluster] || '#9ca3af';
-                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
-                          }}
-                        />
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Scatter Plot: Submission Rate vs Score */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Submission Rate vs Score</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <ScatterChart data={chartData.scatterData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          type="number" 
-                          dataKey="submissionRate" 
-                          name="Submission Rate %" 
-                          domain={[0, 100]}
-                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5 }}
-                          tick={{ fontSize: 9 }}
-                        />
-                        <YAxis 
-                          type="number" 
-                          dataKey="score" 
-                          name="Score" 
-                          domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-                          tick={{ fontSize: 9 }}
-                        />
-                        <ZAxis 
-                          type="number" 
-                          dataKey="attendance" 
-                          range={[50, 400]}
-                          name="Attendance %"
-                        />
-                        <Tooltip 
-                          cursor={{ strokeDasharray: '3 3' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload[0]) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                                  <p className="font-semibold text-gray-900 mb-2">{data.name}</p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Submission Rate:</span> {data.submissionRate.toFixed(1)}%
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Score:</span> {data.score.toFixed(1)}
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    <span className="font-medium">Attendance:</span> {data.attendance.toFixed(1)}%
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    <span className="font-medium">Cluster:</span> {data.cluster}
-                                  </p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend />
-                        <Scatter 
-                          name="Students" 
-                          data={chartData.scatterData} 
-                          fill="#10b981"
-                          shape={(props) => {
-                            const { cx, cy, payload } = props;
-                            // Color by cluster
-                            const clusterColors = {
-                              'Excellent Performance': '#10b981',
-                              'On Track': '#3b82f6',
-                              'Performing Well': '#3b82f6',
-                              'Needs Improvement': '#f59e0b',
-                              'Needs Guidance': '#f59e0b',
-                              'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444'
-                            };
-                            const color = clusterColors[payload.cluster] || '#9ca3af';
-                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
-                          }}
-                        />
-                      </ScatterChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
