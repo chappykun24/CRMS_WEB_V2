@@ -135,6 +135,12 @@ const Analytics = () => {
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
+  const setErrorRef = useRef(setError);
+  
+  // Keep setError ref updated
+  useEffect(() => {
+    setErrorRef.current = setError;
+  }, [setError]);
 
   // Fetch school terms with caching
   const fetchSchoolTerms = useCallback(async () => {
@@ -223,16 +229,16 @@ const Analytics = () => {
       console.error('❌ [DEAN ANALYTICS] Error fetching school terms:', error);
       // Only set error if we don't have cached data and setError is available
       const hasCachedTerms = sessionCached || cachedData;
-      if (!hasCachedTerms && typeof setError === 'function') {
+      if (!hasCachedTerms && setErrorRef.current) {
         try {
-          setError(error.message);
+          setErrorRef.current(error.message);
         } catch (e) {
           // Component may have unmounted, ignore silently
           console.warn('⚠️ [DEAN ANALYTICS] Could not set error state (component may have unmounted)');
         }
       }
     }
-  }, [setError]);
+  }, []);
 
   // Fetch sections, programs, and departments
   const fetchFilterOptions = useCallback(async () => {
@@ -364,7 +370,7 @@ const Analytics = () => {
       setHasFetched(true);
       setLoading(false);
       setProgress(100);
-      if (typeof setError === 'function') setError(null);
+      if (setErrorRef.current) setErrorRef.current(null);
       // Load charts after a short delay for better UX
       setTimeout(() => setChartsLoaded(true), 100);
       // Continue to fetch fresh data in background
@@ -383,7 +389,7 @@ const Analytics = () => {
       setHasFetched(true);
       setLoading(false);
       setProgress(100);
-      if (typeof setError === 'function') setError(null);
+      if (setErrorRef.current) setErrorRef.current(null);
       // Cache in sessionStorage for next time
       safeSetItem(sessionCacheKey, cachedData);
       // Load charts after a short delay
@@ -419,7 +425,7 @@ const Analytics = () => {
         });
       }, 300);
     }
-    if (typeof setError === 'function') setError(null);
+    if (setErrorRef.current) setErrorRef.current(null);
 
     // Build URL with filters
     const params = new URLSearchParams();
@@ -564,9 +570,9 @@ const Analytics = () => {
           console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
           console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
         } else {
-          if (typeof setError === 'function') {
+          if (setErrorRef.current) {
             try {
-              setError('Failed to load analytics');
+              setErrorRef.current('Failed to load analytics');
             } catch (e) {
               console.warn('⚠️ [DEAN ANALYTICS] Could not set error state');
             }
@@ -606,9 +612,9 @@ const Analytics = () => {
         const errorMessage = err?.message || 'Unable to fetch analytics';
         const sessionCached = safeGetItem(`dean_analytics_${selectedTermId || 'all'}_session`);
         const cachedData = getCachedData('analytics', `dean_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
-        if (!sessionCached && !cachedData && typeof setError === 'function') {
+        if (!sessionCached && !cachedData && setErrorRef.current) {
           try {
-            setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
+            setErrorRef.current(errorMessage.includes('502') || errorMessage.includes('timeout') 
               ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
               : errorMessage);
           } catch (e) {
