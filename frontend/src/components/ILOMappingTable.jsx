@@ -327,68 +327,80 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
   }
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 flex flex-col h-full min-h-0">
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800">{error}</p>
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
+          <p className="text-red-800 text-sm">{error}</p>
         </div>
       )}
       
-      {/* Header with Align ILO button */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">ILO Mapping Table</h3>
+      {/* Compact Header with Align ILO button */}
+      <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+        <h3 className="text-base font-semibold text-gray-900">ILO Mapping Table</h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
               resetILOForm()
               setShowILOModal(true)
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            <PlusIcon className="h-4 w-4" />
+            <PlusIcon className="h-3.5 w-3.5" />
             Align ILO
           </button>
         </div>
       </div>
       
+      {/* Legend for Assessment Task Abbreviations */}
+      <div className="mb-2 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs flex-shrink-0">
+        <span className="font-medium text-gray-700 mr-2">Legend:</span>
+        {assessmentTasks.map((task, idx) => (
+          <span key={task.code} className="text-gray-600">
+            <span className="font-medium">{task.code}</span> = {task.label}
+            {idx < assessmentTasks.length - 1 && <span className="mx-1.5 text-gray-400">•</span>}
+          </span>
+        ))}
+      </div>
+      
       {/* ILO Mapping Table - Simplified */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ILO</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Student Outcomes (SO)
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Institutional Graduate Attributes (IGA)
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                CDIO Skills
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                SDG Skills
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {ilos.length === 0 ? (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-x-auto flex-1 min-h-0">
+        <div className="h-full overflow-y-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                  No ILOs defined. Click "Align ILO" to create one.
-                </td>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ILO</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student Outcomes (SO)
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Institutional Graduate Attributes (IGA)
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  CDIO Skills
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  SDG Skills
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
-            ) : (
-              ilos.map((ilo) => (
-                <tr key={ilo.ilo_id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {ilos.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-3 py-6 text-center text-gray-500">
+                    No ILOs defined. Click "Align ILO" to create one.
+                  </td>
+                </tr>
+              ) : (
+                ilos.map((ilo) => (
+                  <tr key={ilo.ilo_id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">
                     <div className="text-sm font-medium text-gray-900">{ilo.code}</div>
                     <div className="text-xs text-gray-500 truncate max-w-xs">{ilo.description}</div>
                   </td>
                   
                   {/* SO Mappings */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'so').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
@@ -414,7 +426,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                   </td>
                   
                   {/* IGA Mappings */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'iga').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
@@ -440,7 +452,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                   </td>
                   
                   {/* CDIO Mappings */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'cdio').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
@@ -466,7 +478,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                   </td>
                   
                   {/* SDG Mappings */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'sdg').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
@@ -492,7 +504,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                   </td>
                   
                   {/* Actions */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEditILOModal(ilo)}
@@ -515,6 +527,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       
       {/* Simplified ILO Modal - Only Code and Description */}
