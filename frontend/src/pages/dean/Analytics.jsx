@@ -135,9 +135,12 @@ const Analytics = () => {
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
-  const setErrorRef = useRef(setError);
+  const setErrorRef = useRef(null);
   
-  // Keep setError ref updated
+  // Keep setError ref updated - initialize immediately
+  setErrorRef.current = setError;
+  
+  // Also update in useEffect to ensure it stays current
   useEffect(() => {
     setErrorRef.current = setError;
   }, [setError]);

@@ -44,7 +44,6 @@ const Home = () => {
   // Fetch dashboard stats with caching and lazy loading
   const fetchDashboardStats = useCallback(async (isBackgroundRefresh = false) => {
     console.log('🔍 [DEAN] fetchDashboardStats starting')
-    setError(null)
     
     // Check sessionStorage first for instant display
     const sessionCached = safeGetItem(SESSION_CACHE_KEY)
@@ -278,20 +277,13 @@ const Home = () => {
         return
       }
       console.error('❌ [DEAN] Error fetching dashboard stats:', error)
-      const sessionCached = safeGetItem(SESSION_CACHE_KEY)
-      const cachedData = getCachedData('analytics', DEAN_DASHBOARD_CACHE_KEY, 30 * 60 * 1000)
-      if (!sessionCached && !cachedData && typeof setError === 'function') {
-        try {
-          setError(error.message)
-        } catch (e) {
-          console.warn('⚠️ [DEAN] Could not set error state (component may have unmounted)')
-        }
-      }
+      // Error is logged but not displayed in UI since there's no error state
+      // Cached data will be used if available
     } finally {
       setLoading(false)
       setInitialLoadComplete(true)
     }
-  }, [setError])
+  }, [])
 
   useEffect(() => {
     // Only fetch if authenticated
