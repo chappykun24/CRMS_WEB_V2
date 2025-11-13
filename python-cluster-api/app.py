@@ -57,56 +57,66 @@ def calculate_attendance_features(row):
 
 def calculate_submission_features(row):
     """
-    Calculate submission features from detailed submission behavior data.
+    Calculate submission features based on status counts (ontime, late, missing).
+    Uses numerical values derived directly from submission status counts.
+    No deadline calculations - purely status-based.
     """
-    # If detailed submission behavior data is available
-    if pd.notna(row.get('submission_ontime_count')) and pd.notna(row.get('submission_total_assessments')):
-        ontime = float(row.get('submission_ontime_count', 0))
-        late = float(row.get('submission_late_count', 0))
-        missing = float(row.get('submission_missing_count', 0))
-        total = float(row.get('submission_total_assessments', 1))
-        
-        if total > 0:
-            ontime_rate = ontime / total
-            late_rate = late / total
-            missing_rate = missing / total
-            submission_rate = (ontime + late) / total  # Both ontime and late count as submitted
-            # Submission status score: 0=ontime, 1=late, 2=missing (weighted average)
-            submission_status_score = (late * 1.0 + missing * 2.0) / total if total > 0 else 2.0
-        else:
-            ontime_rate = 0.0
-            late_rate = 0.0
-            missing_rate = 1.0
-            submission_rate = 0.0
-            submission_status_score = 2.0
+    # Get submission status counts (these are the core numerical values)
+    ontime_count = float(row.get('submission_ontime_count', 0)) if pd.notna(row.get('submission_ontime_count')) else 0.0
+    late_count = float(row.get('submission_late_count', 0)) if pd.notna(row.get('submission_late_count')) else 0.0
+    missing_count = float(row.get('submission_missing_count', 0)) if pd.notna(row.get('submission_missing_count')) else 0.0
+    total_assessments = float(row.get('submission_total_assessments', 0)) if pd.notna(row.get('submission_total_assessments')) else 0.0
+    
+    # Calculate total submissions (ontime + late, excluding missing)
+    total_submissions = ontime_count + late_count
+    
+    # Calculate rates (proportions) from status counts
+    if total_assessments > 0:
+        ontime_rate = ontime_count / total_assessments
+        late_rate = late_count / total_assessments
+        missing_rate = missing_count / total_assessments
+        submission_rate = total_submissions / total_assessments  # Overall submission rate
     else:
-        # Fallback to existing metrics
-        submission_rate = float(row.get('submission_rate', 0.8))
-        submission_status_score = float(row.get('average_submission_status_score', 1.0))
-        
-        # Estimate behavior counts from rate and status score
-        if submission_status_score <= 0.5:
-            # Mostly ontime
-            ontime_rate = submission_rate * 0.8
-            late_rate = submission_rate * 0.2
-            missing_rate = 1.0 - submission_rate
-        elif submission_status_score <= 1.5:
-            # Mix of ontime and late
-            ontime_rate = submission_rate * 0.5
-            late_rate = submission_rate * 0.5
-            missing_rate = 1.0 - submission_rate
-        else:
-            # Mostly late or missing
-            ontime_rate = submission_rate * 0.2
-            late_rate = submission_rate * 0.3
-            missing_rate = 1.0 - submission_rate
+        # Default values if no assessments
+        ontime_rate = 0.0
+        late_rate = 0.0
+        missing_rate = 1.0
+        submission_rate = 0.0
+    
+    # Calculate numerical status score based on status distribution
+    # Score range: 0.0 (all ontime) to 2.0 (all missing)
+    # Formula: (ontime * 0.0 + late * 1.0 + missing * 2.0) / total
+    # This gives a weighted average where:
+    # - ontime = 0 (best)
+    # - late = 1 (moderate)
+    # - missing = 2 (worst)
+    if total_assessments > 0:
+        submission_status_score = (ontime_count * 0.0 + late_count * 1.0 + missing_count * 2.0) / total_assessments
+    else:
+        submission_status_score = 2.0  # Worst case if no data
+    
+    # Calculate submission quality score (0-100 scale, higher is better)
+    # Based on: ontime submissions are best, late are okay, missing are worst
+    if total_assessments > 0:
+        # Quality score: ontime=100%, late=50%, missing=0%
+        quality_score = ((ontime_count * 100.0) + (late_count * 50.0) + (missing_count * 0.0)) / total_assessments
+    else:
+        quality_score = 0.0
     
     return {
+        # Raw counts (numerical values from status)
+        'submission_ontime_count': ontime_count,
+        'submission_late_count': late_count,
+        'submission_missing_count': missing_count,
+        'submission_total_assessments': total_assessments,
+        # Rates (proportions 0.0-1.0)
         'submission_rate': submission_rate,
         'submission_ontime_rate': ontime_rate,
         'submission_late_rate': late_rate,
         'submission_missing_rate': missing_rate,
-        'submission_status_score': submission_status_score
+        # Computed scores
+        'submission_status_score': submission_status_score,  # 0.0-2.0, lower is better
+        'submission_quality_score': quality_score  # 0.0-100.0, higher is better
     }
 
 
@@ -167,16 +177,19 @@ def cluster_records(records):
         for col in score_df.columns:
             df[col] = score_df[col].values
     
-    # Define features for clustering (using enhanced metrics)
+    # Define features for clustering (using status-based numerical values)
     features = [
-        'attendance_percentage',           # Overall attendance
+        'attendance_percentage',           # Overall attendance percentage
         'attendance_present_rate',         # Present rate (0-1)
         'attendance_late_rate',            # Late rate (0-1)
         'final_score',                     # Score (ILO-weighted if available)
-        'submission_rate',                 # Overall submission rate
-        'submission_ontime_rate',          # Ontime submission rate
-        'submission_late_rate',            # Late submission rate
-        'submission_status_score'          # Submission timeliness score (0-2)
+        # Submission features based on status counts (no deadline calculations)
+        'submission_rate',                 # Overall submission rate (ontime + late) / total
+        'submission_ontime_rate',          # Ontime submission rate (0-1)
+        'submission_late_rate',            # Late submission rate (0-1)
+        'submission_missing_rate',         # Missing submission rate (0-1)
+        'submission_status_score',         # Status score (0.0-2.0, lower is better)
+        'submission_quality_score'         # Quality score (0-100, higher is better)
     ]
     
     # Ensure numeric types
@@ -189,10 +202,13 @@ def cluster_records(records):
     df_clean['attendance_present_rate'] = df_clean['attendance_present_rate'].fillna(0.75)
     df_clean['attendance_late_rate'] = df_clean['attendance_late_rate'].fillna(0.10)
     df_clean['final_score'] = df_clean['final_score'].fillna(50.0)
+    # Submission defaults based on status-based approach
     df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)
     df_clean['submission_ontime_rate'] = df_clean['submission_ontime_rate'].fillna(0.6)
     df_clean['submission_late_rate'] = df_clean['submission_late_rate'].fillna(0.2)
-    df_clean['submission_status_score'] = df_clean['submission_status_score'].fillna(1.0)
+    df_clean['submission_missing_rate'] = df_clean['submission_missing_rate'].fillna(0.0)
+    df_clean['submission_status_score'] = df_clean['submission_status_score'].fillna(0.5)  # Moderate score
+    df_clean['submission_quality_score'] = df_clean['submission_quality_score'].fillna(70.0)  # Moderate quality
     
     if len(df_clean) == 0:
         output = df.copy()
@@ -261,22 +277,27 @@ def cluster_records(records):
             'avg_present_rate': cluster_data['attendance_present_rate'].mean(),
             'avg_late_rate': cluster_data['attendance_late_rate'].mean(),
             'avg_score': cluster_data['final_score'].mean(),
+            # Submission statistics based on status counts
             'avg_submission_rate': cluster_data['submission_rate'].mean(),
             'avg_ontime_rate': cluster_data['submission_ontime_rate'].mean(),
             'avg_late_submission_rate': cluster_data['submission_late_rate'].mean(),
-            'avg_status_score': cluster_data['submission_status_score'].mean()
+            'avg_missing_rate': cluster_data['submission_missing_rate'].mean(),
+            'avg_status_score': cluster_data['submission_status_score'].mean(),
+            'avg_quality_score': cluster_data['submission_quality_score'].mean()
         }
     
     # Assign labels based on behavior patterns
+    # Uses status-based submission metrics (no deadline calculations)
     cluster_scores = {}
     for cluster_id, stats in cluster_stats.items():
-        # Weighted performance score
+        # Weighted performance score using status-based submission metrics
+        # Higher quality_score and lower status_score indicate better performance
         score = (
             stats['avg_attendance_percentage'] * 0.25 +
             stats['avg_score'] * 0.30 +
-            stats['avg_submission_rate'] * 100 * 0.25 +
-            stats['avg_ontime_rate'] * 100 * 0.15 +
-            (100 - stats['avg_status_score'] * 50) * 0.05  # Lower status score = better
+            stats['avg_submission_rate'] * 100 * 0.20 +
+            stats['avg_quality_score'] * 0.20 +  # Use quality score (0-100, higher is better)
+            (100 - stats['avg_status_score'] * 50) * 0.05  # Lower status score = better (invert for scoring)
         )
         cluster_scores[cluster_id] = score
     
@@ -333,13 +354,15 @@ def cluster_records(records):
         else:
             explanation_parts.append("low academic performance")
         
-        # Submission behavior analysis
+        # Submission behavior analysis (based on status counts)
         if stats['avg_ontime_rate'] >= 0.8:
             explanation_parts.append("consistently submits on time")
         elif stats['avg_ontime_rate'] >= 0.5:
             explanation_parts.append("frequently submits late")
-        else:
+        elif stats['avg_missing_rate'] >= 0.3:
             explanation_parts.append("often misses submissions")
+        else:
+            explanation_parts.append("mixed submission timeliness")
         
         if stats['avg_submission_rate'] >= 0.9:
             explanation_parts.append("high submission rate")
@@ -348,10 +371,13 @@ def cluster_records(records):
         else:
             explanation_parts.append("low submission rate")
         
+        # Include status-based metrics in explanation
         explanation = f"This cluster shows {', '.join(explanation_parts)}. "
         explanation += f"Average attendance: {stats['avg_attendance_percentage']:.1f}%, "
         explanation += f"Average score: {stats['avg_score']:.1f}%, "
-        explanation += f"Submission rate: {stats['avg_submission_rate']*100:.1f}%"
+        explanation += f"Submission rate: {stats['avg_submission_rate']*100:.1f}% "
+        explanation += f"(Ontime: {stats['avg_ontime_rate']*100:.1f}%, Late: {stats['avg_late_submission_rate']*100:.1f}%, Missing: {stats['avg_missing_rate']*100:.1f}%), "
+        explanation += f"Quality score: {stats['avg_quality_score']:.1f}/100"
         
         explanations[cluster_id] = explanation
     
