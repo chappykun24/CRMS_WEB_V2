@@ -556,12 +556,27 @@ router.get('/dean-analytics/sample', async (req, res) => {
         -- Section/Program/Department info (for filtering and display)
         sec.section_id,
         sec.section_code,
+        sec.year_level,
         p.program_id,
         p.name AS program_name,
         p.program_abbreviation,
         d.department_id,
         d.name AS department_name,
         d.department_abbreviation,
+        -- Student's grade level: determined by enrolled sections' year_level
+        -- Uses the highest year_level the student is enrolled in (most advanced level)
+        -- This indicates the student's current academic standing
+        (
+          SELECT MAX(sec_grade.year_level)
+          FROM course_enrollments ce_grade
+          INNER JOIN section_courses sc_grade ON ce_grade.section_course_id = sc_grade.section_course_id
+          INNER JOIN sections sec_grade ON sc_grade.section_id = sec_grade.section_id
+          WHERE ce_grade.student_id = s.student_id
+            AND ce_grade.status = 'enrolled'
+            AND sec_grade.year_level IS NOT NULL
+            ${termIdValue ? `AND sc_grade.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilter}
+        )::INTEGER AS grade_level,
         -- Attendance percentage: count of present / total attendance sessions
         COALESCE(
           (
