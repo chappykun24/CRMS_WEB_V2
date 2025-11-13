@@ -894,6 +894,15 @@ router.get('/dean-analytics/sample', async (req, res) => {
     console.log('✅ [Backend] Fetched', result.rows.length, 'students from database');
 
     const students = result.rows;
+    
+    // Log query results for debugging
+    if (sectionCourseIdValue) {
+      console.log(`📊 [Backend] Fetched ${students.length} students for class ${sectionCourseIdValue} (for clustering)`);
+      if (studentIdValue) {
+        console.log(`🔍 [Backend] Will filter to student_id ${studentIdValue} after clustering`);
+      }
+    }
+    
     // Detect hosting platform for visibility
     const platform = (
       process.env.VERCEL ? 'Vercel' :
@@ -929,6 +938,29 @@ router.get('/dean-analytics/sample', async (req, res) => {
 
     // Apply clusters to student data
     let dataWithClusters = clusteringService.applyClustersToStudents(students, clusteringResult.clusters);
+
+    // If filtering by both student_id and section_course_id, filter results to only return requested student(s)
+    // This ensures clustering happens with all students in the class, but we only return the specific student
+    if (filterStudentsAfterClustering && studentIdValue) {
+      console.log(`🔍 [Backend] Filtering results to student_id: ${studentIdValue} after clustering`);
+      const beforeFilter = dataWithClusters.length;
+      dataWithClusters = dataWithClusters.filter(student => {
+        const studentId = typeof student.student_id === 'string' ? parseInt(student.student_id, 10) : student.student_id;
+        return studentId === studentIdValue;
+      });
+      console.log(`✅ [Backend] Filtered from ${beforeFilter} to ${dataWithClusters.length} student(s) after clustering`);
+      
+      // Log cluster label for the filtered student
+      if (dataWithClusters.length > 0) {
+        const filteredStudent = dataWithClusters[0];
+        console.log(`🎯 [Backend] Filtered student cluster info:`, {
+          student_id: filteredStudent.student_id,
+          cluster: filteredStudent.cluster,
+          cluster_label: filteredStudent.cluster_label,
+          section_course_id: sectionCourseIdValue
+        });
+      }
+    }
 
     // Log clustering results with detailed diagnostics
     console.log('🔍 [Backend] Clustering result details:', {
