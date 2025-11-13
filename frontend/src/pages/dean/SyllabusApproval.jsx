@@ -50,6 +50,42 @@ const SyllabusApproval = () => {
     }
   }
 
+  const loadApprovedSyllabi = async () => {
+    try {
+      const response = await fetch('/api/syllabi', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        // Filter for approved syllabi
+        const approved = Array.isArray(data) 
+          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'approved')
+          : []
+        setApprovedSyllabi(approved)
+      }
+    } catch (error) {
+      console.error('Error loading approved syllabi:', error)
+    }
+  }
+
+  const loadEditRequests = async () => {
+    try {
+      const response = await fetch('/api/syllabi/edit-requests?role=dean', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setEditRequests(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error loading edit requests:', error)
+    }
+  }
+
   const handleApprove = async (syllabus, approvalStatus) => {
     const statusText = approvalStatus === 'approved' ? 'approve' : 'reject'
     if (!confirm(`Are you sure you want to ${statusText} this syllabus?`)) {
@@ -73,6 +109,7 @@ const SyllabusApproval = () => {
       if (response.ok) {
         alert(`Syllabus ${approvalStatus} successfully!`)
         loadPendingApprovalSyllabi()
+        loadApprovedSyllabi()
         if (showViewModal) {
           setShowViewModal(false)
           setSelectedSyllabus(null)
@@ -86,6 +123,39 @@ const SyllabusApproval = () => {
       alert(`Failed to ${approvalStatus} syllabus`)
     } finally {
       setApproving(false)
+    }
+  }
+
+  const handleApproveEditRequest = async (editRequest, approved) => {
+    const action = approved ? 'approve' : 'reject'
+    if (!confirm(`Are you sure you want to ${action} this edit request?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/syllabi/edit-requests/${editRequest.edit_request_id}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          approved,
+          approved_by: user.user_id,
+          role: 'dean'
+        })
+      })
+
+      if (response.ok) {
+        alert(`Edit request ${approved ? 'approved' : 'rejected'} successfully!`)
+        loadEditRequests()
+      } else {
+        const error = await response.json()
+        alert(error.error || `Failed to ${action} edit request`)
+      }
+    } catch (error) {
+      console.error('Error approving edit request:', error)
+      alert(`Failed to ${action} edit request`)
     }
   }
 
@@ -114,17 +184,17 @@ const SyllabusApproval = () => {
     return 'N/A'
   }
 
-  const filteredSyllabi = syllabi.filter(syllabus =>
+  const filteredSyllabi = (syllabi || []).filter(syllabus =>
     syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredApprovedSyllabi = approvedSyllabi.filter(syllabus =>
+  const filteredApprovedSyllabi = (approvedSyllabi || []).filter(syllabus =>
     syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredEditRequests = editRequests.filter(request =>
+  const filteredEditRequests = (editRequests || []).filter(request =>
     request.syllabus_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     request.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     request.requested_by_name?.toLowerCase().includes(searchQuery.toLowerCase())
