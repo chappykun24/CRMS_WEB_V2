@@ -486,7 +486,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
     if (sectionCourseIdValue) console.log('🔍 [Backend] Applying section_course filter:', sectionCourseIdValue);
     
     // Build additional WHERE conditions for filtering
+    // NOTE: When filtering by section_course_id, we need ALL students in that class for clustering
+    // So we don't filter by student_id in the WHERE clause if section_course_id is provided
+    // We'll filter the results after clustering instead
     let additionalWhereConditions = [];
+    let filterStudentsAfterClustering = false;
+    
     if (sectionIdValue) {
       additionalWhereConditions.push(`sec.section_id = ${sectionIdValue}`);
     }
@@ -496,12 +501,20 @@ router.get('/dean-analytics/sample', async (req, res) => {
     if (departmentIdValue) {
       additionalWhereConditions.push(`d.department_id = ${departmentIdValue}`);
     }
-    if (studentIdValue) {
-      additionalWhereConditions.push(`s.student_id = ${studentIdValue}`);
-    }
+    
+    // If filtering by section_course_id, get ALL students in that class for clustering
+    // Don't filter by student_id yet - we'll filter results after clustering
     if (sectionCourseIdValue) {
       additionalWhereConditions.push(`sc.section_course_id = ${sectionCourseIdValue}`);
+      if (studentIdValue) {
+        // Mark that we need to filter by student_id after clustering
+        filterStudentsAfterClustering = true;
+      }
+    } else if (studentIdValue) {
+      // Only filter by student_id if NOT filtering by section_course_id
+      additionalWhereConditions.push(`s.student_id = ${studentIdValue}`);
     }
+    
     const additionalWhereClause = additionalWhereConditions.length > 0 
       ? `AND ${additionalWhereConditions.join(' AND ')}` 
       : '';
