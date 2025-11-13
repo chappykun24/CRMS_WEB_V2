@@ -96,12 +96,22 @@ def calculate_submission_features(row):
         submission_status_score = 2.0  # Worst case if no data
     
     # Calculate submission quality score (0-100 scale, higher is better)
-    # Based on: ontime submissions are best, late are okay, missing are worst
+    # PRIORITIZES ONTIME SUBMISSIONS: ontime gets much higher weight than late
+    # Formula gives strong preference to students who submit on time
     if total_assessments > 0:
-        # Quality score: ontime=100%, late=50%, missing=0%
-        quality_score = ((ontime_count * 100.0) + (late_count * 50.0) + (missing_count * 0.0)) / total_assessments
+        # Prioritized quality score: ontime=100%, late=20%, missing=0%
+        # This heavily weights ontime submissions (5x more valuable than late)
+        quality_score = ((ontime_count * 100.0) + (late_count * 20.0) + (missing_count * 0.0)) / total_assessments
     else:
         quality_score = 0.0
+    
+    # Calculate ontime priority score (0-100 scale, higher is better)
+    # Specifically measures how much of student's work is submitted on time
+    # This is a direct measure of timeliness priority
+    if total_assessments > 0:
+        ontime_priority_score = (ontime_count / total_assessments) * 100.0
+    else:
+        ontime_priority_score = 0.0
     
     return {
         # Raw counts (numerical values from status)
@@ -111,32 +121,41 @@ def calculate_submission_features(row):
         'submission_total_assessments': total_assessments,
         # Rates (proportions 0.0-1.0)
         'submission_rate': submission_rate,
-        'submission_ontime_rate': ontime_rate,
+        'submission_ontime_rate': ontime_rate,  # PRIORITIZED: Higher weight in clustering
         'submission_late_rate': late_rate,
         'submission_missing_rate': missing_rate,
         # Computed scores
         'submission_status_score': submission_status_score,  # 0.0-2.0, lower is better
-        'submission_quality_score': quality_score  # 0.0-100.0, higher is better
+        'submission_quality_score': quality_score,  # 0.0-100.0, higher is better (prioritizes ontime)
+        'submission_ontime_priority_score': ontime_priority_score  # 0.0-100.0, direct ontime percentage
     }
 
 
 def calculate_score_features(row):
     """
-    Calculate score features, including ILO-based scores if available.
+    Calculate score features based on syllabus weights and ILO coverage.
+    Prioritizes ILO-weighted score which combines:
+    1. Syllabus assessment weights (weight_percentage from assessments)
+    2. ILO coverage (assessment_ilo_weights)
+    3. Submission scores (adjusted_score or total_score)
     """
-    # Primary score: average_score (from all submissions)
-    average_score = float(row.get('average_score', 50.0))
+    # Syllabus-weighted score: based on assessment weights from syllabus
+    # Formula: SUM((submission_score / total_points) * weight_percentage)
+    syllabus_weighted_score = float(row.get('average_score', 50.0))
     
-    # ILO-based score if available (weighted by ILO mappings)
-    ilo_score = float(row.get('ilo_weighted_score', average_score)) if pd.notna(row.get('ilo_weighted_score')) else average_score
+    # ILO-weighted score: combines syllabus weights with ILO coverage boost
+    # Formula: SUM((submission_score / total_points) * weight_percentage * ILO_boost)
+    # This is the primary score as it respects both syllabus structure and ILO alignment
+    ilo_score = float(row.get('ilo_weighted_score', syllabus_weighted_score)) if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
     
-    # Use ILO score if available, otherwise fall back to average_score
-    final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else average_score
+    # Use ILO-weighted score as final_score (includes syllabus weights + ILO boost)
+    # Falls back to syllabus-weighted score if ILO data unavailable
+    final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
     
     return {
-        'average_score': average_score,
-        'ilo_weighted_score': ilo_score,
-        'final_score': final_score
+        'average_score': syllabus_weighted_score,  # Syllabus-weighted (without ILO boost)
+        'ilo_weighted_score': ilo_score,  # Syllabus-weighted + ILO boost
+        'final_score': final_score  # Primary score for clustering (syllabus + ILO)
     }
 
 
@@ -178,18 +197,20 @@ def cluster_records(records):
             df[col] = score_df[col].values
     
     # Define features for clustering (using status-based numerical values)
+    # PRIORITIZES ONTIME SUBMISSIONS: ontime_rate and ontime_priority_score have higher influence
     features = [
         'attendance_percentage',           # Overall attendance percentage
         'attendance_present_rate',         # Present rate (0-1)
         'attendance_late_rate',            # Late rate (0-1)
         'final_score',                     # Score (ILO-weighted if available)
-        # Submission features based on status counts (no deadline calculations)
+        # Submission features - ONTIME PRIORITIZED (listed first for higher weight)
+        'submission_ontime_rate',          # PRIORITY: Ontime submission rate (0-1) - highest weight
+        'submission_ontime_priority_score', # PRIORITY: Direct ontime percentage (0-100) - high weight
+        'submission_quality_score',        # Quality score (0-100, prioritizes ontime) - high weight
         'submission_rate',                 # Overall submission rate (ontime + late) / total
-        'submission_ontime_rate',          # Ontime submission rate (0-1)
-        'submission_late_rate',            # Late submission rate (0-1)
+        'submission_late_rate',            # Late submission rate (0-1) - lower weight
         'submission_missing_rate',         # Missing submission rate (0-1)
-        'submission_status_score',         # Status score (0.0-2.0, lower is better)
-        'submission_quality_score'         # Quality score (0-100, higher is better)
+        'submission_status_score'          # Status score (0.0-2.0, lower is better)
     ]
     
     # Ensure numeric types
@@ -202,13 +223,14 @@ def cluster_records(records):
     df_clean['attendance_present_rate'] = df_clean['attendance_present_rate'].fillna(0.75)
     df_clean['attendance_late_rate'] = df_clean['attendance_late_rate'].fillna(0.10)
     df_clean['final_score'] = df_clean['final_score'].fillna(50.0)
-    # Submission defaults based on status-based approach
-    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)
+    # Submission defaults - prioritizing ontime submissions
     df_clean['submission_ontime_rate'] = df_clean['submission_ontime_rate'].fillna(0.6)
+    df_clean['submission_ontime_priority_score'] = df_clean['submission_ontime_priority_score'].fillna(60.0)
+    df_clean['submission_quality_score'] = df_clean['submission_quality_score'].fillna(68.0)  # Weighted: 60% ontime * 100 + 20% late * 20
+    df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)
     df_clean['submission_late_rate'] = df_clean['submission_late_rate'].fillna(0.2)
     df_clean['submission_missing_rate'] = df_clean['submission_missing_rate'].fillna(0.0)
     df_clean['submission_status_score'] = df_clean['submission_status_score'].fillna(0.5)  # Moderate score
-    df_clean['submission_quality_score'] = df_clean['submission_quality_score'].fillna(70.0)  # Moderate quality
     
     if len(df_clean) == 0:
         output = df.copy()
@@ -277,27 +299,30 @@ def cluster_records(records):
             'avg_present_rate': cluster_data['attendance_present_rate'].mean(),
             'avg_late_rate': cluster_data['attendance_late_rate'].mean(),
             'avg_score': cluster_data['final_score'].mean(),
-            # Submission statistics based on status counts
-            'avg_submission_rate': cluster_data['submission_rate'].mean(),
+            # Submission statistics - ONTIME PRIORITIZED
             'avg_ontime_rate': cluster_data['submission_ontime_rate'].mean(),
+            'avg_ontime_priority_score': cluster_data['submission_ontime_priority_score'].mean(),  # PRIORITY metric
+            'avg_quality_score': cluster_data['submission_quality_score'].mean(),  # PRIORITY metric (prioritizes ontime)
+            'avg_submission_rate': cluster_data['submission_rate'].mean(),
             'avg_late_submission_rate': cluster_data['submission_late_rate'].mean(),
             'avg_missing_rate': cluster_data['submission_missing_rate'].mean(),
-            'avg_status_score': cluster_data['submission_status_score'].mean(),
-            'avg_quality_score': cluster_data['submission_quality_score'].mean()
+            'avg_status_score': cluster_data['submission_status_score'].mean()
         }
     
     # Assign labels based on behavior patterns
-    # Uses status-based submission metrics (no deadline calculations)
+    # PRIORITIZES ONTIME SUBMISSIONS: Higher weight given to ontime performance
     cluster_scores = {}
     for cluster_id, stats in cluster_stats.items():
-        # Weighted performance score using status-based submission metrics
-        # Higher quality_score and lower status_score indicate better performance
+        # Weighted performance score - ONTIME SUBMISSIONS PRIORITIZED
+        # Higher ontime_priority_score and quality_score indicate better performance
         score = (
-            stats['avg_attendance_percentage'] * 0.25 +
-            stats['avg_score'] * 0.30 +
-            stats['avg_submission_rate'] * 100 * 0.20 +
-            stats['avg_quality_score'] * 0.20 +  # Use quality score (0-100, higher is better)
-            (100 - stats['avg_status_score'] * 50) * 0.05  # Lower status score = better (invert for scoring)
+            stats['avg_attendance_percentage'] * 0.20 +
+            stats['avg_score'] * 0.25 +
+            # PRIORITY: Ontime submissions get highest weight (35% total)
+            stats['avg_ontime_priority_score'] * 0.25 +  # Direct ontime percentage (0-100)
+            stats['avg_quality_score'] * 0.15 +  # Quality score (prioritizes ontime, 0-100)
+            stats['avg_submission_rate'] * 100 * 0.10 +
+            (100 - stats['avg_status_score'] * 50) * 0.05  # Lower status score = better
         )
         cluster_scores[cluster_id] = score
     
@@ -354,15 +379,19 @@ def cluster_records(records):
         else:
             explanation_parts.append("low academic performance")
         
-        # Submission behavior analysis (based on status counts)
-        if stats['avg_ontime_rate'] >= 0.8:
-            explanation_parts.append("consistently submits on time")
-        elif stats['avg_ontime_rate'] >= 0.5:
-            explanation_parts.append("frequently submits late")
-        elif stats['avg_missing_rate'] >= 0.3:
-            explanation_parts.append("often misses submissions")
+        # Submission behavior analysis - PRIORITIZES ONTIME SUBMISSIONS
+        # Emphasize ontime performance in explanations
+        if stats['avg_ontime_priority_score'] >= 80:
+            explanation_parts.append("excellent ontime submission rate")
+        elif stats['avg_ontime_priority_score'] >= 60:
+            explanation_parts.append("good ontime submission rate")
+        elif stats['avg_ontime_priority_score'] >= 40:
+            explanation_parts.append("moderate ontime submission rate")
         else:
-            explanation_parts.append("mixed submission timeliness")
+            explanation_parts.append("frequently submits late")
+        
+        if stats['avg_missing_rate'] >= 0.3:
+            explanation_parts.append("often misses submissions")
         
         if stats['avg_submission_rate'] >= 0.9:
             explanation_parts.append("high submission rate")
@@ -371,13 +400,14 @@ def cluster_records(records):
         else:
             explanation_parts.append("low submission rate")
         
-        # Include status-based metrics in explanation
+        # Include status-based metrics in explanation - HIGHLIGHT ONTIME PRIORITY
         explanation = f"This cluster shows {', '.join(explanation_parts)}. "
         explanation += f"Average attendance: {stats['avg_attendance_percentage']:.1f}%, "
         explanation += f"Average score: {stats['avg_score']:.1f}%, "
-        explanation += f"Submission rate: {stats['avg_submission_rate']*100:.1f}% "
-        explanation += f"(Ontime: {stats['avg_ontime_rate']*100:.1f}%, Late: {stats['avg_late_submission_rate']*100:.1f}%, Missing: {stats['avg_missing_rate']*100:.1f}%), "
-        explanation += f"Quality score: {stats['avg_quality_score']:.1f}/100"
+        explanation += f"**Ontime submission rate: {stats['avg_ontime_priority_score']:.1f}%** (PRIORITY), "
+        explanation += f"Overall submission rate: {stats['avg_submission_rate']*100:.1f}% "
+        explanation += f"(Late: {stats['avg_late_submission_rate']*100:.1f}%, Missing: {stats['avg_missing_rate']*100:.1f}%), "
+        explanation += f"Quality score: {stats['avg_quality_score']:.1f}/100 (prioritizes ontime)"
         
         explanations[cluster_id] = explanation
     

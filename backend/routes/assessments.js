@@ -570,8 +570,38 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_att.status = 'enrolled'
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
         )::INTEGER AS attendance_total_sessions,
-        -- Average score: average of all submission scores for this student
+        -- Syllabus-weighted score: overall grade based on assessment weights from syllabus
+        -- Formula: SUM((submission_score / assessment_total_points) * assessment_weight_percentage)
+        -- This reflects the actual course grade structure defined in the syllabus
         COALESCE(
+          (
+            SELECT ROUND(
+              SUM(
+                CASE 
+                  WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                  THEN (sub.adjusted_score / a.total_points) * a.weight_percentage
+                  WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                  THEN (sub.total_score / a.total_points) * a.weight_percentage
+                  ELSE 0
+                END
+              )::NUMERIC,
+              2
+            )
+            FROM course_enrollments ce_weighted
+            INNER JOIN section_courses sc_weighted ON ce_weighted.section_course_id = sc_weighted.section_course_id
+            INNER JOIN assessments a ON sc_weighted.section_course_id = a.section_course_id
+            LEFT JOIN submissions sub ON (
+              ce_weighted.enrollment_id = sub.enrollment_id 
+              AND sub.assessment_id = a.assessment_id
+              AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+            )
+            WHERE ce_weighted.student_id = s.student_id
+              AND ce_weighted.status = 'enrolled'
+              AND a.weight_percentage IS NOT NULL
+              AND a.weight_percentage > 0
+              ${termIdValue ? `AND sc_weighted.term_id = ${termIdValue}` : ''}
+          ),
+          -- Fallback: simple average if no syllabus weights available
           (
             SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
             FROM course_enrollments ce_sub
@@ -581,23 +611,29 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_sub.status = 'enrolled'
               AND sub.total_score IS NOT NULL
               ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
-          ),
-          0
+          )
         )::NUMERIC AS average_score,
-        -- ILO-weighted score: calculates student performance weighted by ILO coverage from submissions
-        -- Relationship: Submissions → Assessments → ILOs (via assessment_ilo_weights)
-        -- Formula: For each submission, calculate weighted score based on ILO weights
-        -- Weight = (submission_score / assessment_total_points) * sum_of_ILO_weights
-        -- This prioritizes performance on assessments that cover important ILOs
+        -- ILO-weighted score: combines syllabus assessment weights with ILO coverage
+        -- Formula: SUM((submission_score / assessment_total_points) * assessment_weight * ILO_weight_factor)
+        -- ILO_weight_factor = 1 + (sum_of_ILO_weights / 100) to boost ILO-aligned assessments
+        -- This prioritizes performance on assessments that cover important ILOs while respecting syllabus weights
         COALESCE(
           (
-            WITH ilo_weighted_submissions AS (
+            WITH ilo_syllabus_weighted AS (
               SELECT 
                 sub.submission_id,
+                sub.adjusted_score,
                 sub.total_score,
                 a.total_points,
-                -- Sum of ILO weights for this assessment (normalized to 0-1)
-                COALESCE(SUM(aiw.weight_percentage) / 100.0, 0) as total_ilo_weight
+                a.weight_percentage,
+                -- Sum of ILO weights for this assessment (0-100%)
+                COALESCE(SUM(aiw.weight_percentage), 0) as total_ilo_weight,
+                -- ILO boost factor: assessments with ILOs get slight boost (1.0 to 1.5x)
+                CASE 
+                  WHEN COALESCE(SUM(aiw.weight_percentage), 0) > 0
+                  THEN 1.0 + (COALESCE(SUM(aiw.weight_percentage), 0) / 200.0)  -- Max 1.5x boost
+                  ELSE 1.0
+                END as ilo_boost_factor
               FROM course_enrollments ce_ilo
               INNER JOIN section_courses sc_ilo ON ce_ilo.section_course_id = sc_ilo.section_course_id
               INNER JOIN assessments a ON sc_ilo.section_course_id = a.section_course_id
@@ -605,35 +641,56 @@ router.get('/dean-analytics/sample', async (req, res) => {
               LEFT JOIN submissions sub ON (
                 ce_ilo.enrollment_id = sub.enrollment_id 
                 AND sub.assessment_id = a.assessment_id
-                AND sub.total_score IS NOT NULL
+                AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
               )
               WHERE ce_ilo.student_id = s.student_id
                 AND ce_ilo.status = 'enrolled'
+                AND a.weight_percentage IS NOT NULL
+                AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
-              GROUP BY sub.submission_id, sub.total_score, a.total_points
+              GROUP BY sub.submission_id, sub.adjusted_score, sub.total_score, a.total_points, a.weight_percentage
               HAVING sub.submission_id IS NOT NULL AND a.total_points > 0
             )
             SELECT ROUND(
-              AVG(
+              SUM(
                 CASE 
-                  WHEN total_ilo_weight > 0
-                  THEN (total_score / total_points) * 100 * total_ilo_weight
-                  ELSE (total_score / total_points) * 100
+                  WHEN adjusted_score IS NOT NULL AND total_points > 0 AND weight_percentage IS NOT NULL
+                  THEN (adjusted_score / total_points) * weight_percentage * ilo_boost_factor
+                  WHEN total_score IS NOT NULL AND total_points > 0 AND weight_percentage IS NOT NULL
+                  THEN (total_score / total_points) * weight_percentage * ilo_boost_factor
+                  ELSE 0
                 END
               )::NUMERIC,
               2
             )
-            FROM ilo_weighted_submissions
+            FROM ilo_syllabus_weighted
           ),
-          -- Fallback: if no ILO mappings exist, use average_score
+          -- Fallback: use syllabus-weighted score without ILO boost
           (
-            SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
+            SELECT ROUND(
+              SUM(
+                CASE 
+                  WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                  THEN (sub.adjusted_score / a.total_points) * a.weight_percentage
+                  WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                  THEN (sub.total_score / a.total_points) * a.weight_percentage
+                  ELSE 0
+                END
+              )::NUMERIC,
+              2
+            )
             FROM course_enrollments ce_fallback
             INNER JOIN section_courses sc_fallback ON ce_fallback.section_course_id = sc_fallback.section_course_id
-            INNER JOIN submissions sub ON ce_fallback.enrollment_id = sub.enrollment_id
+            INNER JOIN assessments a ON sc_fallback.section_course_id = a.section_course_id
+            LEFT JOIN submissions sub ON (
+              ce_fallback.enrollment_id = sub.enrollment_id 
+              AND sub.assessment_id = a.assessment_id
+              AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+            )
             WHERE ce_fallback.student_id = s.student_id
               AND ce_fallback.status = 'enrolled'
-              AND sub.total_score IS NOT NULL
+              AND a.weight_percentage IS NOT NULL
+              AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
           )
         )::NUMERIC AS ilo_weighted_score,
