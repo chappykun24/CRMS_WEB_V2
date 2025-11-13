@@ -282,3 +282,4 @@ python-cluster-api/console_cluster.py
 # ==========================================
 .vercel
 CLUSTERING_DATA_FLOW.md
+backend/scripts/reset_appdev_ilos.js

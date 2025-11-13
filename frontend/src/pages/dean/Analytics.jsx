@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
@@ -1263,11 +1263,10 @@ const Analytics = () => {
                   {/* School Term Filter */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedTermId}
                         onChange={(e) => setSelectedTermId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Terms</option>
                         {schoolTerms.map(term => (
@@ -1282,11 +1281,10 @@ const Analytics = () => {
                   {/* Department Filter */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedDepartmentId}
                         onChange={(e) => setSelectedDepartmentId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Departments</option>
                         {departments.map(dept => (
@@ -1301,11 +1299,10 @@ const Analytics = () => {
                   {/* Program Filter */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedProgramId}
                         onChange={(e) => setSelectedProgramId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Programs</option>
                         {programs
@@ -1322,11 +1319,10 @@ const Analytics = () => {
                   {/* Section Filter */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedSectionId}
                         onChange={(e) => setSelectedSectionId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Sections</option>
                         {sections
@@ -1344,11 +1340,10 @@ const Analytics = () => {
                   {uniqueClusters.length > 0 && (
                     <div className="flex-1 min-w-[200px]">
                       <div className="relative">
-                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <select
                           value={selectedCluster}
                           onChange={(e) => setSelectedCluster(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                         >
                           <option value="all">All Clusters ({data.length})</option>
                           {uniqueClusters.map(cluster => (
@@ -1817,61 +1812,81 @@ const Analytics = () => {
                 
                 return (
                   <>
-              {/* Student Header Info */}
-              <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
-                {/* Student Image - Lazy Loaded */}
-                <div className="flex-shrink-0 relative">
-                  {loadingPhoto && !studentPhoto ? (
-                    <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
-                      <UserCircleIcon className="w-12 h-12 text-gray-400" />
-                    </div>
-                  ) : studentPhoto ? (
-                    <img
-                      src={studentPhoto}
-                      alt={selectedStudent.full_name}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                  ) : (
-                    <UserCircleIcon className="w-24 h-24 text-gray-300" />
-                  )}
+              {/* Student Header Info with Final Grade */}
+              <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
+                <div className="flex items-center gap-4 flex-1">
+                  {/* Student Image - Lazy Loaded */}
+                  <div className="flex-shrink-0 relative">
+                    {loadingPhoto && !studentPhoto ? (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                        <UserCircleIcon className="w-8 h-8 text-gray-400" />
+                      </div>
+                    ) : studentPhoto ? (
+                      <img
+                        src={studentPhoto}
+                        alt={selectedStudent.full_name}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'block';
+                        }}
+                      />
+                    ) : (
+                      <UserCircleIcon className="w-16 h-16 text-gray-300" />
+                    )}
+                  </div>
+
+                  {/* Student Basic Info */}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900">{selectedStudent.full_name}</h3>
+                    <p className="text-sm text-gray-500">SR: {selectedStudent.student_number || 'N/A'}</p>
+                  </div>
                 </div>
 
-                {/* Student Basic Info */}
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">SR-code:</span>{' '}
-                      <span className="text-gray-900">{selectedStudent.student_number || 'N/A'}</span>
-                    </p>
-                    {displayData.grade_level && (
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Grade Level:</span>{' '}
-                        <span className="text-gray-900">{formatGradeLevel(displayData.grade_level)}</span>
+                {/* Final Grade Display */}
+                {displayData.average_score !== null && displayData.average_score !== undefined && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 uppercase">FINAL GRADE</p>
+                      <p className={`text-2xl font-bold ${
+                        parseFloat(displayData.average_score) >= 90 ? 'text-green-600' :
+                        parseFloat(displayData.average_score) >= 75 ? 'text-blue-600' :
+                        parseFloat(displayData.average_score) >= 60 ? 'text-yellow-600' :
+                        'text-orange-600'
+                      }`}>
+                        {parseFloat(displayData.average_score).toFixed(2)}%
                       </p>
-                    )}
-                    {selectedStudent.contact_email && (
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Email:</span>{' '}
-                        <span className="text-gray-900">{selectedStudent.contact_email}</span>
-                      </p>
-                    )}
-                    <div className="mt-2">
-                      {(() => {
-                        const clusterStyle = getClusterStyle(displayData.cluster_label);
-                        return clusterStyle ? (
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
-                            {clusterStyle.text}
-                      </span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">—</span>
-                        );
-                      })()}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Student Details Section */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="space-y-2">
+                  {displayData.grade_level && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Grade Level:</span>{' '}
+                      <span className="text-gray-900">{formatGradeLevel(displayData.grade_level)}</span>
+                    </p>
+                  )}
+                  {selectedStudent.contact_email && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Email:</span>{' '}
+                      <span className="text-gray-900">{selectedStudent.contact_email}</span>
+                    </p>
+                  )}
+                  <div className="mt-2">
+                    {(() => {
+                      const clusterStyle = getClusterStyle(displayData.cluster_label);
+                      return clusterStyle ? (
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
+                          {clusterStyle.text}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
