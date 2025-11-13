@@ -80,15 +80,20 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
     let query, params;
     
     if (termId) {
+      // For specific term: get clusters for this term OR term_id IS NULL (fallback for "all terms" clusters)
+      // Prioritize term-specific clusters by ordering term_id DESC (non-null first)
       query = `
-        SELECT student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
+        SELECT DISTINCT ON (student_id)
+          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
         FROM analytics_clusters
-        WHERE term_id = $1 AND generated_at > $2 AND student_id IS NOT NULL
-        ORDER BY student_id
+        WHERE (term_id = $1 OR term_id IS NULL) 
+          AND generated_at > $2 
+          AND student_id IS NOT NULL
+        ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
       `;
       params = [termId, maxAge];
     } else {
-      // For all terms, get the most recent clusters per student
+      // For all terms, get the most recent clusters per student from any term
       query = `
         SELECT DISTINCT ON (student_id) 
           student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
@@ -101,6 +106,21 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
     
     const result = await db.query(query, params);
     console.log(`📦 [Clustering] Retrieved ${result.rows.length} cached clusters (term: ${termId || 'all'}, max age: ${maxAgeHours}h)`);
+    
+    // Log sample cluster data for debugging
+    if (result.rows.length > 0) {
+      const sampleCluster = result.rows[0];
+      console.log(`🔍 [Clustering] Sample cached cluster:`, {
+        student_id: sampleCluster.student_id,
+        cluster_label: sampleCluster.cluster_label,
+        cluster_number: sampleCluster.cluster_number,
+        term_id: termId || 'all',
+        generated_at: sampleCluster.generated_at
+      });
+    } else {
+      console.warn(`⚠️ [Clustering] No cached clusters found (term: ${termId || 'all'}, max age: ${maxAgeHours}h)`);
+    }
+    
     return result.rows;
   } catch (error) {
     console.error('❌ [Clustering] Error fetching cached clusters:', error);
@@ -163,29 +183,55 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
         clusterLabel = String(clusterLabel);
       }
       
-      // Use INSERT ... ON CONFLICT to update if exists
-      await db.query(`
-        INSERT INTO analytics_clusters 
-          (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-        ON CONFLICT (student_id, term_id) 
-        WHERE student_id IS NOT NULL AND term_id IS NOT NULL
-        DO UPDATE SET 
-          cluster_label = EXCLUDED.cluster_label,
-          cluster_number = EXCLUDED.cluster_number,
-          based_on = EXCLUDED.based_on,
-          algorithm_used = EXCLUDED.algorithm_used,
-          model_version = EXCLUDED.model_version,
-          generated_at = NOW()
-      `, [
-        studentId,
-        termId,
-        clusterLabel,
-        clusterNumber,
-        JSON.stringify(basedOn),
-        algorithm,
-        version
-      ]);
+      // Handle INSERT with proper conflict resolution
+      // For NULL term_id, delete existing NULL term_id clusters for this student first
+      if (termId === null || termId === undefined) {
+        // Delete old NULL term_id clusters for this student to avoid duplicates
+        await db.query(`
+          DELETE FROM analytics_clusters 
+          WHERE student_id = $1 AND term_id IS NULL
+        `, [studentId]);
+      }
+      
+      // Use INSERT ... ON CONFLICT to update if exists (only works when term_id IS NOT NULL)
+      if (termId !== null && termId !== undefined) {
+        await db.query(`
+          INSERT INTO analytics_clusters 
+            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          ON CONFLICT (student_id, term_id) 
+          WHERE student_id IS NOT NULL AND term_id IS NOT NULL
+          DO UPDATE SET 
+            cluster_label = EXCLUDED.cluster_label,
+            cluster_number = EXCLUDED.cluster_number,
+            based_on = EXCLUDED.based_on,
+            algorithm_used = EXCLUDED.algorithm_used,
+            model_version = EXCLUDED.model_version,
+            generated_at = NOW()
+        `, [
+          studentId,
+          termId,
+          clusterLabel,
+          clusterNumber,
+          JSON.stringify(basedOn),
+          algorithm,
+          version
+        ]);
+      } else {
+        // For NULL term_id, just insert (we already deleted old ones)
+        await db.query(`
+          INSERT INTO analytics_clusters 
+            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
+          VALUES ($1, NULL, $2, $3, $4, $5, $6, NOW())
+        `, [
+          studentId,
+          clusterLabel,
+          clusterNumber,
+          JSON.stringify(basedOn),
+          algorithm,
+          version
+        ]);
+      }
       
       savedCount++;
     }
@@ -413,11 +459,28 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
         console.log(`✅ [Clustering] Cache hit: Found clusters for ${cachedClusters.length}/${students.length} students`);
         result.cacheUsed = true;
         
-        // Build cluster map from cache
+        // Build cluster map from cache (normalize student_id to ensure type consistency)
         cachedClusters.forEach(cached => {
-          result.clusters.set(cached.student_id, {
+          // Normalize student_id to number for consistent matching
+          const studentId = typeof cached.student_id === 'string' ? parseInt(cached.student_id, 10) : cached.student_id;
+          if (isNaN(studentId)) {
+            console.warn(`⚠️ [Clustering] Invalid student_id in cached cluster:`, cached.student_id);
+            return;
+          }
+          
+          // Normalize cluster_label
+          let clusterLabel = cached.cluster_label;
+          if (clusterLabel === null || clusterLabel === undefined || 
+              (typeof clusterLabel === 'number' && isNaN(clusterLabel)) ||
+              (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
+            clusterLabel = null;
+          } else {
+            clusterLabel = String(clusterLabel);
+          }
+          
+          result.clusters.set(studentId, {
             cluster: cached.cluster_number,
-            cluster_label: cached.cluster_label,
+            cluster_label: clusterLabel,
             based_on: cached.based_on
           });
         });
