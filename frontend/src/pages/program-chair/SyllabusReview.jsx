@@ -267,9 +267,20 @@ const SyllabusReview = () => {
     return 'N/A'
   }
 
-  const filteredSyllabi = syllabi.filter(syllabus =>
+  const filteredSyllabi = (syllabi || []).filter(syllabus =>
     syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredApprovedSyllabi = (approvedSyllabi || []).filter(syllabus =>
+    syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredEditRequests = (editRequests || []).filter(request =>
+    request.syllabus_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.requested_by_name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (

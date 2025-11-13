@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
-import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
+import { setSelectedClass as saveSelectedClass, getSelectedClass } from '../../utils/localStorageManager'
 import ILOMappingTable from '../../components/ILOMappingTable'
 import SyllabusCreationWizard from '../../components/SyllabusCreationWizard'
 import { 
@@ -63,33 +63,21 @@ const Syllabus = () => {
       
       const cacheKey = `classes_${user.user_id}`
       const cached = safeGetItem(cacheKey)
+      let classesData = []
+      
       if (cached) {
-        const classesData = Array.isArray(cached) ? cached : []
+        classesData = Array.isArray(cached) ? cached : []
         setClasses(classesData)
         setLoading(false)
-        
-        if (location.state?.selectedClassId) {
-          const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
-          if (classToSelect) {
-            setSelectedClass(classToSelect)
-          }
-        }
       }
       
       try {
         const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
         if (response.ok) {
           const data = await response.json()
-          const classesData = Array.isArray(data) ? data : []
+          classesData = Array.isArray(data) ? data : []
           setClasses(classesData)
           safeSetItem(cacheKey, classesData, minimizeClassData)
-          
-          if (location.state?.selectedClassId && !selectedClass) {
-            const classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
-            if (classToSelect) {
-              setSelectedClass(classToSelect)
-            }
-          }
         } else {
           if (!cached) setError('Failed to load classes')
         }
@@ -98,6 +86,30 @@ const Syllabus = () => {
         if (!cached) setError('Failed to load classes')
       } finally {
         setLoading(false)
+      }
+      
+      // Restore selected class after classes are loaded
+      // Priority: location.state > localStorage > nothing
+      if (classesData.length > 0) {
+        let classToSelect = null
+        
+        // First priority: location state
+        if (location.state?.selectedClassId) {
+          classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
+        }
+        
+        // Second priority: localStorage
+        if (!classToSelect) {
+          const savedClass = getSelectedClass()
+          if (savedClass?.section_course_id) {
+            classToSelect = classesData.find(cls => cls.section_course_id === savedClass.section_course_id)
+          }
+        }
+        
+        // Set the selected class if found
+        if (classToSelect) {
+          setSelectedClass(classToSelect)
+        }
       }
     }
     
@@ -159,12 +171,23 @@ const Syllabus = () => {
     loadSyllabi(sectionId, syllabiCacheKey, !cached)
   }, [selectedClass])
   
-  // Reset selected syllabus when switching tabs
+  // Reset selected syllabus when switching tabs and restore selected class on ILO tab
   useEffect(() => {
     if (activeTab !== 'ilo-mapping') {
       setSelectedSyllabusForILO(null)
+    } else {
+      // When switching to ILO tab, ensure selected class is restored from localStorage
+      if (!selectedClass && classes.length > 0) {
+        const savedClass = getSelectedClass()
+        if (savedClass?.section_course_id) {
+          const classToSelect = classes.find(cls => cls.section_course_id === savedClass.section_course_id)
+          if (classToSelect) {
+            setSelectedClass(classToSelect)
+          }
+        }
+      }
     }
-  }, [activeTab])
+  }, [activeTab, classes, selectedClass])
 
   const loadSyllabi = async (sectionCourseId, cacheKey, showLoading = true) => {
     if (!sectionCourseId) return
@@ -591,6 +614,21 @@ const Syllabus = () => {
     return 'No resources'
   }
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '—'
+    try {
+      const date = new Date(dateString)
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return '—'
+      }
+      return date.toLocaleDateString()
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return '—'
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -753,7 +791,7 @@ const Syllabus = () => {
                                   className="px-6 py-4 cursor-pointer"
                                   onClick={() => openViewModal(syllabus)}
                                 >
-                                  <div className="text-sm text-gray-900">v{syllabus.version}</div>
+                                  <div className="text-sm text-gray-900">v{syllabus.version || '1.0'}</div>
                                 </td>
                                 <td 
                                   className="px-6 py-4 cursor-pointer"
@@ -776,7 +814,7 @@ const Syllabus = () => {
                                   onClick={() => openViewModal(syllabus)}
                                 >
                                   <div className="text-sm text-gray-900">
-                                    {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
+                                    {formatDate(syllabus.created_at)}
                                   </div>
                                 </td>
                                 <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -914,7 +952,7 @@ const Syllabus = () => {
                       <div className="mb-4 flex items-center justify-between flex-shrink-0">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{selectedSyllabusForILO.title}</h3>
-                          <p className="text-sm text-gray-500">Version {selectedSyllabusForILO.version}</p>
+                          <p className="text-sm text-gray-500">Version {selectedSyllabusForILO.version || '1.0'}</p>
                         </div>
                         <button
                           onClick={() => setSelectedSyllabusForILO(null)}
@@ -926,7 +964,7 @@ const Syllabus = () => {
                       <div className="flex-1 overflow-y-auto min-h-0">
                         <ILOMappingTable
                           syllabusId={selectedSyllabusForILO.syllabus_id}
-                          courseCode={selectedClass?.course_code}
+                          courseCode={selectedClass?.course_code || ''}
                           onUpdate={() => {
                             // Refresh syllabi list if needed
                             if (selectedClass) {
@@ -950,7 +988,7 @@ const Syllabus = () => {
                               className="p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
                             >
                               <div className="font-medium text-gray-900">{syllabus.title}</div>
-                              <div className="text-sm text-gray-500">Version {syllabus.version}</div>
+                              <div className="text-sm text-gray-500">Version {syllabus.version || '1.0'}</div>
                               <div className="mt-2">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
                                   {syllabus.review_status || 'pending'}
@@ -1395,7 +1433,7 @@ const Syllabus = () => {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Version</h3>
-                  <p className="text-sm text-gray-900">v{viewingSyllabus.version}</p>
+                  <p className="text-sm text-gray-900">v{viewingSyllabus.version || '1.0'}</p>
                 </div>
 
                 {viewingSyllabus.description && (
