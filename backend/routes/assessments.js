@@ -754,6 +754,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           0
         )::NUMERIC AS submission_rate,
         -- Detailed submission behavior counts: ontime, late, missing, total assessments
+        -- Uses submission_status field: 'ontime', 'late', or 'missing' (defaults to 'missing' if no submission)
         (
           SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'ontime' THEN sub.submission_id END)::INTEGER
           FROM course_enrollments ce_sub
@@ -768,7 +769,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
         )::INTEGER AS submission_ontime_count,
         (
-          SELECT COUNT(DISTINCT CASE WHEN sub.submission_status = 'late' THEN sub.submission_id END)::INTEGER
+          SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN sub.submission_id END)::INTEGER
           FROM course_enrollments ce_sub
           LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
           LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
@@ -781,8 +782,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
         )::INTEGER AS submission_late_count,
         (
-          SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER - 
-                 COUNT(DISTINCT CASE WHEN sub.submission_id IS NOT NULL THEN ass.assessment_id END)::INTEGER
+          SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
           FROM course_enrollments ce_sub
           LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
           LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
@@ -793,6 +793,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_sub.student_id = s.student_id
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+            AND COALESCE(sub.submission_status, 'missing') = 'missing'
         )::INTEGER AS submission_missing_count,
         (
           SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
