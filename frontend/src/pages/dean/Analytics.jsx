@@ -1030,16 +1030,8 @@ const Analytics = () => {
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
         {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
-          <button
-            onClick={() => handleFetch(true)}
-            disabled={loading}
-            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm"
-            title="Refresh data and recompute clusters from latest dataset"
-          >
-            <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
 
         {/* Progress Bar */}
@@ -1100,150 +1092,149 @@ const Analytics = () => {
             <div className="flex-1 space-y-4 min-w-0">
               {/* Filters */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                {/* Search Bar - Prominent */}
-                <div className="mb-3">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by student name..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Filter Dropdowns - Grid Layout */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                  {/* School Term Filter */}
-                  <div>
+                {/* Search and Filters Row */}
+                <div className="flex flex-col md:flex-row gap-3 mb-3">
+                  {/* Search Bar */}
+                  <div className="flex-1">
                     <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={selectedTermId}
-                        onChange={(e) => setSelectedTermId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Terms</option>
-                        {schoolTerms.map(term => (
-                          <option key={term.term_id} value={term.term_id.toString()}>
-                            {term.school_year} - {term.semester}
-                          </option>
-                        ))}
-                      </select>
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by student name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                      />
                     </div>
                   </div>
 
-                  {/* Department Filter */}
-                  <div>
-                    <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={selectedDepartmentId}
-                        onChange={(e) => setSelectedDepartmentId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Departments</option>
-                        {departments.map(dept => (
-                          <option key={dept.department_id} value={dept.department_id.toString()}>
-                            {dept.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Program Filter */}
-                  <div>
-                    <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={selectedProgramId}
-                        onChange={(e) => setSelectedProgramId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Programs</option>
-                        {programs
-                          .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
-                          .map(program => (
-                            <option key={program.program_id} value={program.program_id.toString()}>
-                              {program.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Section Filter */}
-                  <div>
-                    <div className="relative">
-                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select
-                        value={selectedSectionId}
-                        onChange={(e) => setSelectedSectionId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Sections</option>
-                        {sections
-                          .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
-                          .map(section => (
-                            <option key={section.section_id} value={section.section_id.toString()}>
-                              {section.section_code}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Cluster Filter */}
-                  {uniqueClusters.length > 0 && (
-                    <div>
+                  {/* Filter Dropdowns - Horizontal Row */}
+                  <div className="flex flex-wrap gap-3">
+                    {/* School Term Filter */}
+                    <div className="md:w-56">
                       <div className="relative">
                         <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <select
-                          value={selectedCluster}
-                          onChange={(e) => setSelectedCluster(e.target.value)}
+                          value={selectedTermId}
+                          onChange={(e) => setSelectedTermId(e.target.value)}
                           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                         >
-                          <option value="all">All Clusters ({data.length})</option>
-                          {uniqueClusters.map(cluster => (
-                            <option key={cluster} value={cluster}>
-                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
+                          <option value="">All Terms</option>
+                          {schoolTerms.map(term => (
+                            <option key={term.term_id} value={term.term_id.toString()}>
+                              {term.school_year} - {term.semester}
                             </option>
                           ))}
                         </select>
                       </div>
                     </div>
-                  )}
+
+                    {/* Department Filter */}
+                    <div className="md:w-56">
+                      <div className="relative">
+                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <select
+                          value={selectedDepartmentId}
+                          onChange={(e) => setSelectedDepartmentId(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="">All Departments</option>
+                          {departments.map(dept => (
+                            <option key={dept.department_id} value={dept.department_id.toString()}>
+                              {dept.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Program Filter */}
+                    <div className="md:w-56">
+                      <div className="relative">
+                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <select
+                          value={selectedProgramId}
+                          onChange={(e) => setSelectedProgramId(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="">All Programs</option>
+                          {programs
+                            .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
+                            .map(program => (
+                              <option key={program.program_id} value={program.program_id.toString()}>
+                                {program.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Section Filter */}
+                    <div className="md:w-56">
+                      <div className="relative">
+                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <select
+                          value={selectedSectionId}
+                          onChange={(e) => setSelectedSectionId(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="">All Sections</option>
+                          {sections
+                            .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
+                            .map(section => (
+                              <option key={section.section_id} value={section.section_id.toString()}>
+                                {section.section_code}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Cluster Filter */}
+                    {uniqueClusters.length > 0 && (
+                      <div className="md:w-56">
+                        <div className="relative">
+                          <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <select
+                            value={selectedCluster}
+                            onChange={(e) => setSelectedCluster(e.target.value)}
+                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                          >
+                            <option value="all">All Clusters ({data.length})</option>
+                            {uniqueClusters.map(cluster => (
+                              <option key={cluster} value={cluster}>
+                                {cluster} ({data.filter(d => d.cluster_label === cluster).length})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Filter Results Count */}
-                {(filteredData.length !== data.length || selectedTermId || selectedSectionId || selectedProgramId || selectedDepartmentId) && (
-                  <p className="mt-3 text-sm text-gray-600">
+                {/* Student Count with Refresh Button */}
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
                     Showing {filteredData.length} of {data.length} students
                     {(() => {
-                      const filters = [];
+                      // Show term if selected, otherwise show nothing
                       if (selectedTermId) {
                         const term = schoolTerms.find(t => t.term_id.toString() === selectedTermId);
-                        if (term) filters.push(`${term.school_year} - ${term.semester}`);
+                        if (term) return ` (${term.school_year} - ${term.semester})`;
                       }
-                      if (selectedDepartmentId) {
-                        const dept = departments.find(d => d.department_id.toString() === selectedDepartmentId);
-                        if (dept) filters.push(`Dept: ${dept.name}`);
-                      }
-                      if (selectedProgramId) {
-                        const prog = programs.find(p => p.program_id.toString() === selectedProgramId);
-                        if (prog) filters.push(`Program: ${prog.name}`);
-                      }
-                      if (selectedSectionId) {
-                        const sec = sections.find(s => s.section_id.toString() === selectedSectionId);
-                        if (sec) filters.push(`Section: ${sec.section_code}`);
-                      }
-                      return filters.length > 0 ? ` (${filters.join(', ')})` : '';
+                      return '';
                     })()}
                   </p>
-                )}
+                  <button
+                    onClick={() => handleFetch(true)}
+                    disabled={loading}
+                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    title="Refresh data and recompute clusters from latest dataset"
+                  >
+                    <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               {/* Data Table */}
