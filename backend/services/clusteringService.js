@@ -349,6 +349,10 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
   
   try {
     console.log(`🔄 [Clustering] Making POST request to clustering API...`);
+    console.log(`🔍 [Clustering] Full endpoint URL: ${config.endpoint}`);
+    console.log(`🔍 [Clustering] Payload size: ${JSON.stringify(sanitizedPayload).length} bytes`);
+    console.log(`🔍 [Clustering] Number of students: ${sanitizedPayload.length}`);
+    
     const startTime = Date.now();
     
     const response = await fetch(config.endpoint, {
@@ -368,7 +372,8 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       statusText: response.statusText,
       responseTime: `${responseTime}ms`,
       contentType: response.headers.get('content-type'),
-      contentLength: response.headers.get('content-length')
+      contentLength: response.headers.get('content-length'),
+      ok: response.ok
     });
     
     if (!response.ok) {
@@ -376,9 +381,21 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       console.error(`❌ [Clustering] API Error Response:`, {
         status: response.status,
         statusText: response.statusText,
-        errorText: errorText.substring(0, 500)
+        errorText: errorText.substring(0, 500),
+        endpoint: config.endpoint,
+        payloadSize: sanitizedPayload.length
       });
-      throw new Error(`Clustering API returned ${response.status}: ${errorText.substring(0, 500)}`);
+      
+      // Provide more specific error messages
+      if (response.status === 404) {
+        throw new Error(`Clustering API endpoint not found (404). Check if URL is correct: ${config.endpoint}`);
+      } else if (response.status === 500) {
+        throw new Error(`Clustering API server error (500). Check Python API logs for details.`);
+      } else if (response.status === 503) {
+        throw new Error(`Clustering API service unavailable (503). The service may be down or overloaded.`);
+      } else {
+        throw new Error(`Clustering API returned ${response.status}: ${errorText.substring(0, 500)}`);
+      }
     }
     
     const clusterResults = await response.json();
@@ -399,16 +416,47 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       throw new Error('Clustering API returned invalid response: expected array');
     }
     
+    if (clusterResults.length === 0) {
+      console.error(`❌ [Clustering] API returned empty array!`);
+      console.error(`❌ [Clustering] This means Python API processed ${sanitizedPayload.length} students but returned 0 results.`);
+      console.error(`❌ [Clustering] Check Python API logs for errors during clustering.`);
+      throw new Error('Clustering API returned empty results array');
+    }
+    
+    if (clusterResults.length !== sanitizedPayload.length) {
+      console.warn(`⚠️ [Clustering] Result count mismatch:`, {
+        sent: sanitizedPayload.length,
+        received: clusterResults.length,
+        difference: sanitizedPayload.length - clusterResults.length
+      });
+    }
+    
     console.log(`✅ [Clustering] Received ${clusterResults.length} cluster results from API`);
     
-    // Log cluster label distribution
+    // Log cluster label distribution with null detection
     if (clusterResults.length > 0) {
       const labelCounts = {};
-      clusterResults.forEach(r => {
+      const nullLabels = [];
+      clusterResults.forEach((r, idx) => {
         const label = r.cluster_label || 'null';
         labelCounts[label] = (labelCounts[label] || 0) + 1;
+        if (!r.cluster_label || r.cluster_label === null || r.cluster_label === undefined) {
+          if (nullLabels.length < 5) {
+            nullLabels.push({ index: idx, student_id: r.student_id, cluster: r.cluster });
+          }
+        }
       });
       console.log(`📊 [Clustering] Cluster label distribution:`, labelCounts);
+      if (nullLabels.length > 0 || labelCounts['null'] > 0) {
+        const nullCount = labelCounts['null'] || 0;
+        console.error(`❌ [Clustering] CRITICAL: Found ${nullCount} results with null cluster_label!`);
+        console.error(`❌ [Clustering] Sample null label entries:`, nullLabels);
+        console.error(`❌ [Clustering] Python API failed to assign cluster labels. Check Python API logs.`);
+        console.error(`❌ [Clustering] This could mean:`);
+        console.error(`   - Python API encountered an error during clustering`);
+        console.error(`   - Python API returned results but cluster_label field is missing/null`);
+        console.error(`   - Data sent to Python API is invalid or missing required fields`);
+      }
     }
     
     return clusterResults;

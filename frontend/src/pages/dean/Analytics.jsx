@@ -557,10 +557,30 @@ const Analytics = () => {
           console.log(`📊 [DEAN ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${studentsData.length}`);
           
           if (studentsWithClusters.length === 0 && studentsData.length > 0) {
-            console.warn('⚠️ [DEAN ANALYTICS] No students have cluster labels! Clustering may not be working.');
-            console.warn('⚠️ [DEAN ANALYTICS] Sample student data:', JSON.stringify(studentsData[0], null, 2));
-            console.warn('⚠️ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(json.clustering, null, 2));
-            console.warn('⚠️ [DEAN ANALYTICS] Check if CLUSTER_SERVICE_URL is set and clustering API is accessible.');
+            const clusteringMeta = json.clustering || {};
+            const errorMessage = clusteringMeta.error || 
+              (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null 
+                ? 'Clustering API was called but returned no cluster labels. Check backend logs for details.' 
+                : 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.');
+            
+            console.error('❌ [DEAN ANALYTICS] No students have cluster labels!');
+            console.error('❌ [DEAN ANALYTICS] Error:', errorMessage);
+            console.error('❌ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
+            console.error('❌ [DEAN ANALYTICS] Sample student data:', JSON.stringify(studentsData[0], null, 2));
+            console.error('❌ [DEAN ANALYTICS] Diagnostic steps:');
+            console.error('   1. Check backend logs for clustering errors');
+            console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
+            console.error('   3. Test clustering service: GET /api/assessments/clustering/health');
+            console.error('   4. Check Python API logs on Railway');
+            
+            // Set error state for UI display
+            if (setErrorRef.current) {
+              try {
+                setErrorRef.current(`Clustering failed: ${errorMessage}. Check console for details.`);
+              } catch (e) {
+                console.warn('⚠️ [DEAN ANALYTICS] Could not set error state');
+              }
+            }
           }
           
           setData(studentsData);

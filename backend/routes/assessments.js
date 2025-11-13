@@ -9,6 +9,84 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Assessments router is working!' });
 });
 
+// Clustering health check endpoint
+router.get('/clustering/health', async (req, res) => {
+  try {
+    const config = clusteringService.getClusteringConfig();
+    
+    // Test if clustering service is accessible
+    let serviceStatus = 'unknown';
+    let serviceError = null;
+    let responseTime = null;
+    
+    if (config.enabled && config.endpoint) {
+      try {
+        const startTime = Date.now();
+        const healthEndpoint = config.endpoint.replace('/api/cluster', '/health');
+        const response = await fetch(healthEndpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        responseTime = Date.now() - startTime;
+        
+        if (response.ok) {
+          const healthData = await response.json();
+          serviceStatus = 'healthy';
+          return res.json({
+            success: true,
+            clustering: {
+              enabled: config.enabled,
+              serviceUrl: config.url,
+              endpoint: config.endpoint,
+              healthEndpoint: healthEndpoint,
+              status: serviceStatus,
+              responseTime: `${responseTime}ms`,
+              healthData: healthData,
+              configured: true
+            }
+          });
+        } else {
+          serviceStatus = 'unhealthy';
+          serviceError = `HTTP ${response.status}: ${response.statusText}`;
+        }
+      } catch (error) {
+        serviceStatus = 'unreachable';
+        serviceError = error.message;
+        responseTime = null;
+      }
+    } else {
+      serviceStatus = 'not_configured';
+      serviceError = 'CLUSTER_SERVICE_URL is not set';
+    }
+    
+    res.json({
+      success: false,
+      clustering: {
+        enabled: config.enabled,
+        serviceUrl: config.url || '(not set)',
+        endpoint: config.endpoint || '(not set)',
+        status: serviceStatus,
+        error: serviceError,
+        responseTime: responseTime ? `${responseTime}ms` : null,
+        configured: !!config.url,
+        environmentVariables: {
+          CLUSTER_SERVICE_URL: process.env.CLUSTER_SERVICE_URL ? '(set)' : '(not set)',
+          CLUSTER_API_URL: process.env.CLUSTER_API_URL ? '(set)' : '(not set)',
+          VITE_CLUSTER_API_URL: process.env.VITE_CLUSTER_API_URL ? '(set)' : '(not set)',
+          DISABLE_CLUSTERING: process.env.DISABLE_CLUSTERING || '(not set)'
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 // GET /api/assessments/faculty/:facultyId - Get all assessments for a faculty member
 router.get('/faculty/:facultyId', async (req, res) => {
   const { facultyId } = req.params;
