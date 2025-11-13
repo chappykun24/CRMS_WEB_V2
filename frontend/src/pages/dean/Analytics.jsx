@@ -106,6 +106,7 @@ import {
   Legend,
   ResponsiveContainer,
   ZAxis,
+  Brush,
 } from 'recharts';
 
 const Analytics = () => {
@@ -1044,6 +1045,30 @@ const Analytics = () => {
     barSecondary: '#10b981'
   };
 
+  // Cluster color mapping for scatter plots
+  const clusterColors = {
+    'Excellent Performance': '#10b981',
+    'On Track': '#3b82f6',
+    'Performing Well': '#3b82f6',
+    'Needs Improvement': '#f59e0b',
+    'Needs Guidance': '#f59e0b',
+    'At Risk': '#ef4444',
+    'Needs Support': '#ef4444'
+  };
+
+  // Get unique clusters for legend
+  const uniqueClusterLabels = useMemo(() => {
+    const clusters = new Set();
+    if (chartData?.scatterData) {
+      chartData.scatterData.forEach(point => {
+        if (point.cluster) {
+          clusters.add(point.cluster);
+        }
+      });
+    }
+    return Array.from(clusters).sort();
+  }, [chartData]);
+
   return (
     <>
       <style>{`
@@ -1117,8 +1142,8 @@ const Analytics = () => {
             <div className="flex-1 space-y-4 min-w-0">
               {/* Filters */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                {/* Search and Filters Row */}
-                <div className="flex flex-col md:flex-row gap-3 mb-3">
+                {/* First Row: Search Bar, Student Count, Refresh Button */}
+                <div className="flex items-center gap-3 mb-3">
                   {/* Search Bar */}
                   <div className="flex-1">
                     <div className="relative">
@@ -1133,114 +1158,8 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* Filter Dropdowns - Horizontal Row */}
-                  <div className="flex flex-wrap gap-3">
-                    {/* School Term Filter */}
-                    <div className="md:w-56">
-                      <div className="relative">
-                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <select
-                          value={selectedTermId}
-                          onChange={(e) => setSelectedTermId(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="">All Terms</option>
-                          {schoolTerms.map(term => (
-                            <option key={term.term_id} value={term.term_id.toString()}>
-                              {term.school_year} - {term.semester}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Department Filter */}
-                    <div className="md:w-56">
-                      <div className="relative">
-                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <select
-                          value={selectedDepartmentId}
-                          onChange={(e) => setSelectedDepartmentId(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="">All Departments</option>
-                          {departments.map(dept => (
-                            <option key={dept.department_id} value={dept.department_id.toString()}>
-                              {dept.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Program Filter */}
-                    <div className="md:w-56">
-                      <div className="relative">
-                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <select
-                          value={selectedProgramId}
-                          onChange={(e) => setSelectedProgramId(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="">All Programs</option>
-                          {programs
-                            .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
-                            .map(program => (
-                              <option key={program.program_id} value={program.program_id.toString()}>
-                                {program.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Section Filter */}
-                    <div className="md:w-56">
-                      <div className="relative">
-                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <select
-                          value={selectedSectionId}
-                          onChange={(e) => setSelectedSectionId(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="">All Sections</option>
-                          {sections
-                            .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
-                            .map(section => (
-                              <option key={section.section_id} value={section.section_id.toString()}>
-                                {section.section_code}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Cluster Filter */}
-                    {uniqueClusters.length > 0 && (
-                      <div className="md:w-56">
-                        <div className="relative">
-                          <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                          <select
-                            value={selectedCluster}
-                            onChange={(e) => setSelectedCluster(e.target.value)}
-                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                          >
-                            <option value="all">All Clusters ({data.length})</option>
-                            {uniqueClusters.map(cluster => (
-                              <option key={cluster} value={cluster}>
-                                {cluster} ({data.filter(d => d.cluster_label === cluster).length})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Student Count with Refresh Button */}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
+                  {/* Student Count */}
+                  <p className="text-sm text-gray-600 whitespace-nowrap">
                     Showing {filteredData.length} of {data.length} students
                     {(() => {
                       // Show term if selected, otherwise show nothing
@@ -1251,14 +1170,120 @@ const Analytics = () => {
                       return '';
                     })()}
                   </p>
+
+                  {/* Refresh Button */}
                   <button
                     onClick={() => handleFetch(true)}
                     disabled={loading}
-                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm flex-shrink-0"
                     title="Refresh data and recompute clusters from latest dataset"
                   >
                     <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                   </button>
+                </div>
+
+                {/* Second Row: Filter Dropdowns */}
+                <div className="flex flex-wrap gap-3">
+                  {/* School Term Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedTermId}
+                        onChange={(e) => setSelectedTermId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Terms</option>
+                        {schoolTerms.map(term => (
+                          <option key={term.term_id} value={term.term_id.toString()}>
+                            {term.school_year} - {term.semester}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Department Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedDepartmentId}
+                        onChange={(e) => setSelectedDepartmentId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Departments</option>
+                        {departments.map(dept => (
+                          <option key={dept.department_id} value={dept.department_id.toString()}>
+                            {dept.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Program Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedProgramId}
+                        onChange={(e) => setSelectedProgramId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Programs</option>
+                        {programs
+                          .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
+                          .map(program => (
+                            <option key={program.program_id} value={program.program_id.toString()}>
+                              {program.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Section Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedSectionId}
+                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Sections</option>
+                        {sections
+                          .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
+                          .map(section => (
+                            <option key={section.section_id} value={section.section_id.toString()}>
+                              {section.section_code}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Cluster Filter */}
+                  {uniqueClusters.length > 0 && (
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <select
+                          value={selectedCluster}
+                          onChange={(e) => setSelectedCluster(e.target.value)}
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="all">All Clusters ({data.length})</option>
+                          {uniqueClusters.map(cluster => (
+                            <option key={cluster} value={cluster}>
+                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1435,16 +1460,16 @@ const Analytics = () => {
                           dataKey="attendance" 
                           name="Attendance %" 
                           domain={[0, 100]}
-                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
-                          tick={{ fontSize: 9 }}
+                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '10px' } }}
+                          tick={{ fontSize: 8 }}
                         />
                         <YAxis 
                           type="number" 
                           dataKey="score" 
                           name="Score" 
                           domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-                          tick={{ fontSize: 9 }}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '10px' } }}
+                          tick={{ fontSize: 8 }}
                         />
                         <ZAxis 
                           type="number" 
@@ -1454,45 +1479,48 @@ const Analytics = () => {
                         />
                         <Tooltip 
                           cursor={{ strokeDasharray: '3 3' }}
+                          contentStyle={{ fontSize: '10px', padding: '6px' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload[0]) {
                               const data = payload[0].payload;
                               return (
                                 <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
-                                  <p className="font-semibold">{data.name}</p>
-                                  <p>Attendance: {data.attendance.toFixed(1)}%</p>
-                                  <p>Score: {data.score.toFixed(1)}</p>
-                                  <p>Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                                  <p>Cluster: {data.cluster}</p>
+                                  <p className="font-semibold text-[10px]">{data.name}</p>
+                                  <p className="text-[10px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[10px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[10px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[10px]">Cluster: {data.cluster}</p>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Legend />
                         <Scatter 
                           name="Students" 
                           data={chartData.scatterData} 
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            // Color by cluster
-                            const clusterColors = {
-                              'Excellent Performance': '#10b981',
-                              'On Track': '#3b82f6',
-                              'Performing Well': '#3b82f6',
-                              'Needs Improvement': '#f59e0b',
-                              'Needs Guidance': '#f59e0b',
-                              'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444'
-                            };
                             const color = clusterColors[payload.cluster] || '#9ca3af';
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
+                        <Brush dataKey="attendance" height={20} tick={{ fontSize: 8 }} />
                       </ScatterChart>
                     </ResponsiveContainer>
+                    {/* Custom Legend for Cluster Colors */}
+                    <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                      {uniqueClusterLabels.map((cluster) => (
+                        <div key={cluster} className="flex items-center gap-1">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                          />
+                          <span className="text-[9px] text-gray-600">{cluster}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Scatter Plot: Submission Rate vs Score */}
@@ -1506,16 +1534,16 @@ const Analytics = () => {
                           dataKey="submissionRate" 
                           name="Submission Rate %" 
                           domain={[0, 100]}
-                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5 }}
-                          tick={{ fontSize: 9 }}
+                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '10px' } }}
+                          tick={{ fontSize: 8 }}
                         />
                         <YAxis 
                           type="number" 
                           dataKey="score" 
                           name="Score" 
                           domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-                          tick={{ fontSize: 9 }}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '10px' } }}
+                          tick={{ fontSize: 8 }}
                         />
                         <ZAxis 
                           type="number" 
@@ -1525,45 +1553,48 @@ const Analytics = () => {
                         />
                         <Tooltip 
                           cursor={{ strokeDasharray: '3 3' }}
+                          contentStyle={{ fontSize: '10px', padding: '6px' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload[0]) {
                               const data = payload[0].payload;
                               return (
                                 <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
-                                  <p className="font-semibold">{data.name}</p>
-                                  <p>Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                                  <p>Score: {data.score.toFixed(1)}</p>
-                                  <p>Attendance: {data.attendance.toFixed(1)}%</p>
-                                  <p>Cluster: {data.cluster}</p>
+                                  <p className="font-semibold text-[10px]">{data.name}</p>
+                                  <p className="text-[10px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[10px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[10px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[10px]">Cluster: {data.cluster}</p>
                                 </div>
                               );
                             }
                             return null;
                           }}
                         />
-                        <Legend />
                         <Scatter 
                           name="Students" 
                           data={chartData.scatterData} 
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            // Color by cluster
-                            const clusterColors = {
-                              'Excellent Performance': '#10b981',
-                              'On Track': '#3b82f6',
-                              'Performing Well': '#3b82f6',
-                              'Needs Improvement': '#f59e0b',
-                              'Needs Guidance': '#f59e0b',
-                              'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444'
-                            };
                             const color = clusterColors[payload.cluster] || '#9ca3af';
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
+                        <Brush dataKey="submissionRate" height={20} tick={{ fontSize: 8 }} />
                       </ScatterChart>
                     </ResponsiveContainer>
+                    {/* Custom Legend for Cluster Colors */}
+                    <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                      {uniqueClusterLabels.map((cluster) => (
+                        <div key={cluster} className="flex items-center gap-1">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                          />
+                          <span className="text-[9px] text-gray-600">{cluster}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1593,7 +1624,7 @@ const Analytics = () => {
                             <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -1604,10 +1635,11 @@ const Analytics = () => {
                     <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.attendanceData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
-                        <YAxis tick={{ fontSize: 8 }} />
-                        <Tooltip />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
+                        <YAxis tick={{ fontSize: 7 }} />
+                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill={COLORS.bar} name="Students" />
+                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1618,10 +1650,11 @@ const Analytics = () => {
                     <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.scoreData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
-                        <YAxis tick={{ fontSize: 8 }} />
-                        <Tooltip />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
+                        <YAxis tick={{ fontSize: 7 }} />
+                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
+                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1632,10 +1665,11 @@ const Analytics = () => {
                     <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.submissionData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
-                        <YAxis tick={{ fontSize: 8 }} />
-                        <Tooltip />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
+                        <YAxis tick={{ fontSize: 7 }} />
+                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill="#8b5cf6" name="Students" />
+                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
