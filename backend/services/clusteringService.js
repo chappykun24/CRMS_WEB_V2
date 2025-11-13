@@ -577,12 +577,41 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       return result;
     }
     
+    // Log detailed analysis of API response
+    console.log('🔍 [Clustering] Analyzing API response:', {
+      totalResults: clusterResults.length,
+      resultsWithStudentId: clusterResults.filter(r => r.student_id).length,
+      resultsWithCluster: clusterResults.filter(r => r.cluster !== null && r.cluster !== undefined).length,
+      resultsWithClusterLabel: clusterResults.filter(r => r.cluster_label && r.cluster_label !== null && r.cluster_label !== undefined).length,
+      resultsWithSilhouetteScore: clusterResults.filter(r => r.silhouette_score !== null && r.silhouette_score !== undefined).length,
+      sampleResults: clusterResults.slice(0, 3).map(r => ({
+        student_id: r.student_id,
+        cluster: r.cluster,
+        cluster_label: r.cluster_label,
+        silhouette_score: r.silhouette_score,
+        hasAllFields: !!(r.student_id && r.cluster !== null && r.cluster !== undefined && r.cluster_label)
+      }))
+    });
+    
     // Build cluster map from API results
     let clustersWithLabels = 0;
     let clustersWithoutLabels = 0;
+    const missingStudentIds = [];
+    const nullLabelStudentIds = [];
     
-    clusterResults.forEach(item => {
+    clusterResults.forEach((item, index) => {
+      if (!item.student_id) {
+        console.warn(`⚠️ [Clustering] Result ${index} missing student_id:`, item);
+        missingStudentIds.push(index);
+        return;
+      }
+      
       const studentId = typeof item.student_id === 'string' ? parseInt(item.student_id, 10) : item.student_id;
+      if (isNaN(studentId)) {
+        console.warn(`⚠️ [Clustering] Result ${index} has invalid student_id:`, item.student_id);
+        missingStudentIds.push(index);
+        return;
+      }
       
       // Normalize cluster_label
       let clusterLabel = item.cluster_label;
@@ -591,6 +620,7 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
         clusterLabel = null;
         clustersWithoutLabels++;
+        nullLabelStudentIds.push({ studentId, cluster: item.cluster, rawLabel: item.cluster_label });
       } else {
         clusterLabel = String(clusterLabel);
         clustersWithLabels++;
@@ -614,11 +644,23 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       }
     });
     
+    if (missingStudentIds.length > 0) {
+      console.warn(`⚠️ [Clustering] ${missingStudentIds.length} results missing student_id`);
+    }
+    
+    if (nullLabelStudentIds.length > 0) {
+      console.warn(`⚠️ [Clustering] ${nullLabelStudentIds.length} results have null cluster_label:`, nullLabelStudentIds.slice(0, 5));
+      console.warn(`⚠️ [Clustering] This suggests Python API returned clusters but without labels. Check Python API logs.`);
+    }
+    
     console.log('🔍 [Clustering] Cluster map built:', {
       totalClusters: result.clusters.size,
       clustersWithLabels: clustersWithLabels,
       clustersWithoutLabels: clustersWithoutLabels,
-      sampleClusterEntry: result.clusters.size > 0 ? Array.from(result.clusters.entries())[0] : null
+      missingStudentIds: missingStudentIds.length,
+      nullLabelCount: nullLabelStudentIds.length,
+      sampleClusterEntry: result.clusters.size > 0 ? Array.from(result.clusters.entries())[0] : null,
+      sampleNullLabelEntry: nullLabelStudentIds.length > 0 ? nullLabelStudentIds[0] : null
     });
     
     // Step 3: Save to cache asynchronously (non-blocking)
@@ -691,7 +733,7 @@ const applyClustersToStudents = (students, clusterMap) => {
     if (!clusterInfo) {
       unmatchedCount++;
       if (unmatchedIds.length < 5) {
-        unmatchedIds.push(studentId);
+        unmatchedIds.push({ studentId, studentName: row.full_name });
       }
     } else {
       matchedCount++;
@@ -711,17 +753,50 @@ const applyClustersToStudents = (students, clusterMap) => {
       ...row,
       cluster: clusterInfo?.cluster ?? null,
       cluster_label: clusterLabel,
+      silhouette_score: clusterInfo?.silhouette_score ?? null,
     };
   });
+  
+  // Detailed logging for debugging
+  const studentsWithClusters = result.filter(s => s.cluster_label && s.cluster_label !== null);
+  const studentsWithoutClusters = result.filter(s => !s.cluster_label || s.cluster_label === null);
   
   console.log('🔍 [Clustering] Cluster application results:', {
     totalStudents: students.length,
     matched: matchedCount,
     unmatched: unmatchedCount,
+    studentsWithClusters: studentsWithClusters.length,
+    studentsWithoutClusters: studentsWithoutClusters.length,
     unmatchedSampleIds: unmatchedIds,
-    sampleMatchedStudent: result.find(s => s.cluster_label) || null,
-    sampleUnmatchedStudent: result.find(s => !s.cluster_label) || null
+    sampleMatchedStudent: studentsWithClusters.length > 0 ? {
+      student_id: studentsWithClusters[0].student_id,
+      full_name: studentsWithClusters[0].full_name,
+      cluster: studentsWithClusters[0].cluster,
+      cluster_label: studentsWithClusters[0].cluster_label
+    } : null,
+    sampleUnmatchedStudent: studentsWithoutClusters.length > 0 ? {
+      student_id: studentsWithoutClusters[0].student_id,
+      full_name: studentsWithoutClusters[0].full_name,
+      cluster: studentsWithoutClusters[0].cluster,
+      cluster_label: studentsWithoutClusters[0].cluster_label
+    } : null,
+    clusterMapKeys: Array.from(clusterMap.keys()).slice(0, 10),
+    studentIds: students.slice(0, 10).map(s => s.student_id)
   });
+  
+  if (studentsWithoutClusters.length > 0 && clusterMap.size > 0) {
+    console.warn('⚠️ [Clustering] Some students have no cluster labels even though cluster map has entries.');
+    console.warn('⚠️ [Clustering] This suggests a student_id mismatch. Checking...');
+    const firstUnmatched = studentsWithoutClusters[0];
+    const matchingCluster = Array.from(clusterMap.entries()).find(([id]) => {
+      const studentId = typeof firstUnmatched.student_id === 'string' ? parseInt(firstUnmatched.student_id, 10) : firstUnmatched.student_id;
+      return id === studentId;
+    });
+    if (!matchingCluster) {
+      console.warn(`⚠️ [Clustering] Student ${firstUnmatched.student_id} (${firstUnmatched.full_name}) not found in cluster map.`);
+      console.warn(`⚠️ [Clustering] Available cluster map keys:`, Array.from(clusterMap.keys()).slice(0, 10));
+    }
+  }
   
   return result;
 };
