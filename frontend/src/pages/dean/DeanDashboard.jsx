@@ -280,14 +280,18 @@ const Home = () => {
       console.error('❌ [DEAN] Error fetching dashboard stats:', error)
       const sessionCached = safeGetItem(SESSION_CACHE_KEY)
       const cachedData = getCachedData('analytics', DEAN_DASHBOARD_CACHE_KEY, 30 * 60 * 1000)
-      if (!sessionCached && !cachedData) {
-        setError(error.message)
+      if (!sessionCached && !cachedData && typeof setError === 'function') {
+        try {
+          setError(error.message)
+        } catch (e) {
+          console.warn('⚠️ [DEAN] Could not set error state (component may have unmounted)')
+        }
       }
     } finally {
       setLoading(false)
       setInitialLoadComplete(true)
     }
-  }, [])
+  }, [setError])
 
   useEffect(() => {
     // Only fetch if authenticated

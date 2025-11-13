@@ -273,12 +273,17 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
   
   const sanitizedPayload = normalizeStudentData(students);
   console.log(`📤 [Clustering] Sending ${sanitizedPayload.length} students to clustering API`);
+  console.log(`🔍 [Clustering] API Endpoint: ${config.endpoint}`);
+  console.log(`🔍 [Clustering] Payload sample (first student):`, sanitizedPayload.length > 0 ? sanitizedPayload[0] : 'No students');
   
   // Create AbortController for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
+    console.log(`🔄 [Clustering] Making POST request to clustering API...`);
+    const startTime = Date.now();
+    
     const response = await fetch(config.endpoint, {
       method: 'POST',
       headers: {
@@ -288,25 +293,69 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       signal: controller.signal
     });
     
+    const responseTime = Date.now() - startTime;
     clearTimeout(timeoutId);
+    
+    console.log(`📡 [Clustering] API Response received:`, {
+      status: response.status,
+      statusText: response.statusText,
+      responseTime: `${responseTime}ms`,
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length')
+    });
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`❌ [Clustering] API Error Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText.substring(0, 500)
+      });
       throw new Error(`Clustering API returned ${response.status}: ${errorText.substring(0, 500)}`);
     }
     
     const clusterResults = await response.json();
     
+    console.log(`🔍 [Clustering] Parsed API response:`, {
+      isArray: Array.isArray(clusterResults),
+      type: typeof clusterResults,
+      length: Array.isArray(clusterResults) ? clusterResults.length : 'N/A',
+      sampleResult: Array.isArray(clusterResults) && clusterResults.length > 0 ? clusterResults[0] : null
+    });
+    
     if (!Array.isArray(clusterResults)) {
+      console.error(`❌ [Clustering] Invalid response type:`, {
+        received: typeof clusterResults,
+        expected: 'array',
+        actualValue: clusterResults
+      });
       throw new Error('Clustering API returned invalid response: expected array');
     }
     
     console.log(`✅ [Clustering] Received ${clusterResults.length} cluster results from API`);
+    
+    // Log cluster label distribution
+    if (clusterResults.length > 0) {
+      const labelCounts = {};
+      clusterResults.forEach(r => {
+        const label = r.cluster_label || 'null';
+        labelCounts[label] = (labelCounts[label] || 0) + 1;
+      });
+      console.log(`📊 [Clustering] Cluster label distribution:`, labelCounts);
+    }
+    
     return clusterResults;
   } catch (error) {
     clearTimeout(timeoutId);
     
+    console.error(`❌ [Clustering] API call failed:`, {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack?.substring(0, 500)
+    });
+    
     if (error.name === 'AbortError') {
+      console.error(`⏱️ [Clustering] Request timed out after ${timeoutMs}ms`);
       throw new Error(`Clustering API timeout after ${timeoutMs}ms`);
     }
     
@@ -393,17 +442,49 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
   
   try {
     console.log('🔄 [Clustering] Calling clustering API...');
+    console.log('🔍 [Clustering] Request details:', {
+      endpoint: config.endpoint,
+      studentsCount: students.length,
+      timeoutMs: timeoutMs,
+      termId: termId
+    });
+    
+    // Log sample student data being sent
+    if (students.length > 0) {
+      console.log('🔍 [Clustering] Sample student data being sent:', {
+        student_id: students[0].student_id,
+        attendance_percentage: students[0].attendance_percentage,
+        average_score: students[0].average_score,
+        submission_rate: students[0].submission_rate,
+        attendance_present_count: students[0].attendance_present_count,
+        attendance_absent_count: students[0].attendance_absent_count,
+        attendance_late_count: students[0].attendance_late_count
+      });
+    }
+    
     result.apiCalled = true;
     
     const clusterResults = await callClusteringAPI(students, timeoutMs);
     
+    console.log('🔍 [Clustering] API response received:', {
+      resultsCount: clusterResults.length,
+      sampleResult: clusterResults.length > 0 ? clusterResults[0] : null
+    });
+    
     if (clusterResults.length === 0) {
       console.warn('⚠️ [Clustering] Clustering API returned empty array');
+      console.warn('⚠️ [Clustering] This could mean:');
+      console.warn('   - API returned empty response');
+      console.warn('   - API timed out or errored silently');
+      console.warn('   - API endpoint is incorrect');
       result.error = 'Clustering API returned empty results';
       return result;
     }
     
     // Build cluster map from API results
+    let clustersWithLabels = 0;
+    let clustersWithoutLabels = 0;
+    
     clusterResults.forEach(item => {
       const studentId = typeof item.student_id === 'string' ? parseInt(item.student_id, 10) : item.student_id;
       
@@ -413,8 +494,10 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           (typeof clusterLabel === 'number' && isNaN(clusterLabel)) ||
           (typeof clusterLabel === 'string' && (clusterLabel.toLowerCase() === 'nan' || clusterLabel.trim() === ''))) {
         clusterLabel = null;
+        clustersWithoutLabels++;
       } else {
         clusterLabel = String(clusterLabel);
+        clustersWithLabels++;
       }
       
       result.clusters.set(studentId, {
@@ -427,6 +510,13 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           average_days_late: item.average_days_late || null
         }
       });
+    });
+    
+    console.log('🔍 [Clustering] Cluster map built:', {
+      totalClusters: result.clusters.size,
+      clustersWithLabels: clustersWithLabels,
+      clustersWithoutLabels: clustersWithoutLabels,
+      sampleClusterEntry: result.clusters.size > 0 ? Array.from(result.clusters.entries())[0] : null
     });
     
     // Step 3: Save to cache asynchronously (non-blocking)
@@ -472,9 +562,29 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
  * @returns {Array} Students with cluster data added
  */
 const applyClustersToStudents = (students, clusterMap) => {
-  return students.map(row => {
+  console.log('🔍 [Clustering] Applying clusters to students:', {
+    studentsCount: students.length,
+    clusterMapSize: clusterMap.size,
+    sampleStudentIds: students.slice(0, 3).map(s => s.student_id),
+    sampleClusterMapKeys: Array.from(clusterMap.keys()).slice(0, 3)
+  });
+  
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+  const unmatchedIds = [];
+  
+  const result = students.map(row => {
     const studentId = typeof row.student_id === 'string' ? parseInt(row.student_id, 10) : row.student_id;
     const clusterInfo = clusterMap.get(studentId);
+    
+    if (!clusterInfo) {
+      unmatchedCount++;
+      if (unmatchedIds.length < 5) {
+        unmatchedIds.push(studentId);
+      }
+    } else {
+      matchedCount++;
+    }
     
     // Normalize cluster_label
     let clusterLabel = clusterInfo?.cluster_label;
@@ -492,6 +602,17 @@ const applyClustersToStudents = (students, clusterMap) => {
       cluster_label: clusterLabel,
     };
   });
+  
+  console.log('🔍 [Clustering] Cluster application results:', {
+    totalStudents: students.length,
+    matched: matchedCount,
+    unmatched: unmatchedCount,
+    unmatchedSampleIds: unmatchedIds,
+    sampleMatchedStudent: result.find(s => s.cluster_label) || null,
+    sampleUnmatchedStudent: result.find(s => !s.cluster_label) || null
+  });
+  
+  return result;
 };
 
 /**
