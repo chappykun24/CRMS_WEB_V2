@@ -83,6 +83,46 @@ const ChartsSkeleton = () => (
   </div>
 );
 
+// Modal skeleton component
+const ModalSkeleton = () => (
+  <div className="p-6 animate-pulse">
+    {/* Student Header Skeleton */}
+    <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
+      {/* Photo Skeleton */}
+      <div className="flex-shrink-0">
+        <div className="w-24 h-24 rounded-full bg-gray-200"></div>
+      </div>
+      {/* Info Skeleton */}
+      <div className="flex-1 space-y-3">
+        <div className="h-8 bg-gray-200 rounded w-48"></div>
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-32"></div>
+          <div className="h-4 bg-gray-200 rounded w-40"></div>
+          <div className="h-6 bg-gray-200 rounded-full w-24 mt-2"></div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Analytics Skeleton */}
+    <div className="space-y-6">
+      <div className="h-6 bg-gray-200 rounded w-40"></div>
+      
+      {/* Progress Bars Skeleton */}
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <div className="h-4 bg-gray-200 rounded w-12"></div>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="h-3 bg-gray-300 rounded-full" style={{ width: `${(i + 1) * 30}%` }}></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 // Cache helpers
 const getCachedData = createCacheGetter(deanCacheService);
 const setCachedData = createCacheSetter(deanCacheService);
@@ -122,6 +162,9 @@ const Analytics = () => {
   const [classFilteredData, setClassFilteredData] = useState(null);
   const [loadingClassData, setLoadingClassData] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
+  // Cache for student photos to prevent duplicate loads
+  const studentPhotoCache = useRef(new Map());
+  const loadingPhotoRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
   const [schoolTerms, setSchoolTerms] = useState([]);
@@ -322,10 +365,24 @@ const Analytics = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
 
-  // Load student photo when modal opens
+  // Load student photo when modal opens (with caching to prevent duplicate loads)
   const loadStudentPhoto = useCallback(async (studentId) => {
     if (!studentId) return;
     
+    // Check cache first
+    if (studentPhotoCache.current.has(studentId)) {
+      const cachedPhoto = studentPhotoCache.current.get(studentId);
+      setStudentPhoto(cachedPhoto);
+      setLoadingPhoto(false);
+      return;
+    }
+    
+    // Prevent duplicate concurrent loads for the same student
+    if (loadingPhotoRef.current === studentId) {
+      return;
+    }
+    
+    loadingPhotoRef.current = studentId;
     setLoadingPhoto(true);
     setStudentPhoto(null);
     
@@ -339,15 +396,23 @@ const Analytics = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setStudentPhoto(data.photo);
+        const photoUrl = data.photo;
+        // Cache the photo URL
+        studentPhotoCache.current.set(studentId, photoUrl);
+        setStudentPhoto(photoUrl);
       } else {
+        // Cache null to prevent retrying failed loads
+        studentPhotoCache.current.set(studentId, null);
         setStudentPhoto(null);
       }
     } catch (error) {
       console.error('❌ [DEAN ANALYTICS] Error loading student photo:', error);
+      // Cache null to prevent retrying failed loads
+      studentPhotoCache.current.set(studentId, null);
       setStudentPhoto(null);
     } finally {
       setLoadingPhoto(false);
+      loadingPhotoRef.current = null;
     }
   }, []);
 
@@ -426,9 +491,11 @@ const Analytics = () => {
     }
   }, [selectedStudent, fetchClassAnalytics]);
 
-  // Reset filter when modal opens/closes
+  // Reset filter and load photo when modal opens/closes
   useEffect(() => {
     if (isModalOpen && selectedStudent) {
+      // Load photo only when student changes (prevents duplicate loads)
+      loadStudentPhoto(selectedStudent.student_id);
       fetchStudentEnrollments(selectedStudent.student_id);
       setSelectedClassId('all');
       setClassFilteredData(null);
@@ -436,8 +503,10 @@ const Analytics = () => {
       setStudentEnrollments([]);
       setSelectedClassId('all');
       setClassFilteredData(null);
+      // Don't clear photo cache, just reset current photo state
+      setStudentPhoto(null);
     }
-  }, [isModalOpen, selectedStudent, fetchStudentEnrollments]);
+  }, [isModalOpen, selectedStudent, fetchStudentEnrollments, loadStudentPhoto]);
 
   const handleFetch = useCallback((forceRefresh = false) => {
     console.log('🔍 [DEAN ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
@@ -1317,8 +1386,7 @@ const Analytics = () => {
                               onClick={() => {
                                 setSelectedStudent(row);
                                 setIsModalOpen(true);
-                                // Load photo only when modal opens
-                                loadStudentPhoto(row.student_id);
+                                // Photo will be loaded in useEffect when modal opens
                               }}
                             >
                               <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 text-xs">{formatName(row.full_name)}</td>
@@ -1671,7 +1739,7 @@ const Analytics = () => {
       {isModalOpen && selectedStudent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
           setIsModalOpen(false);
-          setStudentPhoto(null); // Clear photo when modal closes
+          // Don't clear photo cache, just reset state
         }}>
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
@@ -1681,7 +1749,7 @@ const Analytics = () => {
               <button
                 onClick={() => {
                   setIsModalOpen(false);
-                  setStudentPhoto(null); // Clear photo when modal closes
+                  // Don't clear photo cache, just reset state
                 }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -1691,26 +1759,37 @@ const Analytics = () => {
               
               {/* Class Filter Dropdown */}
               {studentEnrollments.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Filter by Class:</label>
-                  <div className="relative">
-                    <select
-                      value={selectedClassId}
-                      onChange={(e) => handleClassFilterChange(e.target.value)}
-                      disabled={loadingClassData}
-                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="all">All Classes</option>
-                      {studentEnrollments.map((enrollment) => (
-                        <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
-                          {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Filter by Class:</label>
+                    <div className="relative">
+                      <select
+                        value={selectedClassId}
+                        onChange={(e) => handleClassFilterChange(e.target.value)}
+                        disabled={loadingClassData}
+                        className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="all">All Classes</option>
+                        {studentEnrollments.map((enrollment) => (
+                          <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
+                            {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                    </div>
+                    {loadingClassData && (
+                      <div className="text-xs text-gray-500">Loading...</div>
+                    )}
                   </div>
-                  {loadingClassData && (
-                    <div className="text-xs text-gray-500">Loading...</div>
+                  {/* Class Score Display */}
+                  {selectedClassId !== 'all' && classFilteredData && classFilteredData.average_score !== null && classFilteredData.average_score !== undefined && (
+                    <div className="ml-auto flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg px-4 py-2 border border-emerald-200">
+                      <span className="text-xs font-medium text-emerald-700">Class Score:</span>
+                      <span className="text-lg font-bold text-emerald-900">
+                        {parseFloat(classFilteredData.average_score).toFixed(1)}%
+                      </span>
+                    </div>
                   )}
                 </div>
               )}
@@ -1718,7 +1797,9 @@ const Analytics = () => {
 
             {/* Modal Body */}
             <div className="p-6">
-              {(() => {
+              {loadingPhoto && !studentPhoto && !studentPhotoCache.current.has(selectedStudent.student_id) ? (
+                <ModalSkeleton />
+              ) : (() => {
                 // Use filtered data if a class is selected, otherwise use selectedStudent
                 const displayData = classFilteredData || selectedStudent;
                 
@@ -1727,8 +1808,8 @@ const Analytics = () => {
               {/* Student Header Info */}
               <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
                 {/* Student Image - Lazy Loaded */}
-                <div className="flex-shrink-0">
-                  {loadingPhoto ? (
+                <div className="flex-shrink-0 relative">
+                  {loadingPhoto && !studentPhoto ? (
                     <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
                       <UserCircleIcon className="w-12 h-12 text-gray-400" />
                     </div>
@@ -1742,8 +1823,9 @@ const Analytics = () => {
                         e.target.nextSibling.style.display = 'block';
                       }}
                     />
-                  ) : null}
-                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
+                  ) : (
+                    <UserCircleIcon className="w-24 h-24 text-gray-300" />
+                  )}
                 </div>
 
                 {/* Student Basic Info */}
@@ -2011,7 +2093,7 @@ const Analytics = () => {
               <button
                 onClick={() => {
                   setIsModalOpen(false);
-                  setStudentPhoto(null); // Clear photo when modal closes
+                  // Don't clear photo cache, just reset state
                 }}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
               >
