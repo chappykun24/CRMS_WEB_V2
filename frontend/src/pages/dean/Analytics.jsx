@@ -394,7 +394,7 @@ const Analytics = () => {
     abortControllerRef.current = new AbortController();
     
     // Only show loading if no cache available
-    const hasCache = sessionCached || cachedData;
+    const hasCache = sessionCached || (cachedData && cachedData.success);
     if (!hasCache) {
       setLoading(true);
       setProgress(0);
@@ -414,52 +414,6 @@ const Analytics = () => {
       }, 300);
     }
     setError(null);
-
-    // Build cache key with all filters for better cache management
-    const filterKey = [
-      selectedTermId || 'all',
-      selectedSectionId || 'all',
-      selectedProgramId || 'all',
-      selectedDepartmentId || 'all'
-    ].join('_');
-    
-    // Check sessionStorage first for instant display
-    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
-    const sessionCached = safeGetItem(sessionCacheKey);
-    
-    if (sessionCached && sessionCached.success) {
-      console.log('📦 [DEAN ANALYTICS] Using session cached analytics data');
-      setData(sessionCached.data || []);
-      setClusterMeta(sessionCached.clustering || { enabled: false });
-      setHasFetched(true);
-      setLoading(false);
-      setProgress(100);
-      setError(null);
-      // Load charts after a short delay for better UX
-      setTimeout(() => setChartsLoaded(true), 100);
-      // Continue to fetch fresh data in background
-    } else {
-      setLoading(true);
-      setProgress(0);
-      
-      // Check enhanced cache
-      const cacheKey = `dean_analytics_${filterKey}`;
-      const cachedData = getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
-      if (cachedData && cachedData.success) {
-        console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
-        setData(cachedData.data || []);
-        setClusterMeta(cachedData.clustering || { enabled: false });
-        setHasFetched(true);
-        setLoading(false);
-        setProgress(100);
-        setError(null);
-        // Cache in sessionStorage for next time
-        safeSetItem(sessionCacheKey, cachedData);
-        // Load charts after a short delay
-        setTimeout(() => setChartsLoaded(true), 100);
-        // Continue to fetch fresh data in background
-      }
-    }
 
     // Build URL with filters
     const params = new URLSearchParams();
