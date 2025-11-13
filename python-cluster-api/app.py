@@ -151,12 +151,21 @@ def cluster_records(records):
     score_features = df.apply(calculate_score_features, axis=1)
     
     # Add features to dataframe
-    for key, value in attendance_features.items():
-        df[key] = [v[key] for v in attendance_features]
-    for key, value in submission_features.items():
-        df[key] = [v[key] for v in submission_features]
-    for key, value in score_features.items():
-        df[key] = [v[key] for v in score_features]
+    # Convert Series of dicts to DataFrame columns
+    if len(attendance_features) > 0:
+        attendance_df = pd.DataFrame(attendance_features.tolist())
+        for col in attendance_df.columns:
+            df[col] = attendance_df[col].values
+    
+    if len(submission_features) > 0:
+        submission_df = pd.DataFrame(submission_features.tolist())
+        for col in submission_df.columns:
+            df[col] = submission_df[col].values
+    
+    if len(score_features) > 0:
+        score_df = pd.DataFrame(score_features.tolist())
+        for col in score_df.columns:
+            df[col] = score_df[col].values
     
     # Define features for clustering (using enhanced metrics)
     features = [
