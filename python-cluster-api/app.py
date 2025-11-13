@@ -76,12 +76,12 @@ def calculate_submission_features(row):
         late_rate = late_count / total_assessments
         missing_rate = missing_count / total_assessments
         submission_rate = total_submissions / total_assessments  # Overall submission rate
-        else:
+    else:
         # Default values if no assessments
-            ontime_rate = 0.0
-            late_rate = 0.0
-            missing_rate = 1.0
-            submission_rate = 0.0
+        ontime_rate = 0.0
+        late_rate = 0.0
+        missing_rate = 1.0
+        submission_rate = 0.0
     
     # Calculate numerical status score based on status distribution
     # Score range: 0.0 (all ontime) to 2.0 (all missing)
@@ -110,7 +110,7 @@ def calculate_submission_features(row):
     # This is a direct measure of timeliness priority
     if total_assessments > 0:
         ontime_priority_score = (ontime_count / total_assessments) * 100.0
-        else:
+    else:
         ontime_priority_score = 0.0
     
     return {
