@@ -1006,64 +1006,128 @@ const Syllabus = () => {
                   )}
                 </div>
                 
-                {/* Right Sidebar - Classes */}
+                {/* Right Sidebar - Show Syllabi when syllabus is selected, otherwise show Classes */}
                 <div className="lg:col-span-1 flex flex-col min-h-0">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                     <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-                      <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {selectedSyllabusForILO ? 'Syllabi' : 'Classes'}
+                      </h3>
                     </div>
                     <div className="flex-1 overflow-y-auto min-h-0">
-                      {loading ? (
-                        <div className="p-4 space-y-2">
-                          {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
-                              <div className="flex items-center space-x-3">
-                                <div className="flex-1">
-                                  <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
-                                  <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                      {selectedSyllabusForILO ? (
+                        /* Show Syllabi List when a syllabus is selected */
+                        loading ? (
+                          <div className="p-4 space-y-2">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                              <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                    <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : classes.length > 0 ? (
-                        <div className="p-4 space-y-2">
-                          {classes.map((cls) => (
-                            <div
-                              key={cls.section_course_id}
-                              onClick={() => setSelectedClass(cls)}
-                              className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
-                                selectedClass?.section_course_id === cls.section_course_id
-                                  ? 'border-gray-300 bg-gray-50'
-                                  : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
-                              } group`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-medium text-sm truncate ${
-                                    selectedClass?.section_course_id === cls.section_course_id
-                                      ? 'text-gray-900'
-                                      : 'text-gray-900 group-hover:text-gray-900'
-                                  }`}>
-                                    {cls.course_title}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
-                                </div>
-                                {selectedClass?.section_course_id === cls.section_course_id && (
-                                  <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex-1 flex items-center justify-center p-8">
-                          <div className="text-center">
-                            <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
-                            <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                            ))}
                           </div>
-                        </div>
+                        ) : syllabi.length > 0 ? (
+                          <div className="p-4 space-y-2">
+                            {syllabi.map((syllabus) => (
+                              <div
+                                key={syllabus.syllabus_id}
+                                onClick={() => setSelectedSyllabusForILO(syllabus)}
+                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                  selectedSyllabusForILO?.syllabus_id === syllabus.syllabus_id
+                                    ? 'border-gray-300 bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                                } group`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-medium text-sm truncate ${
+                                      selectedSyllabusForILO?.syllabus_id === syllabus.syllabus_id
+                                        ? 'text-gray-900'
+                                        : 'text-gray-900 group-hover:text-gray-900'
+                                    }`}>
+                                      {syllabus.title}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <p className="text-xs text-gray-500">Version {syllabus.version || '1.0'}</p>
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                                        {syllabus.review_status || 'pending'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {selectedSyllabusForILO?.syllabus_id === syllabus.syllabus_id && (
+                                    <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center p-8">
+                            <div className="text-center">
+                              <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No syllabi found</h3>
+                              <p className="text-sm text-gray-500">Create a syllabus first.</p>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        /* Show Classes List when no syllabus is selected */
+                        loading ? (
+                          <div className="p-4 space-y-2">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                              <div key={i} className="p-3 rounded-lg border border-gray-200 animate-pulse">
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex-1">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4 skeleton mb-1"></div>
+                                    <div className="h-3 bg-gray-100 rounded w-1/2 skeleton"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : classes.length > 0 ? (
+                          <div className="p-4 space-y-2">
+                            {classes.map((cls) => (
+                              <div
+                                key={cls.section_course_id}
+                                onClick={() => setSelectedClass(cls)}
+                                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm border ${
+                                  selectedClass?.section_course_id === cls.section_course_id
+                                    ? 'border-gray-300 bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                                } group`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-medium text-sm truncate ${
+                                      selectedClass?.section_course_id === cls.section_course_id
+                                        ? 'text-gray-900'
+                                        : 'text-gray-900 group-hover:text-gray-900'
+                                    }`}>
+                                      {cls.course_title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">{cls.course_code} - {cls.section_code}</p>
+                                  </div>
+                                  {selectedClass?.section_course_id === cls.section_course_id && (
+                                    <div className="h-2 w-2 bg-gray-500 rounded-full flex-shrink-0 ml-2"></div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center p-8">
+                            <div className="text-center">
+                              <AcademicCapIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                              <p className="text-sm text-gray-500">Contact your administrator to get classes assigned.</p>
+                            </div>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
