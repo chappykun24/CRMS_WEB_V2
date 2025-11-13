@@ -144,6 +144,10 @@ const Analytics = () => {
     const sessionCacheKey = 'dean_school_terms_session';
     const sessionCached = safeGetItem(sessionCacheKey);
     
+    // Check enhanced cache
+    const cacheKey = 'dean_school_terms';
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000); // 30 minute cache
+    
     if (sessionCached) {
       console.log('📦 [DEAN ANALYTICS] Using session cached school terms');
       setSchoolTerms(sessionCached);
@@ -152,12 +156,7 @@ const Analytics = () => {
         setSelectedTermId(activeTerm.term_id.toString());
       }
       // Continue to fetch fresh data in background
-    }
-    
-    // Check enhanced cache
-    const cacheKey = 'dean_school_terms';
-    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000); // 30 minute cache
-    if (cachedData && !sessionCached) {
+    } else if (cachedData) {
       console.log('📦 [DEAN ANALYTICS] Using enhanced cached school terms');
       setSchoolTerms(cachedData);
       const activeTerm = cachedData.find(t => t.is_active);
@@ -222,7 +221,9 @@ const Analytics = () => {
         return;
       }
       console.error('❌ [DEAN ANALYTICS] Error fetching school terms:', error);
-      if (!sessionCached && !cachedData) {
+      // Only set error if we don't have cached data
+      const hasCachedTerms = sessionCached || cachedData;
+      if (!hasCachedTerms) {
         setError(error.message);
       }
     }
@@ -496,7 +497,28 @@ const Analytics = () => {
         console.log('📊 [DEAN ANALYTICS] Sample data:', json.data?.slice(0, 3));
         
         if (json.success) {
-          setData(json.data || []);
+          const studentsData = json.data || [];
+          
+          // Check if clustering data is present
+          const studentsWithClusters = studentsData.filter(s => {
+            const cluster = s.cluster_label;
+            return cluster && 
+                   cluster !== null && 
+                   cluster !== undefined &&
+                   !(typeof cluster === 'number' && isNaN(cluster)) &&
+                   !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''));
+          });
+          
+          console.log(`📊 [DEAN ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${studentsData.length}`);
+          
+          if (studentsWithClusters.length === 0 && studentsData.length > 0) {
+            console.warn('⚠️ [DEAN ANALYTICS] No students have cluster labels! Clustering may not be working.');
+            console.warn('⚠️ [DEAN ANALYTICS] Sample student data:', JSON.stringify(studentsData[0], null, 2));
+            console.warn('⚠️ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(json.clustering, null, 2));
+            console.warn('⚠️ [DEAN ANALYTICS] Check if CLUSTER_SERVICE_URL is set and clustering API is accessible.');
+          }
+          
+          setData(studentsData);
           setClusterMeta(json.clustering || { enabled: false });
           
           // Build cache key with all filters
@@ -519,7 +541,7 @@ const Analytics = () => {
           setTimeout(() => setChartsLoaded(true), 200);
           
           // Log cluster distribution with detailed logging
-          const clusterCounts = json.data?.reduce((acc, row) => {
+          const clusterCounts = studentsData.reduce((acc, row) => {
             let cluster = row.cluster_label;
             if (!cluster || 
                 cluster === null || 
@@ -532,7 +554,7 @@ const Analytics = () => {
             return acc;
           }, {});
           console.log('📈 [DEAN ANALYTICS] Cluster distribution:', clusterCounts);
-          console.log('🔍 [DEAN ANALYTICS] Sample row with cluster:', json.data?.[0]);
+          console.log('🔍 [DEAN ANALYTICS] Sample row with cluster:', studentsData[0]);
           console.log('🔍 [DEAN ANALYTICS] Clustering enabled status:', json.clustering?.enabled);
           console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
           console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
