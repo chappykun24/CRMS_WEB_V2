@@ -777,12 +777,20 @@ router.get('/dean-analytics/sample', async (req, res) => {
           ),
           2
         )::NUMERIC AS average_submission_status_score,
-        -- Submission rate: distinct submissions / distinct assessments for this student
+        -- Submission rate: calculated from ontime + late counts / total assessments
+        -- Formula: (ontime_count + late_count) / total_assessments
+        -- This accurately reflects submission completion rate, accounting for missing submissions
         COALESCE(
           (
             SELECT ROUND(
-              (COUNT(DISTINCT sub.submission_id)::NUMERIC / 
-               NULLIF(COUNT(DISTINCT ass.assessment_id), 0)::NUMERIC),
+              (
+                COUNT(DISTINCT CASE 
+                  WHEN COALESCE(sub.submission_status, 'missing') IN ('ontime', 'late') 
+                  THEN ass.assessment_id 
+                END)::NUMERIC
+                /
+                NULLIF(COUNT(DISTINCT ass.assessment_id), 0)::NUMERIC
+              ),
               4
             )
             FROM course_enrollments ce_rate
