@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   PlusIcon,
   PencilIcon,
-  TrashIcon,
-  BoltIcon
+  TrashIcon
 } from '@heroicons/react/24/solid'
 
 const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
@@ -15,7 +14,6 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
   const [editingILO, setEditingILO] = useState(null)
   const [editingMapping, setEditingMapping] = useState(null)
   const [mappingType, setMappingType] = useState('so') // so, iga, cdio, sdg
-  const [isAutoMapping, setIsAutoMapping] = useState(false)
   
   // Reference data
   const [soReferences, setSoReferences] = useState([])
@@ -99,43 +97,6 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
       }
     } catch (error) {
       console.error('Error loading references:', error)
-    }
-  }
-  
-  const handleAutoMapILOs = async () => {
-    if (!syllabusId || !courseCode) {
-      alert('Course code is required for auto-mapping')
-      return
-    }
-    
-    if (!confirm('This will automatically map ILOs based on the course subject. Continue?')) {
-      return
-    }
-    
-    try {
-      setIsAutoMapping(true)
-      const response = await fetch(`/api/ilos/auto-map/${syllabusId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({ course_code: courseCode })
-      })
-      
-      if (response.ok) {
-        loadILOs()
-        if (onUpdate) onUpdate()
-        alert('ILOs auto-mapped successfully!')
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to auto-map ILOs')
-      }
-    } catch (error) {
-      console.error('Error auto-mapping ILOs:', error)
-      alert('Failed to auto-map ILOs')
-    } finally {
-      setIsAutoMapping(false)
     }
   }
   
@@ -373,20 +334,10 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
         </div>
       )}
       
-      {/* Header with Add ILO and Auto-Map buttons */}
+      {/* Header with Align ILO button */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">ILO Mapping Table</h3>
         <div className="flex items-center gap-2">
-          {courseCode && (
-            <button
-              onClick={handleAutoMapILOs}
-              disabled={isAutoMapping}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <BoltIcon className="h-4 w-4" />
-              {isAutoMapping ? 'Mapping...' : 'Auto-Map ILOs'}
-            </button>
-          )}
           <button
             onClick={() => {
               resetILOForm()
@@ -395,7 +346,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             <PlusIcon className="h-4 w-4" />
-            Add ILO
+            Align ILO
           </button>
         </div>
       </div>
@@ -425,7 +376,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
             {ilos.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                  No ILOs defined. Click "Add ILO" to create one or "Auto-Map ILOs" to generate mappings automatically.
+                  No ILOs defined. Click "Align ILO" to create one.
                 </td>
               </tr>
             ) : (
@@ -457,7 +408,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                         className="text-xs text-red-600 hover:text-red-900 flex items-center gap-1"
                       >
                         <PlusIcon className="h-3 w-3" />
-                        Add SO
+                        Align SO
                       </button>
                     </div>
                   </td>
@@ -483,7 +434,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                         className="text-xs text-red-600 hover:text-red-900 flex items-center gap-1"
                       >
                         <PlusIcon className="h-3 w-3" />
-                        Add IGA
+                        Align IGA
                       </button>
                     </div>
                   </td>
@@ -509,7 +460,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                         className="text-xs text-red-600 hover:text-red-900 flex items-center gap-1"
                       >
                         <PlusIcon className="h-3 w-3" />
-                        Add CDIO
+                        Align CDIO
                       </button>
                     </div>
                   </td>
@@ -535,7 +486,7 @@ const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
                         className="text-xs text-red-600 hover:text-red-900 flex items-center gap-1"
                       >
                         <PlusIcon className="h-3 w-3" />
-                        Add SDG
+                        Align SDG
                       </button>
                     </div>
                   </td>

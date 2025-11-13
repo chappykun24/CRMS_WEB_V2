@@ -472,6 +472,38 @@ const Syllabus = () => {
   }
   
   // Approve syllabus (Dean)
+  const handleEditRequest = async (syllabus) => {
+    const reason = prompt('Please provide a reason for requesting an edit to this approved syllabus:')
+    if (!reason || reason.trim() === '') {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/syllabi/${syllabus.syllabus_id}/edit-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          reason: reason.trim(),
+          requested_by: user.user_id
+        })
+      })
+
+      if (response.ok) {
+        alert('Edit request submitted successfully! The dean and program chair will be notified.')
+        loadSyllabi()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to submit edit request')
+      }
+    } catch (error) {
+      console.error('Error submitting edit request:', error)
+      alert('Failed to submit edit request')
+    }
+  }
+
   const handleApproveSyllabus = async (syllabus, approvalStatus) => {
     const statusText = approvalStatus === 'approved' ? 'approve' : 'reject'
     if (!confirm(`Are you sure you want to ${statusText} this syllabus?`)) {
@@ -699,37 +731,66 @@ const Syllabus = () => {
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {filteredSyllabi.map((syllabus) => (
                               <tr
                                 key={syllabus.syllabus_id}
-                                className="hover:bg-gray-50 cursor-pointer"
-                                onClick={() => openViewModal(syllabus)}
+                                className="hover:bg-gray-50"
                               >
-                                <td className="px-6 py-4">
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                   <div>
                                     <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                                     <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                   <div className="text-sm text-gray-900">v{syllabus.version}</div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
                                     {syllabus.review_status || 'pending'}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
                                     {syllabus.approval_status || 'pending'}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                   <div className="text-sm text-gray-900">
                                     {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center gap-2">
+                                    {syllabus.approval_status === 'approved' && syllabus.review_status === 'approved' && (
+                                      <button
+                                        onClick={() => handleEditRequest(syllabus)}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                                        title="Request edit for this approved syllabus"
+                                      >
+                                        <PencilIcon className="h-3 w-3" />
+                                        Edit Request
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>

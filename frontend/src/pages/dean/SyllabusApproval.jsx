@@ -12,14 +12,19 @@ import { XMarkIcon } from '@heroicons/react/24/solid'
 const SyllabusApproval = () => {
   const { user } = useAuth()
   const [syllabi, setSyllabi] = useState([])
+  const [approvedSyllabi, setApprovedSyllabi] = useState([])
+  const [editRequests, setEditRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSyllabus, setSelectedSyllabus] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [approving, setApproving] = useState(false)
+  const [activeTab, setActiveTab] = useState('pending') // 'pending', 'approved', 'edit-requests'
 
   useEffect(() => {
     loadPendingApprovalSyllabi()
+    loadApprovedSyllabi()
+    loadEditRequests()
   }, [])
 
   const loadPendingApprovalSyllabi = async () => {
@@ -114,12 +119,59 @@ const SyllabusApproval = () => {
     syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const filteredApprovedSyllabi = approvedSyllabi.filter(syllabus =>
+    syllabus.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredEditRequests = editRequests.filter(request =>
+    request.syllabus_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    request.requested_by_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Syllabus Approval</h1>
-          <p className="text-gray-600">Approve syllabi that have been reviewed and approved by Program Chairs</p>
+          <p className="text-gray-600">Manage syllabus approvals and edit requests</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'pending'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Pending Approvals ({syllabi.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('approved')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'approved'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Approved Syllabuses ({approvedSyllabi.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('edit-requests')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'edit-requests'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Edit Requests ({editRequests.length})
+            </button>
+          </nav>
         </div>
 
         {/* Search Bar */}
@@ -128,7 +180,7 @@ const SyllabusApproval = () => {
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search syllabi..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
@@ -136,12 +188,14 @@ const SyllabusApproval = () => {
           </div>
         </div>
 
-        {/* Syllabi List */}
+        {/* Tab Content */}
         {loading ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-8">
-            <div className="text-center text-gray-500">Loading syllabi...</div>
+            <div className="text-center text-gray-500">Loading...</div>
           </div>
-        ) : filteredSyllabi.length > 0 ? (
+        ) : activeTab === 'pending' ? (
+          /* Pending Approvals Tab */
+          filteredSyllabi.length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -221,7 +275,150 @@ const SyllabusApproval = () => {
               {searchQuery ? 'Try a different search term' : 'All syllabi have been approved or no syllabi are pending dean approval.'}
             </p>
           </div>
-        )}
+        )
+        ) : activeTab === 'approved' ? (
+          /* Approved Syllabuses Tab */
+          filteredApprovedSyllabi.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredApprovedSyllabi.map((syllabus) => (
+                      <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                          <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">v{syllabus.version}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{syllabus.course_title || 'N/A'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                            {syllabus.review_status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
+                            {syllabus.approval_status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => openViewModal(syllabus)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="View"
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-12 text-center">
+              <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {searchQuery ? 'No syllabi match your search' : 'No approved syllabuses'}
+              </h3>
+              <p className="text-gray-500">
+                {searchQuery ? 'Try a different search term' : 'No syllabuses have been approved yet.'}
+              </p>
+            </div>
+          )
+        ) : activeTab === 'edit-requests' ? (
+          /* Edit Requests Tab */
+          filteredEditRequests.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Syllabus</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredEditRequests.map((request) => (
+                      <tr key={request.edit_request_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{request.syllabus_title}</div>
+                          <div className="text-sm text-gray-500">v{request.syllabus_version}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{request.requested_by_name || 'N/A'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={request.reason}>
+                          {request.reason || 'No reason provided'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                            {request.status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {request.created_at ? new Date(request.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            {!request.dean_approved && request.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveEditRequest(request, true)}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                  title="Approve"
+                                >
+                                  <CheckCircleIcon className="h-5 w-5" />
+                                </button>
+                                <button
+                                  onClick={() => handleApproveEditRequest(request, false)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Reject"
+                                >
+                                  <XCircleIcon className="h-5 w-5" />
+                                </button>
+                              </>
+                            )}
+                            {request.dean_approved && (
+                              <span className="text-xs text-green-600 font-medium">Approved</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-12 text-center">
+              <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {searchQuery ? 'No edit requests match your search' : 'No edit requests'}
+              </h3>
+              <p className="text-gray-500">
+                {searchQuery ? 'Try a different search term' : 'No edit requests are pending your approval.'}
+              </p>
+            </div>
+          )
+        ) : null}
 
         {/* View Syllabus Modal */}
         {showViewModal && selectedSyllabus && (
