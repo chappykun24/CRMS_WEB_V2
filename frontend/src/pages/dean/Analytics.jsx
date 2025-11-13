@@ -1449,9 +1449,9 @@ const Analytics = () => {
               {chartData && chartsLoaded && (
                 <div className="space-y-3">
                   {/* Scatter Plot: Attendance vs Score */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance vs Score</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Attendance vs Score</h3>
+                    <ResponsiveContainer width="100%" height={250}>
                       <ScatterChart data={chartData.scatterData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
@@ -1459,16 +1459,16 @@ const Analytics = () => {
                           dataKey="attendance" 
                           name="Attendance %" 
                           domain={[0, 100]}
-                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '10px' } }}
-                          tick={{ fontSize: 8 }}
+                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
                         />
                         <YAxis 
                           type="number" 
                           dataKey="score" 
                           name="Score" 
                           domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '10px' } }}
-                          tick={{ fontSize: 8 }}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
                         />
                         <ZAxis 
                           type="number" 
@@ -1478,17 +1478,17 @@ const Analytics = () => {
                         />
                         <Tooltip 
                           cursor={{ strokeDasharray: '3 3' }}
-                          contentStyle={{ fontSize: '10px', padding: '6px' }}
+                          contentStyle={{ fontSize: '8px', padding: '4px' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload[0]) {
                               const data = payload[0].payload;
                               return (
-                                <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
-                                  <p className="font-semibold text-[10px]">{data.name}</p>
-                                  <p className="text-[10px]">Attendance: {data.attendance.toFixed(1)}%</p>
-                                  <p className="text-[10px]">Score: {data.score.toFixed(1)}</p>
-                                  <p className="text-[10px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                                  <p className="text-[10px]">Cluster: {data.cluster}</p>
+                                <div className="bg-white p-1.5 border border-gray-300 rounded shadow-lg">
+                                  <p className="font-semibold text-[8px]">{data.name}</p>
+                                  <p className="text-[8px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[8px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Cluster: {data.cluster}</p>
                                 </div>
                               );
                             }
@@ -1508,23 +1508,23 @@ const Analytics = () => {
                       </ScatterChart>
                     </ResponsiveContainer>
                     {/* Custom Legend for Cluster Colors */}
-                    <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                    <div className="mt-1 flex flex-wrap gap-1.5 justify-center">
                       {uniqueClusterLabels.map((cluster) => (
-                        <div key={cluster} className="flex items-center gap-1">
+                        <div key={cluster} className="flex items-center gap-0.5">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-2.5 h-2.5 rounded-full" 
                             style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
                           />
-                          <span className="text-[9px] text-gray-600">{cluster}</span>
+                          <span className="text-[7px] text-gray-600">{cluster}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Scatter Plot: Submission Rate vs Score */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Submission Rate vs Score</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Submission Rate vs Score</h3>
+                    <ResponsiveContainer width="100%" height={250}>
                       <ScatterChart data={chartData.scatterData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
@@ -1532,16 +1532,16 @@ const Analytics = () => {
                           dataKey="submissionRate" 
                           name="Submission Rate %" 
                           domain={[0, 100]}
-                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '10px' } }}
-                          tick={{ fontSize: 8 }}
+                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
                         />
                         <YAxis 
                           type="number" 
                           dataKey="score" 
                           name="Score" 
                           domain={[0, 100]}
-                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '10px' } }}
-                          tick={{ fontSize: 8 }}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
                         />
                         <ZAxis 
                           type="number" 
@@ -1551,17 +1551,17 @@ const Analytics = () => {
                         />
                         <Tooltip 
                           cursor={{ strokeDasharray: '3 3' }}
-                          contentStyle={{ fontSize: '10px', padding: '6px' }}
+                          contentStyle={{ fontSize: '8px', padding: '4px' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload[0]) {
                               const data = payload[0].payload;
                               return (
-                                <div className="bg-white p-2 border border-gray-300 rounded shadow-lg text-xs">
-                                  <p className="font-semibold text-[10px]">{data.name}</p>
-                                  <p className="text-[10px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                                  <p className="text-[10px]">Score: {data.score.toFixed(1)}</p>
-                                  <p className="text-[10px]">Attendance: {data.attendance.toFixed(1)}%</p>
-                                  <p className="text-[10px]">Cluster: {data.cluster}</p>
+                                <div className="bg-white p-1.5 border border-gray-300 rounded shadow-lg">
+                                  <p className="font-semibold text-[8px]">{data.name}</p>
+                                  <p className="text-[8px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[8px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Cluster: {data.cluster}</p>
                                 </div>
                               );
                             }
@@ -1581,14 +1581,14 @@ const Analytics = () => {
                       </ScatterChart>
                     </ResponsiveContainer>
                     {/* Custom Legend for Cluster Colors */}
-                    <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                    <div className="mt-1 flex flex-wrap gap-1.5 justify-center">
                       {uniqueClusterLabels.map((cluster) => (
-                        <div key={cluster} className="flex items-center gap-1">
+                        <div key={cluster} className="flex items-center gap-0.5">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-2.5 h-2.5 rounded-full" 
                             style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
                           />
-                          <span className="text-[9px] text-gray-600">{cluster}</span>
+                          <span className="text-[7px] text-gray-600">{cluster}</span>
                         </div>
                       ))}
                     </div>
@@ -1603,9 +1603,9 @@ const Analytics = () => {
               {chartData && chartsLoaded && (
                 <div className="space-y-3">
                   {/* Cluster Distribution Pie Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Cluster Distribution</h3>
-                    <ResponsiveContainer width="100%" height={180}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Cluster Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
                         <Pie
                           data={chartData.clusterData}
@@ -1613,56 +1613,57 @@ const Analytics = () => {
                           cy="50%"
                           labelLine={false}
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={60}
+                          outerRadius={75}
                           fill="#8884d8"
                           dataKey="value"
+                          style={{ fontSize: '7px' }}
                         >
                           {chartData.clusterData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Attendance Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance Distribution</h3>
-                    <ResponsiveContainer width="100%" height={180}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Attendance Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData.attendanceData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
-                        <YAxis tick={{ fontSize: 7 }} />
-                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
                         <Bar dataKey="students" fill={COLORS.bar} name="Students" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Score Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Average Score Distribution</h3>
-                    <ResponsiveContainer width="100%" height={180}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Average Score Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData.scoreData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
-                        <YAxis tick={{ fontSize: 7 }} />
-                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
                         <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Submission Rate Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Submission Rate Distribution</h3>
-                    <ResponsiveContainer width="100%" height={180}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Submission Rate Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData.submissionData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 7 }} />
-                        <YAxis tick={{ fontSize: 7 }} />
-                        <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
                         <Bar dataKey="students" fill="#8b5cf6" name="Students" />
                       </BarChart>
                     </ResponsiveContainer>
