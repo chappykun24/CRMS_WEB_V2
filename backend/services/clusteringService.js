@@ -236,9 +236,22 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
       savedCount++;
     }
     
-    console.log(`💾 [Clustering] Saved ${savedCount} clusters to cache (term: ${termId || 'all'})`);
+    console.log(`💾 [Clustering] Saved ${savedCount} clusters to database cache (term: ${termId || 'all'})`);
+    console.log(`💾 [Clustering] Cache save details:`, {
+      savedCount,
+      totalClusters: clusters.length,
+      termId: termId || 'all',
+      algorithm,
+      version,
+      sampleCluster: clusters.length > 0 ? {
+        student_id: clusters[0].student_id,
+        cluster_label: clusters[0].cluster_label,
+        cluster_number: clusters[0].cluster
+      } : null
+    });
   } catch (error) {
     console.error('❌ [Clustering] Error saving clusters to cache:', error);
+    console.error('❌ [Clustering] Cache save error stack:', error.stack);
     // Don't throw - clustering should still work even if cache save fails
   }
 };
@@ -607,9 +620,18 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       });
       
       // Save to cache asynchronously (don't wait for it to complete)
-      saveClustersToCache(clustersToSave, termId, algorithm, version).catch(err => {
-        console.error('⚠️ [Clustering] Failed to save clusters to cache (non-blocking):', err.message);
-      });
+      // This happens for both normal API calls and force refresh
+      console.log(`💾 [Clustering] Preparing to save ${clustersToSave.length} clusters to database cache...`);
+      saveClustersToCache(clustersToSave, termId, algorithm, version)
+        .then(() => {
+          console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (term: ${termId || 'all'})`);
+        })
+        .catch(err => {
+          console.error('⚠️ [Clustering] Failed to save clusters to cache (non-blocking):', err.message);
+          console.error('⚠️ [Clustering] Cache save error details:', err);
+        });
+    } else {
+      console.warn('⚠️ [Clustering] No cluster results to save to cache');
     }
     
     console.log(`✅ [Clustering] Successfully clustered ${result.clusters.size} students`);
