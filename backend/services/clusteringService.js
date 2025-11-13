@@ -69,24 +69,40 @@ const getClusteringConfig = () => {
 /**
  * Get cached clusters from database
  * @param {number|null} termId - School term ID (null for all terms)
+ * @param {number|null} sectionCourseId - Section course ID (null for all classes)
  * @param {number} maxAgeHours - Maximum cache age in hours (default: 24)
  * @returns {Promise<Array>} Array of cached cluster records
  */
-const getCachedClusters = async (termId, maxAgeHours = 24) => {
+const getCachedClusters = async (termId, sectionCourseId = null, maxAgeHours = 24) => {
   try {
     const maxAge = new Date();
     maxAge.setHours(maxAge.getHours() - maxAgeHours);
     
     let query, params;
     
-    if (termId) {
+    // If filtering by specific class, prioritize class-specific clusters
+    if (sectionCourseId) {
+      query = `
+        SELECT DISTINCT ON (student_id)
+          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
+        FROM analytics_clusters
+        WHERE section_course_id = $1
+          AND generated_at > $2 
+          AND student_id IS NOT NULL
+          ${termId ? 'AND (term_id = $3 OR term_id IS NULL)' : ''}
+        ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
+      `;
+      params = termId ? [sectionCourseId, maxAge, termId] : [sectionCourseId, maxAge];
+    } else if (termId) {
       // For specific term: get clusters for this term OR term_id IS NULL (fallback for "all terms" clusters)
       // Prioritize term-specific clusters by ordering term_id DESC (non-null first)
+      // Exclude class-specific clusters (section_course_id IS NULL)
       query = `
         SELECT DISTINCT ON (student_id)
           student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
         FROM analytics_clusters
         WHERE (term_id = $1 OR term_id IS NULL) 
+          AND section_course_id IS NULL
           AND generated_at > $2 
           AND student_id IS NOT NULL
         ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
@@ -94,18 +110,22 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
       params = [termId, maxAge];
     } else {
       // For all terms, get the most recent clusters per student from any term
+      // Exclude class-specific clusters (section_course_id IS NULL)
       query = `
         SELECT DISTINCT ON (student_id) 
           student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
         FROM analytics_clusters
-        WHERE generated_at > $1 AND student_id IS NOT NULL
+        WHERE generated_at > $1 
+          AND student_id IS NOT NULL
+          AND section_course_id IS NULL
         ORDER BY student_id, generated_at DESC
       `;
       params = [maxAge];
     }
     
     const result = await db.query(query, params);
-    console.log(`📦 [Clustering] Retrieved ${result.rows.length} cached clusters (term: ${termId || 'all'}, max age: ${maxAgeHours}h)`);
+    const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
+    console.log(`📦 [Clustering] Retrieved ${result.rows.length} cached clusters (${scope}, max age: ${maxAgeHours}h)`);
     
     // Log sample cluster data for debugging
     if (result.rows.length > 0) {
@@ -114,11 +134,11 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
         student_id: sampleCluster.student_id,
         cluster_label: sampleCluster.cluster_label,
         cluster_number: sampleCluster.cluster_number,
-        term_id: termId || 'all',
+        scope,
         generated_at: sampleCluster.generated_at
       });
     } else {
-      console.warn(`⚠️ [Clustering] No cached clusters found (term: ${termId || 'all'}, max age: ${maxAgeHours}h)`);
+      console.warn(`⚠️ [Clustering] No cached clusters found (${scope}, max age: ${maxAgeHours}h)`);
     }
     
     return result.rows;
@@ -132,25 +152,46 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
  * Save clusters to database cache
  * @param {Array} clusters - Array of cluster results from ML API
  * @param {number|null} termId - School term ID
+ * @param {number|null} sectionCourseId - Section course ID (null for all classes)
  * @param {string} algorithm - Algorithm name (default: 'kmeans')
  * @param {string} version - Model version (default: '1.0')
  * @returns {Promise<void>}
  */
-const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', version = '1.0') => {
+const saveClustersToCache = async (clusters, termId, sectionCourseId = null, algorithm = 'kmeans', version = '1.0') => {
   if (!clusters || clusters.length === 0) {
     console.warn('⚠️ [Clustering] No clusters to save');
     return;
   }
   
   try {
-    // Delete old clusters for this term (if term specified)
-    if (termId !== null && termId !== undefined) {
-      await db.query('DELETE FROM analytics_clusters WHERE term_id = $1 AND student_id IS NOT NULL', [termId]);
+    // Delete old clusters based on scope
+    if (sectionCourseId !== null && sectionCourseId !== undefined) {
+      // Delete old clusters for this specific class
+      if (termId !== null && termId !== undefined) {
+        await db.query(
+          'DELETE FROM analytics_clusters WHERE section_course_id = $1 AND term_id = $2 AND student_id IS NOT NULL',
+          [sectionCourseId, termId]
+        );
+      } else {
+        await db.query(
+          'DELETE FROM analytics_clusters WHERE section_course_id = $1 AND student_id IS NOT NULL',
+          [sectionCourseId]
+        );
+      }
+    } else if (termId !== null && termId !== undefined) {
+      // Delete old clusters for this term (only non-class-specific)
+      await db.query(
+        'DELETE FROM analytics_clusters WHERE term_id = $1 AND section_course_id IS NULL AND student_id IS NOT NULL',
+        [termId]
+      );
     } else {
-      // For all terms, delete clusters older than 48 hours
+      // For all terms, delete clusters older than 48 hours (only non-class-specific)
       const twoDaysAgo = new Date();
       twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
-      await db.query('DELETE FROM analytics_clusters WHERE generated_at < $1 AND student_id IS NOT NULL', [twoDaysAgo]);
+      await db.query(
+        'DELETE FROM analytics_clusters WHERE generated_at < $1 AND section_course_id IS NULL AND student_id IS NOT NULL',
+        [twoDaysAgo]
+      );
     }
     
     // Prepare batch insert
@@ -183,29 +224,47 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
         clusterLabel = String(clusterLabel);
       }
       
-      // Handle INSERT with proper conflict resolution
-      // For NULL term_id, delete existing NULL term_id clusters for this student first
-      if (termId === null || termId === undefined) {
-        // Delete old NULL term_id clusters for this student to avoid duplicates
-        await db.query(`
-          DELETE FROM analytics_clusters 
-          WHERE student_id = $1 AND term_id IS NULL
-        `, [studentId]);
-      }
-      
       // Get silhouette score from cluster result
       const silhouetteScore = cluster.silhouette_score !== null && cluster.silhouette_score !== undefined
         ? (typeof cluster.silhouette_score === 'string' ? parseFloat(cluster.silhouette_score) : cluster.silhouette_score)
         : null;
       
-      // Use INSERT ... ON CONFLICT to update if exists (only works when term_id IS NOT NULL)
-      if (termId !== null && termId !== undefined) {
+      // Handle INSERT with proper conflict resolution based on scope
+      if (sectionCourseId !== null && sectionCourseId !== undefined && termId !== null && termId !== undefined) {
+        // Class-specific clustering: use composite unique constraint
         await db.query(`
           INSERT INTO analytics_clusters 
-            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            (student_id, term_id, section_course_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+          ON CONFLICT (student_id, term_id, section_course_id) 
+          WHERE student_id IS NOT NULL AND term_id IS NOT NULL AND section_course_id IS NOT NULL
+          DO UPDATE SET 
+            cluster_label = EXCLUDED.cluster_label,
+            cluster_number = EXCLUDED.cluster_number,
+            based_on = EXCLUDED.based_on,
+            algorithm_used = EXCLUDED.algorithm_used,
+            model_version = EXCLUDED.model_version,
+            silhouette_score = EXCLUDED.silhouette_score,
+            generated_at = NOW()
+        `, [
+          studentId,
+          termId,
+          sectionCourseId,
+          clusterLabel,
+          clusterNumber,
+          JSON.stringify(basedOn),
+          algorithm,
+          version,
+          silhouetteScore
+        ]);
+      } else if (termId !== null && termId !== undefined) {
+        // Term-specific clustering (no class): use term unique constraint
+        await db.query(`
+          INSERT INTO analytics_clusters 
+            (student_id, term_id, section_course_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
+          VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, NOW())
           ON CONFLICT (student_id, term_id) 
-          WHERE student_id IS NOT NULL AND term_id IS NOT NULL
+          WHERE student_id IS NOT NULL AND term_id IS NOT NULL AND section_course_id IS NULL
           DO UPDATE SET 
             cluster_label = EXCLUDED.cluster_label,
             cluster_number = EXCLUDED.cluster_number,
@@ -225,11 +284,17 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
           silhouetteScore
         ]);
       } else {
-        // For NULL term_id, just insert (we already deleted old ones)
+        // All terms clustering: delete old NULL term_id clusters for this student first
+        await db.query(`
+          DELETE FROM analytics_clusters 
+          WHERE student_id = $1 AND term_id IS NULL AND section_course_id IS NULL
+        `, [studentId]);
+        
+        // Insert new cluster
         await db.query(`
           INSERT INTO analytics_clusters 
-            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
-          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, NOW())
+            (student_id, term_id, section_course_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
+          VALUES ($1, NULL, NULL, $2, $3, $4, $5, $6, $7, NOW())
         `, [
           studentId,
           clusterLabel,
@@ -244,11 +309,13 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
       savedCount++;
     }
     
-    console.log(`💾 [Clustering] Saved ${savedCount} clusters to database cache (term: ${termId || 'all'})`);
+    const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
+    console.log(`💾 [Clustering] Saved ${savedCount} clusters to database cache (${scope})`);
     console.log(`💾 [Clustering] Cache save details:`, {
       savedCount,
       totalClusters: clusters.length,
       termId: termId || 'all',
+      sectionCourseId: sectionCourseId || 'all classes',
       algorithm,
       version,
       sampleCluster: clusters.length > 0 ? {
@@ -488,6 +555,7 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
  * @param {Array} students - Array of student data with analytics
  * @param {number|null} termId - School term ID (optional)
  * @param {Object} options - Additional options
+ * @param {number|null} options.sectionCourseId - Section course ID for per-class clustering (optional)
  * @returns {Promise<Object>} Object with clusters map and metadata
  */
 const getStudentClusters = async (students, termId = null, options = {}) => {
@@ -496,7 +564,8 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     algorithm = 'kmeans',
     version = '1.0',
     timeoutMs = 30000,
-    forceRefresh = false
+    forceRefresh = false,
+    sectionCourseId = null
   } = options;
   
   const config = getClusteringConfig();
@@ -516,9 +585,9 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
   };
   
   // Step 1: Check cache first (FAST PATH) - skip if forceRefresh is true
-  if (!forceRefresh) {
+  if (!forceRefresh && config.enabled) {
     try {
-      const cachedClusters = await getCachedClusters(termId, cacheMaxAgeHours);
+      const cachedClusters = await getCachedClusters(termId, sectionCourseId, cacheMaxAgeHours);
       
       if (cachedClusters.length > 0) {
       // Check if cache covers all students
@@ -733,9 +802,10 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       // Save to cache asynchronously (don't wait for it to complete)
       // This happens for both normal API calls and force refresh
       console.log(`💾 [Clustering] Preparing to save ${clustersToSave.length} clusters to database cache...`);
-      saveClustersToCache(clustersToSave, termId, algorithm, version)
+      saveClustersToCache(clustersToSave, termId, sectionCourseId, algorithm, version)
         .then(() => {
-          console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (term: ${termId || 'all'})`);
+          const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
+          console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (${scope})`);
         })
         .catch(err => {
           console.error('⚠️ [Clustering] Failed to save clusters to cache (non-blocking):', err.message);

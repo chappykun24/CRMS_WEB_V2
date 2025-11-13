@@ -900,6 +900,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
 
     // Get clusters using the centralized service
     // If force_refresh is true, set cacheMaxAgeHours to 0 to bypass cache
+    // If sectionCourseId is provided, perform per-class clustering (identify at-risk students within that class)
     const clusteringResult = await clusteringService.getStudentClusters(
       students,
       termIdValue,
@@ -908,7 +909,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
         algorithm: 'kmeans',
         version: '1.0',
         timeoutMs: clusteringConfig.timeoutMs,
-        forceRefresh: forceRefresh
+        forceRefresh: forceRefresh,
+        sectionCourseId: sectionCourseIdValue // Pass section_course_id for per-class clustering
       }
     );
 
