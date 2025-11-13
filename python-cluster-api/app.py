@@ -349,7 +349,25 @@ def cluster_records(records):
             sorted_clusters[1][0]: "Needs Support"
         }
     else:
-        labels = {0: "Students"}
+        # When only 1 cluster, assign label based on performance metrics
+        # Calculate average performance to determine appropriate label
+        if len(cluster_stats) > 0:
+            stats = cluster_stats[0]
+            avg_score = stats.get('avg_score', 0)
+            avg_attendance = stats.get('avg_attendance_percentage', 0)
+            avg_submission_rate = stats.get('avg_submission_rate', 0) * 100
+            
+            # Determine label based on performance
+            if avg_score >= 85 and avg_attendance >= 85 and avg_submission_rate >= 90:
+                labels = {0: "Excellent Performance"}
+            elif avg_score >= 70 and avg_attendance >= 75 and avg_submission_rate >= 80:
+                labels = {0: "On Track"}
+            elif avg_score >= 60 and avg_attendance >= 60 and avg_submission_rate >= 70:
+                labels = {0: "Needs Improvement"}
+            else:
+                labels = {0: "At Risk"}
+        else:
+            labels = {0: "On Track"}  # Default fallback
     
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
     
