@@ -865,6 +865,7 @@ const Syllabus = () => {
                       <div className="flex-1 overflow-y-auto min-h-0">
                         <ILOMappingTable
                           syllabusId={selectedSyllabusForILO.syllabus_id}
+                          courseCode={selectedClass?.course_code}
                           onUpdate={() => {
                             // Refresh syllabi list if needed
                             if (selectedClass) {

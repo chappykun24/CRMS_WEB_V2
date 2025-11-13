@@ -249,3 +249,4 @@ secrets/
 # END OF GITIGNORE
 # ==========================================
 .vercel
+backend/scripts/auto-map-ilos.js

@@ -3,11 +3,10 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  CheckIcon,
-  XMarkIcon
+  BoltIcon
 } from '@heroicons/react/24/solid'
 
-const ILOMappingTable = ({ syllabusId, onUpdate }) => {
+const ILOMappingTable = ({ syllabusId, courseCode, onUpdate }) => {
   const [ilos, setIlos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -16,6 +15,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
   const [editingILO, setEditingILO] = useState(null)
   const [editingMapping, setEditingMapping] = useState(null)
   const [mappingType, setMappingType] = useState('so') // so, iga, cdio, sdg
+  const [isAutoMapping, setIsAutoMapping] = useState(false)
   
   // Reference data
   const [soReferences, setSoReferences] = useState([])
@@ -23,15 +23,10 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
   const [cdioReferences, setCdioReferences] = useState([])
   const [sdgReferences, setSdgReferences] = useState([])
   
-  // Form data
+  // Simplified form data - only essential fields stored in DB
   const [iloFormData, setIloFormData] = useState({
     code: '',
-    description: '',
-    category: '',
-    level: '',
-    weight_percentage: '',
-    assessment_methods: '',
-    learning_activities: ''
+    description: ''
   })
   
   const [mappingFormData, setMappingFormData] = useState({
@@ -48,9 +43,6 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
     { code: 'LA', label: 'Lab Activity' },
     { code: 'Q', label: 'Question' }
   ]
-  
-  // CPA options for SO mapping
-  const cpaOptions = ['C', 'P', 'A'] // Cognitive, Psychomotor, Affective
   
   useEffect(() => {
     if (syllabusId) {
@@ -110,6 +102,43 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
     }
   }
   
+  const handleAutoMapILOs = async () => {
+    if (!syllabusId || !courseCode) {
+      alert('Course code is required for auto-mapping')
+      return
+    }
+    
+    if (!confirm('This will automatically map ILOs based on the course subject. Continue?')) {
+      return
+    }
+    
+    try {
+      setIsAutoMapping(true)
+      const response = await fetch(`/api/ilos/auto-map/${syllabusId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ course_code: courseCode })
+      })
+      
+      if (response.ok) {
+        loadILOs()
+        if (onUpdate) onUpdate()
+        alert('ILOs auto-mapped successfully!')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to auto-map ILOs')
+      }
+    } catch (error) {
+      console.error('Error auto-mapping ILOs:', error)
+      alert('Failed to auto-map ILOs')
+    } finally {
+      setIsAutoMapping(false)
+    }
+  }
+  
   const handleCreateILO = async (e) => {
     e.preventDefault()
     
@@ -123,12 +152,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
         body: JSON.stringify({
           syllabus_id: syllabusId,
           code: iloFormData.code,
-          description: iloFormData.description,
-          category: iloFormData.category || null,
-          level: iloFormData.level || null,
-          weight_percentage: iloFormData.weight_percentage ? parseFloat(iloFormData.weight_percentage) : null,
-          assessment_methods: iloFormData.assessment_methods ? iloFormData.assessment_methods.split(',').map(s => s.trim()).filter(s => s) : [],
-          learning_activities: iloFormData.learning_activities ? iloFormData.learning_activities.split(',').map(s => s.trim()).filter(s => s) : []
+          description: iloFormData.description
         })
       })
       
@@ -160,12 +184,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
         },
         body: JSON.stringify({
           code: iloFormData.code,
-          description: iloFormData.description,
-          category: iloFormData.category || null,
-          level: iloFormData.level || null,
-          weight_percentage: iloFormData.weight_percentage ? parseFloat(iloFormData.weight_percentage) : null,
-          assessment_methods: iloFormData.assessment_methods ? iloFormData.assessment_methods.split(',').map(s => s.trim()).filter(s => s) : [],
-          learning_activities: iloFormData.learning_activities ? iloFormData.learning_activities.split(',').map(s => s.trim()).filter(s => s) : []
+          description: iloFormData.description
         })
       })
       
@@ -272,12 +291,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
     setEditingILO(ilo)
     setIloFormData({
       code: ilo.code || '',
-      description: ilo.description || '',
-      category: ilo.category || '',
-      level: ilo.level || '',
-      weight_percentage: ilo.weight_percentage || '',
-      assessment_methods: Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods.join(', ') : '',
-      learning_activities: Array.isArray(ilo.learning_activities) ? ilo.learning_activities.join(', ') : ''
+      description: ilo.description || ''
     })
     setShowILOModal(true)
   }
@@ -299,12 +313,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
   const resetILOForm = () => {
     setIloFormData({
       code: '',
-      description: '',
-      category: '',
-      level: '',
-      weight_percentage: '',
-      assessment_methods: '',
-      learning_activities: ''
+      description: ''
     })
     setEditingILO(null)
   }
@@ -344,7 +353,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
   }
   
   const formatAssessmentTasks = (tasks) => {
-    if (!tasks || !Array.isArray(tasks)) return '—'
+    if (!tasks || !Array.isArray(tasks) || tasks.length === 0) return '—'
     return tasks.join(', ')
   }
   
@@ -364,22 +373,34 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
         </div>
       )}
       
-      {/* Header with Add ILO button */}
+      {/* Header with Add ILO and Auto-Map buttons */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">ILO Mapping Table</h3>
-        <button
-          onClick={() => {
-            resetILOForm()
-            setShowILOModal(true)
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Add ILO
-        </button>
+        <div className="flex items-center gap-2">
+          {courseCode && (
+            <button
+              onClick={handleAutoMapILOs}
+              disabled={isAutoMapping}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <BoltIcon className="h-4 w-4" />
+              {isAutoMapping ? 'Mapping...' : 'Auto-Map ILOs'}
+            </button>
+          )}
+          <button
+            onClick={() => {
+              resetILOForm()
+              setShowILOModal(true)
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Add ILO
+          </button>
+        </div>
       </div>
       
-      {/* ILO Mapping Table */}
+      {/* ILO Mapping Table - Simplified */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -404,7 +425,7 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
             {ilos.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                  No ILOs defined. Click "Add ILO" to create one.
+                  No ILOs defined. Click "Add ILO" to create one or "Auto-Map ILOs" to generate mappings automatically.
                 </td>
               </tr>
             ) : (
@@ -420,11 +441,12 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'so').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
-                          <span className="font-medium text-gray-700">{mapping.so_code}:</span>
-                          <span className="text-gray-600">{formatAssessmentTasks(mapping.assessment_tasks)}</span>
+                          <span className="font-medium text-gray-700">{mapping.so_code}</span>
+                          <span className="text-gray-500">({formatAssessmentTasks(mapping.assessment_tasks)})</span>
                           <button
                             onClick={() => handleDeleteMapping(ilo.ilo_id, mapping.so_id, 'so')}
                             className="text-red-600 hover:text-red-900"
+                            title="Delete mapping"
                           >
                             <TrashIcon className="h-3 w-3" />
                           </button>
@@ -445,11 +467,12 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'iga').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
-                          <span className="font-medium text-gray-700">{mapping.iga_code}:</span>
-                          <span className="text-gray-600">{formatAssessmentTasks(mapping.assessment_tasks)}</span>
+                          <span className="font-medium text-gray-700">{mapping.iga_code}</span>
+                          <span className="text-gray-500">({formatAssessmentTasks(mapping.assessment_tasks)})</span>
                           <button
                             onClick={() => handleDeleteMapping(ilo.ilo_id, mapping.iga_id, 'iga')}
                             className="text-red-600 hover:text-red-900"
+                            title="Delete mapping"
                           >
                             <TrashIcon className="h-3 w-3" />
                           </button>
@@ -470,11 +493,12 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'cdio').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
-                          <span className="font-medium text-gray-700">{mapping.cdio_code}:</span>
-                          <span className="text-gray-600">{formatAssessmentTasks(mapping.assessment_tasks)}</span>
+                          <span className="font-medium text-gray-700">{mapping.cdio_code}</span>
+                          <span className="text-gray-500">({formatAssessmentTasks(mapping.assessment_tasks)})</span>
                           <button
                             onClick={() => handleDeleteMapping(ilo.ilo_id, mapping.cdio_id, 'cdio')}
                             className="text-red-600 hover:text-red-900"
+                            title="Delete mapping"
                           >
                             <TrashIcon className="h-3 w-3" />
                           </button>
@@ -495,11 +519,12 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
                     <div className="space-y-1">
                       {getMappingForILO(ilo, 'sdg').map((mapping, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
-                          <span className="font-medium text-gray-700">{mapping.sdg_code}:</span>
-                          <span className="text-gray-600">{formatAssessmentTasks(mapping.assessment_tasks)}</span>
+                          <span className="font-medium text-gray-700">{mapping.sdg_code}</span>
+                          <span className="text-gray-500">({formatAssessmentTasks(mapping.assessment_tasks)})</span>
                           <button
                             onClick={() => handleDeleteMapping(ilo.ilo_id, mapping.sdg_id, 'sdg')}
                             className="text-red-600 hover:text-red-900"
+                            title="Delete mapping"
                           >
                             <TrashIcon className="h-3 w-3" />
                           </button>
@@ -541,42 +566,26 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
         </table>
       </div>
       
-      {/* ILO Modal */}
+      {/* Simplified ILO Modal - Only Code and Description */}
       {showILOModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-lg w-full">
             <div className="p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 {editingILO ? 'Edit ILO' : 'Create New ILO'}
               </h2>
               
               <form onSubmit={editingILO ? handleUpdateILO : handleCreateILO} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ILO Code *</label>
-                    <input
-                      type="text"
-                      value={iloFormData.code}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="e.g., ILO1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select
-                      value={iloFormData.category}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="">Select category</option>
-                      <option value="Knowledge">Knowledge</option>
-                      <option value="Skills">Skills</option>
-                      <option value="Attitudes">Attitudes</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ILO Code *</label>
+                  <input
+                    type="text"
+                    value={iloFormData.code}
+                    onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value }))}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., ILO1"
+                  />
                 </div>
                 
                 <div>
@@ -585,61 +594,9 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
                     value={iloFormData.description}
                     onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
                     required
-                    rows={3}
+                    rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Describe the intended learning outcome..."
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
-                    <select
-                      value={iloFormData.level}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, level: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="">Select level</option>
-                      <option value="Basic">Basic</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight Percentage</label>
-                    <input
-                      type="number"
-                      value={iloFormData.weight_percentage}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="0-100"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Methods (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={iloFormData.assessment_methods}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, assessment_methods: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., Quiz, Exam, Project"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Learning Activities (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={iloFormData.learning_activities}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, learning_activities: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., Lecture, Lab, Discussion"
                   />
                 </div>
                 
@@ -742,4 +699,3 @@ const ILOMappingTable = ({ syllabusId, onUpdate }) => {
 }
 
 export default ILOMappingTable
-

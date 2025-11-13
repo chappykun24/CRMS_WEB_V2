@@ -502,5 +502,282 @@ router.delete('/:iloId/mappings/sdg/:sdgId', async (req, res) => {
   }
 });
 
+// POST /api/ilos/auto-map/:syllabusId - Auto-map ILOs based on course subject
+router.post('/auto-map/:syllabusId', async (req, res) => {
+  const { syllabusId } = req.params;
+  const { course_code } = req.body;
+  
+  try {
+    // Get syllabus and course information
+    const syllabusQuery = `
+      SELECT s.*, c.course_code, c.title as course_title, c.department_id
+      FROM syllabi s
+      JOIN courses c ON s.course_id = c.course_id
+      WHERE s.syllabus_id = $1
+    `;
+    const syllabusResult = await db.query(syllabusQuery, [syllabusId]);
+    
+    if (syllabusResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    const syllabus = syllabusResult.rows[0];
+    const courseCode = course_code || syllabus.course_code;
+    
+    // Get existing ILOs for this syllabus
+    const existingILOsQuery = 'SELECT * FROM ilos WHERE syllabus_id = $1 AND is_active = TRUE';
+    const existingILOsResult = await db.query(existingILOsQuery, [syllabusId]);
+    const existingILOs = existingILOsResult.rows;
+    
+    if (existingILOs.length === 0) {
+      return res.status(400).json({ error: 'No ILOs found. Please create ILOs first before auto-mapping.' });
+    }
+    
+    // Get all reference mappings
+    const [soRefs, igaRefs, cdioRefs, sdgRefs] = await Promise.all([
+      db.query('SELECT * FROM student_outcomes WHERE is_active = TRUE ORDER BY so_code'),
+      db.query('SELECT * FROM institutional_graduate_attributes WHERE is_active = TRUE ORDER BY iga_code'),
+      db.query('SELECT * FROM cdio_skills WHERE is_active = TRUE ORDER BY cdio_code'),
+      db.query('SELECT * FROM sdg_skills WHERE is_active = TRUE ORDER BY sdg_code')
+    ]);
+    
+    // Mapping rules based on course code patterns
+    const mappingRules = getMappingRulesByCourseCode(courseCode);
+    
+    let mappedCount = 0;
+    
+    // Auto-map each ILO based on rules
+    for (const ilo of existingILOs) {
+      // Determine mappings based on course code and ILO description
+      const iloMappings = determineILOMappings(ilo, courseCode, mappingRules, {
+        so: soRefs.rows,
+        iga: igaRefs.rows,
+        cdio: cdioRefs.rows,
+        sdg: sdgRefs.rows
+      });
+      
+      // Apply SO mappings
+      for (const mapping of iloMappings.so) {
+        try {
+          await db.query(
+            `INSERT INTO ilo_so_mappings (ilo_id, so_id, assessment_tasks)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (ilo_id, so_id) DO NOTHING`,
+            [ilo.ilo_id, mapping.so_id, mapping.assessment_tasks || []]
+          );
+          mappedCount++;
+        } catch (err) {
+          console.error(`Error mapping SO ${mapping.so_id} to ILO ${ilo.ilo_id}:`, err);
+        }
+      }
+      
+      // Apply IGA mappings
+      for (const mapping of iloMappings.iga) {
+        try {
+          await db.query(
+            `INSERT INTO ilo_iga_mappings (ilo_id, iga_id, assessment_tasks)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (ilo_id, iga_id) DO NOTHING`,
+            [ilo.ilo_id, mapping.iga_id, mapping.assessment_tasks || []]
+          );
+          mappedCount++;
+        } catch (err) {
+          console.error(`Error mapping IGA ${mapping.iga_id} to ILO ${ilo.ilo_id}:`, err);
+        }
+      }
+      
+      // Apply CDIO mappings
+      for (const mapping of iloMappings.cdio) {
+        try {
+          await db.query(
+            `INSERT INTO ilo_cdio_mappings (ilo_id, cdio_id, assessment_tasks)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (ilo_id, cdio_id) DO NOTHING`,
+            [ilo.ilo_id, mapping.cdio_id, mapping.assessment_tasks || []]
+          );
+          mappedCount++;
+        } catch (err) {
+          console.error(`Error mapping CDIO ${mapping.cdio_id} to ILO ${ilo.ilo_id}:`, err);
+        }
+      }
+      
+      // Apply SDG mappings
+      for (const mapping of iloMappings.sdg) {
+        try {
+          await db.query(
+            `INSERT INTO ilo_sdg_mappings (ilo_id, sdg_id, assessment_tasks)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (ilo_id, sdg_id) DO NOTHING`,
+            [ilo.ilo_id, mapping.sdg_id, mapping.assessment_tasks || []]
+          );
+          mappedCount++;
+        } catch (err) {
+          console.error(`Error mapping SDG ${mapping.sdg_id} to ILO ${ilo.ilo_id}:`, err);
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Successfully auto-mapped ${mappedCount} ILO mappings`,
+      mapped_count: mappedCount
+    });
+  } catch (error) {
+    console.error('Error auto-mapping ILOs:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// Helper function to get mapping rules based on course code
+function getMappingRulesByCourseCode(courseCode) {
+  const code = courseCode?.toUpperCase() || '';
+  
+  // Define mapping rules by course prefix/pattern
+  const rules = {
+    // Computer Science courses
+    'CS': {
+      so: ['SO1', 'SO2', 'SO3', 'SO4', 'SO5', 'SO6'],
+      cdio: ['CDIO1', 'CDIO2', 'CDIO3', 'CDIO4'],
+      iga: ['IGA1', 'IGA2', 'IGA3'],
+      sdg: ['SDG4', 'SDG9']
+    },
+    // Information Technology courses
+    'IT': {
+      so: ['SO1', 'SO2', 'SO3', 'SO4', 'SO5'],
+      cdio: ['CDIO1', 'CDIO2', 'CDIO3'],
+      iga: ['IGA1', 'IGA2'],
+      sdg: ['SDG4', 'SDG9']
+    },
+    // Business/Accounting courses
+    'BA': {
+      so: ['SO1', 'SO2', 'SO3'],
+      cdio: ['CDIO1', 'CDIO2'],
+      iga: ['IGA1', 'IGA2', 'IGA3'],
+      sdg: ['SDG8', 'SDG9']
+    },
+    // General Education courses
+    'GED': {
+      so: ['SO1', 'SO2'],
+      cdio: ['CDIO1'],
+      iga: ['IGA1', 'IGA2', 'IGA3'],
+      sdg: ['SDG4']
+    },
+    // Default rules
+    'default': {
+      so: ['SO1', 'SO2'],
+      cdio: ['CDIO1'],
+      iga: ['IGA1'],
+      sdg: ['SDG4']
+    }
+  };
+  
+  // Match course code prefix
+  for (const [prefix, rule] of Object.entries(rules)) {
+    if (prefix !== 'default' && code.startsWith(prefix)) {
+      return rule;
+    }
+  }
+  
+  return rules.default;
+}
+
+// Helper function to determine ILO mappings based on ILO content and course
+function determineILOMappings(ilo, courseCode, mappingRules, references) {
+  const mappings = {
+    so: [],
+    iga: [],
+    cdio: [],
+    sdg: []
+  };
+  
+  const iloDescription = (ilo.description || '').toLowerCase();
+  const iloCode = (ilo.code || '').toUpperCase();
+  
+  // Get reference codes from rules
+  const soCodes = mappingRules.so || [];
+  const igaCodes = mappingRules.iga || [];
+  const cdioCodes = mappingRules.cdio || [];
+  const sdgCodes = mappingRules.sdg || [];
+  
+  // Map SOs
+  for (const soCode of soCodes) {
+    const soRef = references.so.find(r => r.so_code === soCode);
+    if (soRef) {
+      mappings.so.push({
+        so_id: soRef.so_id,
+        assessment_tasks: determineAssessmentTasks(iloDescription, iloCode)
+      });
+    }
+  }
+  
+  // Map IGAs
+  for (const igaCode of igaCodes) {
+    const igaRef = references.iga.find(r => r.iga_code === igaCode);
+    if (igaRef) {
+      mappings.iga.push({
+        iga_id: igaRef.iga_id,
+        assessment_tasks: determineAssessmentTasks(iloDescription, iloCode)
+      });
+    }
+  }
+  
+  // Map CDIOs
+  for (const cdioCode of cdioCodes) {
+    const cdioRef = references.cdio.find(r => r.cdio_code === cdioCode);
+    if (cdioRef) {
+      mappings.cdio.push({
+        cdio_id: cdioRef.cdio_id,
+        assessment_tasks: determineAssessmentTasks(iloDescription, iloCode)
+      });
+    }
+  }
+  
+  // Map SDGs
+  for (const sdgCode of sdgCodes) {
+    const sdgRef = references.sdg.find(r => r.sdg_code === sdgCode);
+    if (sdgRef) {
+      mappings.sdg.push({
+        sdg_id: sdgRef.sdg_id,
+        assessment_tasks: determineAssessmentTasks(iloDescription, iloCode)
+      });
+    }
+  }
+  
+  return mappings;
+}
+
+// Helper function to determine assessment tasks based on ILO content
+function determineAssessmentTasks(iloDescription, iloCode) {
+  const tasks = [];
+  const desc = iloDescription.toLowerCase();
+  
+  // Determine tasks based on keywords in description
+  if (desc.includes('quiz') || desc.includes('test') || desc.includes('examination')) {
+    tasks.push('QZ');
+  }
+  if (desc.includes('exam') || desc.includes('final') || desc.includes('midterm')) {
+    tasks.push('ME');
+  }
+  if (desc.includes('project') || desc.includes('capstone') || desc.includes('thesis')) {
+    tasks.push('FP');
+  }
+  if (desc.includes('present') || desc.includes('presentation') || desc.includes('demo')) {
+    tasks.push('P');
+  }
+  if (desc.includes('lab') || desc.includes('laboratory') || desc.includes('practical')) {
+    tasks.push('LA');
+  }
+  if (desc.includes('question') || desc.includes('problem') || desc.includes('solve')) {
+    tasks.push('Q');
+  }
+  
+  // Default tasks if none matched
+  if (tasks.length === 0) {
+    tasks.push('QZ', 'ME');
+  }
+  
+  return tasks;
+}
+
 export default router;
 
