@@ -949,18 +949,6 @@ const Syllabus = () => {
                     </div>
                   ) : selectedSyllabusForILO ? (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 flex flex-col min-h-0">
-                      <div className="mb-4 flex items-center justify-between flex-shrink-0">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{selectedSyllabusForILO.title}</h3>
-                          <p className="text-sm text-gray-500">Version {selectedSyllabusForILO.version || '1.0'}</p>
-                        </div>
-                        <button
-                          onClick={() => setSelectedSyllabusForILO(null)}
-                          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50"
-                        >
-                          Back to Syllabi
-                        </button>
-                      </div>
                       <div className="flex-1 overflow-y-auto min-h-0">
                         <ILOMappingTable
                           syllabusId={selectedSyllabusForILO.syllabus_id}
@@ -975,33 +963,35 @@ const Syllabus = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Select a Syllabus for ILO Mapping</h3>
-                      {loading ? (
-                        <div className="text-center py-8 text-gray-500">Loading syllabi...</div>
-                      ) : syllabi.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {syllabi.map((syllabus) => (
-                            <div
-                              key={syllabus.syllabus_id}
-                              onClick={() => setSelectedSyllabusForILO(syllabus)}
-                              className="p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                            >
-                              <div className="font-medium text-gray-900">{syllabus.title}</div>
-                              <div className="text-sm text-gray-500">Version {syllabus.version || '1.0'}</div>
-                              <div className="mt-2">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
-                                  {syllabus.review_status || 'pending'}
-                                </span>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 flex flex-col flex-1 min-h-0">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex-shrink-0">Select a Syllabus for ILO Mapping</h3>
+                      <div className="flex-1 overflow-y-auto min-h-0">
+                        {loading ? (
+                          <div className="text-center py-8 text-gray-500">Loading syllabi...</div>
+                        ) : syllabi.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {syllabi.map((syllabus) => (
+                              <div
+                                key={syllabus.syllabus_id}
+                                onClick={() => setSelectedSyllabusForILO(syllabus)}
+                                className="p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                              >
+                                <div className="font-medium text-gray-900">{syllabus.title}</div>
+                                <div className="text-sm text-gray-500">Version {syllabus.version || '1.0'}</div>
+                                <div className="mt-2">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                                    {syllabus.review_status || 'pending'}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          No syllabi found. Create a syllabus first.
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            No syllabi found. Create a syllabus first.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1010,9 +1000,20 @@ const Syllabus = () => {
                 <div className="lg:col-span-1 flex flex-col min-h-0">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
                     <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {selectedSyllabusForILO ? 'Syllabi' : 'Classes'}
-                      </h3>
+                      {selectedSyllabusForILO ? (
+                        <div>
+                          <button
+                            onClick={() => setSelectedSyllabusForILO(null)}
+                            className="text-sm text-gray-600 hover:text-gray-900 mb-3 flex items-center gap-1"
+                          >
+                            <span>←</span> Back to Syllabi
+                          </button>
+                          <h3 className="text-base font-semibold text-gray-900">{selectedSyllabusForILO.title}</h3>
+                          <p className="text-xs text-gray-500 mt-1">Version {selectedSyllabusForILO.version || '1.0'}</p>
+                        </div>
+                      ) : (
+                        <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                      )}
                     </div>
                     <div className="flex-1 overflow-y-auto min-h-0">
                       {selectedSyllabusForILO ? (
