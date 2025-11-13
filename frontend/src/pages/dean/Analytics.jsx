@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
@@ -121,6 +121,10 @@ const Analytics = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [studentPhoto, setStudentPhoto] = useState(null);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [studentEnrollments, setStudentEnrollments] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('all');
+  const [classFilteredData, setClassFilteredData] = useState(null);
+  const [loadingClassData, setLoadingClassData] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -350,6 +354,94 @@ const Analytics = () => {
       setLoadingPhoto(false);
     }
   }, []);
+
+  // Fetch student enrollments when modal opens
+  const fetchStudentEnrollments = useCallback(async (studentId) => {
+    if (!studentId) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/enrollments`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setStudentEnrollments(result.data);
+          console.log('✅ [DEAN ANALYTICS] Loaded student enrollments:', result.data.length);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [DEAN ANALYTICS] Error loading student enrollments:', error);
+      setStudentEnrollments([]);
+    }
+  }, []);
+
+  // Fetch per-class analytics data for a student
+  const fetchClassAnalytics = useCallback(async (studentId, sectionCourseId) => {
+    if (!studentId || !sectionCourseId) {
+      setClassFilteredData(null);
+      return;
+    }
+    
+    setLoadingClassData(true);
+    try {
+      const params = new URLSearchParams({
+        student_id: studentId,
+        section_course_id: sectionCourseId
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          setClassFilteredData(result.data[0]); // Get the student's data for this class
+          console.log('✅ [DEAN ANALYTICS] Loaded class-specific analytics');
+        } else {
+          setClassFilteredData(null);
+        }
+      } else {
+        setClassFilteredData(null);
+      }
+    } catch (error) {
+      console.error('❌ [DEAN ANALYTICS] Error loading class analytics:', error);
+      setClassFilteredData(null);
+    } finally {
+      setLoadingClassData(false);
+    }
+  }, []);
+
+  // Handle class filter change
+  const handleClassFilterChange = useCallback((sectionCourseId) => {
+    setSelectedClassId(sectionCourseId);
+    if (sectionCourseId === 'all') {
+      setClassFilteredData(null);
+    } else if (selectedStudent) {
+      fetchClassAnalytics(selectedStudent.student_id, sectionCourseId);
+    }
+  }, [selectedStudent, fetchClassAnalytics]);
+
+  // Reset filter when modal opens/closes
+  useEffect(() => {
+    if (isModalOpen && selectedStudent) {
+      fetchStudentEnrollments(selectedStudent.student_id);
+      setSelectedClassId('all');
+      setClassFilteredData(null);
+    } else {
+      setStudentEnrollments([]);
+      setSelectedClassId('all');
+      setClassFilteredData(null);
+    }
+  }, [isModalOpen, selectedStudent, fetchStudentEnrollments]);
 
   const handleFetch = useCallback((forceRefresh = false) => {
     console.log('🔍 [DEAN ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
@@ -1590,46 +1682,80 @@ const Analytics = () => {
         }}>
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setStudentPhoto(null); // Clear photo when modal closes
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
+                <button
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setStudentPhoto(null); // Clear photo when modal closes
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              {/* Class Filter Dropdown */}
+              {studentEnrollments.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Filter by Class:</label>
+                  <div className="relative">
+                    <select
+                      value={selectedClassId}
+                      onChange={(e) => handleClassFilterChange(e.target.value)}
+                      disabled={loadingClassData}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="all">All Classes</option>
+                      {studentEnrollments.map((enrollment) => (
+                        <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
+                          {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                  </div>
+                  {loadingClassData && (
+                    <div className="text-xs text-gray-500">Loading...</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Modal Body */}
             <div className="p-6">
-              {/* Student Header Info */}
-              <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
-                {/* Student Image - Lazy Loaded */}
-                <div className="flex-shrink-0">
-                  {loadingPhoto ? (
-                    <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
-                      <UserCircleIcon className="w-12 h-12 text-gray-400" />
-                    </div>
-                  ) : studentPhoto ? (
-                    <img
-                      src={studentPhoto}
-                      alt={selectedStudent.full_name}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                  ) : null}
-                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
-                </div>
+              {(() => {
+                // Use filtered data if a class is selected, otherwise use selectedStudent
+                const displayData = classFilteredData || selectedStudent;
+                
+                return (
+                  <>
+                    {/* Student Header Info */}
+                    <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
+                      {/* Student Image - Lazy Loaded */}
+                      <div className="flex-shrink-0">
+                        {loadingPhoto ? (
+                          <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                            <UserCircleIcon className="w-12 h-12 text-gray-400" />
+                          </div>
+                        ) : studentPhoto ? (
+                          <img
+                            src={studentPhoto}
+                            alt={selectedStudent.full_name}
+                            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                        ) : null}
+                        <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
+                      </div>
 
-                {/* Student Basic Info */}
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
+                      {/* Student Basic Info */}
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-600">
                       <span className="font-medium">SR-code:</span>{' '}
@@ -1643,7 +1769,7 @@ const Analytics = () => {
                     )}
                     <div className="mt-2">
                       {(() => {
-                        const clusterStyle = getClusterStyle(selectedStudent.cluster_label);
+                        const clusterStyle = getClusterStyle(displayData.cluster_label);
                         return clusterStyle ? (
                           <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
                             {clusterStyle.text}
@@ -1666,23 +1792,23 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Attendance Rate</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {selectedStudent.attendance_percentage !== null && selectedStudent.attendance_percentage !== undefined
-                        ? `${parseFloat(selectedStudent.attendance_percentage).toFixed(1)}%`
+                      {displayData.attendance_percentage !== null && displayData.attendance_percentage !== undefined
+                        ? `${parseFloat(displayData.attendance_percentage).toFixed(1)}%`
                         : 'N/A'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(selectedStudent.attendance_percentage) || 0) >= 80
+                        (parseFloat(displayData.attendance_percentage) || 0) >= 80
                           ? 'bg-emerald-500'
-                          : (parseFloat(selectedStudent.attendance_percentage) || 0) >= 60
+                          : (parseFloat(displayData.attendance_percentage) || 0) >= 60
                           ? 'bg-blue-500'
-                          : (parseFloat(selectedStudent.attendance_percentage) || 0) >= 40
+                          : (parseFloat(displayData.attendance_percentage) || 0) >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min(parseFloat(selectedStudent.attendance_percentage) || 0, 100)}%` }}
+                      style={{ width: `${Math.min(parseFloat(displayData.attendance_percentage) || 0, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1692,10 +1818,10 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Average Score</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {selectedStudent.average_score !== null && selectedStudent.average_score !== undefined
-                        ? parseFloat(selectedStudent.average_score).toFixed(1)
+                      {displayData.average_score !== null && displayData.average_score !== undefined
+                        ? parseFloat(displayData.average_score).toFixed(1)
                         : 'N/A'}
-                      {selectedStudent.average_score !== null && selectedStudent.average_score !== undefined && (
+                      {displayData.average_score !== null && displayData.average_score !== undefined && (
                         <span className="text-gray-500 ml-1">/ 100</span>
                       )}
                     </span>
@@ -1703,15 +1829,15 @@ const Analytics = () => {
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(selectedStudent.average_score) || 0) >= 80
+                        (parseFloat(displayData.average_score) || 0) >= 80
                           ? 'bg-emerald-500'
-                          : (parseFloat(selectedStudent.average_score) || 0) >= 60
+                          : (parseFloat(displayData.average_score) || 0) >= 60
                           ? 'bg-blue-500'
-                          : (parseFloat(selectedStudent.average_score) || 0) >= 40
+                          : (parseFloat(displayData.average_score) || 0) >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min(parseFloat(selectedStudent.average_score) || 0, 100)}%` }}
+                      style={{ width: `${Math.min(parseFloat(displayData.average_score) || 0, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1721,23 +1847,23 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Submission Rate</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {selectedStudent.submission_rate !== null && selectedStudent.submission_rate !== undefined
-                        ? `${(parseFloat(selectedStudent.submission_rate) * 100).toFixed(1)}%`
+                      {displayData.submission_rate !== null && displayData.submission_rate !== undefined
+                        ? `${(parseFloat(displayData.submission_rate) * 100).toFixed(1)}%`
                         : 'N/A'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 80
+                        (parseFloat(displayData.submission_rate) || 0) * 100 >= 80
                           ? 'bg-emerald-500'
-                          : (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 60
+                          : (parseFloat(displayData.submission_rate) || 0) * 100 >= 60
                           ? 'bg-blue-500'
-                          : (parseFloat(selectedStudent.submission_rate) || 0) * 100 >= 40
+                          : (parseFloat(displayData.submission_rate) || 0) * 100 >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min((parseFloat(selectedStudent.submission_rate) || 0) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((parseFloat(displayData.submission_rate) || 0) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1750,25 +1876,25 @@ const Analytics = () => {
                   <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                     <p className="text-xs text-green-600 mb-1">Present</p>
                     <p className="text-lg font-bold text-green-700">
-                      {selectedStudent.attendance_present_count ?? '—'}
+                      {displayData.attendance_present_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-red-50 rounded-lg p-3 border border-red-200">
                     <p className="text-xs text-red-600 mb-1">Absent</p>
                     <p className="text-lg font-bold text-red-700">
-                      {selectedStudent.attendance_absent_count ?? '—'}
+                      {displayData.attendance_absent_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                     <p className="text-xs text-yellow-600 mb-1">Late</p>
                     <p className="text-lg font-bold text-yellow-700">
-                      {selectedStudent.attendance_late_count ?? '—'}
+                      {displayData.attendance_late_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-1">Total Sessions</p>
                     <p className="text-lg font-bold text-gray-700">
-                      {selectedStudent.attendance_total_sessions ?? '—'}
+                      {displayData.attendance_total_sessions ?? '—'}
                     </p>
                   </div>
                 </div>
@@ -1781,51 +1907,51 @@ const Analytics = () => {
                   <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                     <p className="text-xs text-green-600 mb-1">Ontime</p>
                     <p className="text-lg font-bold text-green-700">
-                      {selectedStudent.submission_ontime_count ?? '—'}
+                      {displayData.submission_ontime_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                     <p className="text-xs text-yellow-600 mb-1">Late</p>
                     <p className="text-lg font-bold text-yellow-700">
-                      {selectedStudent.submission_late_count ?? '—'}
+                      {displayData.submission_late_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-red-50 rounded-lg p-3 border border-red-200">
                     <p className="text-xs text-red-600 mb-1">Missing</p>
                     <p className="text-lg font-bold text-red-700">
-                      {selectedStudent.submission_missing_count ?? '—'}
+                      {displayData.submission_missing_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-1">Total Assessments</p>
                     <p className="text-lg font-bold text-gray-700">
-                      {selectedStudent.submission_total_assessments ?? '—'}
+                      {displayData.submission_total_assessments ?? '—'}
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Section/Program/Department Info */}
-              {(selectedStudent.section_code || selectedStudent.program_name || selectedStudent.department_name) && (
+              {(displayData.section_code || displayData.program_name || displayData.department_name) && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {selectedStudent.section_code && (
+                    {displayData.section_code && (
                       <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                         <p className="text-xs text-blue-600 mb-1">Section</p>
-                        <p className="text-sm font-medium text-blue-900">{selectedStudent.section_code}</p>
+                        <p className="text-sm font-medium text-blue-900">{displayData.section_code}</p>
                       </div>
                     )}
-                    {selectedStudent.program_name && (
+                    {displayData.program_name && (
                       <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
                         <p className="text-xs text-purple-600 mb-1">Program</p>
-                        <p className="text-sm font-medium text-purple-900">{selectedStudent.program_name}</p>
+                        <p className="text-sm font-medium text-purple-900">{displayData.program_name}</p>
                       </div>
                     )}
-                    {selectedStudent.department_name && (
+                    {displayData.department_name && (
                       <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
                         <p className="text-xs text-indigo-600 mb-1">Department</p>
-                        <p className="text-sm font-medium text-indigo-900">{selectedStudent.department_name}</p>
+                        <p className="text-sm font-medium text-indigo-900">{displayData.department_name}</p>
                       </div>
                     )}
                   </div>
@@ -1840,48 +1966,51 @@ const Analytics = () => {
                     <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
                     <p className="text-sm font-medium text-gray-900">
                       {(() => {
-                        const clusterStyle = getClusterStyle(selectedStudent.cluster_label);
+                        const clusterStyle = getClusterStyle(displayData.cluster_label);
                         return clusterStyle ? clusterStyle.text : '—';
                       })()}
                     </p>
                   </div>
-                  {selectedStudent.silhouette_score !== null && selectedStudent.silhouette_score !== undefined && (
+                  {displayData.silhouette_score !== null && displayData.silhouette_score !== undefined && (
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                       <p className="text-xs text-blue-600 mb-1">Silhouette Score</p>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold text-blue-900">
-                          {parseFloat(selectedStudent.silhouette_score).toFixed(4)}
+                          {parseFloat(displayData.silhouette_score).toFixed(4)}
                         </p>
                         <span className={`text-xs px-2 py-1 rounded ${
-                          parseFloat(selectedStudent.silhouette_score) > 0.5 
+                          parseFloat(displayData.silhouette_score) > 0.5 
                             ? 'bg-green-100 text-green-700' 
-                            : parseFloat(selectedStudent.silhouette_score) > 0.3
+                            : parseFloat(displayData.silhouette_score) > 0.3
                             ? 'bg-blue-100 text-blue-700'
-                            : parseFloat(selectedStudent.silhouette_score) > 0.1
+                            : parseFloat(displayData.silhouette_score) > 0.1
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-red-100 text-red-700'
                         }`}>
-                          {parseFloat(selectedStudent.silhouette_score) > 0.5 
+                          {parseFloat(displayData.silhouette_score) > 0.5 
                             ? 'Excellent' 
-                            : parseFloat(selectedStudent.silhouette_score) > 0.3
+                            : parseFloat(displayData.silhouette_score) > 0.3
                             ? 'Good'
-                            : parseFloat(selectedStudent.silhouette_score) > 0.1
+                            : parseFloat(displayData.silhouette_score) > 0.1
                             ? 'Fair'
                             : 'Poor'}
                         </span>
                       </div>
                     </div>
                   )}
-                  {selectedStudent.clustering_explanation && (
+                  {displayData.clustering_explanation && (
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Cluster Explanation</p>
                       <p className="text-sm text-gray-700 leading-relaxed">
-                        {selectedStudent.clustering_explanation}
+                        {displayData.clustering_explanation}
                       </p>
                     </div>
                   )}
                 </div>
               </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

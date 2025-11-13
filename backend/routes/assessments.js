@@ -453,9 +453,9 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id, section_id, program_id, department_id, force_refresh } = req.query;
+  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh } = req.query;
   const forceRefresh = force_refresh === 'true' || force_refresh === '1';
-  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'force_refresh:', forceRefresh);
+  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'force_refresh:', forceRefresh);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -475,11 +475,15 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const sectionIdValue = section_id && !isNaN(parseInt(section_id)) ? parseInt(section_id) : null;
     const programIdValue = program_id && !isNaN(parseInt(program_id)) ? parseInt(program_id) : null;
     const departmentIdValue = department_id && !isNaN(parseInt(department_id)) ? parseInt(department_id) : null;
+    const studentIdValue = student_id && !isNaN(parseInt(student_id)) ? parseInt(student_id) : null;
+    const sectionCourseIdValue = section_course_id && !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
     
     if (termIdValue) console.log('🔍 [Backend] Applying term filter:', termIdValue);
     if (sectionIdValue) console.log('🔍 [Backend] Applying section filter:', sectionIdValue);
     if (programIdValue) console.log('🔍 [Backend] Applying program filter:', programIdValue);
     if (departmentIdValue) console.log('🔍 [Backend] Applying department filter:', departmentIdValue);
+    if (studentIdValue) console.log('🔍 [Backend] Applying student filter:', studentIdValue);
+    if (sectionCourseIdValue) console.log('🔍 [Backend] Applying section_course filter:', sectionCourseIdValue);
     
     // Build additional WHERE conditions for filtering
     let additionalWhereConditions = [];
@@ -491,6 +495,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
     }
     if (departmentIdValue) {
       additionalWhereConditions.push(`d.department_id = ${departmentIdValue}`);
+    }
+    if (studentIdValue) {
+      additionalWhereConditions.push(`s.student_id = ${studentIdValue}`);
+    }
+    if (sectionCourseIdValue) {
+      additionalWhereConditions.push(`sc.section_course_id = ${sectionCourseIdValue}`);
     }
     const additionalWhereClause = additionalWhereConditions.length > 0 
       ? `AND ${additionalWhereConditions.join(' AND ')}` 
