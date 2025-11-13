@@ -457,7 +457,7 @@ const Analytics = () => {
     // If force refresh, clear all caches first
     if (forceRefresh) {
       console.log('🔄 [DEAN ANALYTICS] Force refresh - clearing caches...');
-      const sessionCacheKey = `dean_analytics_${filterKey}_session`;
+    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
       const cacheKey = `dean_analytics_${filterKey}`;
       
       // Clear sessionStorage cache
@@ -706,7 +706,7 @@ const Analytics = () => {
                 cluster !== undefined &&
                 !(typeof cluster === 'number' && isNaN(cluster)) &&
                 !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-              acc[cluster] = (acc[cluster] || 0) + 1;
+            acc[cluster] = (acc[cluster] || 0) + 1;
             }
             return acc;
           }, {});
@@ -824,7 +824,7 @@ const Analytics = () => {
           cluster !== undefined &&
           !(typeof cluster === 'number' && isNaN(cluster)) &&
           !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-        clusters.add(cluster);
+      clusters.add(cluster);
       }
     });
     return Array.from(clusters).sort();
@@ -909,7 +909,7 @@ const Analytics = () => {
           cluster !== undefined &&
           !(typeof cluster === 'number' && isNaN(cluster)) &&
           !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-        clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
+      clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
       }
     });
 
@@ -992,12 +992,12 @@ const Analytics = () => {
         !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
         !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
       .map(row => ({
-        attendance: parseFloat(row.attendance_percentage) || 0,
-        score: parseFloat(row.average_score) || 0,
-        submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+      attendance: parseFloat(row.attendance_percentage) || 0,
+      score: parseFloat(row.average_score) || 0,
+      submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
         cluster: row.cluster_label,
-        name: row.full_name
-      }));
+      name: row.full_name
+    }));
 
     return {
       clusterData,
@@ -1363,9 +1363,9 @@ const Analytics = () => {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {clusterStyle ? (
-                                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
-                                    {clusterStyle.text}
-                                  </span>
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                  {clusterStyle.text}
+                                </span>
                                 ) : (
                                   <span className="text-gray-400 text-xs">—</span>
                                 )}
@@ -1684,16 +1684,16 @@ const Analytics = () => {
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
-                <button
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setStudentPhoto(null); // Clear photo when modal closes
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+              <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setStudentPhoto(null); // Clear photo when modal closes
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
               </div>
               
               {/* Class Filter Dropdown */}
@@ -1731,31 +1731,31 @@ const Analytics = () => {
                 
                 return (
                   <>
-                    {/* Student Header Info */}
-                    <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
-                      {/* Student Image - Lazy Loaded */}
-                      <div className="flex-shrink-0">
-                        {loadingPhoto ? (
-                          <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
-                            <UserCircleIcon className="w-12 h-12 text-gray-400" />
-                          </div>
-                        ) : studentPhoto ? (
-                          <img
-                            src={studentPhoto}
-                            alt={selectedStudent.full_name}
-                            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'block';
-                            }}
-                          />
-                        ) : null}
-                        <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
-                      </div>
+              {/* Student Header Info */}
+              <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
+                {/* Student Image - Lazy Loaded */}
+                <div className="flex-shrink-0">
+                  {loadingPhoto ? (
+                    <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                      <UserCircleIcon className="w-12 h-12 text-gray-400" />
+                    </div>
+                  ) : studentPhoto ? (
+                    <img
+                      src={studentPhoto}
+                      alt={selectedStudent.full_name}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : null}
+                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
+                </div>
 
-                      {/* Student Basic Info */}
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
+                {/* Student Basic Info */}
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedStudent.full_name}</h3>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-600">
                       <span className="font-medium">SR-code:</span>{' '}
@@ -1773,7 +1773,7 @@ const Analytics = () => {
                         return clusterStyle ? (
                           <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
                             {clusterStyle.text}
-                          </span>
+                      </span>
                         ) : (
                           <span className="text-gray-400 text-sm">—</span>
                         );
