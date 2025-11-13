@@ -1029,55 +1029,18 @@ const Analytics = () => {
         }
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
-        {/* Header with Refresh Button - Always Visible */}
-          <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
-              {clusterMeta?.silhouetteScore !== null && clusterMeta?.silhouetteScore !== undefined && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
-                  style={{
-                    backgroundColor: clusterMeta.silhouetteScore > 0.5 
-                      ? '#f0fdf4' 
-                      : clusterMeta.silhouetteScore > 0.3 
-                        ? '#f0fdf4' 
-                        : clusterMeta.silhouetteScore > 0.1 
-                          ? '#fefce8' 
-                          : '#fef2f2',
-                    borderColor: clusterMeta.silhouetteScore > 0.5 
-                      ? '#86efac' 
-                      : clusterMeta.silhouetteScore > 0.3 
-                        ? '#86efac' 
-                        : clusterMeta.silhouetteScore > 0.1 
-                          ? '#fde047' 
-                          : '#fca5a5',
-                    color: clusterMeta.silhouetteScore > 0.5 
-                      ? '#166534' 
-                      : clusterMeta.silhouetteScore > 0.3 
-                        ? '#166534' 
-                        : clusterMeta.silhouetteScore > 0.1 
-                          ? '#854d0e' 
-                          : '#991b1b'
-                  }}
-                  title={`Clustering Accuracy: ${clusterMeta.silhouetteScore > 0.5 ? 'Excellent' : clusterMeta.silhouetteScore > 0.3 ? 'Good' : clusterMeta.silhouetteScore > 0.1 ? 'Fair' : 'Poor'} (${clusterMeta.silhouetteScore.toFixed(4)}). Range: -1 to 1, higher is better.`}
-                >
-                  <span className="font-semibold">Accuracy:</span>
-                  <span className="font-bold">{clusterMeta.silhouetteScore.toFixed(3)}</span>
-                  <span className="text-xs opacity-75">
-                    ({clusterMeta.silhouetteScore > 0.5 ? 'Excellent' : clusterMeta.silhouetteScore > 0.3 ? 'Good' : clusterMeta.silhouetteScore > 0.1 ? 'Fair' : 'Poor'})
-                  </span>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => handleFetch(true)}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
-              title="Refresh data and recompute clusters from latest dataset"
-            >
-              <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh & Recompute Clusters
-            </button>
-          </div>
+        {/* Header */}
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
+          <button
+            onClick={() => handleFetch(true)}
+            disabled={loading}
+            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm"
+            title="Refresh data and recompute clusters from latest dataset"
+          >
+            <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
 
         {/* Progress Bar */}
         {loading && (
@@ -1137,23 +1100,24 @@ const Analytics = () => {
             <div className="flex-1 space-y-4 min-w-0">
               {/* Filters */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                <div className="flex flex-col md:flex-row gap-3">
-                  {/* Search */}
-                  <div className="flex-1">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search by student name..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-                      />
-                    </div>
+                {/* Search Bar - Prominent */}
+                <div className="mb-3">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by student name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                    />
                   </div>
+                </div>
 
+                {/* Filter Dropdowns - Grid Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                   {/* School Term Filter */}
-                  <div className="md:w-56">
+                  <div>
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
@@ -1172,7 +1136,7 @@ const Analytics = () => {
                   </div>
 
                   {/* Department Filter */}
-                  <div className="md:w-56">
+                  <div>
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
@@ -1191,7 +1155,7 @@ const Analytics = () => {
                   </div>
 
                   {/* Program Filter */}
-                  <div className="md:w-56">
+                  <div>
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
@@ -1212,7 +1176,7 @@ const Analytics = () => {
                   </div>
 
                   {/* Section Filter */}
-                  <div className="md:w-56">
+                  <div>
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
@@ -1234,13 +1198,13 @@ const Analytics = () => {
 
                   {/* Cluster Filter */}
                   {uniqueClusters.length > 0 && (
-                    <div className="md:w-56">
+                    <div>
                       <div className="relative">
                         <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <select
                           value={selectedCluster}
                           onChange={(e) => setSelectedCluster(e.target.value)}
-                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                         >
                           <option value="all">All Clusters ({data.length})</option>
                           {uniqueClusters.map(cluster => (
