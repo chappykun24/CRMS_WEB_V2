@@ -41,6 +41,10 @@ const Syllabus = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeTab, setActiveTab] = useState('syllabi') // 'syllabi' or 'ilo-mapping'
   const [selectedSyllabusForILO, setSelectedSyllabusForILO] = useState(null)
+  const [viewingSyllabusILOs, setViewingSyllabusILOs] = useState([])
+  const [loadingILOs, setLoadingILOs] = useState(false)
+  const [editRequestReason, setEditRequestReason] = useState('')
+  const [showEditRequestForm, setShowEditRequestForm] = useState(false)
   
   // Form data
   const [formData, setFormData] = useState({
@@ -421,9 +425,62 @@ const Syllabus = () => {
     resetForm()
   }
 
-  const openViewModal = (syllabus) => {
+  const loadSyllabusILOs = async (syllabusId) => {
+    if (!syllabusId) return
+    setLoadingILOs(true)
+    try {
+      const response = await fetch(`/api/ilos/syllabus/${syllabusId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setViewingSyllabusILOs(data)
+      }
+    } catch (error) {
+      console.error('Error loading ILOs:', error)
+      setViewingSyllabusILOs([])
+    } finally {
+      setLoadingILOs(false)
+    }
+  }
+
+  const openViewModal = async (syllabus) => {
     setViewingSyllabus(syllabus)
     setShowViewModal(true)
+    setShowEditRequestForm(false)
+    setEditRequestReason('')
+    await loadSyllabusILOs(syllabus.syllabus_id)
+  }
+
+  const handleSubmitEditRequest = async () => {
+    if (!editRequestReason.trim() || !viewingSyllabus) return
+
+    try {
+      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}/edit-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          reason: editRequestReason.trim(),
+          requested_by: user?.user_id
+        })
+      })
+
+      if (response.ok) {
+        alert('Edit request submitted successfully! The dean and program chair will be notified.')
+        setShowEditRequestForm(false)
+        setEditRequestReason('')
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to submit edit request')
+      }
+    } catch (error) {
+      console.error('Error submitting edit request:', error)
+      alert('Failed to submit edit request')
+    }
   }
   
   // Submit syllabus for review (Faculty)
@@ -1497,41 +1554,41 @@ const Syllabus = () => {
               
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Version</h3>
+                  <h3 className="text-sm font-bold italic text-gray-700 mb-1">Version</h3>
                   <p className="text-sm text-gray-900">v{viewingSyllabus.version || '1.0'}</p>
                 </div>
 
                 {viewingSyllabus.description && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Description</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Description</h3>
                     <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.description}</p>
                   </div>
                 )}
 
                 {viewingSyllabus.course_objectives && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Course Objectives</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Course Objectives</h3>
                     <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.course_objectives}</p>
                   </div>
                 )}
 
                 {viewingSyllabus.course_outline && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Course Outline</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Course Outline</h3>
                     <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.course_outline}</p>
                   </div>
                 )}
 
                 {viewingSyllabus.prerequisites && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Prerequisites</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Prerequisites</h3>
                     <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingSyllabus.prerequisites}</p>
                   </div>
                 )}
 
                 {viewingSyllabus.learning_resources && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Learning Resources</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Learning Resources</h3>
                     <p className="text-sm text-gray-900">{formatLearningResources(viewingSyllabus.learning_resources)}</p>
                   </div>
                 )}
@@ -1554,7 +1611,7 @@ const Syllabus = () => {
                   
                   return (
                     <div>
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Assessment Framework</h3>
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Assessment Framework</h3>
                       {components.length > 0 ? (
                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1612,7 +1669,7 @@ const Syllabus = () => {
                   
                   return (
                     <div>
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">Grading Policy</h3>
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Grading Policy</h3>
                       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
                           <div className="mb-4">
@@ -1677,20 +1734,156 @@ const Syllabus = () => {
                   )
                 })()}
 
+                {/* ILOs Section */}
+                <div>
+                  <h3 className="text-sm font-bold italic text-gray-700 mb-2">Intended Learning Outcomes (ILOs)</h3>
+                  {loadingILOs ? (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-500">Loading ILOs...</p>
+                    </div>
+                  ) : viewingSyllabusILOs.length > 0 ? (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <div className="space-y-3">
+                        {viewingSyllabusILOs.map((ilo) => (
+                          <div key={ilo.ilo_id} className="bg-white p-3 rounded border border-gray-200">
+                            <div className="flex items-start gap-2 mb-2">
+                              <span className="font-semibold text-gray-900 text-sm">{ilo.code}</span>
+                              <span className="text-sm text-gray-700 flex-1">{ilo.description}</span>
+                            </div>
+                            {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
+                              <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-600">
+                                <div className="space-y-1">
+                                  {ilo.so_mappings?.length > 0 && (
+                                    <div>
+                                      <span className="font-medium">SO: </span>
+                                      {ilo.so_mappings.map((m, idx) => (
+                                        <span key={idx}>
+                                          {m.so_code}
+                                          {m.assessment_tasks?.length > 0 && (
+                                            <span className="text-gray-500"> ({m.assessment_tasks.join(', ')})</span>
+                                          )}
+                                          {idx < ilo.so_mappings.length - 1 && ', '}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {ilo.iga_mappings?.length > 0 && (
+                                    <div>
+                                      <span className="font-medium">IGA: </span>
+                                      {ilo.iga_mappings.map((m, idx) => (
+                                        <span key={idx}>
+                                          {m.iga_code}
+                                          {m.assessment_tasks?.length > 0 && (
+                                            <span className="text-gray-500"> ({m.assessment_tasks.join(', ')})</span>
+                                          )}
+                                          {idx < ilo.iga_mappings.length - 1 && ', '}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {ilo.cdio_mappings?.length > 0 && (
+                                    <div>
+                                      <span className="font-medium">CDIO: </span>
+                                      {ilo.cdio_mappings.map((m, idx) => (
+                                        <span key={idx}>
+                                          {m.cdio_code}
+                                          {m.assessment_tasks?.length > 0 && (
+                                            <span className="text-gray-500"> ({m.assessment_tasks.join(', ')})</span>
+                                          )}
+                                          {idx < ilo.cdio_mappings.length - 1 && ', '}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {ilo.sdg_mappings?.length > 0 && (
+                                    <div>
+                                      <span className="font-medium">SDG: </span>
+                                      {ilo.sdg_mappings.map((m, idx) => (
+                                        <span key={idx}>
+                                          {m.sdg_code}
+                                          {m.assessment_tasks?.length > 0 && (
+                                            <span className="text-gray-500"> ({m.assessment_tasks.join(', ')})</span>
+                                          )}
+                                          {idx < ilo.sdg_mappings.length - 1 && ', '}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-500 italic">No ILOs defined for this syllabus.</p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Review Status</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Review Status</h3>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.review_status)}`}>
                       {viewingSyllabus.review_status || 'pending'}
                     </span>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">Approval Status</h3>
+                    <h3 className="text-sm font-bold italic text-gray-700 mb-1">Approval Status</h3>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.approval_status)}`}>
                       {viewingSyllabus.approval_status || 'pending'}
                     </span>
                   </div>
                 </div>
+
+                {/* Edit Request Section - Only show for approved syllabi */}
+                {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
+                  <div className="pt-4 border-t border-gray-300">
+                    {!showEditRequestForm ? (
+                      <button
+                        onClick={() => setShowEditRequestForm(true)}
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        Request Edit
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-bold italic text-gray-700 mb-1">
+                            Reason for Edit Request *
+                          </label>
+                          <textarea
+                            value={editRequestReason}
+                            onChange={(e) => setEditRequestReason(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Please provide a reason for requesting an edit to this approved syllabus..."
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setShowEditRequestForm(false)
+                              setEditRequestReason('')
+                            }}
+                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSubmitEditRequest}
+                            disabled={!editRequestReason.trim()}
+                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                          >
+                            Submit Request
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
         </div>
       </div>
