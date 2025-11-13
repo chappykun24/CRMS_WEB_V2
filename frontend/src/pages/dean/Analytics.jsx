@@ -7,21 +7,105 @@ import { API_BASE_URL } from '../../utils/api';
 import deanCacheService from '../../services/deanCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
 
+// Analytics-specific skeleton components
+const AnalyticsTableSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+      <table className="min-w-full bg-white text-sm">
+        <thead className="bg-gray-50 sticky top-0 z-10">
+          <tr>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Section</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Program</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Department</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Score</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submissions</th>
+            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {[...Array(10)].map((_, i) => (
+            <tr key={i} className="animate-pulse">
+              <td className="px-4 py-3">
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-3 bg-gray-200 rounded w-16"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="space-y-1">
+                  <div className="h-3 bg-gray-200 rounded w-12"></div>
+                  <div className="h-2 bg-gray-200 rounded w-20"></div>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="space-y-1">
+                  <div className="h-3 bg-gray-200 rounded w-12"></div>
+                  <div className="h-2 bg-gray-200 rounded w-28"></div>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const StatisticsCardsSkeleton = () => (
+  <div className="space-y-3">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+        <div className="h-3 bg-gray-200 rounded w-24 mb-2"></div>
+        <div className="h-8 bg-gray-200 rounded w-16"></div>
+      </div>
+    ))}
+  </div>
+);
+
+const ChartsSkeleton = () => (
+  <div className="space-y-4">
+    {[...Array(6)].map((_, i) => (
+      <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-32 mb-3"></div>
+        <div className="h-48 bg-gray-100 rounded"></div>
+      </div>
+    ))}
+  </div>
+);
+
 // Cache helpers
 const getCachedData = createCacheGetter(deanCacheService);
 const setCachedData = createCacheSetter(deanCacheService);
+
 import {
   PieChart,
   Pie,
   Cell,
   BarChart,
   Bar,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ZAxis,
 } from 'recharts';
 
 const Analytics = () => {
@@ -35,8 +119,19 @@ const Analytics = () => {
   const [selectedCluster, setSelectedCluster] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [studentPhoto, setStudentPhoto] = useState(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [chartsLoaded, setChartsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
   const [schoolTerms, setSchoolTerms] = useState([]);
   const [selectedTermId, setSelectedTermId] = useState('');
+  const [sections, setSections] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
@@ -133,9 +228,42 @@ const Analytics = () => {
     }
   }, []);
 
+  // Fetch sections, programs, and departments
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const [sectionsRes, programsRes, departmentsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/section-courses/sections`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/programs`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/departments`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        })
+      ]);
+
+      if (sectionsRes.ok) {
+        const sectionsData = await sectionsRes.json();
+        setSections(Array.isArray(sectionsData) ? sectionsData : []);
+      }
+      if (programsRes.ok) {
+        const programsData = await programsRes.json();
+        setPrograms(Array.isArray(programsData) ? programsData : []);
+      }
+      if (departmentsRes.ok) {
+        const departmentsData = await departmentsRes.json();
+        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      }
+    } catch (error) {
+      console.error('❌ [DEAN ANALYTICS] Error fetching filter options:', error);
+    }
+  }, []);
+
   // Fetch school terms on component mount
   useEffect(() => {
     fetchSchoolTerms();
+    fetchFilterOptions();
     
     // Prefetch data for other dean pages in the background
     setTimeout(() => {
@@ -148,7 +276,7 @@ const Analytics = () => {
         termsAbortControllerRef.current.abort();
       }
     };
-  }, [fetchSchoolTerms]);
+  }, [fetchSchoolTerms, fetchFilterOptions]);
 
   // Auto-load analytics when component mounts or when school terms are loaded
   useEffect(() => {
@@ -167,9 +295,9 @@ const Analytics = () => {
   // Track if this is the initial term selection (from active term)
   const isInitialTermLoadRef = useRef(true);
 
-  // Auto-refetch when term filter changes (only after initial load)
+  // Auto-refetch when filters change (only after initial load)
   useEffect(() => {
-    if (hasFetched && !isInitialTermLoadRef.current && selectedTermId !== '') {
+    if (hasFetched && !isInitialTermLoadRef.current) {
       handleFetch();
     }
     // Mark initial load as complete once we have a term selected
@@ -177,13 +305,50 @@ const Analytics = () => {
       isInitialTermLoadRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTermId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+
+  // Load student photo when modal opens
+  const loadStudentPhoto = useCallback(async (studentId) => {
+    if (!studentId) return;
+    
+    setLoadingPhoto(true);
+    setStudentPhoto(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/photo`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setStudentPhoto(data.photo);
+      } else {
+        setStudentPhoto(null);
+      }
+    } catch (error) {
+      console.error('❌ [DEAN ANALYTICS] Error loading student photo:', error);
+      setStudentPhoto(null);
+    } finally {
+      setLoadingPhoto(false);
+    }
+  }, []);
 
   const handleFetch = useCallback(() => {
     console.log('🔍 [DEAN ANALYTICS] Starting fetch...');
     
+    // Build cache key with all filters for better cache management
+    const filterKey = [
+      selectedTermId || 'all',
+      selectedSectionId || 'all',
+      selectedProgramId || 'all',
+      selectedDepartmentId || 'all'
+    ].join('_');
+    
     // Check sessionStorage first for instant display
-    const sessionCacheKey = `dean_analytics_${selectedTermId || 'all'}_session`;
+    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
     const sessionCached = safeGetItem(sessionCacheKey);
     
     if (sessionCached && sessionCached.success) {
@@ -194,21 +359,8 @@ const Analytics = () => {
       setLoading(false);
       setProgress(100);
       setError(null);
-      
-      // Log cluster distribution
-      const clusterCounts = (sessionCached.data || []).reduce((acc, row) => {
-        let cluster = row.cluster_label;
-        if (!cluster || 
-            cluster === null || 
-            cluster === undefined ||
-            (typeof cluster === 'number' && isNaN(cluster)) ||
-            (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-          cluster = 'Not Clustered';
-        }
-        acc[cluster] = (acc[cluster] || 0) + 1;
-        return acc;
-      }, {});
-      console.log('📈 [DEAN ANALYTICS] Cluster distribution (from session cache):', clusterCounts);
+      // Load charts after a short delay for better UX
+      setTimeout(() => setChartsLoaded(true), 100);
       // Continue to fetch fresh data in background
     } else {
       setLoading(true);
@@ -216,7 +368,7 @@ const Analytics = () => {
     }
     
     // Check enhanced cache
-    const cacheKey = `dean_analytics_${selectedTermId || 'all'}`;
+    const cacheKey = `dean_analytics_${filterKey}`;
     const cachedData = getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
     if (cachedData && cachedData.success && !sessionCached) {
       console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
@@ -226,9 +378,10 @@ const Analytics = () => {
       setLoading(false);
       setProgress(100);
       setError(null);
-      
       // Cache in sessionStorage for next time
       safeSetItem(sessionCacheKey, cachedData);
+      // Load charts after a short delay
+      setTimeout(() => setChartsLoaded(true), 100);
       // Continue to fetch fresh data in background
     }
     
@@ -262,9 +415,59 @@ const Analytics = () => {
     }
     setError(null);
 
-    const url = selectedTermId 
-      ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${selectedTermId}`
-      : `${API_BASE_URL}/assessments/dean-analytics/sample`;
+    // Build cache key with all filters for better cache management
+    const filterKey = [
+      selectedTermId || 'all',
+      selectedSectionId || 'all',
+      selectedProgramId || 'all',
+      selectedDepartmentId || 'all'
+    ].join('_');
+    
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
+    const sessionCached = safeGetItem(sessionCacheKey);
+    
+    if (sessionCached && sessionCached.success) {
+      console.log('📦 [DEAN ANALYTICS] Using session cached analytics data');
+      setData(sessionCached.data || []);
+      setClusterMeta(sessionCached.clustering || { enabled: false });
+      setHasFetched(true);
+      setLoading(false);
+      setProgress(100);
+      setError(null);
+      // Load charts after a short delay for better UX
+      setTimeout(() => setChartsLoaded(true), 100);
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true);
+      setProgress(0);
+      
+      // Check enhanced cache
+      const cacheKey = `dean_analytics_${filterKey}`;
+      const cachedData = getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
+      if (cachedData && cachedData.success) {
+        console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
+        setData(cachedData.data || []);
+        setClusterMeta(cachedData.clustering || { enabled: false });
+        setHasFetched(true);
+        setLoading(false);
+        setProgress(100);
+        setError(null);
+        // Cache in sessionStorage for next time
+        safeSetItem(sessionCacheKey, cachedData);
+        // Load charts after a short delay
+        setTimeout(() => setChartsLoaded(true), 100);
+        // Continue to fetch fresh data in background
+      }
+    }
+
+    // Build URL with filters
+    const params = new URLSearchParams();
+    if (selectedTermId) params.append('term_id', selectedTermId);
+    if (selectedSectionId) params.append('section_id', selectedSectionId);
+    if (selectedProgramId) params.append('program_id', selectedProgramId);
+    if (selectedDepartmentId) params.append('department_id', selectedDepartmentId);
+    const url = `${API_BASE_URL}/assessments/dean-analytics/sample${params.toString() ? '?' + params.toString() : ''}`;
     
     fetch(url, {
       headers: {
@@ -342,13 +545,24 @@ const Analytics = () => {
           setData(json.data || []);
           setClusterMeta(json.clustering || { enabled: false });
           
+          // Build cache key with all filters
+          const filterKey = [
+            selectedTermId || 'all',
+            selectedSectionId || 'all',
+            selectedProgramId || 'all',
+            selectedDepartmentId || 'all'
+          ].join('_');
+          
           // Store in sessionStorage for instant next load
-          const sessionCacheKey = `dean_analytics_${selectedTermId || 'all'}_session`;
+          const sessionCacheKey = `dean_analytics_${filterKey}_session`;
           safeSetItem(sessionCacheKey, json);
           
           // Store full data in enhanced cache
-          const cacheKey = `dean_analytics_${selectedTermId || 'all'}`;
+          const cacheKey = `dean_analytics_${filterKey}`;
           setCachedData('analytics', cacheKey, json);
+          
+          // Load charts after data is loaded
+          setTimeout(() => setChartsLoaded(true), 200);
           
           // Log cluster distribution with detailed logging
           const clusterCounts = json.data?.reduce((acc, row) => {
@@ -379,6 +593,7 @@ const Analytics = () => {
         setProgress(100);
         setTimeout(() => setLoading(false), 500);
         setHasFetched(true);
+        setChartsLoaded(false); // Reset charts loaded state
         try {
           trackEvent('dean_analytics_loaded', {
             success: Boolean(json.success),
@@ -412,11 +627,12 @@ const Analytics = () => {
         setProgress(0);
         setLoading(false);
         setHasFetched(true);
+        setChartsLoaded(false);
         try {
           trackEvent('dean_analytics_error', { message: String(err?.message || err) });
         } catch {}
       });
-  }, [selectedTermId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
 
   const getClusterStyle = (label) => {
     // Handle null, undefined, NaN, empty string, or 'nan' string
@@ -495,12 +711,26 @@ const Analytics = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(row =>
-        (row.full_name || '').toLowerCase().includes(query)
+        (row.full_name || '').toLowerCase().includes(query) ||
+        (row.student_number || '').toLowerCase().includes(query)
       );
     }
 
     return filtered;
   }, [data, selectedCluster, searchQuery]);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -611,11 +841,21 @@ const Analytics = () => {
       students: value
     }));
 
+    // Scatter plot data: Attendance vs Score, colored by cluster
+    const scatterData = filteredData.map(row => ({
+      attendance: parseFloat(row.attendance_percentage) || 0,
+      score: parseFloat(row.average_score) || 0,
+      submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+      cluster: row.cluster_label || 'Not Clustered',
+      name: row.full_name
+    }));
+
     return {
       clusterData,
       attendanceData,
       scoreData,
-      submissionData
+      submissionData,
+      scatterData
     };
   }, [filteredData]);
 
@@ -664,9 +904,30 @@ const Analytics = () => {
         )}
 
         {/* Skeleton Loading */}
-        {loading && (
-          <div className="mb-6">
-            <TableSkeleton rows={8} columns={5} />
+        {loading && !hasFetched && (
+          <div className="flex gap-6">
+            {/* Main Content Area - Left Side */}
+            <div className="flex-1 space-y-6">
+              {/* Filters Skeleton */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+              
+              {/* Table Skeleton */}
+              <AnalyticsTableSkeleton />
+            </div>
+
+            {/* Right Sidebar - Statistics and Charts Skeleton */}
+            <div className="w-80 space-y-4">
+              <StatisticsCardsSkeleton />
+              <ChartsSkeleton />
+            </div>
           </div>
         )}
 
@@ -711,6 +972,67 @@ const Analytics = () => {
                     </div>
                   </div>
 
+                  {/* Department Filter */}
+                  <div className="md:w-64">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedDepartmentId}
+                        onChange={(e) => setSelectedDepartmentId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                      >
+                        <option value="">All Departments</option>
+                        {departments.map(dept => (
+                          <option key={dept.department_id} value={dept.department_id.toString()}>
+                            {dept.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Program Filter */}
+                  <div className="md:w-64">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedProgramId}
+                        onChange={(e) => setSelectedProgramId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                      >
+                        <option value="">All Programs</option>
+                        {programs
+                          .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
+                          .map(program => (
+                            <option key={program.program_id} value={program.program_id.toString()}>
+                              {program.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Section Filter */}
+                  <div className="md:w-64">
+                    <div className="relative">
+                      <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <select
+                        value={selectedSectionId}
+                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                      >
+                        <option value="">All Sections</option>
+                        {sections
+                          .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
+                          .map(section => (
+                            <option key={section.section_id} value={section.section_id.toString()}>
+                              {section.section_code}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Cluster Filter */}
                   {uniqueClusters.length > 0 && (
                     <div className="md:w-64">
@@ -734,14 +1056,29 @@ const Analytics = () => {
                 </div>
 
                 {/* Filter Results Count */}
-                {(filteredData.length !== data.length || selectedTermId) && (
+                {(filteredData.length !== data.length || selectedTermId || selectedSectionId || selectedProgramId || selectedDepartmentId) && (
                   <p className="mt-3 text-sm text-gray-600">
                     Showing {filteredData.length} of {data.length} students
-                    {selectedTermId && (
-                      <span className="ml-2">
-                        (Filtered by: {schoolTerms.find(t => t.term_id.toString() === selectedTermId)?.school_year} - {schoolTerms.find(t => t.term_id.toString() === selectedTermId)?.semester})
-                      </span>
-                    )}
+                    {(() => {
+                      const filters = [];
+                      if (selectedTermId) {
+                        const term = schoolTerms.find(t => t.term_id.toString() === selectedTermId);
+                        if (term) filters.push(`${term.school_year} - ${term.semester}`);
+                      }
+                      if (selectedDepartmentId) {
+                        const dept = departments.find(d => d.department_id.toString() === selectedDepartmentId);
+                        if (dept) filters.push(`Dept: ${dept.name}`);
+                      }
+                      if (selectedProgramId) {
+                        const prog = programs.find(p => p.program_id.toString() === selectedProgramId);
+                        if (prog) filters.push(`Program: ${prog.name}`);
+                      }
+                      if (selectedSectionId) {
+                        const sec = sections.find(s => s.section_id.toString() === selectedSectionId);
+                        if (sec) filters.push(`Section: ${sec.section_code}`);
+                      }
+                      return filters.length > 0 ? ` (${filters.join(', ')})` : '';
+                    })()}
                   </p>
                 )}
               </div>
@@ -761,15 +1098,18 @@ const Analytics = () => {
                     <table className="min-w-full bg-white text-sm">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance %</th>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Average Score</th>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submission Rate</th>
-                          <th className="px-6 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Section</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Program</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Department</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Score</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submissions</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {filteredData.map((row) => {
+                        {paginatedData.map((row) => {
                           const clusterStyle = getClusterStyle(row.cluster_label);
 
                           return (
@@ -779,26 +1119,51 @@ const Analytics = () => {
                               onClick={() => {
                                 setSelectedStudent(row);
                                 setIsModalOpen(true);
+                                // Load photo only when modal opens
+                                loadStudentPhoto(row.student_id);
                               }}
                             >
-                              <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                {row.attendance_percentage !== null && row.attendance_percentage !== undefined 
-                                  ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
-                                  : 'N/A'}
+                              <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                                {row.section_code || 'N/A'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                                {row.program_abbreviation || row.program_name || 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                                {row.department_abbreviation || row.department_name || 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                                <div className="text-xs">
+                                  <div>{row.attendance_percentage !== null && row.attendance_percentage !== undefined 
+                                    ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
+                                    : 'N/A'}</div>
+                                  {row.attendance_present_count !== null && row.attendance_total_sessions !== null && (
+                                    <div className="text-gray-500 text-xs">
+                                      {row.attendance_present_count}/{row.attendance_total_sessions} present
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                                 {row.average_score !== null && row.average_score !== undefined 
                                   ? parseFloat(row.average_score).toFixed(1) 
                                   : 'N/A'}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                {row.submission_rate !== null && row.submission_rate !== undefined 
-                                  ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
-                                  : 'N/A'}
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                                <div className="text-xs">
+                                  <div>{row.submission_rate !== null && row.submission_rate !== undefined 
+                                    ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
+                                    : 'N/A'}</div>
+                                  {row.submission_ontime_count !== null && row.submission_total_assessments !== null && (
+                                    <div className="text-gray-500 text-xs">
+                                      {row.submission_ontime_count} ontime, {row.submission_late_count || 0} late, {row.submission_missing_count || 0} missing
+                                    </div>
+                                  )}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
                                   {clusterStyle.text}
                                 </span>
                               </td>
@@ -808,6 +1173,38 @@ const Analytics = () => {
                       </tbody>
                     </table>
                   )}
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                      <div className="text-sm text-gray-700">
+                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                        <span className="font-medium">
+                          {Math.min(currentPage * itemsPerPage, filteredData.length)}
+                        </span>{' '}
+                        of <span className="font-medium">{filteredData.length}</span> results
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1 text-sm text-gray-700">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -815,7 +1212,9 @@ const Analytics = () => {
             {/* Right Sidebar - Statistics and Charts */}
             <div className="w-80 space-y-4 overflow-y-auto max-h-[calc(100vh-100px)]">
               {/* Statistics Cards */}
-              {stats && (
+              {loading && !stats ? (
+                <StatisticsCardsSkeleton />
+              ) : stats && (
                 <div className="space-y-3">
                   <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-xs text-gray-500 mb-1">Total Students</p>
@@ -836,8 +1235,11 @@ const Analytics = () => {
                 </div>
               )}
 
-              {/* Charts Section */}
-              {chartData && (
+              {/* Charts Section - Lazy Load */}
+              {!chartsLoaded && (
+                <ChartsSkeleton />
+              )}
+              {chartData && chartsLoaded && (
                 <div className="space-y-4">
                   {/* Cluster Distribution Pie Chart */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -904,6 +1306,166 @@ const Analytics = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+
+                  {/* Scatter Plot: Attendance vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Attendance vs Score</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          name="Attendance %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          range={[50, 400]}
+                          name="Submission Rate %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                                  <p className="font-semibold text-gray-900 mb-2">{data.name}</p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Attendance:</span> {data.attendance.toFixed(1)}%
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Score:</span> {data.score.toFixed(1)}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Submission Rate:</span> {data.submissionRate.toFixed(1)}%
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    <span className="font-medium">Cluster:</span> {data.cluster}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#3b82f6"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            // Color by cluster
+                            const clusterColors = {
+                              'Excellent Performance': '#10b981',
+                              'On Track': '#3b82f6',
+                              'Performing Well': '#3b82f6',
+                              'Needs Improvement': '#f59e0b',
+                              'Needs Guidance': '#f59e0b',
+                              'At Risk': '#ef4444',
+                              'Needs Support': '#ef4444',
+                              'Not Clustered': '#6b7280'
+                            };
+                            const color = clusterColors[payload.cluster] || '#6b7280';
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Scatter Plot: Submission Rate vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Submission Rate vs Score</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          name="Submission Rate %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5 }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          range={[50, 400]}
+                          name="Attendance %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                                  <p className="font-semibold text-gray-900 mb-2">{data.name}</p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Submission Rate:</span> {data.submissionRate.toFixed(1)}%
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Score:</span> {data.score.toFixed(1)}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    <span className="font-medium">Attendance:</span> {data.attendance.toFixed(1)}%
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    <span className="font-medium">Cluster:</span> {data.cluster}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#10b981"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            // Color by cluster
+                            const clusterColors = {
+                              'Excellent Performance': '#10b981',
+                              'On Track': '#3b82f6',
+                              'Performing Well': '#3b82f6',
+                              'Needs Improvement': '#f59e0b',
+                              'Needs Guidance': '#f59e0b',
+                              'At Risk': '#ef4444',
+                              'Needs Support': '#ef4444',
+                              'Not Clustered': '#6b7280'
+                            };
+                            const color = clusterColors[payload.cluster] || '#6b7280';
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               )}
             </div>
@@ -913,13 +1475,19 @@ const Analytics = () => {
 
       {/* Student Details Modal */}
       {isModalOpen && selectedStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
+          setIsModalOpen(false);
+          setStudentPhoto(null); // Clear photo when modal closes
+        }}>
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
               <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setStudentPhoto(null); // Clear photo when modal closes
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <XMarkIcon className="h-6 w-6" />
@@ -930,11 +1498,15 @@ const Analytics = () => {
             <div className="p-6">
               {/* Student Header Info */}
               <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
-                {/* Student Image */}
+                {/* Student Image - Lazy Loaded */}
                 <div className="flex-shrink-0">
-                  {selectedStudent.student_photo ? (
+                  {loadingPhoto ? (
+                    <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                      <UserCircleIcon className="w-12 h-12 text-gray-400" />
+                    </div>
+                  ) : studentPhoto ? (
                     <img
-                      src={selectedStudent.student_photo}
+                      src={studentPhoto}
                       alt={selectedStudent.full_name}
                       className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
                       onError={(e) => {
@@ -943,7 +1515,7 @@ const Analytics = () => {
                       }}
                     />
                   ) : null}
-                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${selectedStudent.student_photo ? 'hidden' : ''}`} />
+                  <UserCircleIcon className={`w-24 h-24 text-gray-300 ${studentPhoto ? 'hidden' : ''}`} />
                 </div>
 
                 {/* Student Basic Info */}
@@ -1055,16 +1627,140 @@ const Analytics = () => {
                 </div>
               </div>
 
-              {/* Additional Info Section */}
+              {/* Detailed Attendance Information */}
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Detailed Attendance</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-xs text-green-600 mb-1">Present</p>
+                    <p className="text-lg font-bold text-green-700">
+                      {selectedStudent.attendance_present_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <p className="text-xs text-red-600 mb-1">Absent</p>
+                    <p className="text-lg font-bold text-red-700">
+                      {selectedStudent.attendance_absent_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <p className="text-xs text-yellow-600 mb-1">Late</p>
+                    <p className="text-lg font-bold text-yellow-700">
+                      {selectedStudent.attendance_late_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-600 mb-1">Total Sessions</p>
+                    <p className="text-lg font-bold text-gray-700">
+                      {selectedStudent.attendance_total_sessions ?? '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Submission Behavior */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Detailed Submission Behavior</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-xs text-green-600 mb-1">Ontime</p>
+                    <p className="text-lg font-bold text-green-700">
+                      {selectedStudent.submission_ontime_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <p className="text-xs text-yellow-600 mb-1">Late</p>
+                    <p className="text-lg font-bold text-yellow-700">
+                      {selectedStudent.submission_late_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <p className="text-xs text-red-600 mb-1">Missing</p>
+                    <p className="text-lg font-bold text-red-700">
+                      {selectedStudent.submission_missing_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-600 mb-1">Total Assessments</p>
+                    <p className="text-lg font-bold text-gray-700">
+                      {selectedStudent.submission_total_assessments ?? '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section/Program/Department Info */}
+              {(selectedStudent.section_code || selectedStudent.program_name || selectedStudent.department_name) && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedStudent.section_code && (
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <p className="text-xs text-blue-600 mb-1">Section</p>
+                        <p className="text-sm font-medium text-blue-900">{selectedStudent.section_code}</p>
+                      </div>
+                    )}
+                    {selectedStudent.program_name && (
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <p className="text-xs text-purple-600 mb-1">Program</p>
+                        <p className="text-sm font-medium text-purple-900">{selectedStudent.program_name}</p>
+                      </div>
+                    )}
+                    {selectedStudent.department_name && (
+                      <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                        <p className="text-xs text-indigo-600 mb-1">Department</p>
+                        <p className="text-sm font-medium text-indigo-900">{selectedStudent.department_name}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Clustering Information */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Clustering Information</h4>
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
                     <p className="text-sm font-medium text-gray-900">
                       {getClusterStyle(selectedStudent.cluster_label).text}
                     </p>
                   </div>
+                  {selectedStudent.silhouette_score !== null && selectedStudent.silhouette_score !== undefined && (
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-xs text-blue-600 mb-1">Silhouette Score</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-blue-900">
+                          {parseFloat(selectedStudent.silhouette_score).toFixed(4)}
+                        </p>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          parseFloat(selectedStudent.silhouette_score) > 0.5 
+                            ? 'bg-green-100 text-green-700' 
+                            : parseFloat(selectedStudent.silhouette_score) > 0.3
+                            ? 'bg-blue-100 text-blue-700'
+                            : parseFloat(selectedStudent.silhouette_score) > 0.1
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {parseFloat(selectedStudent.silhouette_score) > 0.5 
+                            ? 'Excellent' 
+                            : parseFloat(selectedStudent.silhouette_score) > 0.3
+                            ? 'Good'
+                            : parseFloat(selectedStudent.silhouette_score) > 0.1
+                            ? 'Fair'
+                            : 'Poor'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {selectedStudent.clustering_explanation && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Cluster Explanation</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {selectedStudent.clustering_explanation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1072,7 +1768,10 @@ const Analytics = () => {
             {/* Modal Footer */}
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setStudentPhoto(null); // Clear photo when modal closes
+                }}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
               >
                 Close

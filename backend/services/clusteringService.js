@@ -209,17 +209,51 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
 const normalizeStudentData = (students) => {
   return students.map((row) => ({
     student_id: row.student_id,
+    // Attendance data
     attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined && !isNaN(row.attendance_percentage)
       ? Number(row.attendance_percentage)
       : null,
+    attendance_present_count: row.attendance_present_count !== null && row.attendance_present_count !== undefined && !isNaN(row.attendance_present_count)
+      ? Number(row.attendance_present_count)
+      : null,
+    attendance_absent_count: row.attendance_absent_count !== null && row.attendance_absent_count !== undefined && !isNaN(row.attendance_absent_count)
+      ? Number(row.attendance_absent_count)
+      : null,
+    attendance_late_count: row.attendance_late_count !== null && row.attendance_late_count !== undefined && !isNaN(row.attendance_late_count)
+      ? Number(row.attendance_late_count)
+      : null,
+    attendance_total_sessions: row.attendance_total_sessions !== null && row.attendance_total_sessions !== undefined && !isNaN(row.attendance_total_sessions)
+      ? Number(row.attendance_total_sessions)
+      : null,
+    // Score data
     average_score: row.average_score !== null && row.average_score !== undefined && !isNaN(row.average_score)
       ? Number(row.average_score)
       : null,
-    average_days_late: row.average_days_late !== null && row.average_days_late !== undefined && !isNaN(row.average_days_late)
-      ? Number(row.average_days_late)
+    ilo_weighted_score: row.ilo_weighted_score !== null && row.ilo_weighted_score !== undefined && !isNaN(row.ilo_weighted_score)
+      ? Number(row.ilo_weighted_score)
       : null,
+    // Submission behavior data
     submission_rate: row.submission_rate !== null && row.submission_rate !== undefined && !isNaN(row.submission_rate)
       ? Number(row.submission_rate)
+      : null,
+    submission_ontime_count: row.submission_ontime_count !== null && row.submission_ontime_count !== undefined && !isNaN(row.submission_ontime_count)
+      ? Number(row.submission_ontime_count)
+      : null,
+    submission_late_count: row.submission_late_count !== null && row.submission_late_count !== undefined && !isNaN(row.submission_late_count)
+      ? Number(row.submission_late_count)
+      : null,
+    submission_missing_count: row.submission_missing_count !== null && row.submission_missing_count !== undefined && !isNaN(row.submission_missing_count)
+      ? Number(row.submission_missing_count)
+      : null,
+    submission_total_assessments: row.submission_total_assessments !== null && row.submission_total_assessments !== undefined && !isNaN(row.submission_total_assessments)
+      ? Number(row.submission_total_assessments)
+      : null,
+    average_submission_status_score: row.average_submission_status_score !== null && row.average_submission_status_score !== undefined && !isNaN(row.average_submission_status_score)
+      ? Number(row.average_submission_status_score)
+      : null,
+    // Legacy support
+    average_days_late: row.average_days_late !== null && row.average_days_late !== undefined && !isNaN(row.average_days_late)
+      ? Number(row.average_days_late)
       : null,
   }));
 };

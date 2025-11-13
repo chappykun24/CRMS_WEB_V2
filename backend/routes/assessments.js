@@ -375,8 +375,8 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id } = req.query;
-  console.log('📋 [Backend] Filter term_id:', term_id);
+  const { term_id, section_id, program_id, department_id } = req.query;
+  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -391,21 +391,52 @@ router.get('/dean-analytics/sample', async (req, res) => {
   }, 25000); // 25 second timeout (before proxy timeout)
   
   try {
-    // Build WHERE clause for term filtering
+    // Build WHERE clause for filtering
     const termIdValue = term_id && !isNaN(parseInt(term_id)) ? parseInt(term_id) : null;
-    if (termIdValue) {
-      console.log('🔍 [Backend] Applying term filter:', termIdValue);
+    const sectionIdValue = section_id && !isNaN(parseInt(section_id)) ? parseInt(section_id) : null;
+    const programIdValue = program_id && !isNaN(parseInt(program_id)) ? parseInt(program_id) : null;
+    const departmentIdValue = department_id && !isNaN(parseInt(department_id)) ? parseInt(department_id) : null;
+    
+    if (termIdValue) console.log('🔍 [Backend] Applying term filter:', termIdValue);
+    if (sectionIdValue) console.log('🔍 [Backend] Applying section filter:', sectionIdValue);
+    if (programIdValue) console.log('🔍 [Backend] Applying program filter:', programIdValue);
+    if (departmentIdValue) console.log('🔍 [Backend] Applying department filter:', departmentIdValue);
+    
+    // Build additional WHERE conditions for filtering
+    let additionalWhereConditions = [];
+    if (sectionIdValue) {
+      additionalWhereConditions.push(`sec.section_id = ${sectionIdValue}`);
     }
+    if (programIdValue) {
+      additionalWhereConditions.push(`p.program_id = ${programIdValue}`);
+    }
+    if (departmentIdValue) {
+      additionalWhereConditions.push(`d.department_id = ${departmentIdValue}`);
+    }
+    const additionalWhereClause = additionalWhereConditions.length > 0 
+      ? `AND ${additionalWhereConditions.join(' AND ')}` 
+      : '';
     
     // Fetch student analytics: attendance, average score, and submission rate
-    // Only show students enrolled in the selected term (or all enrolled students if no term selected)
+    // Enhanced with detailed attendance counts and submission behavior
+    // Includes section/program/department information for filtering
     const query = `
       SELECT DISTINCT
         s.student_id,
         s.full_name,
         s.student_number,
-        s.student_photo,
+        -- Exclude student_photo to reduce data transfer (load on-demand via /api/students/:id/photo)
+        NULL as student_photo,
         s.contact_email,
+        -- Section/Program/Department info (for filtering and display)
+        sec.section_id,
+        sec.section_code,
+        p.program_id,
+        p.name AS program_name,
+        p.program_abbreviation,
+        d.department_id,
+        d.name AS department_name,
+        d.department_abbreviation,
         -- Attendance percentage: count of present / total attendance sessions
         COALESCE(
           (
@@ -423,6 +454,43 @@ router.get('/dean-analytics/sample', async (req, res) => {
           ),
           0
         )::NUMERIC AS attendance_percentage,
+        -- Detailed attendance counts: present, absent, late, total sessions
+        (
+          SELECT COUNT(CASE WHEN al.status = 'present' THEN 1 END)::INTEGER
+          FROM course_enrollments ce_att
+          LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
+          LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
+          WHERE ce_att.student_id = s.student_id
+            AND ce_att.status = 'enrolled'
+            ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS attendance_present_count,
+        (
+          SELECT COUNT(CASE WHEN al.status = 'absent' THEN 1 END)::INTEGER
+          FROM course_enrollments ce_att
+          LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
+          LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
+          WHERE ce_att.student_id = s.student_id
+            AND ce_att.status = 'enrolled'
+            ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS attendance_absent_count,
+        (
+          SELECT COUNT(CASE WHEN al.status = 'late' THEN 1 END)::INTEGER
+          FROM course_enrollments ce_att
+          LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
+          LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
+          WHERE ce_att.student_id = s.student_id
+            AND ce_att.status = 'enrolled'
+            ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS attendance_late_count,
+        (
+          SELECT COUNT(al.attendance_id)::INTEGER
+          FROM course_enrollments ce_att
+          LEFT JOIN section_courses sc_att ON ce_att.section_course_id = sc_att.section_course_id
+          LEFT JOIN attendance_logs al ON ce_att.enrollment_id = al.enrollment_id
+          WHERE ce_att.student_id = s.student_id
+            AND ce_att.status = 'enrolled'
+            ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS attendance_total_sessions,
         -- Average score: average of all submission scores for this student
         COALESCE(
           (
@@ -437,8 +505,11 @@ router.get('/dean-analytics/sample', async (req, res) => {
           ),
           0
         )::NUMERIC AS average_score,
+        -- ILO-weighted score: average score weighted by ILO coverage (if available)
+        -- For now, use average_score as base. ILO weighting can be enhanced later.
+        -- This field is provided for future enhancement with ILO-based weighting
+        NULL::NUMERIC AS ilo_weighted_score,
         -- Average submission status score: converts ontime=0, late=1, missing=2 to numerical average
-        -- This replaces average_days_late for clustering purposes
         COALESCE(
           (
             SELECT ROUND(AVG(
@@ -482,13 +553,69 @@ router.get('/dean-analytics/sample', async (req, res) => {
               ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
           ),
           0
-        )::NUMERIC AS submission_rate
+        )::NUMERIC AS submission_rate,
+        -- Detailed submission behavior counts: ontime, late, missing, total assessments
+        (
+          SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'ontime' THEN sub.submission_id END)::INTEGER
+          FROM course_enrollments ce_sub
+          LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
+          LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
+          LEFT JOIN submissions sub ON (
+            ce_sub.enrollment_id = sub.enrollment_id 
+            AND sub.assessment_id = ass.assessment_id
+          )
+          WHERE ce_sub.student_id = s.student_id
+            AND ce_sub.status = 'enrolled'
+            ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS submission_ontime_count,
+        (
+          SELECT COUNT(DISTINCT CASE WHEN sub.submission_status = 'late' THEN sub.submission_id END)::INTEGER
+          FROM course_enrollments ce_sub
+          LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
+          LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
+          LEFT JOIN submissions sub ON (
+            ce_sub.enrollment_id = sub.enrollment_id 
+            AND sub.assessment_id = ass.assessment_id
+          )
+          WHERE ce_sub.student_id = s.student_id
+            AND ce_sub.status = 'enrolled'
+            ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS submission_late_count,
+        (
+          SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER - 
+                 COUNT(DISTINCT CASE WHEN sub.submission_id IS NOT NULL THEN ass.assessment_id END)::INTEGER
+          FROM course_enrollments ce_sub
+          LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
+          LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
+          LEFT JOIN submissions sub ON (
+            ce_sub.enrollment_id = sub.enrollment_id 
+            AND sub.assessment_id = ass.assessment_id
+          )
+          WHERE ce_sub.student_id = s.student_id
+            AND ce_sub.status = 'enrolled'
+            ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS submission_missing_count,
+        (
+          SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
+          FROM course_enrollments ce_sub
+          LEFT JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
+          LEFT JOIN assessments ass ON sc_sub.section_course_id = ass.section_course_id
+          WHERE ce_sub.student_id = s.student_id
+            AND ce_sub.status = 'enrolled'
+            ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+        )::INTEGER AS submission_total_assessments
       FROM students s
       INNER JOIN course_enrollments ce ON s.student_id = ce.student_id
       INNER JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      INNER JOIN sections sec ON sc.section_id = sec.section_id
+      INNER JOIN programs p ON sec.program_id = p.program_id
+      INNER JOIN departments d ON p.department_id = d.department_id
       WHERE ce.status = 'enrolled'
         ${termIdValue ? `AND sc.term_id = ${termIdValue}` : ''}
-      GROUP BY s.student_id, s.full_name, s.student_number, s.student_photo, s.contact_email
+        ${additionalWhereClause}
+      GROUP BY s.student_id, s.full_name, s.student_number, s.student_photo, s.contact_email,
+               sec.section_id, sec.section_code, p.program_id, p.name, p.program_abbreviation,
+               d.department_id, d.name, d.department_abbreviation
       ORDER BY s.full_name
       LIMIT 200;
     `;
