@@ -106,7 +106,6 @@ import {
   Legend,
   ResponsiveContainer,
   ZAxis,
-  Brush,
 } from 'recharts';
 
 const Analytics = () => {
@@ -1506,7 +1505,6 @@ const Analytics = () => {
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
-                        <Brush dataKey="attendance" height={20} tick={{ fontSize: 8 }} />
                       </ScatterChart>
                     </ResponsiveContainer>
                     {/* Custom Legend for Cluster Colors */}
@@ -1580,7 +1578,6 @@ const Analytics = () => {
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
-                        <Brush dataKey="submissionRate" height={20} tick={{ fontSize: 8 }} />
                       </ScatterChart>
                     </ResponsiveContainer>
                     {/* Custom Legend for Cluster Colors */}
@@ -1639,7 +1636,6 @@ const Analytics = () => {
                         <YAxis tick={{ fontSize: 7 }} />
                         <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill={COLORS.bar} name="Students" />
-                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1654,7 +1650,6 @@ const Analytics = () => {
                         <YAxis tick={{ fontSize: 7 }} />
                         <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
-                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1669,7 +1664,6 @@ const Analytics = () => {
                         <YAxis tick={{ fontSize: 7 }} />
                         <Tooltip contentStyle={{ fontSize: '10px', padding: '6px' }} />
                         <Bar dataKey="students" fill="#8b5cf6" name="Students" />
-                        <Brush dataKey="name" height={20} tick={{ fontSize: 7 }} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
