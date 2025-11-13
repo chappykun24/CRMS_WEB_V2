@@ -192,6 +192,17 @@ reference/
 # Uploads folder (user-generated content)
 uploads/
 
+# Python cluster API cache and temp files
+python-cluster-api/__pycache__/
+python-cluster-api/*.pyc
+python-cluster-api/.pytest_cache/
+
+# Unused or temporary documentation files
+# Keep main README files, exclude detailed guides that may be outdated
+# !README.md (keep main README)
+# !backend/README.md (keep backend README)
+# !python-cluster-api/README.md (keep Python API README)
+
 # Development scripts (keep documentation)
 dev-start.bat
 dev-start.sh
@@ -200,6 +211,13 @@ dev-start.sh
 *.db
 *.sqlite
 *.sqlite3
+
+# Database backup files (exclude large backups)
+db/*_backup.sql
+db/*_enhanced_backup.sql
+db/*_final_database.sql
+*.backup.sql
+*.bak.sql
 
 # ==========================================
 # KEEP IMPORTANT FILES
@@ -246,7 +264,20 @@ secrets/
 .secrets/
 
 # ==========================================
+# SCRIPTS & UTILITY FILES
+# ==========================================
+# Debug and development utility scripts (not needed in production)
+backend/scripts/debug_clustering.js
+backend/scripts/show_clusters.js
+backend/scripts/auto-map-ilos.js
+python-cluster-api/console_cluster.py
+
+# Keep migration scripts (needed for deployment)
+# !backend/scripts/run_migration.js
+# !backend/scripts/run_migration.bat
+# !backend/scripts/run_migration.ps1
+
+# ==========================================
 # END OF GITIGNORE
 # ==========================================
 .vercel
-backend/scripts/auto-map-ilos.js

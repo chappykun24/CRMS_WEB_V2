@@ -665,7 +665,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
       error: clusteringResult.error,
       clustersSize: clusteringResult.clusters.size,
       studentsCount: students.length,
-      enabled: clusteringConfig.enabled
+      enabled: clusteringConfig.enabled,
+      silhouetteScore: clusteringResult.silhouetteScore
     });
 
     if (clusteringResult.cacheUsed) {
@@ -784,7 +785,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
             cached: clusteringResult.cacheUsed,  // Indicates if cached clusters were used
             backendPlatform: platform,  // Where the backend is hosted
             apiPlatform: clusterPlatform,  // Where the clustering API is hosted
-            serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured'
+            serviceUrl: clusterServiceUrl ? (clusterServiceUrl.substring(0, 50) + '...') : 'not configured',
+            silhouetteScore: clusteringResult.silhouetteScore ?? null  // Clustering accuracy metric (-1 to 1)
           },
         };
         

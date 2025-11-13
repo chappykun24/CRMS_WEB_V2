@@ -585,17 +585,17 @@ const Analytics = () => {
           // Load charts after data is loaded
           setTimeout(() => setChartsLoaded(true), 200);
           
-          // Log cluster distribution with detailed logging
+          // Log cluster distribution with detailed logging (only count valid clusters)
           const clusterCounts = studentsData.reduce((acc, row) => {
             let cluster = row.cluster_label;
-            if (!cluster || 
-                cluster === null || 
-                cluster === undefined ||
-                (typeof cluster === 'number' && isNaN(cluster)) ||
-                (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-              cluster = 'Not Clustered';
+            // Only count valid cluster labels (skip null/undefined/invalid)
+            if (cluster && 
+                cluster !== null && 
+                cluster !== undefined &&
+                !(typeof cluster === 'number' && isNaN(cluster)) &&
+                !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+              acc[cluster] = (acc[cluster] || 0) + 1;
             }
-            acc[cluster] = (acc[cluster] || 0) + 1;
             return acc;
           }, {});
           console.log('📈 [DEAN ANALYTICS] Cluster distribution:', clusterCounts);
@@ -666,13 +666,13 @@ const Analytics = () => {
   }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
 
   const getClusterStyle = (label) => {
-    // Handle null, undefined, NaN, empty string, or 'nan' string
+    // Return null if no valid cluster label (don't show "Not Clustered" fallback)
     if (!label || 
         label === null || 
         label === undefined ||
         (typeof label === 'number' && isNaN(label)) ||
         (typeof label === 'string' && (label.toLowerCase() === 'nan' || label.trim() === ''))) {
-      return { text: 'Not Clustered', className: 'bg-gray-100 text-gray-600' };
+      return null; // Return null instead of fallback text
     }
 
     const normalized = String(label).toLowerCase();
@@ -701,20 +701,19 @@ const Analytics = () => {
     return { text: label, className: 'bg-gray-100 text-gray-600' };
   };
 
-  // Get unique clusters from data
+  // Get unique clusters from data (only valid clusters, no fallback)
   const uniqueClusters = useMemo(() => {
     const clusters = new Set();
     data.forEach(row => {
-      let cluster = row.cluster_label;
-      // Handle null, undefined, NaN, or 'nan' string
-      if (!cluster || 
-          cluster === null || 
-          cluster === undefined ||
-          (typeof cluster === 'number' && isNaN(cluster)) ||
-          (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-        cluster = 'Not Clustered';
+      const cluster = row.cluster_label;
+      // Only add valid cluster labels (skip null/undefined/invalid)
+      if (cluster && 
+          cluster !== null && 
+          cluster !== undefined &&
+          !(typeof cluster === 'number' && isNaN(cluster)) &&
+          !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+        clusters.add(cluster);
       }
-      clusters.add(cluster);
     });
     return Array.from(clusters).sort();
   }, [data]);
@@ -726,13 +725,14 @@ const Analytics = () => {
     // Filter by cluster
     if (selectedCluster !== 'all') {
       filtered = filtered.filter(row => {
-        let cluster = row.cluster_label;
+        const cluster = row.cluster_label;
+        // Only match valid cluster labels
         if (!cluster || 
             cluster === null || 
             cluster === undefined ||
             (typeof cluster === 'number' && isNaN(cluster)) ||
             (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-          cluster = 'Not Clustered';
+          return false; // Exclude students without valid clusters
         }
         return cluster === selectedCluster;
       });
@@ -787,18 +787,18 @@ const Analytics = () => {
   const chartData = useMemo(() => {
     if (filteredData.length === 0) return null;
 
-    // Cluster distribution for pie chart
+    // Cluster distribution for pie chart (only valid clusters)
     const clusterDistribution = {};
     filteredData.forEach(row => {
-      let cluster = row.cluster_label;
-      if (!cluster || 
-          cluster === null || 
-          cluster === undefined ||
-          (typeof cluster === 'number' && isNaN(cluster)) ||
-          (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-        cluster = 'Not Clustered';
+      const cluster = row.cluster_label;
+      // Only count valid cluster labels
+      if (cluster && 
+          cluster !== null && 
+          cluster !== undefined &&
+          !(typeof cluster === 'number' && isNaN(cluster)) &&
+          !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+        clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
       }
-      clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
     });
 
     const clusterData = Object.entries(clusterDistribution).map(([name, value]) => ({
@@ -872,14 +872,20 @@ const Analytics = () => {
       students: value
     }));
 
-    // Scatter plot data: Attendance vs Score, colored by cluster
-    const scatterData = filteredData.map(row => ({
-      attendance: parseFloat(row.attendance_percentage) || 0,
-      score: parseFloat(row.average_score) || 0,
-      submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
-      cluster: row.cluster_label || 'Not Clustered',
-      name: row.full_name
-    }));
+    // Scatter plot data: Attendance vs Score, colored by cluster (only include rows with valid clusters)
+    const scatterData = filteredData
+      .filter(row => row.cluster_label && 
+        row.cluster_label !== null && 
+        row.cluster_label !== undefined &&
+        !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
+        !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
+      .map(row => ({
+        attendance: parseFloat(row.attendance_percentage) || 0,
+        score: parseFloat(row.average_score) || 0,
+        submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+        cluster: row.cluster_label,
+        name: row.full_name
+      }));
 
     return {
       clusterData,
@@ -912,18 +918,54 @@ const Analytics = () => {
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
         {/* Header with Refresh Button - Always Visible */}
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
-          <button
-            onClick={() => handleFetch(true)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
-            title="Refresh data and recompute clusters from latest dataset"
-          >
-            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh & Recompute Clusters
-          </button>
-        </div>
+          <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
+              {clusterMeta?.silhouetteScore !== null && clusterMeta?.silhouetteScore !== undefined && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm"
+                  style={{
+                    backgroundColor: clusterMeta.silhouetteScore > 0.5 
+                      ? '#f0fdf4' 
+                      : clusterMeta.silhouetteScore > 0.3 
+                        ? '#f0fdf4' 
+                        : clusterMeta.silhouetteScore > 0.1 
+                          ? '#fefce8' 
+                          : '#fef2f2',
+                    borderColor: clusterMeta.silhouetteScore > 0.5 
+                      ? '#86efac' 
+                      : clusterMeta.silhouetteScore > 0.3 
+                        ? '#86efac' 
+                        : clusterMeta.silhouetteScore > 0.1 
+                          ? '#fde047' 
+                          : '#fca5a5',
+                    color: clusterMeta.silhouetteScore > 0.5 
+                      ? '#166534' 
+                      : clusterMeta.silhouetteScore > 0.3 
+                        ? '#166534' 
+                        : clusterMeta.silhouetteScore > 0.1 
+                          ? '#854d0e' 
+                          : '#991b1b'
+                  }}
+                  title={`Clustering Accuracy: ${clusterMeta.silhouetteScore > 0.5 ? 'Excellent' : clusterMeta.silhouetteScore > 0.3 ? 'Good' : clusterMeta.silhouetteScore > 0.1 ? 'Fair' : 'Poor'} (${clusterMeta.silhouetteScore.toFixed(4)}). Range: -1 to 1, higher is better.`}
+                >
+                  <span className="font-semibold">Accuracy:</span>
+                  <span className="font-bold">{clusterMeta.silhouetteScore.toFixed(3)}</span>
+                  <span className="text-xs opacity-75">
+                    ({clusterMeta.silhouetteScore > 0.5 ? 'Excellent' : clusterMeta.silhouetteScore > 0.3 ? 'Good' : clusterMeta.silhouetteScore > 0.1 ? 'Fair' : 'Poor'})
+                  </span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => handleFetch(true)}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+              title="Refresh data and recompute clusters from latest dataset"
+            >
+              <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh & Recompute Clusters
+            </button>
+          </div>
 
         {/* Progress Bar */}
         {loading && (
@@ -1091,7 +1133,7 @@ const Analytics = () => {
                           <option value="all">All Clusters ({data.length})</option>
                           {uniqueClusters.map(cluster => (
                             <option key={cluster} value={cluster}>
-                              {cluster} ({data.filter(d => (d.cluster_label || 'Not Clustered') === cluster).length})
+                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
                             </option>
                           ))}
                         </select>
@@ -1208,9 +1250,13 @@ const Analytics = () => {
                                 </div>
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
-                                  {clusterStyle.text}
-                                </span>
+                                {clusterStyle ? (
+                                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                    {clusterStyle.text}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">—</span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -1421,10 +1467,9 @@ const Analytics = () => {
                               'Needs Improvement': '#f59e0b',
                               'Needs Guidance': '#f59e0b',
                               'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444',
-                              'Not Clustered': '#6b7280'
+                              'Needs Support': '#ef4444'
                             };
-                            const color = clusterColors[payload.cluster] || '#6b7280';
+                            const color = clusterColors[payload.cluster] || '#9ca3af';
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
@@ -1501,10 +1546,9 @@ const Analytics = () => {
                               'Needs Improvement': '#f59e0b',
                               'Needs Guidance': '#f59e0b',
                               'At Risk': '#ef4444',
-                              'Needs Support': '#ef4444',
-                              'Not Clustered': '#6b7280'
+                              'Needs Support': '#ef4444'
                             };
-                            const color = clusterColors[payload.cluster] || '#6b7280';
+                            const color = clusterColors[payload.cluster] || '#9ca3af';
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />

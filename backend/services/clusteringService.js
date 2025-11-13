@@ -84,7 +84,7 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
       // Prioritize term-specific clusters by ordering term_id DESC (non-null first)
       query = `
         SELECT DISTINCT ON (student_id)
-          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
+          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
         FROM analytics_clusters
         WHERE (term_id = $1 OR term_id IS NULL) 
           AND generated_at > $2 
@@ -96,7 +96,7 @@ const getCachedClusters = async (termId, maxAgeHours = 24) => {
       // For all terms, get the most recent clusters per student from any term
       query = `
         SELECT DISTINCT ON (student_id) 
-          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at
+          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
         FROM analytics_clusters
         WHERE generated_at > $1 AND student_id IS NOT NULL
         ORDER BY student_id, generated_at DESC
@@ -193,12 +193,17 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
         `, [studentId]);
       }
       
+      // Get silhouette score from cluster result
+      const silhouetteScore = cluster.silhouette_score !== null && cluster.silhouette_score !== undefined
+        ? (typeof cluster.silhouette_score === 'string' ? parseFloat(cluster.silhouette_score) : cluster.silhouette_score)
+        : null;
+      
       // Use INSERT ... ON CONFLICT to update if exists (only works when term_id IS NOT NULL)
       if (termId !== null && termId !== undefined) {
         await db.query(`
           INSERT INTO analytics_clusters 
-            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
           ON CONFLICT (student_id, term_id) 
           WHERE student_id IS NOT NULL AND term_id IS NOT NULL
           DO UPDATE SET 
@@ -207,6 +212,7 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
             based_on = EXCLUDED.based_on,
             algorithm_used = EXCLUDED.algorithm_used,
             model_version = EXCLUDED.model_version,
+            silhouette_score = EXCLUDED.silhouette_score,
             generated_at = NOW()
         `, [
           studentId,
@@ -215,21 +221,23 @@ const saveClustersToCache = async (clusters, termId, algorithm = 'kmeans', versi
           clusterNumber,
           JSON.stringify(basedOn),
           algorithm,
-          version
+          version,
+          silhouetteScore
         ]);
       } else {
         // For NULL term_id, just insert (we already deleted old ones)
         await db.query(`
           INSERT INTO analytics_clusters 
-            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at)
-          VALUES ($1, NULL, $2, $3, $4, $5, $6, NOW())
+            (student_id, term_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, silhouette_score, generated_at)
+          VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, NOW())
         `, [
           studentId,
           clusterLabel,
           clusterNumber,
           JSON.stringify(basedOn),
           algorithm,
-          version
+          version,
+          silhouetteScore
         ]);
       }
       
@@ -451,6 +459,7 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     cacheUsed: false,
     apiCalled: false,
     error: null,
+    silhouetteScore: null, // Overall silhouette score for this clustering run
     config: {
       enabled: config.enabled,
       url: config.url,
@@ -496,8 +505,14 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           result.clusters.set(studentId, {
             cluster: cached.cluster_number,
             cluster_label: clusterLabel,
+            silhouette_score: cached.silhouette_score ?? null,
             based_on: cached.based_on
           });
+          
+          // Store overall silhouette score from cache if available
+          if (cached.silhouette_score !== null && cached.silhouette_score !== undefined && result.silhouetteScore === undefined) {
+            result.silhouetteScore = typeof cached.silhouette_score === 'string' ? parseFloat(cached.silhouette_score) : cached.silhouette_score;
+          }
         });
         
         return result;
@@ -584,6 +599,7 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       result.clusters.set(studentId, {
         cluster: item.cluster ?? null,
         cluster_label: clusterLabel,
+        silhouette_score: item.silhouette_score ?? null,
         based_on: {
           attendance: item.attendance_percentage || null,
           score: item.average_score || null,
@@ -591,6 +607,11 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           average_days_late: item.average_days_late || null
         }
       });
+      
+      // Store overall silhouette score in result (same for all students in a batch)
+      if (item.silhouette_score !== null && item.silhouette_score !== undefined && result.silhouetteScore === undefined) {
+        result.silhouetteScore = typeof item.silhouette_score === 'string' ? parseFloat(item.silhouette_score) : item.silhouette_score;
+      }
     });
     
     console.log('🔍 [Clustering] Cluster map built:', {
@@ -712,8 +733,15 @@ const applyClustersToStudents = (students, clusterMap) => {
  */
 const getClusterDistribution = (students) => {
   return students.reduce((acc, row) => {
-    const cluster = row.cluster_label || 'Not Clustered';
-    acc[cluster] = (acc[cluster] || 0) + 1;
+    const cluster = row.cluster_label;
+    // Only count valid cluster labels (skip null/undefined/invalid)
+    if (cluster && 
+        cluster !== null && 
+        cluster !== undefined &&
+        !(typeof cluster === 'number' && isNaN(cluster)) &&
+        !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+      acc[cluster] = (acc[cluster] || 0) + 1;
+    }
     return acc;
   }, {});
 };

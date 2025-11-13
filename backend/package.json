@@ -10,7 +10,9 @@
     "build": "echo 'No build step required'",
     "test": "echo 'No tests specified'",
     "migrate": "node scripts/run_migration.js",
-    "migrate:dry-run": "node scripts/run_migration.js --dry-run"
+    "migrate:dry-run": "node scripts/run_migration.js --dry-run",
+    "show-clusters": "node scripts/show_clusters.js",
+    "debug-clustering": "node scripts/debug_clustering.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
