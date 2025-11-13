@@ -682,8 +682,8 @@ const Syllabus = () => {
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="px-8 py-6 h-full overflow-y-auto">
+        <div className="flex-1 overflow-hidden min-h-0">
+          <div className="px-8 py-6 h-full overflow-hidden flex flex-col">
             {activeTab === 'syllabi' ? (
               /* Content with Sidebar */
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
@@ -936,9 +936,9 @@ const Syllabus = () => {
             </div>
           ) : (
               /* ILO Mapping Tab */
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0 flex-1">
                 {/* Main Content */}
-                <div className="lg:col-span-4 flex flex-col min-h-0">
+                <div className="lg:col-span-4 flex flex-col min-h-0 h-full">
                   {!selectedClass ? (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex items-center justify-center flex-1 min-h-0">
                       <div className="text-center">
@@ -963,13 +963,13 @@ const Syllabus = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 flex flex-col flex-1 min-h-0">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-6 flex flex-col flex-1 min-h-0 h-full">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex-shrink-0">Select a Syllabus for ILO Mapping</h3>
-                      <div className="flex-1 overflow-y-auto min-h-0">
+                      <div className="flex-1 overflow-y-auto min-h-0 h-full">
                         {loading ? (
                           <div className="text-center py-8 text-gray-500">Loading syllabi...</div>
                         ) : syllabi.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
                             {syllabi.map((syllabus) => (
                               <div
                                 key={syllabus.syllabus_id}
