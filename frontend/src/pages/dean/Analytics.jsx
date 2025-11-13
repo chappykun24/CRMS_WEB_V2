@@ -364,7 +364,7 @@ const Analytics = () => {
       setHasFetched(true);
       setLoading(false);
       setProgress(100);
-      setError(null);
+      if (typeof setError === 'function') setError(null);
       // Load charts after a short delay for better UX
       setTimeout(() => setChartsLoaded(true), 100);
       // Continue to fetch fresh data in background
@@ -383,7 +383,7 @@ const Analytics = () => {
       setHasFetched(true);
       setLoading(false);
       setProgress(100);
-      setError(null);
+      if (typeof setError === 'function') setError(null);
       // Cache in sessionStorage for next time
       safeSetItem(sessionCacheKey, cachedData);
       // Load charts after a short delay
@@ -419,7 +419,7 @@ const Analytics = () => {
         });
       }, 300);
     }
-    setError(null);
+    if (typeof setError === 'function') setError(null);
 
     // Build URL with filters
     const params = new URLSearchParams();
@@ -564,7 +564,13 @@ const Analytics = () => {
           console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
           console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
         } else {
-          setError('Failed to load analytics');
+          if (typeof setError === 'function') {
+            try {
+              setError('Failed to load analytics');
+            } catch (e) {
+              console.warn('⚠️ [DEAN ANALYTICS] Could not set error state');
+            }
+          }
         }
         
         if (progressIntervalRef.current) {
@@ -600,10 +606,14 @@ const Analytics = () => {
         const errorMessage = err?.message || 'Unable to fetch analytics';
         const sessionCached = safeGetItem(`dean_analytics_${selectedTermId || 'all'}_session`);
         const cachedData = getCachedData('analytics', `dean_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
-        if (!sessionCached && !cachedData) {
-          setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
-            ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
-            : errorMessage);
+        if (!sessionCached && !cachedData && typeof setError === 'function') {
+          try {
+            setError(errorMessage.includes('502') || errorMessage.includes('timeout') 
+              ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
+              : errorMessage);
+          } catch (e) {
+            console.warn('⚠️ [DEAN ANALYTICS] Could not set error state (component may have unmounted)');
+          }
         }
         setProgress(0);
         setLoading(false);
