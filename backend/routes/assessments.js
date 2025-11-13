@@ -655,7 +655,16 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Apply clusters to student data
     let dataWithClusters = clusteringService.applyClustersToStudents(students, clusteringResult.clusters);
 
-    // Log clustering results
+    // Log clustering results with detailed diagnostics
+    console.log('🔍 [Backend] Clustering result details:', {
+      cacheUsed: clusteringResult.cacheUsed,
+      apiCalled: clusteringResult.apiCalled,
+      error: clusteringResult.error,
+      clustersSize: clusteringResult.clusters.size,
+      studentsCount: students.length,
+      enabled: clusteringConfig.enabled
+    });
+
     if (clusteringResult.cacheUsed) {
       console.log('✅ [Backend] Using cached clusters - clustering is enabled and working');
       const clusterDistribution = clusteringService.getClusterDistribution(dataWithClusters);
@@ -664,12 +673,32 @@ router.get('/dean-analytics/sample', async (req, res) => {
       console.log('✅ [Backend] Clusters retrieved from API');
       const clusterDistribution = clusteringService.getClusterDistribution(dataWithClusters);
       console.log('📊 [Backend] Cluster distribution from API:', clusterDistribution);
+      
+      // Log sample cluster data to verify it's being applied
+      if (dataWithClusters.length > 0) {
+        const sampleWithCluster = dataWithClusters.find(s => s.cluster_label);
+        const sampleWithoutCluster = dataWithClusters.find(s => !s.cluster_label);
+        console.log('🔍 [Backend] Sample student WITH cluster:', sampleWithCluster ? {
+          student_id: sampleWithCluster.student_id,
+          cluster: sampleWithCluster.cluster,
+          cluster_label: sampleWithCluster.cluster_label
+        } : 'None found');
+        console.log('🔍 [Backend] Sample student WITHOUT cluster:', sampleWithoutCluster ? {
+          student_id: sampleWithoutCluster.student_id,
+          cluster: sampleWithoutCluster.cluster,
+          cluster_label: sampleWithoutCluster.cluster_label
+        } : 'None found');
+      }
     } else if (clusteringResult.error) {
       console.warn(`⚠️ [Backend] Clustering error: ${clusteringResult.error}`);
       if (!clusteringConfig.enabled) {
         console.warn('⚠️ [Backend] Clustering is disabled');
         console.warn('💡 [Backend] Tip: Set CLUSTER_SERVICE_URL environment variable to enable clustering');
       }
+    } else {
+      console.warn('⚠️ [Backend] Clustering returned no results and no error - this may indicate an issue');
+      console.warn('⚠️ [Backend] Clusters map size:', clusteringResult.clusters.size);
+      console.warn('⚠️ [Backend] Students count:', students.length);
     }
 
     // Determine clustering API platform from the URL

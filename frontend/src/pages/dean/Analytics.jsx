@@ -221,13 +221,18 @@ const Analytics = () => {
         return;
       }
       console.error('❌ [DEAN ANALYTICS] Error fetching school terms:', error);
-      // Only set error if we don't have cached data
+      // Only set error if we don't have cached data and setError is available
       const hasCachedTerms = sessionCached || cachedData;
-      if (!hasCachedTerms) {
-        setError(error.message);
+      if (!hasCachedTerms && typeof setError === 'function') {
+        try {
+          setError(error.message);
+        } catch (e) {
+          // Component may have unmounted, ignore silently
+          console.warn('⚠️ [DEAN ANALYTICS] Could not set error state (component may have unmounted)');
+        }
       }
     }
-  }, []);
+  }, [setError]);
 
   // Fetch sections, programs, and departments
   const fetchFilterOptions = useCallback(async () => {
