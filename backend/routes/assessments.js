@@ -506,6 +506,29 @@ router.get('/dean-analytics/sample', async (req, res) => {
       ? `AND ${additionalWhereConditions.join(' AND ')}` 
       : '';
     
+    // Build section_course filter for subqueries (when filtering by specific class)
+    const sectionCourseFilter = sectionCourseIdValue 
+      ? `AND ce_att.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterWeighted = sectionCourseIdValue 
+      ? `AND ce_weighted.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterSub = sectionCourseIdValue 
+      ? `AND ce_sub.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterStatus = sectionCourseIdValue 
+      ? `AND ce_status.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterRate = sectionCourseIdValue 
+      ? `AND ce_rate.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterIlo = sectionCourseIdValue 
+      ? `AND ce_ilo.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterFallback = sectionCourseIdValue 
+      ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    
     // Fetch student analytics: attendance, average score, and submission rate
     // Enhanced with detailed attendance counts and submission behavior
     // Includes section/program/department information for filtering
@@ -540,6 +563,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             WHERE ce_att.student_id = s.student_id
               AND ce_att.status = 'enrolled'
               ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilter}
           ),
           0
         )::NUMERIC AS attendance_percentage,
@@ -552,6 +576,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_att.student_id = s.student_id
             AND ce_att.status = 'enrolled'
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilter}
         )::INTEGER AS attendance_present_count,
         (
           SELECT COUNT(CASE WHEN al.status = 'absent' THEN 1 END)::INTEGER
@@ -561,6 +586,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_att.student_id = s.student_id
             AND ce_att.status = 'enrolled'
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilter}
         )::INTEGER AS attendance_absent_count,
         (
           SELECT COUNT(CASE WHEN al.status = 'late' THEN 1 END)::INTEGER
@@ -570,6 +596,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_att.student_id = s.student_id
             AND ce_att.status = 'enrolled'
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilter}
         )::INTEGER AS attendance_late_count,
         (
           SELECT COUNT(al.attendance_id)::INTEGER
@@ -579,6 +606,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_att.student_id = s.student_id
             AND ce_att.status = 'enrolled'
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilter}
         )::INTEGER AS attendance_total_sessions,
         -- Syllabus-weighted score: average grade across all courses based on assessment weights
         -- Formula per course: SUM((submission_score / total_points) * weight_percentage)
@@ -612,10 +640,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage IS NOT NULL
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_weighted.term_id = ${termIdValue}` : ''}
+                ${sectionCourseFilterWeighted}
               GROUP BY sc_weighted.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale)
-            SELECT ROUND(AVG(course_weighted_score)::NUMERIC, 2)
+            -- When filtering by section_course_id, just return the single course score
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_weighted_score)::NUMERIC, 2)
             FROM course_weighted_scores
             WHERE course_weighted_score > 0
           ),
@@ -629,6 +659,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_sub.status = 'enrolled'
               AND sub.total_score IS NOT NULL
               ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilterSub}
           )
         )::NUMERIC AS average_score,
         -- ILO-weighted score: combines syllabus assessment weights with ILO coverage
@@ -677,10 +708,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage IS NOT NULL
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
+                ${sectionCourseFilterIlo}
               GROUP BY sc_ilo.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale, but may exceed 100 due to ILO boost)
-            SELECT ROUND(AVG(course_ilo_weighted_score)::NUMERIC, 2)
+            -- When filtering by section_course_id, just return the single course score
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_ilo_weighted_score)::NUMERIC, 2)
             FROM course_ilo_weighted_scores
             WHERE course_ilo_weighted_score > 0
           ),
@@ -711,9 +744,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage IS NOT NULL
                 AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilterFallback}
               GROUP BY sc_fallback.section_course_id
             )
-            SELECT ROUND(AVG(course_weighted_score)::NUMERIC, 2)
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_weighted_score)::NUMERIC, 2)
             FROM course_weighted_scores
             WHERE course_weighted_score > 0
           )
@@ -739,6 +773,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             WHERE ce_status.student_id = s.student_id
               AND ce_status.status = 'enrolled'
               ${termIdValue ? `AND sc_status.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilterStatus}
           ),
           2
         )::NUMERIC AS average_submission_status_score,
@@ -760,6 +795,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             WHERE ce_rate.student_id = s.student_id
               AND ce_rate.status = 'enrolled'
               ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilterRate}
           ),
           0
         )::NUMERIC AS submission_rate,
@@ -777,6 +813,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_sub.student_id = s.student_id
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilterSub}
         )::INTEGER AS submission_ontime_count,
         (
           SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN sub.submission_id END)::INTEGER
@@ -790,6 +827,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_sub.student_id = s.student_id
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilterSub}
         )::INTEGER AS submission_late_count,
         (
           SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
@@ -803,6 +841,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_sub.student_id = s.student_id
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilterSub}
             AND COALESCE(sub.submission_status, 'missing') = 'missing'
         )::INTEGER AS submission_missing_count,
         (
@@ -813,6 +852,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
           WHERE ce_sub.student_id = s.student_id
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
+            ${sectionCourseFilterSub}
         )::INTEGER AS submission_total_assessments
       FROM students s
       INNER JOIN course_enrollments ce ON s.student_id = ce.student_id
