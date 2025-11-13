@@ -2745,7 +2745,7 @@ catalog.delete('/courses/:id', async (req, res) => {
   }
 });
 
-app.use('/api', catalog);
+app.use('/api/catalog', catalog);
 
 // Section-courses helper endpoints for staff assignment
 app.get('/api/section-courses/sections', async (req, res) => {

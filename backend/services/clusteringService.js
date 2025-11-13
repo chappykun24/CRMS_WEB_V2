@@ -426,7 +426,8 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     cacheMaxAgeHours = 24,
     algorithm = 'kmeans',
     version = '1.0',
-    timeoutMs = 30000
+    timeoutMs = 30000,
+    forceRefresh = false
   } = options;
   
   const config = getClusteringConfig();
@@ -444,11 +445,12 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     }
   };
   
-  // Step 1: Check cache first (FAST PATH)
-  try {
-    const cachedClusters = await getCachedClusters(termId, cacheMaxAgeHours);
-    
-    if (cachedClusters.length > 0) {
+  // Step 1: Check cache first (FAST PATH) - skip if forceRefresh is true
+  if (!forceRefresh) {
+    try {
+      const cachedClusters = await getCachedClusters(termId, cacheMaxAgeHours);
+      
+      if (cachedClusters.length > 0) {
       // Check if cache covers all students
       const cachedStudentIds = new Set(cachedClusters.map(c => c.student_id));
       const studentIds = new Set(students.map(s => s.student_id));
@@ -491,9 +493,12 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
         // Continue to API call for missing students
       }
     }
-  } catch (error) {
-    console.error('❌ [Clustering] Error checking cache:', error);
-    // Continue to API call if cache check fails
+    } catch (error) {
+      console.error('❌ [Clustering] Error checking cache:', error);
+      // Continue to API call if cache check fails
+    }
+  } else {
+    console.log('🔄 [Clustering] Force refresh enabled - bypassing cache');
   }
   
   // Step 2: Call clustering API (SLOW PATH) - only if enabled

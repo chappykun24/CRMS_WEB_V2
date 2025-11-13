@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
@@ -351,8 +351,8 @@ const Analytics = () => {
     }
   }, []);
 
-  const handleFetch = useCallback(() => {
-    console.log('🔍 [DEAN ANALYTICS] Starting fetch...');
+  const handleFetch = useCallback((forceRefresh = false) => {
+    console.log('🔍 [DEAN ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
     
     // Build cache key with all filters for better cache management
     const filterKey = [
@@ -362,9 +362,35 @@ const Analytics = () => {
       selectedDepartmentId || 'all'
     ].join('_');
     
-    // Check sessionStorage first for instant display
+    // If force refresh, clear all caches first
+    if (forceRefresh) {
+      console.log('🔄 [DEAN ANALYTICS] Force refresh - clearing caches...');
+      const sessionCacheKey = `dean_analytics_${filterKey}_session`;
+      const cacheKey = `dean_analytics_${filterKey}`;
+      
+      // Clear sessionStorage cache
+      try {
+        sessionStorage.removeItem(sessionCacheKey);
+        console.log('✅ [DEAN ANALYTICS] Cleared sessionStorage cache');
+      } catch (e) {
+        console.warn('⚠️ [DEAN ANALYTICS] Could not clear sessionStorage:', e);
+      }
+      
+      // Clear enhanced cache
+      try {
+        deanCacheService.clear('analytics', cacheKey);
+        console.log('✅ [DEAN ANALYTICS] Cleared enhanced cache');
+      } catch (e) {
+        console.warn('⚠️ [DEAN ANALYTICS] Could not clear enhanced cache:', e);
+      }
+      
+      // Reset charts loaded state
+      setChartsLoaded(false);
+    }
+    
+    // Check sessionStorage first for instant display (skip if force refresh)
     const sessionCacheKey = `dean_analytics_${filterKey}_session`;
-    const sessionCached = safeGetItem(sessionCacheKey);
+    const sessionCached = forceRefresh ? null : safeGetItem(sessionCacheKey);
     
     if (sessionCached && sessionCached.success) {
       console.log('📦 [DEAN ANALYTICS] Using session cached analytics data');
@@ -382,9 +408,9 @@ const Analytics = () => {
       setProgress(0);
     }
     
-    // Check enhanced cache
+    // Check enhanced cache (skip if force refresh)
     const cacheKey = `dean_analytics_${filterKey}`;
-    const cachedData = getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
+    const cachedData = forceRefresh ? null : getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
     if (cachedData && cachedData.success && !sessionCached) {
       console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
       setData(cachedData.data || []);
@@ -436,6 +462,11 @@ const Analytics = () => {
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
     if (selectedDepartmentId) params.append('department_id', selectedDepartmentId);
+    // Add force_refresh parameter to bypass backend cache and recompute clusters
+    if (forceRefresh) {
+      params.append('force_refresh', 'true');
+      console.log('🔄 [DEAN ANALYTICS] Adding force_refresh parameter to API call');
+    }
     const url = `${API_BASE_URL}/assessments/dean-analytics/sample${params.toString() ? '?' + params.toString() : ''}`;
     
     fetch(url, {
@@ -880,6 +911,20 @@ const Analytics = () => {
         }
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
+        {/* Header with Refresh Button - Always Visible */}
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Dean Analytics Dashboard</h1>
+          <button
+            onClick={() => handleFetch(true)}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+            title="Refresh data and recompute clusters from latest dataset"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh & Recompute Clusters
+          </button>
+        </div>
+
         {/* Progress Bar */}
         {loading && (
           <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">

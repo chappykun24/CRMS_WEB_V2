@@ -375,8 +375,9 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id, section_id, program_id, department_id } = req.query;
-  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id);
+  const { term_id, section_id, program_id, department_id, force_refresh } = req.query;
+  const forceRefresh = force_refresh === 'true' || force_refresh === '1';
+  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'force_refresh:', forceRefresh);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -641,14 +642,16 @@ router.get('/dean-analytics/sample', async (req, res) => {
     });
 
     // Get clusters using the centralized service
+    // If force_refresh is true, set cacheMaxAgeHours to 0 to bypass cache
     const clusteringResult = await clusteringService.getStudentClusters(
       students,
       termIdValue,
       {
-        cacheMaxAgeHours: clusteringConfig.cacheMaxAgeHours,
+        cacheMaxAgeHours: forceRefresh ? 0 : clusteringConfig.cacheMaxAgeHours,
         algorithm: 'kmeans',
         version: '1.0',
-        timeoutMs: clusteringConfig.timeoutMs
+        timeoutMs: clusteringConfig.timeoutMs,
+        forceRefresh: forceRefresh
       }
     );
 
