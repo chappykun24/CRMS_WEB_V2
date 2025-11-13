@@ -10,52 +10,52 @@ import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '
 // Analytics-specific skeleton components
 const AnalyticsTableSkeleton = () => (
   <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-    <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+    <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
       <table className="min-w-full bg-white text-sm">
         <thead className="bg-gray-50 sticky top-0 z-10">
           <tr>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Section</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Program</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Department</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Score</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submissions</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Section</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Department</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Cluster</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {[...Array(10)].map((_, i) => (
             <tr key={i} className="animate-pulse">
-              <td className="px-4 py-3">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              <td className="px-3 py-2">
+                <div className="h-3 bg-gray-200 rounded w-32"></div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="h-3 bg-gray-200 rounded w-16"></div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="h-3 bg-gray-200 rounded w-20"></div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="h-3 bg-gray-200 rounded w-24"></div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="space-y-1">
                   <div className="h-3 bg-gray-200 rounded w-12"></div>
                   <div className="h-2 bg-gray-200 rounded w-20"></div>
                 </div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="h-3 bg-gray-200 rounded w-12"></div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-3 py-2">
                 <div className="space-y-1">
                   <div className="h-3 bg-gray-200 rounded w-12"></div>
                   <div className="h-2 bg-gray-200 rounded w-28"></div>
                 </div>
               </td>
-              <td className="px-4 py-3">
-                <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+              <td className="px-3 py-2">
+                <div className="h-5 bg-gray-200 rounded-full w-24"></div>
               </td>
             </tr>
           ))}
@@ -879,10 +879,10 @@ const Analytics = () => {
           cursor: pointer !important;
         }
       `}</style>
-      <div className="p-6 overflow-y-auto h-full">
+      <div className="p-4 overflow-y-auto h-full">
         {/* Progress Bar */}
         {loading && (
-          <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700">Loading analytics...</span>
               <span className="text-sm font-semibold text-red-600">{progress}%</span>
@@ -898,16 +898,16 @@ const Analytics = () => {
 
         {/* Error Message */}
         {hasFetched && error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-800 text-sm">{error}</p>
           </div>
         )}
 
         {/* Skeleton Loading */}
         {loading && !hasFetched && (
-          <div className="flex gap-6">
+          <div className="flex gap-4">
             {/* Main Content Area - Left Side */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4">
               {/* Filters Skeleton */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
                 <div className="flex flex-col md:flex-row gap-4">
@@ -924,7 +924,7 @@ const Analytics = () => {
             </div>
 
             {/* Right Sidebar - Statistics and Charts Skeleton */}
-            <div className="w-80 space-y-4">
+            <div className="w-72 space-y-3">
               <StatisticsCardsSkeleton />
               <ChartsSkeleton />
             </div>
@@ -933,12 +933,12 @@ const Analytics = () => {
 
         {/* Main Content */}
         {hasFetched && !loading && !error && (
-          <div className="flex gap-6">
+          <div className="flex gap-4">
             {/* Main Content Area - Left Side */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4 min-w-0">
               {/* Filters */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex flex-col md:flex-row gap-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                <div className="flex flex-col md:flex-row gap-3">
                   {/* Search */}
                   <div className="flex-1">
                     <div className="relative">
@@ -954,13 +954,13 @@ const Analytics = () => {
                   </div>
 
                   {/* School Term Filter */}
-                  <div className="md:w-64">
+                  <div className="md:w-56">
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedTermId}
                         onChange={(e) => setSelectedTermId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Terms</option>
                         {schoolTerms.map(term => (
@@ -973,13 +973,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Department Filter */}
-                  <div className="md:w-64">
+                  <div className="md:w-56">
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedDepartmentId}
                         onChange={(e) => setSelectedDepartmentId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Departments</option>
                         {departments.map(dept => (
@@ -992,13 +992,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Program Filter */}
-                  <div className="md:w-64">
+                  <div className="md:w-56">
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedProgramId}
                         onChange={(e) => setSelectedProgramId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Programs</option>
                         {programs
@@ -1013,13 +1013,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Section Filter */}
-                  <div className="md:w-64">
+                  <div className="md:w-56">
                     <div className="relative">
                       <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <select
                         value={selectedSectionId}
                         onChange={(e) => setSelectedSectionId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer"
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Sections</option>
                         {sections
@@ -1035,7 +1035,7 @@ const Analytics = () => {
 
                   {/* Cluster Filter */}
                   {uniqueClusters.length > 0 && (
-                    <div className="md:w-64">
+                    <div className="md:w-56">
                       <div className="relative">
                         <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <select
@@ -1085,7 +1085,7 @@ const Analytics = () => {
 
               {/* Data Table */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
                   {filteredData.length === 0 ? (
                     <div className="flex items-center justify-center py-16">
                       <div className="text-center">
@@ -1098,14 +1098,14 @@ const Analytics = () => {
                     <table className="min-w-full bg-white text-sm">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Student Name</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Section</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Program</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Department</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Attendance</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Score</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Submissions</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 border-b border-gray-200">Cluster</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Section</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Department</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Cluster</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -1123,17 +1123,17 @@ const Analytics = () => {
                                 loadStudentPhoto(row.student_id);
                               }}
                             >
-                              <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{row.full_name}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                              <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 text-xs">{row.full_name}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.section_code || 'N/A'}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.program_abbreviation || row.program_name || 'N/A'}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.department_abbreviation || row.department_name || 'N/A'}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600">
                                 <div className="text-xs">
                                   <div>{row.attendance_percentage !== null && row.attendance_percentage !== undefined 
                                     ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
@@ -1145,12 +1145,12 @@ const Analytics = () => {
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
                                 {row.average_score !== null && row.average_score !== undefined 
                                   ? parseFloat(row.average_score).toFixed(1) 
                                   : 'N/A'}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600">
                                 <div className="text-xs">
                                   <div>{row.submission_rate !== null && row.submission_rate !== undefined 
                                     ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
@@ -1162,7 +1162,7 @@ const Analytics = () => {
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
+                              <td className="px-3 py-2 whitespace-nowrap">
                                 <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
                                   {clusterStyle.text}
                                 </span>
@@ -1210,27 +1210,27 @@ const Analytics = () => {
             </div>
 
             {/* Right Sidebar - Statistics and Charts */}
-            <div className="w-80 space-y-4 overflow-y-auto max-h-[calc(100vh-100px)]">
+            <div className="w-72 flex-shrink-0 space-y-3 overflow-y-auto max-h-[calc(100vh-80px)]">
               {/* Statistics Cards */}
               {loading && !stats ? (
                 <StatisticsCardsSkeleton />
               ) : stats && (
-                <div className="space-y-3">
-                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="space-y-2">
+                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-3">
                     <p className="text-xs text-gray-500 mb-1">Total Students</p>
-                    <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-3">
                     <p className="text-xs text-blue-600 mb-1">Avg Attendance</p>
-                    <p className="text-3xl font-bold text-blue-600">{stats.avgAttendance}%</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.avgAttendance}%</p>
                   </div>
-                  <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg shadow-sm border border-emerald-200 p-4">
+                  <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg shadow-sm border border-emerald-200 p-3">
                     <p className="text-xs text-emerald-600 mb-1">Avg Score</p>
-                    <p className="text-3xl font-bold text-emerald-600">{stats.avgScore}</p>
+                    <p className="text-2xl font-bold text-emerald-600">{stats.avgScore}</p>
                   </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-4">
+                  <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-3">
                     <p className="text-xs text-purple-600 mb-1">Avg Submission Rate</p>
-                    <p className="text-3xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
                   </div>
                 </div>
               )}
@@ -1240,11 +1240,11 @@ const Analytics = () => {
                 <ChartsSkeleton />
               )}
               {chartData && chartsLoaded && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Cluster Distribution Pie Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Cluster Distribution</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Cluster Distribution</h3>
+                    <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
                         <Pie
                           data={chartData.clusterData}
@@ -1252,7 +1252,7 @@ const Analytics = () => {
                           cy="50%"
                           labelLine={false}
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={70}
+                          outerRadius={60}
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -1266,13 +1266,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Attendance Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Attendance Distribution</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance Distribution</h3>
+                    <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.attendanceData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
-                        <YAxis tick={{ fontSize: 9 }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
+                        <YAxis tick={{ fontSize: 8 }} />
                         <Tooltip />
                         <Bar dataKey="students" fill={COLORS.bar} name="Students" />
                       </BarChart>
@@ -1280,13 +1280,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Score Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Average Score Distribution</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Average Score Distribution</h3>
+                    <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.scoreData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
-                        <YAxis tick={{ fontSize: 9 }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
+                        <YAxis tick={{ fontSize: 8 }} />
                         <Tooltip />
                         <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
                       </BarChart>
@@ -1294,13 +1294,13 @@ const Analytics = () => {
                   </div>
 
                   {/* Submission Rate Distribution Bar Chart */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Submission Rate Distribution</h3>
-                    <ResponsiveContainer width="100%" height={200}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Submission Rate Distribution</h3>
+                    <ResponsiveContainer width="100%" height={180}>
                       <BarChart data={chartData.submissionData}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 9 }} />
-                        <YAxis tick={{ fontSize: 9 }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} tick={{ fontSize: 8 }} />
+                        <YAxis tick={{ fontSize: 8 }} />
                         <Tooltip />
                         <Bar dataKey="students" fill="#8b5cf6" name="Students" />
                       </BarChart>
@@ -1308,9 +1308,9 @@ const Analytics = () => {
                   </div>
 
                   {/* Scatter Plot: Attendance vs Score */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Attendance vs Score</h3>
-                    <ResponsiveContainer width="100%" height={250}>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <h3 className="text-xs font-semibold text-gray-900 mb-2">Attendance vs Score</h3>
+                    <ResponsiveContainer width="100%" height={200}>
                       <ScatterChart data={chartData.scatterData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
