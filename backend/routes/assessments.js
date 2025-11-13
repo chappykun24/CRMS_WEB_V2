@@ -703,6 +703,27 @@ router.get('/dean-analytics/sample', async (req, res) => {
       console.warn('⚠️ [Backend] Clustering returned no results and no error - this may indicate an issue');
       console.warn('⚠️ [Backend] Clusters map size:', clusteringResult.clusters.size);
       console.warn('⚠️ [Backend] Students count:', students.length);
+      console.warn('⚠️ [Backend] Clustering enabled:', clusteringConfig.enabled);
+      console.warn('⚠️ [Backend] Clustering error:', clusteringResult.error);
+      console.warn('⚠️ [Backend] API called:', clusteringResult.apiCalled);
+      console.warn('⚠️ [Backend] Cache used:', clusteringResult.cacheUsed);
+      
+      // If clustering is enabled but failed, log detailed error
+      if (clusteringConfig.enabled && !clusteringResult.cacheUsed && !clusteringResult.apiCalled && !clusteringResult.error) {
+        console.error('❌ [Backend] CRITICAL: Clustering is enabled but neither cache nor API was used!');
+        console.error('❌ [Backend] This suggests clustering service is not working correctly.');
+      }
+    }
+    
+    // Check if all students have null cluster labels (clustering failed)
+    const studentsWithClusters = dataWithClusters.filter(s => s.cluster_label && s.cluster_label !== null);
+    const studentsWithoutClusters = dataWithClusters.filter(s => !s.cluster_label || s.cluster_label === null);
+    
+    if (studentsWithoutClusters.length === dataWithClusters.length && clusteringConfig.enabled) {
+      console.error('❌ [Backend] CRITICAL: All students have null cluster labels despite clustering being enabled!');
+      console.error('❌ [Backend] Clustering has failed. Check Python API logs and connectivity.');
+      console.error('❌ [Backend] Cluster map size:', clusteringResult.clusters.size);
+      console.error('❌ [Backend] Sample cluster map entries:', Array.from(clusteringResult.clusters.entries()).slice(0, 3));
     }
 
     // Determine clustering API platform from the URL

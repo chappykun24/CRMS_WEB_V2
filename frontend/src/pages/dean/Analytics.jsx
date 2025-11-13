@@ -1622,9 +1622,16 @@ const Analytics = () => {
                       </p>
                     )}
                     <div className="mt-2">
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getClusterStyle(selectedStudent.cluster_label).className}`}>
-                        {getClusterStyle(selectedStudent.cluster_label).text}
-                      </span>
+                      {(() => {
+                        const clusterStyle = getClusterStyle(selectedStudent.cluster_label);
+                        return clusterStyle ? (
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
+                            {clusterStyle.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1812,7 +1819,10 @@ const Analytics = () => {
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {getClusterStyle(selectedStudent.cluster_label).text}
+                      {(() => {
+                        const clusterStyle = getClusterStyle(selectedStudent.cluster_label);
+                        return clusterStyle ? clusterStyle.text : '—';
+                      })()}
                     </p>
                   </div>
                   {selectedStudent.silhouette_score !== null && selectedStudent.silhouette_score !== undefined && (
