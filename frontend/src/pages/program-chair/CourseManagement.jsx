@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { BookOpenIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
-// Removed SidebarContext import - using local state instead
+import { useSidebar } from '../../contexts/SidebarContext'
 import { enhancedApi } from '../../utils/api'
 import { TableSkeleton, ListSkeleton, StudentListSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
@@ -23,7 +23,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 )
 
 const CourseManagement = () => {
-  const [sidebarExpanded] = useState(true) // Default to expanded
+  const { sidebarExpanded } = useSidebar()
   const [activeTab, setActiveTab] = useState('programs') // Only programs tab now
   const [query, setQuery] = useState('')
 
