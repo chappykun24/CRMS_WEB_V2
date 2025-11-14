@@ -185,6 +185,9 @@ public/
 # ==========================================
 # PROJECT SPECIFIC
 # ==========================================
+# Archive folder (old scripts, docs, migrations - not needed in production)
+archive/
+
 # References folder (exclude from version control)
 references/
 reference/
@@ -266,12 +269,7 @@ secrets/
 # ==========================================
 # SCRIPTS & UTILITY FILES
 # ==========================================
-# Debug and development utility scripts (not needed in production)
-backend/scripts/debug_clustering.js
-backend/scripts/show_clusters.js
-backend/scripts/auto-map-ilos.js
-python-cluster-api/console_cluster.py
-
+# Note: Old utility scripts are now in archive/ folder (excluded above)
 # Keep migration scripts (needed for deployment)
 # !backend/scripts/run_migration.js
 # !backend/scripts/run_migration.bat
@@ -280,7 +278,3 @@ python-cluster-api/console_cluster.py
 # ==========================================
 # END OF GITIGNORE
 # ==========================================
-.vercel
-CLUSTERING_DATA_FLOW.md
-backend/scripts/reset_appdev_ilos.js
-DATABASE_REVIEW.md
