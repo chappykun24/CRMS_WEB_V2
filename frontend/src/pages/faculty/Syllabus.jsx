@@ -826,7 +826,6 @@ const Syllabus = () => {
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -872,20 +871,6 @@ const Syllabus = () => {
                                 >
                                   <div className="text-sm text-gray-900">
                                     {formatDate(syllabus.created_at)}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-2">
-                                    {syllabus.approval_status === 'approved' && syllabus.review_status === 'approved' && (
-                                      <button
-                                        onClick={() => handleEditRequest(syllabus)}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                                        title="Request edit for this approved syllabus"
-                                      >
-                                        <PencilIcon className="h-3 w-3" />
-                                        Edit Request
-                                      </button>
-                                    )}
                                   </div>
                                 </td>
                               </tr>
