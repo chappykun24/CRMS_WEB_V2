@@ -8,6 +8,16 @@ import {
   DocumentTextIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/solid'
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  ZAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts'
 import Analytics from './Analytics'
 import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
@@ -32,14 +42,13 @@ const Home = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const abortControllerRef = useRef(null)
   const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalClasses: 0,
-    totalFaculty: 0,
-    avgAttendance: 0,
-    avgScore: 0,
-    studentsAtRisk: 0,
+    pendingApprovals: 0,
+    approvedSyllabi: 0,
+    editRequests: 0,
     activeTerm: null
   })
+  const [scatterData, setScatterData] = useState([])
+  const [loadingScatter, setLoadingScatter] = useState(true)
 
   // Fetch dashboard stats with caching and lazy loading
   const fetchDashboardStats = useCallback(async (isBackgroundRefresh = false) => {
@@ -86,26 +95,21 @@ const Home = () => {
       }
       
       console.log('🔄 [DEAN] Fetching fresh dashboard stats...')
-      // Fetch all data in parallel
-      const [classesRes, studentsRes, facultyRes, termsRes, analyticsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/section-courses/assigned`, {
+      // Fetch syllabus and edit request data
+      const [syllabiRes, editRequestsRes, termsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/syllabi`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           },
           signal: abortControllerRef.current.signal
         }),
-        fetch(`${API_BASE_URL}/students`, {
+        fetch(`${API_BASE_URL}/syllabi/edit-requests?role=dean`, {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          signal: abortControllerRef.current.signal
-        }),
-        fetch(`${API_BASE_URL}/users?role=FACULTY`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           },
           signal: abortControllerRef.current.signal
         }),
@@ -115,51 +119,46 @@ const Home = () => {
             'Content-Type': 'application/json'
           },
           signal: abortControllerRef.current.signal
-        }),
-        fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          signal: abortControllerRef.current.signal
         })
       ])
 
-      // Process classes
-      let classesData = []
+      // Process syllabi
+      let syllabiData = []
+      let pendingApprovals = 0
+      let approvedSyllabi = 0
       try {
-        const contentType = classesRes.headers.get('content-type')
+        const contentType = syllabiRes.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
-          classesData = await classesRes.json()
+          syllabiData = await syllabiRes.json()
+          if (Array.isArray(syllabiData)) {
+            // Count pending approvals (approved by program chair, pending dean approval)
+            pendingApprovals = syllabiData.filter(s => 
+              s.review_status === 'approved' && s.approval_status === 'pending'
+            ).length
+            // Count approved syllabi
+            approvedSyllabi = syllabiData.filter(s => 
+              s.review_status === 'approved' && s.approval_status === 'approved'
+            ).length
+          }
         }
       } catch (e) {
-        console.error('Error parsing classes data:', e)
+        console.error('Error parsing syllabi data:', e)
       }
-      const classesCount = Array.isArray(classesData) ? classesData.length : 0
 
-      // Process students (enrolled)
-      let studentsData = []
+      // Process edit requests
+      let editRequests = 0
       try {
-        const contentType = studentsRes.headers.get('content-type')
+        const contentType = editRequestsRes.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
-          studentsData = await studentsRes.json()
+          const editRequestsData = await editRequestsRes.json()
+          if (Array.isArray(editRequestsData)) {
+            // Count pending edit requests
+            editRequests = editRequestsData.filter(er => er.status === 'pending').length
+          }
         }
       } catch (e) {
-        console.error('Error parsing students data:', e)
+        console.error('Error parsing edit requests data:', e)
       }
-      const studentsCount = Array.isArray(studentsData) ? studentsData.length : 0
-
-      // Process faculty
-      let facultyData = []
-      try {
-        const contentType = facultyRes.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          facultyData = await facultyRes.json()
-        }
-      } catch (e) {
-        console.error('Error parsing faculty data:', e)
-      }
-      const facultyCount = Array.isArray(facultyData) ? facultyData.filter(f => f.is_active !== false).length : 0
 
       // Process active term
       let termsData = []
@@ -173,82 +172,56 @@ const Home = () => {
       }
       const activeTerm = Array.isArray(termsData) ? termsData.find(t => t.is_active) : null
 
-      // Process analytics for performance metrics
-      let avgAttendance = 0
-      let avgScore = 0
-      let studentsAtRisk = 0
-
-      if (analyticsRes.ok) {
-        try {
-          const contentType = analyticsRes.headers.get('content-type')
-          if (contentType && contentType.includes('application/json')) {
-            // Clone response before consuming to allow error handling
-            const clonedRes = analyticsRes.clone()
-            try {
-              const analyticsData = await analyticsRes.json()
-              if (analyticsData.success && Array.isArray(analyticsData.data) && analyticsData.data.length > 0) {
-                const students = analyticsData.data
-                const totalStudents = students.length
-
-                // Calculate average attendance
-                const totalAttendance = students.reduce((sum, s) => {
-                  return sum + (parseFloat(s.attendance_percentage) || 0)
-                }, 0)
-                avgAttendance = totalAttendance / totalStudents
-
-                // Calculate average score
-                const totalScore = students.reduce((sum, s) => {
-                  return sum + (parseFloat(s.average_score) || 0)
-                }, 0)
-                avgScore = totalScore / totalStudents
-
-                // Count students at risk (cluster labels containing "risk" or low attendance/score)
-                studentsAtRisk = students.filter(s => {
-                  const cluster = String(s.cluster_label || '').toLowerCase()
-                  const attendance = parseFloat(s.attendance_percentage) || 0
-                  const score = parseFloat(s.average_score) || 0
-                  return cluster.includes('risk') || attendance < 60 || score < 60
-                }).length
-              }
-            } catch (jsonError) {
-              console.error('Error parsing analytics JSON:', jsonError)
-              // Try to get error text from cloned response
-              try {
-                const errorText = await clonedRes.text()
-                console.error('Analytics response text (first 500 chars):', errorText.substring(0, 500))
-              } catch (e) {
-                console.error('Could not read analytics response as text:', e)
-              }
-            }
-          } else {
-            // Clone before consuming
-            const clonedRes = analyticsRes.clone()
-            try {
-              const errorText = await analyticsRes.text()
-              console.error('Analytics response is not JSON:', errorText.substring(0, 200))
-            } catch (e) {
-              console.error('Could not read analytics response as text:', e)
-            }
-          }
-        } catch (error) {
-          console.error('Error processing analytics response:', error)
-        }
-      }
-
       const newStats = {
-        totalStudents: studentsCount,
-        totalClasses: classesCount,
-        totalFaculty: facultyCount,
-        avgAttendance: avgAttendance.toFixed(1),
-        avgScore: avgScore.toFixed(1),
-        studentsAtRisk: studentsAtRisk,
-        activeTerm: activeTerm
+        pendingApprovals,
+        approvedSyllabi,
+        editRequests,
+        activeTerm
       }
       
       console.log(`✅ [DEAN] Received dashboard stats`)
       
       // Update stats with fresh data
       setStats(newStats)
+      
+      // Fetch analytics data for scatterplot
+      try {
+        const analyticsRes = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          signal: abortControllerRef.current.signal
+        })
+        
+        if (analyticsRes.ok) {
+          const contentType = analyticsRes.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const analyticsData = await analyticsRes.json()
+            if (analyticsData.success && Array.isArray(analyticsData.data)) {
+              // Prepare scatterplot data (Attendance vs Score)
+              const scatterPlotData = analyticsData.data
+                .filter(row => row.cluster_label && 
+                  row.cluster_label !== null && 
+                  row.cluster_label !== undefined &&
+                  !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
+                  !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
+                .map(row => ({
+                  attendance: parseFloat(row.attendance_percentage) || 0,
+                  score: parseFloat(row.average_score) || 0,
+                  submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+                  cluster: row.cluster_label,
+                  name: row.full_name
+                }))
+              setScatterData(scatterPlotData)
+              setLoadingScatter(false)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching scatterplot data:', error)
+        setLoadingScatter(false)
+      }
       
       // Store minimized data in sessionStorage for instant next load
       if (!sessionCached) {
@@ -339,176 +312,236 @@ const Home = () => {
           </div>
         )}
         
-        {/* Key Statistics Cards (Top Row) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Total Students */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Students</p>
-                <p className="text-3xl font-bold text-gray-900">{(stats.totalStudents || 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-2">All enrolled students</p>
+        {/* Welcome Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dean Dashboard</h1>
+          <p className="text-gray-600">Overview of syllabus approvals and academic activities</p>
+        </div>
+
+        {/* Key Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Pending Approvals */}
+          <button
+            onClick={() => navigate('/dean/syllabus-approval')}
+            className="bg-white rounded-xl shadow-sm border-2 border-orange-200 p-6 hover:shadow-lg hover:border-orange-300 transition-all text-left group"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-orange-100 rounded-lg p-3 group-hover:bg-orange-200 transition-colors">
+                <DocumentTextIcon className="h-8 w-8 text-orange-600" />
               </div>
-              <div className="bg-blue-100 rounded-full p-3">
-                <UserGroupIcon className="h-8 w-8 text-blue-600" />
+              <div className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
+                ACTION REQUIRED
               </div>
             </div>
+            <p className="text-sm font-medium text-gray-600 mb-1">Pending Approvals</p>
+            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.pendingApprovals || 0).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Syllabi awaiting your approval</p>
+          </button>
+
+          {/* Approved Syllabi */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-green-100 rounded-lg p-3">
+                <DocumentTextIcon className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-600 mb-1">Approved Syllabi</p>
+            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.approvedSyllabi || 0).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Total approved syllabi</p>
           </div>
 
-          {/* Total Classes */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Classes</p>
-                <p className="text-3xl font-bold text-gray-900">{(stats.totalClasses || 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-2">Active classes this term</p>
+          {/* Edit Requests */}
+          <button
+            onClick={() => navigate('/dean/syllabus-approval?tab=edit-requests')}
+            className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6 hover:shadow-lg hover:border-purple-300 transition-all text-left group"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-purple-100 rounded-lg p-3 group-hover:bg-purple-200 transition-colors">
+                <DocumentTextIcon className="h-8 w-8 text-purple-600" />
               </div>
-              <div className="bg-emerald-100 rounded-full p-3">
-                <BookOpenIcon className="h-8 w-8 text-emerald-600" />
-              </div>
+              {stats.editRequests > 0 && (
+                <div className="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full">
+                  {stats.editRequests} NEW
+                </div>
+              )}
             </div>
-          </div>
+            <p className="text-sm font-medium text-gray-600 mb-1">Edit Requests</p>
+            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.editRequests || 0).toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Pending edit requests</p>
+          </button>
 
-          {/* Total Faculty */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Faculty</p>
-                <p className="text-3xl font-bold text-gray-900">{(stats.totalFaculty || 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-2">Active faculty members</p>
-              </div>
-              <div className="bg-purple-100 rounded-full p-3">
-                <AcademicCapIcon className="h-8 w-8 text-purple-600" />
+          {/* Active Term */}
+          <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-sm border border-indigo-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-indigo-100 rounded-lg p-3">
+                <BookOpenIcon className="h-8 w-8 text-indigo-600" />
               </div>
             </div>
+            <p className="text-sm font-medium text-gray-600 mb-1">Active Term</p>
+            <p className="text-xl font-bold text-gray-900 mb-2">
+              {stats.activeTerm 
+                ? `${stats.activeTerm.semester === '1' ? '1st' : stats.activeTerm.semester === '2' ? '2nd' : stats.activeTerm.semester === '3' ? 'Summer' : stats.activeTerm.semester} Semester ${stats.activeTerm.school_year}`
+                : 'N/A'}
+            </p>
+            <p className="text-xs text-gray-500">Current academic term</p>
           </div>
         </div>
 
-        {/* Performance Overview Cards (Second Row) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          {/* Average Attendance Rate */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Average Attendance Rate</p>
-              <div className="bg-green-100 rounded-full p-2">
-                <ChartBarIcon className="h-5 w-5 text-green-600" />
-              </div>
+        {/* Scatterplot Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Student Performance Overview</h2>
+              <p className="text-sm text-gray-600 mt-1">Attendance vs Average Score</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.avgAttendance}%</p>
-            <p className="text-xs text-gray-500 mt-2">Overall attendance</p>
+            <button
+              onClick={() => navigate('/dean/analytics')}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              View Full Analytics
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
           </div>
-
-          {/* Average Student Score */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Average Student Score</p>
-              <div className="bg-yellow-100 rounded-full p-2">
-                <AcademicCapIcon className="h-5 w-5 text-yellow-600" />
+          <button
+            onClick={() => navigate('/dean/analytics')}
+            className="w-full cursor-pointer"
+          >
+            {loadingScatter ? (
+              <div className="h-64 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                <div className="text-gray-400">Loading chart...</div>
               </div>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.avgScore}</p>
-            <p className="text-xs text-gray-500 mt-2">Overall average grade</p>
-          </div>
-
-          {/* Students at Risk */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Students at Risk</p>
-              <div className="bg-red-100 rounded-full p-2">
-                <UserGroupIcon className="h-5 w-5 text-red-600" />
+            ) : scatterData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <ScatterChart data={scatterData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    type="number" 
+                    dataKey="attendance" 
+                    name="Attendance %" 
+                    domain={[0, 100]}
+                    label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
+                    tick={{ fontSize: 12 }}
+                    stroke="#6b7280"
+                  />
+                  <YAxis 
+                    type="number" 
+                    dataKey="score" 
+                    name="Score" 
+                    domain={[0, 100]}
+                    label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
+                    tick={{ fontSize: 12 }}
+                    stroke="#6b7280"
+                  />
+                  <ZAxis 
+                    type="number" 
+                    dataKey="submissionRate" 
+                    range={[50, 400]}
+                    name="Submission Rate %"
+                  />
+                  <Tooltip 
+                    contentStyle={{ fontSize: '12px', padding: '8px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload[0]) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white p-2 border border-gray-300 rounded shadow-lg">
+                            <p className="font-semibold text-sm">{data.name}</p>
+                            <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
+                            <p className="text-xs">Score: {data.score.toFixed(1)}</p>
+                            <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                            <p className="text-xs">Cluster: {data.cluster}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Scatter 
+                    name="Students" 
+                    data={scatterData} 
+                    fill="#3b82f6"
+                    shape={(props) => {
+                      const { cx, cy, payload } = props;
+                      const clusterColors = {
+                        'Excellent Performance': '#10b981',
+                        'On Track': '#3b82f6',
+                        'Performing Well': '#3b82f6',
+                        'Needs Improvement': '#f59e0b',
+                        'Needs Guidance': '#f59e0b',
+                        'At Risk': '#ef4444',
+                        'Needs Support': '#ef4444'
+                      };
+                      const color = clusterColors[payload.cluster] || '#9ca3af';
+                      return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={2} opacity={0.7} />;
+                    }}
+                  />
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="text-center">
+                  <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">No data available</p>
+                  <p className="text-sm text-gray-400 mt-1">Click to view analytics</p>
+                </div>
               </div>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">{stats.studentsAtRisk}</p>
-            <p className="text-xs text-gray-500 mt-2">Needs attention</p>
-          </div>
-
-          {/* Active Term */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Active Term</p>
-              <div className="bg-indigo-100 rounded-full p-2">
-                <BookOpenIcon className="h-5 w-5 text-indigo-600" />
-              </div>
-            </div>
-            <p className="text-lg font-bold text-gray-900">
-              {stats.activeTerm 
-                ? `${stats.activeTerm.school_year} - ${stats.activeTerm.semester}`
-                : 'N/A'}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">Current semester</p>
-          </div>
+            )}
+          </button>
         </div>
 
         {/* Quick Access Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* View All Classes */}
-            <button
-              onClick={() => navigate('/dean/classes')}
-              className="flex items-center justify-between p-4 bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-200 hover:border-emerald-300 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="bg-emerald-100 rounded-lg p-2">
-                  <BookOpenIcon className="h-6 w-6 text-emerald-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-900">View All Classes</p>
-                  <p className="text-xs text-gray-600">Browse classes</p>
-                </div>
-              </div>
-              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
-            </button>
-
-            {/* View Reports & Analytics */}
-            <button
-              onClick={() => navigate('/dean/analytics')}
-              className="flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200 hover:border-blue-300 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 rounded-lg p-2">
-                  <ChartBarIcon className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-gray-900">Reports & Analytics</p>
-                  <p className="text-xs text-gray-600">View analytics</p>
-                </div>
-              </div>
-              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
-            </button>
-
-            {/* Approve Syllabus */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Access</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Syllabus Approval */}
             <button
               onClick={() => navigate('/dean/syllabus-approval')}
-              className="flex items-center justify-between p-4 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all group"
+              className="flex items-center justify-between p-5 bg-gradient-to-br from-orange-50 to-white rounded-xl border-2 border-orange-200 hover:border-orange-300 hover:shadow-lg transition-all group"
             >
-              <div className="flex items-center space-x-3">
-                <div className="bg-purple-100 rounded-lg p-2">
-                  <DocumentTextIcon className="h-6 w-6 text-purple-600" />
+              <div className="flex items-center space-x-4">
+                <div className="bg-orange-100 rounded-xl p-3 group-hover:bg-orange-200 transition-colors">
+                  <DocumentTextIcon className="h-7 w-7 text-orange-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-900">Approve Syllabus</p>
-                  <p className="text-xs text-gray-600">Review syllabus</p>
+                  <p className="font-bold text-gray-900 text-lg">Syllabus Approval</p>
+                  <p className="text-sm text-gray-600">Review and approve syllabi</p>
                 </div>
               </div>
-              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-orange-600 transition-colors" />
             </button>
 
-            {/* Recent Activities */}
+            {/* Analytics */}
             <button
-              onClick={() => navigate('/dean/classes')}
-              className="flex items-center justify-between p-4 bg-gradient-to-br from-orange-50 to-white rounded-lg border border-orange-200 hover:border-orange-300 hover:shadow-md transition-all group"
+              onClick={() => navigate('/dean/analytics')}
+              className="flex items-center justify-between p-5 bg-gradient-to-br from-blue-50 to-white rounded-xl border-2 border-blue-200 hover:border-blue-300 hover:shadow-lg transition-all group"
             >
-              <div className="flex items-center space-x-3">
-                <div className="bg-orange-100 rounded-lg p-2">
-                  <ChartBarIcon className="h-6 w-6 text-orange-600" />
+              <div className="flex items-center space-x-4">
+                <div className="bg-blue-100 rounded-xl p-3 group-hover:bg-blue-200 transition-colors">
+                  <ChartBarIcon className="h-7 w-7 text-blue-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-900">Recent Activities</p>
-                  <p className="text-xs text-gray-600">View updates</p>
+                  <p className="font-bold text-gray-900 text-lg">Analytics</p>
+                  <p className="text-sm text-gray-600">View student analytics</p>
                 </div>
               </div>
-              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
+              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-blue-600 transition-colors" />
+            </button>
+
+            {/* My Classes */}
+            <button
+              onClick={() => navigate('/dean/classes')}
+              className="flex items-center justify-between p-5 bg-gradient-to-br from-emerald-50 to-white rounded-xl border-2 border-emerald-200 hover:border-emerald-300 hover:shadow-lg transition-all group"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="bg-emerald-100 rounded-xl p-3 group-hover:bg-emerald-200 transition-colors">
+                  <BookOpenIcon className="h-7 w-7 text-emerald-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-gray-900 text-lg">My Classes</p>
+                  <p className="text-sm text-gray-600">View all classes</p>
+                </div>
+              </div>
+              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-emerald-600 transition-colors" />
             </button>
           </div>
         </div>
