@@ -1807,8 +1807,38 @@ const Analytics = () => {
               {loadingPhoto && !studentPhoto && !studentPhotoCache.current.has(selectedStudent.student_id) ? (
                 <ModalSkeleton />
               ) : (() => {
-                // Use filtered data if a class is selected, otherwise use selectedStudent
+                // Use filtered data if a class is selected, otherwise use selectedStudent (overall)
                 const displayData = classFilteredData || selectedStudent;
+                
+                // Calculate overall percentages when "All Classes" is selected
+                // If we have multiple enrollments and no classFilteredData, calculate weighted average
+                const calculateOverallMetrics = () => {
+                  if (selectedClassId !== 'all' || classFilteredData) {
+                    // Per-class view - use the filtered data directly
+                    return {
+                      attendance_percentage: displayData.attendance_percentage,
+                      average_score: displayData.average_score,
+                      submission_rate: displayData.submission_rate,
+                      attendance_present_count: displayData.attendance_present_count,
+                      attendance_absent_count: displayData.attendance_absent_count,
+                      attendance_late_count: displayData.attendance_late_count,
+                      attendance_total_sessions: displayData.attendance_total_sessions
+                    };
+                  }
+                  
+                  // Overall view - use selectedStudent data (already aggregated from backend)
+                  return {
+                    attendance_percentage: selectedStudent.attendance_percentage,
+                    average_score: selectedStudent.average_score,
+                    submission_rate: selectedStudent.submission_rate,
+                    attendance_present_count: selectedStudent.attendance_present_count,
+                    attendance_absent_count: selectedStudent.attendance_absent_count,
+                    attendance_late_count: selectedStudent.attendance_late_count,
+                    attendance_total_sessions: selectedStudent.attendance_total_sessions
+                  };
+                };
+                
+                const metrics = calculateOverallMetrics();
                 
                 return (
                   <>
@@ -1844,17 +1874,17 @@ const Analytics = () => {
                 </div>
 
                 {/* Final Grade Display */}
-                {displayData.average_score !== null && displayData.average_score !== undefined && (
+                {metrics.average_score !== null && metrics.average_score !== undefined && (
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-xs font-medium text-gray-500 uppercase">FINAL GRADE</p>
                       <p className={`text-2xl font-bold ${
-                        parseFloat(displayData.average_score) >= 90 ? 'text-green-600' :
-                        parseFloat(displayData.average_score) >= 75 ? 'text-blue-600' :
-                        parseFloat(displayData.average_score) >= 60 ? 'text-yellow-600' :
+                        parseFloat(metrics.average_score) >= 90 ? 'text-green-600' :
+                        parseFloat(metrics.average_score) >= 75 ? 'text-blue-600' :
+                        parseFloat(metrics.average_score) >= 60 ? 'text-yellow-600' :
                         'text-orange-600'
                       }`}>
-                        {parseFloat(displayData.average_score).toFixed(2)}%
+                        {parseFloat(metrics.average_score).toFixed(2)}%
                       </p>
                     </div>
                   </div>
@@ -1900,23 +1930,23 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Attendance Rate</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {displayData.attendance_percentage !== null && displayData.attendance_percentage !== undefined
-                        ? `${parseFloat(displayData.attendance_percentage).toFixed(1)}%`
+                      {metrics.attendance_percentage !== null && metrics.attendance_percentage !== undefined
+                        ? `${parseFloat(metrics.attendance_percentage).toFixed(1)}%`
                         : 'N/A'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(displayData.attendance_percentage) || 0) >= 80
+                        (parseFloat(metrics.attendance_percentage) || 0) >= 80
                           ? 'bg-emerald-500'
-                          : (parseFloat(displayData.attendance_percentage) || 0) >= 60
+                          : (parseFloat(metrics.attendance_percentage) || 0) >= 60
                           ? 'bg-blue-500'
-                          : (parseFloat(displayData.attendance_percentage) || 0) >= 40
+                          : (parseFloat(metrics.attendance_percentage) || 0) >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min(parseFloat(displayData.attendance_percentage) || 0, 100)}%` }}
+                      style={{ width: `${Math.min(Math.max(parseFloat(metrics.attendance_percentage) || 0, 0), 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1926,26 +1956,23 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Average Score</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {displayData.average_score !== null && displayData.average_score !== undefined
-                        ? parseFloat(displayData.average_score).toFixed(1)
+                      {metrics.average_score !== null && metrics.average_score !== undefined
+                        ? `${parseFloat(metrics.average_score).toFixed(1)}%`
                         : 'N/A'}
-                      {displayData.average_score !== null && displayData.average_score !== undefined && (
-                        <span className="text-gray-500 ml-1">/ 100</span>
-                      )}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(displayData.average_score) || 0) >= 80
+                        (parseFloat(metrics.average_score) || 0) >= 90
                           ? 'bg-emerald-500'
-                          : (parseFloat(displayData.average_score) || 0) >= 60
+                          : (parseFloat(metrics.average_score) || 0) >= 75
                           ? 'bg-blue-500'
-                          : (parseFloat(displayData.average_score) || 0) >= 40
+                          : (parseFloat(metrics.average_score) || 0) >= 60
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min(parseFloat(displayData.average_score) || 0, 100)}%` }}
+                      style={{ width: `${Math.min(Math.max(parseFloat(metrics.average_score) || 0, 0), 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1955,23 +1982,23 @@ const Analytics = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Submission Rate</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {displayData.submission_rate !== null && displayData.submission_rate !== undefined
-                        ? `${(parseFloat(displayData.submission_rate) * 100).toFixed(1)}%`
+                      {metrics.submission_rate !== null && metrics.submission_rate !== undefined
+                        ? `${(parseFloat(metrics.submission_rate) * 100).toFixed(1)}%`
                         : 'N/A'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-3 rounded-full transition-all duration-500 ${
-                        (parseFloat(displayData.submission_rate) || 0) * 100 >= 80
+                        (parseFloat(metrics.submission_rate) || 0) * 100 >= 80
                           ? 'bg-emerald-500'
-                          : (parseFloat(displayData.submission_rate) || 0) * 100 >= 60
+                          : (parseFloat(metrics.submission_rate) || 0) * 100 >= 60
                           ? 'bg-blue-500'
-                          : (parseFloat(displayData.submission_rate) || 0) * 100 >= 40
+                          : (parseFloat(metrics.submission_rate) || 0) * 100 >= 40
                           ? 'bg-yellow-500'
                           : 'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min((parseFloat(displayData.submission_rate) || 0) * 100, 100)}%` }}
+                      style={{ width: `${Math.min(Math.max((parseFloat(metrics.submission_rate) || 0) * 100, 0), 100)}%` }}
                     />
                   </div>
                 </div>
@@ -1984,25 +2011,25 @@ const Analytics = () => {
                   <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                     <p className="text-xs text-green-600 mb-1">Present</p>
                     <p className="text-lg font-bold text-green-700">
-                      {displayData.attendance_present_count ?? '—'}
+                      {metrics.attendance_present_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-red-50 rounded-lg p-3 border border-red-200">
                     <p className="text-xs text-red-600 mb-1">Absent</p>
                     <p className="text-lg font-bold text-red-700">
-                      {displayData.attendance_absent_count ?? '—'}
+                      {metrics.attendance_absent_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                     <p className="text-xs text-yellow-600 mb-1">Late</p>
                     <p className="text-lg font-bold text-yellow-700">
-                      {displayData.attendance_late_count ?? '—'}
+                      {metrics.attendance_late_count ?? '—'}
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-600 mb-1">Total Sessions</p>
                     <p className="text-lg font-bold text-gray-700">
-                      {displayData.attendance_total_sessions ?? '—'}
+                      {metrics.attendance_total_sessions ?? '—'}
                     </p>
                   </div>
                 </div>
