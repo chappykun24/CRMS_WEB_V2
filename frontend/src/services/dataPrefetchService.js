@@ -495,28 +495,53 @@ export const prefetchDeanData = async () => {
   }
 };
 
+// Track prefetch state to prevent multiple simultaneous calls
+let prefetchInProgress = false
+let prefetchPromise = null
+
 /**
  * Prefetch all data for admin dashboard pages
+ * Uses debouncing to prevent multiple simultaneous calls
  */
 export const prefetchAdminData = async () => {
+  // If already in progress, return the existing promise
+  if (prefetchInProgress && prefetchPromise) {
+    return prefetchPromise
+  }
+
+  // If data is already cached, skip prefetch
+  const hasCachedData = 
+    getCachedData('users_all') &&
+    getCachedData('roles_all') &&
+    getCachedData('departments_all') &&
+    getCachedData('school_terms')
+  
+  if (hasCachedData) {
+    return Promise.resolve()
+  }
+
+  prefetchInProgress = true
   console.log('🚀 [Prefetch] Starting admin data prefetch...');
   
-  try {
-    // Prefetch all data in parallel (non-blocking)
-    Promise.all([
-      prefetchUsers(),
-      prefetchRoles(),
-      prefetchDepartments(),
-      prefetchSchoolTerms(),
-    ]).then(() => {
+  prefetchPromise = (async () => {
+    try {
+      // Prefetch all data in parallel (non-blocking)
+      await Promise.all([
+        prefetchUsers(),
+        prefetchRoles(),
+        prefetchDepartments(),
+        prefetchSchoolTerms(),
+      ])
       console.log('✅ [Prefetch] All admin data prefetched');
-    }).catch(error => {
+    } catch (error) {
       console.error('❌ [Prefetch] Error in parallel prefetch:', error);
-    });
-    
-  } catch (error) {
-    console.error('❌ [Prefetch] Error prefetching admin data:', error);
-  }
+    } finally {
+      prefetchInProgress = false
+      prefetchPromise = null
+    }
+  })()
+
+  return prefetchPromise
 };
 
 /**

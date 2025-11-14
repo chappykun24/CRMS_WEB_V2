@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, AcademicCapIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
-import { prefetchAdminData } from '../../services/dataPrefetchService';
+// Removed prefetch - using lazy loading instead
 import { useSidebar } from '../../contexts/SidebarContext';
 import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager';
 
@@ -69,11 +69,6 @@ const SchoolConfiguration = () => {
   // Load data from database
   useEffect(() => {
     loadData();
-    
-    // Prefetch data for other admin pages in the background
-    setTimeout(() => {
-      prefetchAdminData();
-    }, 1000);
   }, []);
 
   const loadData = async () => {

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
 import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
-import { prefetchAdminData } from '../../services/dataPrefetchService'
+// Removed prefetch - using lazy loading instead
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { useSidebar } from '../../contexts/SidebarContext'
 import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager'
@@ -210,10 +210,22 @@ const UserManagement = () => {
     }
   }, [isAuthenticated, authLoading, activeTab, roleFilter, statusFilter, departmentFilter, query, itemsPerPage, roles])
 
-  // Load initial users when authenticated
+  // Load initial users when authenticated (async, non-blocking)
   useEffect(() => {
     if (isAuthenticated && !authLoading && !initialLoadComplete) {
-      loadUsers(1, false)
+      // Use requestIdleCallback for better performance, fallback to setTimeout
+      const loadData = () => {
+        loadUsers(1, false).catch(err => {
+          console.error('Error loading initial users:', err)
+          setError('Failed to load users. Please refresh the page.')
+        })
+      }
+      
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadData, { timeout: 2000 })
+      } else {
+        setTimeout(loadData, 0)
+      }
     }
   }, [isAuthenticated, authLoading, initialLoadComplete, loadUsers])
 
@@ -296,11 +308,6 @@ const UserManagement = () => {
       setTimeout(() => {
         Promise.all([loadRoles(), loadDepartments()])
       }, 300)
-      
-      // Prefetch data for other admin pages in the background
-      setTimeout(() => {
-        prefetchAdminData()
-      }, 1000)
     }
   }, [initialLoadComplete, isAuthenticated, authLoading])
 

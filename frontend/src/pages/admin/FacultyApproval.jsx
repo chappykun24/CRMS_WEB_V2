@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ShieldCheckIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/solid'
 import { enhancedApi } from '../../utils/api'
-import { prefetchAdminData } from '../../services/dataPrefetchService'
+// Removed prefetch - using lazy loading instead
 
 const FacultyApproval = () => {
   const [faculty, setFaculty] = useState([])
@@ -20,10 +20,16 @@ const FacultyApproval = () => {
   }
 
   useEffect(() => {
+    let isMounted = true
+
     const loadFaculty = async () => {
       try {
         setLoading(true)
+        setError('')
+        
         const response = await enhancedApi.getUsers()
+        
+        if (!isMounted) return
         
         // Handle different response structures
         // Backend returns: { success: true, data: { users: [...], pagination: {...} } }
@@ -42,49 +48,99 @@ const FacultyApproval = () => {
           users = []
         }
         
+        if (!isMounted) return
+        
         // Filter for faculty users with pending approval only
         const facultyUsers = users.filter(user => {
-          // Check role_name (case-insensitive)
-          const roleName = (user.role_name || '').toString().trim().toUpperCase()
-          const isFacultyByName = roleName === 'FACULTY' || roleName === 'FACULTY MEMBER'
+          // Get role information from multiple possible fields
+          const roleName = (user.role_name || user.role || '').toString().trim().toUpperCase()
+          const roleId = user.role_id ? Number(user.role_id) : null
           
-          // Check role_id (common faculty role_id is 2, but check for exact match)
-          const roleId = Number(user.role_id)
-          const isFacultyById = roleId === 2
+          // Check if user is faculty
+          // Priority: role_name is most reliable, use role_id only as fallback
+          let isFaculty = false
           
-          // Must be faculty
-          const isFaculty = isFacultyByName || isFacultyById
+          // First, check role_name (most reliable indicator)
+          if (roleName) {
+            const normalizedRoleName = roleName.replace(/[_\s-]/g, '')
+            // Check for faculty role name variations
+            const isFacultyByName = normalizedRoleName === 'FACULTY' || 
+                                   normalizedRoleName === 'FACULTYMEMBER' ||
+                                   roleName === 'FACULTY' ||
+                                   roleName === 'FACULTY MEMBER' ||
+                                   roleName === 'FACULTY_MEMBER'
+            
+            // If role_name explicitly indicates non-faculty, exclude even if role_id matches
+            const isNonFacultyRole = normalizedRoleName.includes('ADMIN') ||
+                                     normalizedRoleName.includes('DEAN') ||
+                                     normalizedRoleName.includes('STAFF') ||
+                                     normalizedRoleName.includes('PROGRAMCHAIR') ||
+                                     normalizedRoleName.includes('PROGRAM') ||
+                                     normalizedRoleName.includes('CHAIR')
+            
+            if (isNonFacultyRole) {
+              // Explicitly not faculty - exclude regardless of role_id
+              isFaculty = false
+            } else if (isFacultyByName) {
+              // Explicitly faculty by name
+              isFaculty = true
+            } else if (roleId === 2) {
+              // If role_name is unclear but role_id is 2, trust role_id
+              isFaculty = true
+            }
+          } else {
+            // No role_name, fall back to role_id
+            if (roleId !== null && roleId !== undefined) {
+              isFaculty = roleId === 2
+            }
+          }
           
           // Only show faculty with pending approval (is_approved is false, null, or undefined)
           const isPending = user.is_approved === false || user.is_approved === null || user.is_approved === undefined
           
-          // Debug logging (remove in production)
-          if (!isFaculty && user.role_name) {
-            console.log('Non-faculty user filtered out:', {
+          // Must be faculty AND pending
+          const shouldInclude = isFaculty && isPending
+          
+          // Debug logging for non-faculty users (only log if they're pending, to reduce noise)
+          if (!shouldInclude && isPending && roleName) {
+            console.debug('[FacultyApproval] Non-faculty user filtered out:', {
               name: user.name || user.email,
-              role_name: user.role_name,
+              role_name: user.role_name || user.role,
               role_id: user.role_id,
               is_approved: user.is_approved
             })
           }
           
-          return isFaculty && isPending
+          return shouldInclude
         })
         
-        setFaculty(facultyUsers)
+        console.log(`[FacultyApproval] Filtered ${facultyUsers.length} faculty users from ${users.length} total users`)
+        
+        if (isMounted) {
+          setFaculty(facultyUsers)
+        }
       } catch (e) {
-        console.error('Error loading faculty:', e)
-        setError(e.message || 'Failed to load faculty')
+        if (isMounted) {
+          console.error('Error loading faculty:', e)
+          setError(e.message || 'Failed to load faculty')
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
-    loadFaculty()
     
-    // Prefetch data for other admin pages in the background
-    setTimeout(() => {
-      prefetchAdminData()
-    }, 1000)
+    // Use requestIdleCallback for non-blocking load, fallback to immediate
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadFaculty, { timeout: 1000 })
+    } else {
+      loadFaculty()
+    }
+    
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   // Filter faculty by search query only (all are pending by default)
