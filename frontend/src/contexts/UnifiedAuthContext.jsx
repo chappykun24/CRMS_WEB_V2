@@ -121,49 +121,52 @@ export const UnifiedAuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, password) => {
-    console.log('[UnifiedAuth] LOGIN_START', { email })
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) {
+      console.log('[UnifiedAuth] Login started');
+    }
+    
     dispatch({ type: 'LOGIN_START' })
     
     try {
-      // Attempt authentication with our auth service
+      // Attempt authentication - optimized single API call
       const result = await authService.login(email, password)
-      console.log('[UnifiedAuth] authService.login result', result)
       
       if (result.success && result.user) {
-        // Store basic user data and token first
-        localStorage.setItem('userData', JSON.stringify(result.user))
-        if (result.token) {
-          localStorage.setItem('authToken', result.token)
-        }
+        // Store user data and token immediately (non-blocking)
+        const storageOps = [
+          () => localStorage.setItem('userData', JSON.stringify(result.user)),
+          () => result.token && localStorage.setItem('authToken', result.token)
+        ];
+        storageOps.forEach(op => {
+          try { op(); } catch (e) { if (isDev) console.warn('Storage error:', e); }
+        });
         
-        // Update user state with basic login data immediately
+        // Update state immediately with login data
         dispatch({ 
           type: 'LOGIN_SUCCESS', 
           payload: { user: result.user, token: result.token } 
         })
-        console.log('[UnifiedAuth] LOGIN_SUCCESS with basic data', { user: result.user, token: result.token })
         
-        // Try to fetch full user profile in the background (non-blocking)
-        try {
-          console.log('[UnifiedAuth] Fetching full user profile in background...')
-          const profileResult = await authService.getCurrentUserProfile()
-          
-          if (profileResult.success && profileResult.user) {
-            console.log('[UnifiedAuth] Full profile fetched successfully:', profileResult.user)
-            // Update with full profile data
-            localStorage.setItem('userData', JSON.stringify(profileResult.user))
-            dispatch({ 
-              type: 'UPDATE_USER', 
-              payload: { user: profileResult.user } 
-            })
-            console.log('[UnifiedAuth] User profile updated with full data')
-          } else {
-            console.warn('[UnifiedAuth] Failed to fetch full profile, keeping basic login data')
+        // Fetch full profile in background (truly non-blocking, doesn't delay login response)
+        // Use setTimeout to ensure it doesn't block the main thread
+        setTimeout(async () => {
+          try {
+            const profileResult = await authService.getCurrentUserProfile()
+            if (profileResult.success && profileResult.user) {
+              localStorage.setItem('userData', JSON.stringify(profileResult.user))
+              dispatch({ 
+                type: 'UPDATE_USER', 
+                payload: { user: profileResult.user } 
+              })
+            }
+          } catch (profileError) {
+            // Silently fail - user already logged in with basic data
+            if (isDev) {
+              console.warn('[UnifiedAuth] Background profile fetch failed:', profileError.message);
+            }
           }
-        } catch (profileError) {
-          console.warn('[UnifiedAuth] Profile fetch failed, keeping basic login data:', profileError)
-          // Don't fail the login if profile fetch fails
-        }
+        }, 0);
         
         return { success: true, user: result.user, token: result.token }
       } else {
@@ -172,11 +175,12 @@ export const UnifiedAuthProvider = ({ children }) => {
           type: 'LOGIN_FAILURE', 
           payload: result.error || 'Login failed' 
         })
-        console.log('[UnifiedAuth] LOGIN_FAILURE', result.error)
         return { success: false, error: result.error || 'Login failed' }
       }
     } catch (error) {
-      console.error('[UnifiedAuth] Login error:', error)
+      if (isDev) {
+        console.error('[UnifiedAuth] Login error:', error.message);
+      }
       dispatch({ 
         type: 'LOGIN_FAILURE', 
         payload: error.message 

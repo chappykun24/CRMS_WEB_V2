@@ -58,19 +58,14 @@ export const register = async (req, res) => {
   }
 };
 
-// Login user
+// Login user - Optimized for performance
 export const login = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
-    // Sanitize email for logging
-    const sanitizedEmail = req.body.email ? (() => {
-      const [localPart, domain] = req.body.email.split('@');
-      return localPart && domain ? `${localPart.substring(0, 3)}***@${domain}` : '***';
-    })() : 'N/A';
-    console.log('🔐 [AUTH CONTROLLER] Login attempt for email:', sanitizedEmail);
-    console.log('🔐 [AUTH CONTROLLER] Request body:', safeStringify(req.body, sanitizeRequestBody));
-    
     const { email, password } = req.body;
 
+    // Early validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -79,79 +74,37 @@ export const login = async (req, res) => {
       });
     }
 
-    // Test database connection first
-    try {
-      console.log('🔐 [AUTH CONTROLLER] Testing database connection...');
-      await db.testConnection();
-      console.log('🔐 [AUTH CONTROLLER] Database connection successful');
-    } catch (dbError) {
-      console.error('🔐 [AUTH CONTROLLER] Database connection failed:', dbError);
-      console.error('🔐 [AUTH CONTROLLER] Database error details:', {
-        message: dbError.message,
-        code: dbError.code,
-        stack: dbError.stack
-      });
-      return res.status(500).json({
-        success: false,
-        message: 'Database connection failed',
-        statusCode: 500,
-        debug: {
-          error: dbError.message,
-          code: dbError.code
-        }
-      });
-    }
-
-    // First, let's check the actual table structure
-    console.log('🔐 [AUTH CONTROLLER] Checking users table structure...');
-    try {
-      const tableInfo = await db.query(`
-        SELECT column_name, data_type, is_nullable 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' 
-        ORDER BY ordinal_position
-      `);
-      console.log('🔐 [AUTH CONTROLLER] Users table columns:', JSON.stringify(tableInfo.rows, null, 2));
-    } catch (tableError) {
-      console.error('🔐 [AUTH CONTROLLER] Error checking table structure:', tableError.message);
-    }
-
-    // Find user by email
-    console.log('🔐 [AUTH CONTROLLER] Querying user with email:', email);
-    let result;
-    try {
-      result = await db.query(`
-        SELECT u.user_id, u.email, u.password_hash, u.name,
-               u.role_id, u.is_approved, u.created_at, u.updated_at,
-               r.name as role_name
-        FROM users u
-        LEFT JOIN roles r ON u.role_id = r.role_id
-        WHERE u.email = $1
-      `, [email]);
-      console.log('🔐 [AUTH CONTROLLER] Query executed successfully');
-    } catch (queryError) {
-      console.error('🔐 [AUTH CONTROLLER] Database query failed:', queryError);
-      console.error('🔐 [AUTH CONTROLLER] Query error details:', {
-        message: queryError.message,
-        code: queryError.code,
-        stack: queryError.stack
-      });
-      return res.status(500).json({
-        success: false,
-        message: 'Database query failed',
-        statusCode: 500,
-        debug: {
-          error: queryError.message,
-          code: queryError.code
-        }
-      });
-    }
+    // Sanitize email for logging (only log in development)
+    const sanitizedEmail = process.env.NODE_ENV === 'development' && email ? (() => {
+      const [localPart, domain] = email.split('@');
+      return localPart && domain ? `${localPart.substring(0, 3)}***@${domain}` : '***';
+    })() : '***';
     
-    console.log('🔐 [AUTH CONTROLLER] Query result:', result.rows.length, 'rows found');
-    // Sanitize user data before logging
-    console.log('🔐 [AUTH CONTROLLER] Query result data:', safeStringify(result.rows, sanitizeUserData));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 [AUTH] Login attempt:', sanitizedEmail);
+    }
 
-    if (result.rows.length === 0) {
+    // Optimized single query: fetch all user data including profile_pic in one query
+    const result = await db.query(`
+      SELECT 
+        u.user_id, 
+        u.email, 
+        u.password_hash, 
+        u.name,
+        u.profile_pic,
+        u.role_id, 
+        u.is_approved, 
+        u.created_at, 
+        u.updated_at,
+        r.name as role_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.role_id
+      WHERE u.email = $1
+      LIMIT 1
+    `, [email]);
+
+    // User not found - return generic error for security
+    if (!result.rows || result.rows.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
@@ -161,7 +114,7 @@ export const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if user is approved
+    // Check approval status before password verification (fail fast)
     if (!user.is_approved) {
       return res.status(401).json({
         success: false,
@@ -170,7 +123,7 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check password
+    // Verify password asynchronously
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
@@ -180,54 +133,63 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    // Generate JWT token (synchronous operation)
     const token = generateToken(user.user_id, user.email);
 
-    // Note: last_login column doesn't exist in the actual database schema
+    // Parse name into first/last name efficiently
+    const nameParts = user.name ? user.name.trim().split(/\s+/) : [];
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ') || '';
 
-    // Remove password from response
-    delete user.password_hash;
+    // Prepare user response object
+    const userResponse = {
+      user_id: user.user_id,
+      id: user.user_id,
+      email: user.email,
+      name: user.name,
+      first_name,
+      last_name,
+      role_id: user.role_id,
+      role_name: user.role_name,
+      role: user.role_name,
+      is_approved: user.is_approved,
+      profilePic: user.profile_pic || null,
+      profile_pic: user.profile_pic || null,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
+
+    // Log performance metrics in development
+    if (process.env.NODE_ENV === 'development') {
+      const duration = Date.now() - startTime;
+      console.log(`✅ [AUTH] Login successful for ${sanitizedEmail} (${duration}ms)`);
+    }
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          user_id: user.user_id,
-          id: user.user_id, // Add id field for compatibility
-          email: user.email,
-          name: user.name,
-          first_name: user.name ? user.name.split(' ')[0] : '',
-          last_name: user.name ? user.name.split(' ').slice(1).join(' ') : '',
-          role_id: user.role_id,
-          role_name: user.role_name,
-          role: user.role_name, // Add role field for compatibility
-          is_approved: user.is_approved,
-          profilePic: user.profile_pic, // Add profile picture
-          profile_pic: user.profile_pic, // Keep both for compatibility
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        },
+        user: userResponse,
         token
       }
     });
   } catch (error) {
-    console.error('🔐 [AUTH CONTROLLER] Login error:', error);
-    console.error('🔐 [AUTH CONTROLLER] Error details:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      name: error.name
-    });
+    // Log error details
+    console.error('❌ [AUTH] Login error:', error.message);
+    
+    // Only log stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🔐 [AUTH] Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Internal server error',
-      statusCode: 500,
-      debug: {
-        error: error.message,
-        code: error.code,
-        name: error.name
-      }
+      statusCode: 500
     });
   }
 };

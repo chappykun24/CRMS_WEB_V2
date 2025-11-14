@@ -2,20 +2,25 @@
 import api, { endpoints } from '../utils/api.js';
 
 class AuthService {
-  // User login via backend API
+  // User login via backend API - Optimized for performance
   async login(email, password) {
+    const startTime = performance.now();
+    const isDev = process.env.NODE_ENV === 'development';
+    
     try {
-      console.log('[AuthService] login() start', { email });
-      console.log('[AuthService] API base URL:', api.defaults.baseURL);
-      console.log('[AuthService] Login endpoint:', endpoints.login);
-      console.log('[AuthService] Full URL:', `${api.defaults.baseURL}${endpoints.login}`);
+      if (isDev) {
+        console.log('[AuthService] Login attempt:', email?.substring(0, 3) + '***');
+      }
       
+      // Single optimized API call
       const { data } = await api.post(endpoints.login, { email, password });
-      console.log('[AuthService] login() response', data);
       
-      // Handle successful login with user data from Neon database
-      if (data && data.success && data.data && data.data.user) {
-        console.log('[AuthService] login() successful with user data from database:', data.data.user);
+      // Handle successful login with user data
+      if (data?.success && data?.data?.user) {
+        if (isDev) {
+          const duration = Math.round(performance.now() - startTime);
+          console.log(`✅ [AuthService] Login successful (${duration}ms)`);
+        }
         return {
           success: true,
           user: data.data.user,
@@ -23,9 +28,11 @@ class AuthService {
         };
       }
       
-      // Handle successful login but no user data (shouldn't happen with proper backend)
-      if (data && data.success && data.data && !data.data.user) {
-        console.warn('[AuthService] login() successful but no user data - this indicates a backend issue');
+      // Handle successful login but no user data
+      if (data?.success && !data?.data?.user) {
+        if (isDev) {
+          console.warn('[AuthService] Login successful but no user data');
+        }
         return { 
           success: false, 
           error: 'Login successful but no user data received from server' 
@@ -33,17 +40,14 @@ class AuthService {
       }
       
       // Handle login failure
-      console.warn('[AuthService] login() failed:', data?.message);
       return { 
         success: false, 
         error: data?.message || 'Login failed' 
       };
     } catch (error) {
-      console.error('[AuthService] login() error', {
-        message: error.message,
-        status: error.response?.status,
-        body: error.response?.data
-      });
+      if (isDev) {
+        console.error('[AuthService] Login error:', error.message);
+      }
       
       // Handle timeout errors
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
