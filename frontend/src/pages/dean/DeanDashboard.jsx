@@ -312,81 +312,76 @@ const Home = () => {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 max-w-7xl mx-auto">
         {/* Background refresh indicator */}
         {refreshing && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm text-blue-700">Refreshing data in the background...</span>
+          <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-2 flex items-center gap-2">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+            <span className="text-xs text-blue-700">Refreshing data in the background...</span>
           </div>
         )}
-        
-        {/* Welcome Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dean Dashboard</h1>
-        </div>
 
         {/* Key Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Pending Approvals */}
           <button
             onClick={() => navigate('/dean/syllabus-approval')}
-            className="bg-white rounded-xl shadow-sm border-2 border-orange-200 p-6 hover:shadow-lg hover:border-orange-300 transition-all text-left group"
+            className="bg-white rounded-lg shadow-sm border border-orange-200 p-4 hover:shadow-md hover:border-orange-300 transition-all text-left group"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-orange-100 rounded-lg p-3 group-hover:bg-orange-200 transition-colors">
-                <DocumentTextIcon className="h-8 w-8 text-orange-600" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-orange-100 rounded-lg p-2 group-hover:bg-orange-200 transition-colors">
+                <DocumentTextIcon className="h-5 w-5 text-orange-600" />
               </div>
-              <div className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">
+              <div className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                 ACTION REQUIRED
               </div>
             </div>
-            <p className="text-sm font-medium text-gray-600 mb-1">Pending Approvals</p>
-            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.pendingApprovals || 0).toLocaleString()}</p>
+            <p className="text-xs font-medium text-gray-600 mb-1">Pending Approvals</p>
+            <p className="text-2xl font-bold text-gray-900 mb-1">{(stats.pendingApprovals || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-500">Syllabi awaiting your approval</p>
           </button>
 
           {/* Approved Syllabi */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-100 rounded-lg p-3">
-                <DocumentTextIcon className="h-8 w-8 text-green-600" />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-green-100 rounded-lg p-2">
+                <DocumentTextIcon className="h-5 w-5 text-green-600" />
               </div>
             </div>
-            <p className="text-sm font-medium text-gray-600 mb-1">Approved Syllabi</p>
-            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.approvedSyllabi || 0).toLocaleString()}</p>
+            <p className="text-xs font-medium text-gray-600 mb-1">Approved Syllabi</p>
+            <p className="text-2xl font-bold text-gray-900 mb-1">{(stats.approvedSyllabi || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-500">Total approved syllabi</p>
           </div>
 
           {/* Edit Requests */}
           <button
             onClick={() => navigate('/dean/syllabus-approval?tab=edit-requests')}
-            className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6 hover:shadow-lg hover:border-purple-300 transition-all text-left group"
+            className="bg-white rounded-lg shadow-sm border border-purple-200 p-4 hover:shadow-md hover:border-purple-300 transition-all text-left group"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-100 rounded-lg p-3 group-hover:bg-purple-200 transition-colors">
-                <DocumentTextIcon className="h-8 w-8 text-purple-600" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-purple-100 rounded-lg p-2 group-hover:bg-purple-200 transition-colors">
+                <DocumentTextIcon className="h-5 w-5 text-purple-600" />
               </div>
               {stats.editRequests > 0 && (
-                <div className="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full">
+                <div className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                   {stats.editRequests} NEW
                 </div>
               )}
             </div>
-            <p className="text-sm font-medium text-gray-600 mb-1">Edit Requests</p>
-            <p className="text-4xl font-bold text-gray-900 mb-2">{(stats.editRequests || 0).toLocaleString()}</p>
+            <p className="text-xs font-medium text-gray-600 mb-1">Edit Requests</p>
+            <p className="text-2xl font-bold text-gray-900 mb-1">{(stats.editRequests || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-500">Pending edit requests</p>
           </button>
 
           {/* Active Term */}
-          <div className="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-sm border border-indigo-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-indigo-100 rounded-lg p-3">
-                <BookOpenIcon className="h-8 w-8 text-indigo-600" />
+          <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg shadow-sm border border-indigo-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="bg-indigo-100 rounded-lg p-2">
+                <BookOpenIcon className="h-5 w-5 text-indigo-600" />
               </div>
             </div>
-            <p className="text-sm font-medium text-gray-600 mb-1">Active Term</p>
-            <p className="text-xl font-bold text-gray-900 mb-2">
+            <p className="text-xs font-medium text-gray-600 mb-1">Active Term</p>
+            <p className="text-lg font-bold text-gray-900 mb-1">
               {stats.activeTerm 
                 ? `${stats.activeTerm.semester === '1' ? '1st' : stats.activeTerm.semester === '2' ? '2nd' : stats.activeTerm.semester === '3' ? 'Summer' : stats.activeTerm.semester} Semester ${stats.activeTerm.school_year}`
                 : 'N/A'}
@@ -396,18 +391,18 @@ const Home = () => {
         </div>
 
         {/* Scatterplot Section - Lazy Loaded */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Student Performance Overview</h2>
-              <p className="text-sm text-gray-600 mt-1">Attendance vs Average Score</p>
+              <h2 className="text-lg font-bold text-gray-900">Student Performance Overview</h2>
+              <p className="text-xs text-gray-600 mt-0.5">Attendance vs Average Score</p>
             </div>
             <button
               onClick={() => navigate('/dean/analytics')}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
             >
               View Full Analytics
-              <ArrowRightIcon className="h-4 w-4" />
+              <ArrowRightIcon className="h-3 w-3" />
             </button>
           </div>
           <button
@@ -415,13 +410,13 @@ const Home = () => {
             className="w-full cursor-pointer"
           >
             <Suspense fallback={
-              <div className="h-64 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
-                <div className="text-gray-400">Loading chart...</div>
+              <div className="h-56 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                <div className="text-xs text-gray-400">Loading chart...</div>
               </div>
             }>
               {loadingScatter ? (
-                <div className="h-64 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
-                  <div className="text-gray-400">Loading chart...</div>
+                <div className="h-56 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <div className="text-xs text-gray-400">Loading chart...</div>
                 </div>
               ) : scatterData.length > 0 ? (
                 <ScatterPlotChart 
@@ -429,11 +424,11 @@ const Home = () => {
                   onNavigate={() => navigate('/dean/analytics')}
                 />
               ) : (
-                <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="h-56 bg-gray-50 rounded-lg flex items-center justify-center border border-dashed border-gray-300">
                   <div className="text-center">
-                    <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500">No data available</p>
-                    <p className="text-sm text-gray-400 mt-1">Click to view analytics</p>
+                    <ChartBarIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500">No data available</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Click to view analytics</p>
                   </div>
                 </div>
               )}
@@ -442,58 +437,58 @@ const Home = () => {
         </div>
 
         {/* Quick Access Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Access</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Access</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Syllabus Approval */}
             <button
               onClick={() => navigate('/dean/syllabus-approval')}
-              className="flex items-center justify-between p-5 bg-gradient-to-br from-orange-50 to-white rounded-xl border-2 border-orange-200 hover:border-orange-300 hover:shadow-lg transition-all group"
+              className="flex items-center justify-between p-4 bg-gradient-to-br from-orange-50 to-white rounded-lg border border-orange-200 hover:border-orange-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-center space-x-4">
-                <div className="bg-orange-100 rounded-xl p-3 group-hover:bg-orange-200 transition-colors">
-                  <DocumentTextIcon className="h-7 w-7 text-orange-600" />
+              <div className="flex items-center space-x-3">
+                <div className="bg-orange-100 rounded-lg p-2 group-hover:bg-orange-200 transition-colors">
+                  <DocumentTextIcon className="h-5 w-5 text-orange-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-gray-900 text-lg">Syllabus Approval</p>
-                  <p className="text-sm text-gray-600">Review and approve syllabi</p>
+                  <p className="font-bold text-gray-900 text-sm">Syllabus Approval</p>
+                  <p className="text-xs text-gray-600">Review and approve syllabi</p>
                 </div>
               </div>
-              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-orange-600 transition-colors" />
+              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
             </button>
 
             {/* Analytics */}
             <button
               onClick={() => navigate('/dean/analytics')}
-              className="flex items-center justify-between p-5 bg-gradient-to-br from-blue-50 to-white rounded-xl border-2 border-blue-200 hover:border-blue-300 hover:shadow-lg transition-all group"
+              className="flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-200 hover:border-blue-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-center space-x-4">
-                <div className="bg-blue-100 rounded-xl p-3 group-hover:bg-blue-200 transition-colors">
-                  <ChartBarIcon className="h-7 w-7 text-blue-600" />
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 rounded-lg p-2 group-hover:bg-blue-200 transition-colors">
+                  <ChartBarIcon className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-gray-900 text-lg">Analytics</p>
-                  <p className="text-sm text-gray-600">View student analytics</p>
+                  <p className="font-bold text-gray-900 text-sm">Analytics</p>
+                  <p className="text-xs text-gray-600">View student analytics</p>
                 </div>
               </div>
-              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-blue-600 transition-colors" />
+              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
             </button>
 
             {/* My Classes */}
             <button
               onClick={() => navigate('/dean/classes')}
-              className="flex items-center justify-between p-5 bg-gradient-to-br from-emerald-50 to-white rounded-xl border-2 border-emerald-200 hover:border-emerald-300 hover:shadow-lg transition-all group"
+              className="flex items-center justify-between p-4 bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-200 hover:border-emerald-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-center space-x-4">
-                <div className="bg-emerald-100 rounded-xl p-3 group-hover:bg-emerald-200 transition-colors">
-                  <BookOpenIcon className="h-7 w-7 text-emerald-600" />
+              <div className="flex items-center space-x-3">
+                <div className="bg-emerald-100 rounded-lg p-2 group-hover:bg-emerald-200 transition-colors">
+                  <BookOpenIcon className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-gray-900 text-lg">My Classes</p>
-                  <p className="text-sm text-gray-600">View all classes</p>
+                  <p className="font-bold text-gray-900 text-sm">My Classes</p>
+                  <p className="text-xs text-gray-600">View all classes</p>
                 </div>
               </div>
-              <ArrowRightIcon className="h-6 w-6 text-gray-400 group-hover:text-emerald-600 transition-colors" />
+              <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
             </button>
           </div>
         </div>

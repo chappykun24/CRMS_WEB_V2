@@ -22,7 +22,7 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={240}>
       <ScatterChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis 
@@ -31,7 +31,7 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
           name="Attendance %" 
           domain={[0, 100]}
           label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fontSize: 10 }}
           stroke="#6b7280"
         />
         <YAxis 
@@ -40,7 +40,7 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
           name="Score" 
           domain={[0, 100]}
           label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-          tick={{ fontSize: 12 }}
+          tick={{ fontSize: 10 }}
           stroke="#6b7280"
         />
         <ZAxis 
@@ -50,17 +50,17 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
           name="Submission Rate %"
         />
         <Tooltip 
-          contentStyle={{ fontSize: '12px', padding: '8px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+          contentStyle={{ fontSize: '11px', padding: '6px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
           content={({ active, payload }) => {
             if (active && payload && payload[0]) {
               const data = payload[0].payload;
               return (
-                <div className="bg-white p-2 border border-gray-300 rounded shadow-lg">
-                  <p className="font-semibold text-sm">{data.name}</p>
-                  <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
-                  <p className="text-xs">Score: {data.score.toFixed(1)}</p>
-                  <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                  <p className="text-xs">Cluster: {data.cluster}</p>
+                <div className="bg-white p-1.5 border border-gray-300 rounded shadow-lg">
+                  <p className="font-semibold text-xs">{data.name}</p>
+                  <p className="text-[10px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                  <p className="text-[10px]">Score: {data.score.toFixed(1)}</p>
+                  <p className="text-[10px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                  <p className="text-[10px]">Cluster: {data.cluster}</p>
                 </div>
               );
             }
@@ -74,7 +74,7 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
           shape={(props) => {
             const { cx, cy, payload } = props;
             const color = clusterColors[payload.cluster] || '#9ca3af';
-            return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={2} opacity={0.7} />;
+            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1.5} opacity={0.7} />;
           }}
         />
       </ScatterChart>
