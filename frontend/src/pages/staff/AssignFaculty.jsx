@@ -454,9 +454,6 @@ const AssignFaculty = () => {
                         avatarUrl={cls.avatarUrl}
                         isSelected={selectedClass?.id === cls.id}
                         onClick={() => handleClassSelect(cls)}
-                        onAttendance={() => {}}
-                        onAssessments={() => {}}
-                        onMore={() => {}}
                       />
                     ))}
                   </div>
@@ -805,9 +802,6 @@ const AssignFaculty = () => {
                   bannerColor={formData.bannerColor}
                   bannerImage={formData.bannerImage}
                   avatarUrl={formData.avatarUrl}
-                  onAttendance={() => {}}
-                  onAssessments={() => {}}
-                  onMore={() => {}}
                 />
               </div>
             </div>
