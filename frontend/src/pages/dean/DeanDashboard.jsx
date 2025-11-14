@@ -184,43 +184,59 @@ const Home = () => {
       // Update stats with fresh data
       setStats(newStats)
       
-      // Fetch analytics data for scatterplot
-      try {
-        const analyticsRes = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          signal: abortControllerRef.current.signal
-        })
-        
-        if (analyticsRes.ok) {
-          const contentType = analyticsRes.headers.get('content-type')
-          if (contentType && contentType.includes('application/json')) {
-            const analyticsData = await analyticsRes.json()
-            if (analyticsData.success && Array.isArray(analyticsData.data)) {
-              // Prepare scatterplot data (Attendance vs Score)
-              const scatterPlotData = analyticsData.data
-                .filter(row => row.cluster_label && 
-                  row.cluster_label !== null && 
-                  row.cluster_label !== undefined &&
-                  !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
-                  !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
-                .map(row => ({
-                  attendance: parseFloat(row.attendance_percentage) || 0,
-                  score: parseFloat(row.average_score) || 0,
-                  submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
-                  cluster: row.cluster_label,
-                  name: row.full_name
-                }))
-              setScatterData(scatterPlotData)
-              setLoadingScatter(false)
+      // Fetch analytics data for scatterplot asynchronously (non-blocking)
+      // Use requestIdleCallback or setTimeout to defer loading
+      const loadScatterData = async () => {
+        try {
+          const analyticsRes = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            signal: abortControllerRef.current.signal
+          })
+          
+          if (analyticsRes.ok) {
+            const contentType = analyticsRes.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+              const analyticsData = await analyticsRes.json()
+              if (analyticsData.success && Array.isArray(analyticsData.data)) {
+                // Prepare scatterplot data (Attendance vs Score)
+                const scatterPlotData = analyticsData.data
+                  .filter(row => row.cluster_label && 
+                    row.cluster_label !== null && 
+                    row.cluster_label !== undefined &&
+                    !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
+                    !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
+                  .map(row => ({
+                    attendance: parseFloat(row.attendance_percentage) || 0,
+                    score: parseFloat(row.average_score) || 0,
+                    submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+                    cluster: row.cluster_label,
+                    name: row.full_name
+                  }))
+                setScatterData(scatterPlotData)
+                setLoadingScatter(false)
+              }
             }
           }
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+            console.error('Error fetching scatterplot data:', error)
+          }
+          setLoadingScatter(false)
         }
-      } catch (error) {
-        console.error('Error fetching scatterplot data:', error)
-        setLoadingScatter(false)
+      }
+      
+      // Defer scatterplot data loading using requestIdleCallback or setTimeout
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => {
+          loadScatterData()
+        }, { timeout: 2000 })
+      } else {
+        setTimeout(() => {
+          loadScatterData()
+        }, 500)
       }
       
       // Store minimized data in sessionStorage for instant next load
@@ -302,8 +318,8 @@ const Home = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="h-full overflow-y-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         {/* Background refresh indicator */}
         {refreshing && (
           <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
@@ -314,8 +330,7 @@ const Home = () => {
         
         {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dean Dashboard</h1>
-          <p className="text-gray-600">Overview of syllabus approvals and academic activities</p>
+          <h1 className="text-3xl font-bold text-gray-900">Dean Dashboard</h1>
         </div>
 
         {/* Key Statistics Cards */}
@@ -387,7 +402,7 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Scatterplot Section */}
+        {/* Scatterplot Section - Lazy Loaded */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -406,86 +421,30 @@ const Home = () => {
             onClick={() => navigate('/dean/analytics')}
             className="w-full cursor-pointer"
           >
-            {loadingScatter ? (
+            <Suspense fallback={
               <div className="h-64 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
                 <div className="text-gray-400">Loading chart...</div>
               </div>
-            ) : scatterData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart data={scatterData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    type="number" 
-                    dataKey="attendance" 
-                    name="Attendance %" 
-                    domain={[0, 100]}
-                    label={{ value: 'Attendance %', position: 'insideBottom', offset: -5 }}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="score" 
-                    name="Score" 
-                    domain={[0, 100]}
-                    label={{ value: 'Average Score', angle: -90, position: 'insideLeft' }}
-                    tick={{ fontSize: 12 }}
-                    stroke="#6b7280"
-                  />
-                  <ZAxis 
-                    type="number" 
-                    dataKey="submissionRate" 
-                    range={[50, 400]}
-                    name="Submission Rate %"
-                  />
-                  <Tooltip 
-                    contentStyle={{ fontSize: '12px', padding: '8px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload[0]) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white p-2 border border-gray-300 rounded shadow-lg">
-                            <p className="font-semibold text-sm">{data.name}</p>
-                            <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
-                            <p className="text-xs">Score: {data.score.toFixed(1)}</p>
-                            <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
-                            <p className="text-xs">Cluster: {data.cluster}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Scatter 
-                    name="Students" 
-                    data={scatterData} 
-                    fill="#3b82f6"
-                    shape={(props) => {
-                      const { cx, cy, payload } = props;
-                      const clusterColors = {
-                        'Excellent Performance': '#10b981',
-                        'On Track': '#3b82f6',
-                        'Performing Well': '#3b82f6',
-                        'Needs Improvement': '#f59e0b',
-                        'Needs Guidance': '#f59e0b',
-                        'At Risk': '#ef4444',
-                        'Needs Support': '#ef4444'
-                      };
-                      const color = clusterColors[payload.cluster] || '#9ca3af';
-                      return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={2} opacity={0.7} />;
-                    }}
-                  />
-                </ScatterChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                <div className="text-center">
-                  <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500">No data available</p>
-                  <p className="text-sm text-gray-400 mt-1">Click to view analytics</p>
+            }>
+              {loadingScatter ? (
+                <div className="h-64 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                  <div className="text-gray-400">Loading chart...</div>
                 </div>
-              </div>
-            )}
+              ) : scatterData.length > 0 ? (
+                <ScatterPlotChart 
+                  data={scatterData} 
+                  onNavigate={() => navigate('/dean/analytics')}
+                />
+              ) : (
+                <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                  <div className="text-center">
+                    <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">No data available</p>
+                    <p className="text-sm text-gray-400 mt-1">Click to view analytics</p>
+                  </div>
+                </div>
+              )}
+            </Suspense>
           </button>
         </div>
 
