@@ -290,10 +290,10 @@ const Analytics = () => {
     }
   }, []);
 
-  // Fetch sections, programs, and departments
+  // Fetch sections, programs, departments, and specializations
   const fetchFilterOptions = useCallback(async () => {
     try {
-      const [sectionsRes, programsRes, departmentsRes] = await Promise.all([
+      const [sectionsRes, programsRes, departmentsRes, specializationsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/section-courses/sections`, {
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         }),
@@ -301,6 +301,9 @@ const Analytics = () => {
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         }),
         fetch(`${API_BASE_URL}/departments`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/program-specializations`, {
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         })
       ]);
@@ -316,6 +319,21 @@ const Analytics = () => {
       if (departmentsRes.ok) {
         const departmentsData = await departmentsRes.json();
         setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      }
+      if (specializationsRes.ok) {
+        const specializationsData = await specializationsRes.json();
+        // Filter to only show Business Analytics, Networking, and Service Management
+        const allowedSpecializations = ['Business Analytics', 'Networking', 'Service Management'];
+        const filteredSpecializations = Array.isArray(specializationsData) 
+          ? specializationsData.filter(spec => 
+              allowedSpecializations.some(allowed => 
+                spec.name?.toLowerCase().includes(allowed.toLowerCase()) ||
+                spec.abbreviation?.toLowerCase().includes(allowed.toLowerCase())
+              )
+            )
+          : [];
+        console.log('✅ [DEAN ANALYTICS] Loaded specializations:', filteredSpecializations.length, filteredSpecializations);
+        setSpecializations(filteredSpecializations);
       }
     } catch (error) {
       console.error('❌ [DEAN ANALYTICS] Error fetching filter options:', error);
@@ -1380,24 +1398,28 @@ const Analytics = () => {
                   </div>
 
                   {/* Specialization/Major Filter */}
-                  {specializations.length > 0 && (
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="relative">
-                        <select
-                          value={selectedSpecializationId}
-                          onChange={(e) => setSelectedSpecializationId(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="">All Specializations</option>
-                          {specializations.map(spec => (
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <select
+                        value={selectedSpecializationId}
+                        onChange={(e) => setSelectedSpecializationId(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Specializations</option>
+                        {specializations.length > 0 ? (
+                          specializations.map(spec => (
                             <option key={spec.specialization_id} value={spec.specialization_id.toString()}>
                               {spec.name}
                             </option>
-                          ))}
-                        </select>
-                      </div>
+                          ))
+                        ) : (
+                          <>
+                            <option value="" disabled>Loading specializations...</option>
+                          </>
+                        )}
+                      </select>
                     </div>
-                  )}
+                  </div>
 
                   {/* Section Filter */}
                   <div className="flex-1 min-w-[200px]">
