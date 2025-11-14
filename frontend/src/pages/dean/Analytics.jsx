@@ -944,8 +944,8 @@ const Analytics = () => {
       return { text: label, className: 'bg-emerald-100 text-emerald-700' };
     }
 
-    // On Track/Performing Well - Blue
-    if (normalized.includes('track') || normalized.includes('performing') || normalized.includes('on track')) {
+    // Average Performance/Performing Well - Blue
+    if (normalized.includes('average') || normalized.includes('performing') || normalized.includes('track')) {
       return { text: label, className: 'bg-blue-100 text-blue-700' };
     }
 
@@ -1222,7 +1222,7 @@ const Analytics = () => {
   // Cluster color mapping for scatter plots
   const clusterColors = {
     'Excellent Performance': '#10b981',
-    'On Track': '#3b82f6',
+    'Average Performance': '#3b82f6',
     'Performing Well': '#3b82f6',
     'Needs Improvement': '#f59e0b',
     'Needs Guidance': '#f59e0b',

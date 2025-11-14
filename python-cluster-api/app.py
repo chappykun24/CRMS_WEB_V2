@@ -333,14 +333,14 @@ def cluster_records(records):
     if n_clusters >= 4:
         labels = {
             sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "On Track",
+            sorted_clusters[1][0]: "Average Performance",
             sorted_clusters[2][0]: "Needs Improvement",
             sorted_clusters[3][0]: "At Risk"
         }
     elif n_clusters == 3:
         labels = {
             sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "On Track",
+            sorted_clusters[1][0]: "Average Performance",
             sorted_clusters[2][0]: "Needs Guidance"
         }
     elif n_clusters == 2:
@@ -361,13 +361,13 @@ def cluster_records(records):
             if avg_score >= 85 and avg_attendance >= 85 and avg_submission_rate >= 90:
                 labels = {0: "Excellent Performance"}
             elif avg_score >= 70 and avg_attendance >= 75 and avg_submission_rate >= 80:
-                labels = {0: "On Track"}
+                labels = {0: "Average Performance"}
             elif avg_score >= 60 and avg_attendance >= 60 and avg_submission_rate >= 70:
                 labels = {0: "Needs Improvement"}
             else:
                 labels = {0: "At Risk"}
         else:
-            labels = {0: "On Track"}  # Default fallback
+            labels = {0: "Average Performance"}  # Default fallback
     
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
     

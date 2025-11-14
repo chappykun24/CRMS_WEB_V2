@@ -13,7 +13,7 @@ import {
 const ScatterPlotChart = ({ data, onNavigate }) => {
   const clusterColors = {
     'Excellent Performance': '#10b981',
-    'On Track': '#3b82f6',
+    'Average Performance': '#3b82f6',
     'Performing Well': '#3b82f6',
     'Needs Improvement': '#f59e0b',
     'Needs Guidance': '#f59e0b',
