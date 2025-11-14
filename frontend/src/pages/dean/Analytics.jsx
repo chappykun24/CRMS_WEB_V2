@@ -455,7 +455,10 @@ const Analytics = () => {
         section_course_id: sectionCourseId
       });
       
-      const response = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`, {
+      const url = `${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`;
+      console.log('🔄 [DEAN ANALYTICS] Fetching class analytics:', url);
+      
+      const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -473,15 +476,42 @@ const Analytics = () => {
           });
           setClassFilteredData(classData);
         } else {
-          console.warn('⚠️ [DEAN ANALYTICS] No class-specific data found');
+          console.warn('⚠️ [DEAN ANALYTICS] No class-specific data found in response:', result);
           setClassFilteredData(null);
         }
       } else {
-        console.error('❌ [DEAN ANALYTICS] Failed to fetch class analytics:', response.status);
-        setClassFilteredData(null);
+        // Try to get error details
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          // Ignore JSON parse errors
+        }
+        
+        console.error('❌ [DEAN ANALYTICS] Failed to fetch class analytics:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          student_id: studentId,
+          section_course_id: sectionCourseId
+        });
+        
+        // If 500 error, the backend query might be failing
+        // Fall back to showing overall data with a warning
+        if (response.status === 500) {
+          console.warn('⚠️ [DEAN ANALYTICS] Backend error (500) - using overall data as fallback');
+          setClassFilteredData(null); // This will trigger using overall data
+        } else {
+          setClassFilteredData(null);
+        }
       }
     } catch (error) {
-      console.error('❌ [DEAN ANALYTICS] Error loading class analytics:', error);
+      console.error('❌ [DEAN ANALYTICS] Error loading class analytics:', {
+        error: error.message,
+        student_id: studentId,
+        section_course_id: sectionCourseId
+      });
       setClassFilteredData(null);
     } finally {
       setLoadingClassData(false);
@@ -1806,7 +1836,11 @@ const Analytics = () => {
                     </div>
                   )}
                   {selectedClassId !== 'all' && !loadingClassData && !classFilteredData && (
-                    <div className="ml-auto text-xs text-red-500">No class data available</div>
+                    <div className="ml-auto flex items-center gap-2">
+                      <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                        ⚠️ Showing overall data (class-specific data unavailable)
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
