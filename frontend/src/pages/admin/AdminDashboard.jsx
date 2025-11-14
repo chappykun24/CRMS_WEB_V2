@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import UserManagement from './UserManagement'
 import FacultyApproval from './FacultyApproval'
-import SystemSettings from './SystemSettings'
 import SchoolConfiguration from './SchoolConfiguration'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
 
@@ -24,7 +23,6 @@ const AdminDashboard = ({ user }) => {
       <Route path="/users" element={<UserManagement />} />
       <Route path="/faculty-approval" element={<FacultyApproval />} />
       <Route path="/school-config" element={<SchoolConfiguration />} />
-      <Route path="/settings" element={<SystemSettings />} />
       <Route path="*" element={<Navigate to="/admin/users" replace />} />
     </Routes>
   )

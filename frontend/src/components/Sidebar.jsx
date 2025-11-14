@@ -35,8 +35,7 @@ const Sidebar = ({ isExpanded, onToggle }) => {
       case 'ADMIN':
         return [
           { name: 'User Management', icon: UserGroupIcon, href: '/admin/users' },
-          { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/admin/school-config' },
-          { name: 'System Settings', icon: Cog6ToothIcon, href: '/admin/settings' }
+          { name: 'School Configuration', icon: BuildingOffice2Icon, href: '/admin/school-config' }
         ]
       
       case 'FACULTY':

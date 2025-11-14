@@ -210,9 +210,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
           }
           return 'School Configuration'
         }
-        if (path === '/dashboard/settings') {
-          return 'System Settings'
-        }
         break
       case 'FACULTY':
         if (path === '/dashboard/classes' || path === '/faculty/classes') return 'My Classes'
@@ -283,12 +280,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         title: 'School Configuration', 
         subtitle,
         path: '/dashboard/school-config'
-      }
-    } else if (path === '/dashboard/settings') {
-      return { 
-        title: 'System Settings', 
-        subtitle: 'Configure system preferences',
-        path: '/dashboard/settings'
       }
     } else if (path.startsWith('/faculty/') || path.startsWith('/dashboard/faculty/')) {
       // Handle faculty routes: /faculty/classes, /faculty/assessments, /faculty/grades, /faculty/syllabus
