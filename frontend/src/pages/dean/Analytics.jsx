@@ -1633,6 +1633,36 @@ const Analytics = () => {
                 </div>
               )}
 
+              {/* Clustering Quality Score */}
+              {clusterMeta?.silhouetteScore !== null && clusterMeta?.silhouetteScore !== undefined && (
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg shadow-sm border border-indigo-200 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-indigo-600 font-medium">Clustering Quality</p>
+                    <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                      parseFloat(clusterMeta.silhouetteScore) > 0.5 
+                        ? 'bg-green-100 text-green-700' 
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.3
+                        ? 'bg-blue-100 text-blue-700'
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.1
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {parseFloat(clusterMeta.silhouetteScore) > 0.5 
+                        ? 'Excellent' 
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.3
+                        ? 'Good'
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.1
+                        ? 'Fair'
+                        : 'Poor'}
+                    </span>
+                  </div>
+                  <p className="text-lg font-bold text-indigo-900">
+                    {parseFloat(clusterMeta.silhouetteScore).toFixed(4)}
+                  </p>
+                  <p className="text-[10px] text-indigo-500 mt-0.5">Silhouette Score</p>
+                </div>
+              )}
+
               {/* Scatter Plot Charts - Show First */}
               {!chartsLoaded && (
                 <ChartsSkeleton />

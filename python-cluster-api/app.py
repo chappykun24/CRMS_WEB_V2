@@ -159,13 +159,125 @@ def calculate_score_features(row):
     }
 
 
+def validate_clustering_data(records):
+    """
+    Validate data quality before clustering
+    Returns list of validation issues (empty if all valid)
+    """
+    issues = []
+    
+    if not records or len(records) == 0:
+        issues.append("No records provided for clustering")
+        return issues
+    
+    # Check for required fields
+    required_fields = ['student_id']
+    for idx, record in enumerate(records):
+        for field in required_fields:
+            if field not in record or record[field] is None:
+                issues.append(f"Record {idx}: Missing required field '{field}'")
+    
+    # Check for duplicate student IDs
+    student_ids = [r.get('student_id') for r in records if r.get('student_id') is not None]
+    if len(student_ids) != len(set(student_ids)):
+        duplicates = [sid for sid in set(student_ids) if student_ids.count(sid) > 1]
+        issues.append(f"Duplicate student IDs found: {duplicates[:5]}")
+    
+    # Check for unrealistic values
+    for idx, record in enumerate(records):
+        student_id = record.get('student_id', f'Record {idx}')
+        
+        # Attendance validation
+        attendance = record.get('attendance_percentage')
+        if attendance is not None:
+            try:
+                attendance = float(attendance)
+                if attendance < 0 or attendance > 100:
+                    issues.append(f"Student {student_id}: Invalid attendance_percentage ({attendance})")
+            except (ValueError, TypeError):
+                pass
+        
+        # Score validation
+        score = record.get('average_score')
+        if score is not None:
+            try:
+                score = float(score)
+                if score < 0 or score > 100:
+                    issues.append(f"Student {student_id}: Invalid average_score ({score})")
+            except (ValueError, TypeError):
+                pass
+    
+    return issues
+
+
+def validate_cluster_quality(cluster_stats, labels, total_students, silhouette_score):
+    """
+    Validate cluster quality after clustering
+    Returns list of quality issues
+    """
+    issues = []
+    
+    # Check silhouette score
+    if silhouette_score is not None:
+        if silhouette_score < 0.1:
+            issues.append(f"⚠️ Poor clustering quality: Silhouette score {silhouette_score:.4f} < 0.1")
+        elif silhouette_score < 0.3:
+            issues.append(f"⚠️ Fair clustering quality: Silhouette score {silhouette_score:.4f} < 0.3")
+    
+    # Check cluster sizes
+    min_cluster_size_ratio = 0.05  # At least 5% of students
+    min_size = max(2, int(total_students * min_cluster_size_ratio))
+    max_size_ratio = 0.8  # No more than 80% in one cluster
+    max_size = int(total_students * max_size_ratio)
+    
+    for cluster_id, stats in cluster_stats.items():
+        count = stats.get('count', 0)
+        label = labels.get(cluster_id, 'Unknown')
+        
+        if count < min_size:
+            issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) is too small: {count} students (minimum: {min_size})")
+        
+        if count > max_size:
+            issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) is too large: {count} students ({count/total_students*100:.1f}%, maximum: {max_size_ratio*100:.0f}%)")
+    
+    # Validate cluster labels match performance
+    for cluster_id, stats in cluster_stats.items():
+        label = labels.get(cluster_id, 'Unknown')
+        avg_score = stats.get('avg_score', 0)
+        avg_attendance = stats.get('avg_attendance_percentage', 0)
+        
+        # Check "Excellent Performance" actually has high metrics
+        if label == "Excellent Performance":
+            if avg_score < 75 or avg_attendance < 80:
+                issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) labeled 'Excellent' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
+        
+        # Check "At Risk" actually has low metrics
+        if label == "At Risk":
+            if avg_score > 75 or avg_attendance > 80:
+                issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) labeled 'At Risk' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
+    
+    return issues
+
+
 def cluster_records(records):
     """
-    Enhanced clustering function using detailed student data:
+    Enhanced clustering function with validation:
     - Attendance: present, absent, late counts
     - Submission scores: based on Assessment and ILO mapping
     - Submission behavior: late, ontime, missing counts
+    - Data quality validation before clustering
+    - Cluster quality validation after clustering
     """
+    # Validate input data
+    validation_issues = validate_clustering_data(records)
+    if validation_issues:
+        print(f'\n⚠️ [Python API] Data validation issues found:')
+        for issue in validation_issues[:10]:  # Show first 10 issues
+            print(f'  {issue}')
+        if len(validation_issues) > 10:
+            print(f'  ... and {len(validation_issues) - 10} more issues')
+        # Continue with clustering but log warnings
+    
     df = pd.DataFrame(records)
     
     # Ensure student_id is integer for consistent merging
@@ -445,7 +557,14 @@ def cluster_records(records):
         if cluster_id in explanations:
             print(f'    Explanation: {explanations[cluster_id]}')
     
-    # Validate cluster distribution
+    # Validate cluster quality
+    quality_issues = validate_cluster_quality(cluster_stats, labels, len(df_clean), silhouette_avg)
+    if quality_issues:
+        print(f'\n⚠️ [Python API] Cluster quality issues:')
+        for issue in quality_issues:
+            print(f'  {issue}')
+    
+    # Legacy validation (keep for backward compatibility)
     max_cluster_ratio = cluster_counts.max() / total_students if total_students > 0 else 0
     if max_cluster_ratio > 0.8:
         print(f'⚠️ WARNING: One cluster contains {max_cluster_ratio*100:.1f}% of students.')
