@@ -860,32 +860,9 @@ const CourseManagement = () => {
 
   const filteredSpecializations = useMemo(() => {
     const q = query.trim().toLowerCase()
-    let filtered = specializations
+    const filtered = specializations
       .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
       .filter(s => !q || (s.name || '').toLowerCase().includes(q) || (s.abbreviation || '').toLowerCase().includes(q))
-    
-    // Filter by semester (term) if selected
-    if (selectedSemester) {
-      const coursesInSemester = courses.filter(c => String(c.term_id) === String(selectedSemester))
-      const specializationIdsInSemester = new Set(coursesInSemester.map(c => String(c.specialization_id)))
-      filtered = filtered.filter(s => specializationIdsInSemester.has(String(s.specialization_id)))
-    }
-    
-    // Filter by grade level if selected
-    if (selectedGradeLevel) {
-      // Get course IDs that are used in sections with the selected grade level
-      const courseIdsInGradeLevel = new Set(
-        sectionCourses
-          .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
-          .map(sc => String(sc.course_id))
-      )
-      
-      // Filter specializations that have courses in this grade level
-      filtered = filtered.filter(s => {
-        const specCourses = courses.filter(c => String(c.specialization_id) === String(s.specialization_id))
-        return specCourses.some(c => courseIdsInGradeLevel.has(String(c.course_id)))
-      })
-    }
     
     // Sort to show General first, then alphabetically by name
     return filtered.sort((a, b) => {
@@ -893,7 +870,7 @@ const CourseManagement = () => {
       if (b.name === 'General') return 1
       return (a.name || '').localeCompare(b.name || '')
     })
-  }, [specializations, selectedProgramId, query, selectedSemester, selectedGradeLevel, courses, sectionCourses])
+  }, [specializations, selectedProgramId, query])
 
   const formatDate = (value) => {
     if (!value) return '—'
@@ -912,6 +889,21 @@ const CourseManagement = () => {
         String(c.specialization_id) === String(selectedSpecializationId) &&
         (!q || (c.title || '').toLowerCase().includes(q) || (c.course_code || '').toLowerCase().includes(q))
       )
+      
+      // Apply semester filter if selected
+      if (selectedSemester) {
+        filtered = filtered.filter(c => String(c.term_id) === String(selectedSemester))
+      }
+      
+      // Apply grade level filter if selected
+      if (selectedGradeLevel) {
+        const courseIdsInGradeLevel = new Set(
+          sectionCourses
+            .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
+            .map(sc => String(sc.course_id))
+        )
+        filtered = filtered.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
+      }
     } else {
       // Show all non-general courses when no specialization selected
       let generalSpec = specializations.find(s => 
@@ -934,8 +926,8 @@ const CourseManagement = () => {
       }
     }
     
-    // Filter by term if one is selected
-    if (selectedTermId) {
+    // Filter by term if one is selected (for non-specialization view)
+    if (!selectedSpecializationId && selectedTermId) {
       filtered = filtered.filter(c => String(c.term_id) === String(selectedTermId))
     }
     
@@ -952,15 +944,25 @@ const CourseManagement = () => {
       }
       
       if (generalSpec) {
-        // Get general courses that match search query and term filter
+        // Get general courses that match search query and filters
         let generalCourses = courses.filter(c => 
           String(c.specialization_id) === String(generalSpec.specialization_id) &&
           (!q || (c.title || '').toLowerCase().includes(q) || (c.course_code || '').toLowerCase().includes(q))
         )
         
-        // Apply term filter to general courses too
-        if (selectedTermId) {
-          generalCourses = generalCourses.filter(c => String(c.term_id) === String(selectedTermId))
+        // Apply semester filter to general courses if selected
+        if (selectedSemester) {
+          generalCourses = generalCourses.filter(c => String(c.term_id) === String(selectedSemester))
+        }
+        
+        // Apply grade level filter to general courses if selected
+        if (selectedGradeLevel) {
+          const courseIdsInGradeLevel = new Set(
+            sectionCourses
+              .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
+              .map(sc => String(sc.course_id))
+          )
+          generalCourses = generalCourses.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
         }
         
         // Add general courses to the end (below specialized subjects)
@@ -969,7 +971,7 @@ const CourseManagement = () => {
     }
     
     return filtered
-  }, [courses, query, selectedProgramId, selectedSpecializationId, selectedTermId, showGeneralSubjects, specializations])
+  }, [courses, query, selectedProgramId, selectedSpecializationId, selectedTermId, selectedSemester, selectedGradeLevel, showGeneralSubjects, specializations, sectionCourses])
 
   // Filter available students based on search query
   const filteredAvailableStudents = useMemo(() => {
@@ -1151,8 +1153,8 @@ const CourseManagement = () => {
                       <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
                     </div>
                     
-                    {/* Filters - Only show when viewing specializations */}
-                    {selectedProgramId && !selectedSpecializationId && (
+                    {/* Filters - Only show when viewing courses */}
+                    {selectedSpecializationId && (
                       <>
                         {/* Grade Level Filter */}
                         <div className="relative min-w-[150px]">
@@ -1307,28 +1309,9 @@ const CourseManagement = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-xs text-gray-400 mr-4">
-                                {(() => {
-                                  let courseCount = courses.filter(c => 
-                                    String(c.specialization_id) === String(s.specialization_id)
-                                  )
-                                  
-                                  // Apply semester filter if selected
-                                  if (selectedSemester) {
-                                    courseCount = courseCount.filter(c => String(c.term_id) === String(selectedSemester))
-                                  }
-                                  
-                                  // Apply grade level filter if selected
-                                  if (selectedGradeLevel) {
-                                    const courseIdsInGradeLevel = new Set(
-                                      sectionCourses
-                                        .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
-                                        .map(sc => String(sc.course_id))
-                                    )
-                                    courseCount = courseCount.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
-                                  }
-                                  
-                                  return courseCount.length
-                                })()} Subjects
+                                {courses.filter(c => 
+                                  String(c.specialization_id) === String(s.specialization_id)
+                                ).length} Subjects
                                 </div>
                                 <button
                                   onClick={(e) => {
