@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
+import LazyStudentImage from '../../components/LazyStudentImage'
 import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
 import staffCacheService, { resetStaffCache, clearStaffLargeCache } from '../../services/staffCacheService'
 
@@ -54,16 +55,22 @@ const AssignFaculty = () => {
     setFormData({ title: '', code: '', section: '', instructor: '', instructorId: '', bannerType: 'color', bannerColor: '#3B82F6', bannerImage: '', avatarUrl: '', termId: '' })
   }
 
-  // Handle class selection
+  // Handle class selection - prioritize student data, images load lazily
   const handleClassSelect = async (classItem) => {
     setSelectedClass(classItem)
     setLoadingStudents(true)
     
     try {
-      // Include photos in the response for better UX
-      const response = await fetch(`/api/section-courses/${classItem.id}/students?includePhotos=true`)
+      // Priority 1: Fetch student data WITHOUT photos for fast initial load
+      // Photos will be loaded lazily via LazyStudentImage component only when:
+      // - Student data is already displayed
+      // - Image scrolls into viewport
+      // - Browser is idle (using requestIdleCallback)
+      const response = await fetch(`/api/section-courses/${classItem.id}/students`)
       if (!response.ok) throw new Error(`Failed to fetch students: ${response.status}`)
       const studentData = await response.json()
+      
+      // Set students immediately - images will load asynchronously via LazyStudentImage
       setStudents(Array.isArray(studentData) ? studentData : [])
     } catch (error) {
       console.error('Error loading students:', error)
@@ -582,8 +589,8 @@ const AssignFaculty = () => {
                         {students.map((student) => (
                           <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex-shrink-0">
-                              <ImageSkeleton
-                                src={student.student_photo}
+                              <LazyStudentImage
+                                studentId={student.student_id}
                                 alt={student.full_name}
                                 size="md"
                                 shape="circle"
@@ -970,8 +977,8 @@ const AssignFaculty = () => {
                           </div>
                         </div>
                         <div className="flex-shrink-0">
-                          <ImageSkeleton
-                            src={student.student_photo}
+                          <LazyStudentImage
+                            studentId={student.student_id}
                             alt={student.full_name}
                             size="sm"
                             shape="circle"
