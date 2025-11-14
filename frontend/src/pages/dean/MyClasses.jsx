@@ -542,11 +542,22 @@ const MyClasses = () => {
       const sessions = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : [])
       
       // Format sessions for display
+      const formatDateSafe = (dateString) => {
+        if (!dateString) return '—'
+        try {
+          const date = new Date(dateString)
+          if (isNaN(date.getTime())) return '—'
+          return date.toLocaleDateString()
+        } catch (error) {
+          return '—'
+        }
+      }
+      
       const formattedSessions = sessions.map(session => ({
         session_id: session.session_id,
         session_key: `${session.session_id}_${session.session_date}`,
         session_date: session.session_date,
-        title: session.title || `Session ${new Date(session.session_date).toLocaleDateString()}`,
+        title: session.title || `Session ${formatDateSafe(session.session_date)}`,
         session_type: session.session_type,
         meeting_type: session.meeting_type,
         student_count: session.student_count || 0
@@ -989,11 +1000,16 @@ const MyClasses = () => {
                       {sessionList.map((session, sessionIndex) => {
                         const formatDate = (dateString) => {
                           if (!dateString) return 'N/A'
-                          const date = new Date(dateString)
-                          return date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric'
-                          })
+                          try {
+                            const date = new Date(dateString)
+                            if (isNaN(date.getTime())) return 'N/A'
+                            return date.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric'
+                            })
+                          } catch (error) {
+                            return 'N/A'
+                          }
                         }
                         
                         const sessionDataItem = sessionData[session.session_key]
@@ -1037,12 +1053,17 @@ const MyClasses = () => {
                       
                       const formatDate = (dateString) => {
                         if (!dateString) return 'N/A'
-                        const date = new Date(dateString)
-                        return date.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        })
+                        try {
+                          const date = new Date(dateString)
+                          if (isNaN(date.getTime())) return 'N/A'
+                          return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        } catch (error) {
+                          return 'N/A'
+                        }
                       }
                       
                       if (!sessionDataItem && (!cachedStudentsList || cachedStudentsList.length === 0)) {

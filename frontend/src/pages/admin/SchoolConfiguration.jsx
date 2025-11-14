@@ -49,6 +49,18 @@ const SchoolConfiguration = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
 
+  // Safe date formatting function
+  const formatDate = (dateString) => {
+    if (!dateString) return '—'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '—'
+      return date.toLocaleDateString()
+    } catch (error) {
+      return '—'
+    }
+  }
+
   // Search & Filter states
   const [departmentQuery, setDepartmentQuery] = useState('');
   const [termQuery, setTermQuery] = useState('');
@@ -834,12 +846,12 @@ const SchoolConfiguration = () => {
                                 </td>
                                 <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">
-                                    {new Date(term.start_date).toLocaleDateString()}
+                                    {formatDate(term.start_date)}
                                   </div>
                                 </td>
                                 <td className="px-8 py-3">
                                   <div className="text-sm font-medium text-gray-900">
-                                    {new Date(term.end_date).toLocaleDateString()}
+                                    {formatDate(term.end_date)}
                                   </div>
                                 </td>
                                 <td className="px-8 py-3">

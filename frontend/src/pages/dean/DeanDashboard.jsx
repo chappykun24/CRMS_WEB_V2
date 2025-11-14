@@ -346,7 +346,7 @@ const Home = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Total Students</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalStudents.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900">{(stats.totalStudents || 0).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-2">All enrolled students</p>
               </div>
               <div className="bg-blue-100 rounded-full p-3">
@@ -360,7 +360,7 @@ const Home = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Total Classes</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalClasses.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900">{(stats.totalClasses || 0).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-2">Active classes this term</p>
               </div>
               <div className="bg-emerald-100 rounded-full p-3">
@@ -374,7 +374,7 @@ const Home = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Total Faculty</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalFaculty.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900">{(stats.totalFaculty || 0).toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-2">Active faculty members</p>
               </div>
               <div className="bg-purple-100 rounded-full p-3">

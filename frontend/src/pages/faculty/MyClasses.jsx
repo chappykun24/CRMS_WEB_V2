@@ -2216,11 +2216,16 @@ const MyClasses = () => {
                       {sessionList.map((session, sessionIndex) => {
                         const formatDate = (dateString) => {
                           if (!dateString) return 'N/A'
-                          const date = new Date(dateString)
-                          return date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric'
-                          })
+                          try {
+                            const date = new Date(dateString)
+                            if (isNaN(date.getTime())) return 'N/A'
+                            return date.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric'
+                            })
+                          } catch (error) {
+                            return 'N/A'
+                          }
                         }
                         
                         const sessionDataItem = sessionData[session.session_key]
@@ -2268,12 +2273,17 @@ const MyClasses = () => {
                       
                       const formatDate = (dateString) => {
                         if (!dateString) return 'N/A'
-                        const date = new Date(dateString)
-                        return date.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        })
+                        try {
+                          const date = new Date(dateString)
+                          if (isNaN(date.getTime())) return 'N/A'
+                          return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        } catch (error) {
+                          return 'N/A'
+                        }
                       }
                       
                       // Show cached students immediately, even if attendance data is still loading
@@ -2643,9 +2653,15 @@ const MyClasses = () => {
                                 </span>
                                 <span className="text-xs text-gray-600">{grade.total_points} pts</span>
                                 <span className="text-xs text-gray-600">{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
-                                {grade.due_date && (
-                                  <span className="text-xs text-gray-500">Due: {new Date(grade.due_date).toLocaleDateString()}</span>
-                                )}
+                                {grade.due_date && (() => {
+                                  try {
+                                    const date = new Date(grade.due_date)
+                                    if (!isNaN(date.getTime())) {
+                                      return <span className="text-xs text-gray-500">Due: {date.toLocaleDateString()}</span>
+                                    }
+                                  } catch (e) {}
+                                  return null
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -2698,9 +2714,15 @@ const MyClasses = () => {
                               )}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {grade.graded_at && (
-                                <span>{new Date(grade.graded_at).toLocaleDateString()}</span>
-                              )}
+                              {grade.graded_at && (() => {
+                                try {
+                                  const date = new Date(grade.graded_at)
+                                  if (!isNaN(date.getTime())) {
+                                    return <span>{date.toLocaleDateString()}</span>
+                                  }
+                                } catch (e) {}
+                                return null
+                              })()}
                             </div>
                           </div>
                           

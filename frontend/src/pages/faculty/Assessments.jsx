@@ -1505,7 +1505,15 @@ const Assessments = () => {
                                       <td className="px-4 py-5">
                                         <div className="text-center">
                                           <span className="text-sm text-gray-700">
-                                            {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                            {assessment.due_date ? (() => {
+                                              try {
+                                                const date = new Date(assessment.due_date)
+                                                if (!isNaN(date.getTime())) {
+                                                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                }
+                                              } catch (e) {}
+                                              return '—'
+                                            })() : '—'}
                                           </span>
                                         </div>
                                       </td>
