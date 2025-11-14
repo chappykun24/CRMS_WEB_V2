@@ -23,8 +23,9 @@ const UserManagement = () => {
   const { sidebarExpanded } = useSidebar()
   const [activeTab, setActiveTab] = useState(() => {
     const saved = getLocalStorageItem('userMgmtActiveTab')
-    return saved || 'all'
+    return saved === 'faculty' ? 'faculty' : 'all' // Only allow 'all' or 'faculty'
   })
+  const [isInitialMount, setIsInitialMount] = useState(true)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -78,7 +79,17 @@ const UserManagement = () => {
       .replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
+  // Track initial mount to prevent unnecessary updates on first render
   useEffect(() => {
+    setIsInitialMount(false)
+  }, [])
+
+  useEffect(() => {
+    // Skip on initial mount to prevent automatic switching
+    if (isInitialMount) {
+      return
+    }
+
     setLocalStorageItem('userMgmtActiveTab', activeTab)
     const event = new CustomEvent('userMgmtTabChanged', { detail: { activeTab } })
     window.dispatchEvent(event)
@@ -96,7 +107,7 @@ const UserManagement = () => {
     }
     // Reset pagination when switching tabs
     resetPagination()
-  }, [activeTab])
+  }, [activeTab, isInitialMount])
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -206,8 +217,11 @@ const UserManagement = () => {
     }
   }, [isAuthenticated, authLoading, initialLoadComplete, loadUsers])
 
-  // Reload users when filters change
+  // Reload users when filters change (but not on initial mount)
   useEffect(() => {
+    if (isInitialMount) {
+      return
+    }
     if (isAuthenticated && !authLoading && initialLoadComplete) {
       // Debounce search query
       const timer = setTimeout(() => {
@@ -215,12 +229,13 @@ const UserManagement = () => {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [query, activeTab, roleFilter, statusFilter, departmentFilter])
+  }, [query, activeTab, roleFilter, statusFilter, departmentFilter, isInitialMount])
 
   // Load roles and departments asynchronously after initial users load (only once)
   const rolesLoadedRef = useRef(false)
   const activeTabRef = useRef(activeTab)
   const loadUsersRef = useRef(loadUsers)
+  const isInitialMountRef = useRef(true)
   
   // Keep refs in sync
   useEffect(() => {
@@ -230,6 +245,10 @@ const UserManagement = () => {
   useEffect(() => {
     loadUsersRef.current = loadUsers
   }, [loadUsers])
+  
+  useEffect(() => {
+    isInitialMountRef.current = isInitialMount
+  }, [isInitialMount])
   
   useEffect(() => {
     if (initialLoadComplete && isAuthenticated && !authLoading && !rolesLoadedRef.current) {
@@ -245,7 +264,8 @@ const UserManagement = () => {
           
           // If we're on faculty tab and roles just loaded, reload users with proper faculty filter
           // Use ref to get current activeTab and loadUsers to avoid dependency issues
-          if (activeTabRef.current === 'faculty' && rolesData.length > 0) {
+          // Only reload if not on initial mount to prevent automatic switching
+          if (!isInitialMountRef.current && activeTabRef.current === 'faculty' && rolesData.length > 0) {
             // Small delay to ensure state is updated, then reload users
             setTimeout(() => {
               loadUsersRef.current(1, false)

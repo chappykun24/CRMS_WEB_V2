@@ -23,17 +23,57 @@ const FacultyApproval = () => {
     const loadFaculty = async () => {
       try {
         setLoading(true)
-        const data = await enhancedApi.getUsers()
+        const response = await enhancedApi.getUsers()
+        
+        // Handle different response structures
+        // Backend returns: { success: true, data: { users: [...], pagination: {...} } }
+        // enhancedApi.getUsers() returns response.data, so we get: { success: true, data: { users: [...], pagination: {...} } }
+        let users = []
+        if (Array.isArray(response)) {
+          users = response
+        } else if (response?.data?.users && Array.isArray(response.data.users)) {
+          users = response.data.users
+        } else if (response?.data && Array.isArray(response.data)) {
+          users = response.data
+        } else if (response?.users && Array.isArray(response.users)) {
+          users = response.users
+        } else {
+          console.warn('Unexpected response structure:', response)
+          users = []
+        }
+        
         // Filter for faculty users with pending approval only
-        const facultyUsers = Array.isArray(data) ? data.filter(user => {
-          const roleName = (user.role_name || '').toString().toUpperCase()
-          const isFaculty = roleName === 'FACULTY' || Number(user.role_id) === 2
+        const facultyUsers = users.filter(user => {
+          // Check role_name (case-insensitive)
+          const roleName = (user.role_name || '').toString().trim().toUpperCase()
+          const isFacultyByName = roleName === 'FACULTY' || roleName === 'FACULTY MEMBER'
+          
+          // Check role_id (common faculty role_id is 2, but check for exact match)
+          const roleId = Number(user.role_id)
+          const isFacultyById = roleId === 2
+          
+          // Must be faculty
+          const isFaculty = isFacultyByName || isFacultyById
+          
           // Only show faculty with pending approval (is_approved is false, null, or undefined)
-          const isPending = !user.is_approved
+          const isPending = user.is_approved === false || user.is_approved === null || user.is_approved === undefined
+          
+          // Debug logging (remove in production)
+          if (!isFaculty && user.role_name) {
+            console.log('Non-faculty user filtered out:', {
+              name: user.name || user.email,
+              role_name: user.role_name,
+              role_id: user.role_id,
+              is_approved: user.is_approved
+            })
+          }
+          
           return isFaculty && isPending
-        }) : []
+        })
+        
         setFaculty(facultyUsers)
       } catch (e) {
+        console.error('Error loading faculty:', e)
         setError(e.message || 'Failed to load faculty')
       } finally {
         setLoading(false)
