@@ -80,6 +80,8 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
   })
 
   const [userMgmtActiveTab, setUserMgmtActiveTab] = useState('all')
+  const [userMgmtRoleFilter, setUserMgmtRoleFilter] = useState('')
+  const [userMgmtRoleFilterName, setUserMgmtRoleFilterName] = useState('')
   const [schoolConfigActiveTab, setSchoolConfigActiveTab] = useState('departments')
   const [facultyActiveTab, setFacultyActiveTab] = useState(null) // For Assessments page tabs
 
@@ -110,10 +112,12 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     }
   }, [])
 
-  // Listen for User Management tab changes
+  // Listen for User Management tab and filter changes
   useEffect(() => {
     const handleUserMgmtTabChange = (event) => {
       setUserMgmtActiveTab(event.detail.activeTab || 'all')
+      setUserMgmtRoleFilter(event.detail.roleFilter || '')
+      setUserMgmtRoleFilterName(event.detail.roleFilterName || '')
     }
     window.addEventListener('userMgmtTabChanged', handleUserMgmtTabChange)
     return () => {
@@ -196,14 +200,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
     
     switch (userRole) {
       case 'ADMIN':
-        if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
-          // Show the current tab for User Management
-          if (userMgmtActiveTab === 'faculty') {
-            return 'User Management'
-          }
+        if (path === '/admin/users' || path === '/admin/faculty-approval' || path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
           return 'User Management'
         }
-        if (path === '/dashboard/school-config') {
+        if (path === '/admin/school-config' || path === '/dashboard/school-config') {
           // Show the current tab for School Configuration
           if (schoolConfigActiveTab === 'terms') {
             return 'School Terms'
@@ -258,22 +258,35 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         subtitle: 'Overview',
         path: '/dashboard'
       }
-    } else if (path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
-      // Show which tab is active: All Users or Faculty Approval
-      const subtitle = userMgmtActiveTab === 'faculty' ? 'Faculty Approval' : 'All Users'
-      return {
-        title: userMgmtActiveTab === 'faculty' ? 'UserManagement' : 'User Management',
-        subtitle,
-        path: '/dashboard/users'
+    } else if (path === '/admin/users' || path === '/admin/faculty-approval' || path === '/dashboard/users' || path === '/dashboard/faculty-approval') {
+      // Build breadcrumb based on active tab and role filter
+      const breadcrumbParts = []
+      
+      // Add tab name
+      if (userMgmtActiveTab === 'faculty') {
+        breadcrumbParts.push('Faculty Approval')
+      } else {
+        breadcrumbParts.push('All Users')
       }
-    } else if (path.startsWith('/dashboard/users/')) {
+      
+      // Add role filter name if one is selected
+      if (userMgmtRoleFilterName) {
+        breadcrumbParts.push(userMgmtRoleFilterName)
+      }
+      
+      return {
+        title: 'User Management',
+        subtitle: breadcrumbParts.length > 0 ? breadcrumbParts.join(' > ') : '',
+        path: '/admin/users'
+      }
+    } else if (path.startsWith('/admin/users/') || path.startsWith('/dashboard/users/')) {
       // In case we introduce nested routes under user management later
       return {
         title: 'User Management',
         subtitle: 'Manage system users',
-        path: '/dashboard/users'
+        path: '/admin/users'
       }
-    } else if (path === '/dashboard/school-config') {
+    } else if (path === '/admin/school-config' || path === '/dashboard/school-config') {
       // Use the state value instead of reading from localStorage
       const subtitle = schoolConfigActiveTab === 'terms' ? 'Manage school terms' : 'Manage departments'
       return { 

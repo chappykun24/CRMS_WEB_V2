@@ -104,7 +104,17 @@ const UserManagement = () => {
     }
 
     setLocalStorageItem('userMgmtActiveTab', activeTab)
-    const event = new CustomEvent('userMgmtTabChanged', { detail: { activeTab } })
+    
+    // Find the role name for the selected filter
+    let roleFilterName = ''
+    if (roleFilter && roleFilter !== 'faculty') {
+      const selectedRole = roles.find(r => Number(r.role_id) === Number(roleFilter))
+      roleFilterName = selectedRole ? formatRoleName(selectedRole.name) : ''
+    } else if (roleFilter === 'faculty') {
+      roleFilterName = 'Faculty'
+    }
+    
+    const event = new CustomEvent('userMgmtTabChanged', { detail: { activeTab, roleFilter, roleFilterName } })
     window.dispatchEvent(event)
     // Remove role filter when on Faculty Approval tab (faculty tab doesn't use role filter)
     if (activeTab === 'faculty' && roleFilter) {
@@ -116,7 +126,30 @@ const UserManagement = () => {
     }
     // Reset pagination when switching tabs
     resetPagination()
-  }, [activeTab, isInitialMount])
+  }, [activeTab, isInitialMount, roleFilter, roles])
+
+  // Dispatch role filter changes for breadcrumb updates
+  useEffect(() => {
+    if (!isInitialMount) {
+      // Find the role name for the selected filter
+      let roleFilterName = ''
+      if (roleFilter && roleFilter !== 'faculty') {
+        const selectedRole = roles.find(r => Number(r.role_id) === Number(roleFilter))
+        roleFilterName = selectedRole ? formatRoleName(selectedRole.name) : ''
+      } else if (roleFilter === 'faculty') {
+        roleFilterName = 'Faculty'
+      }
+      
+      const event = new CustomEvent('userMgmtTabChanged', { 
+        detail: { 
+          activeTab, 
+          roleFilter,
+          roleFilterName 
+        } 
+      })
+      window.dispatchEvent(event)
+    }
+  }, [roleFilter, isInitialMount, activeTab, roles])
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -871,7 +904,12 @@ const UserManagement = () => {
                       >
                         <option value="">All Users</option>
                         {roles
-                          .filter(role => role.name !== 'FACULTY') // Exclude Faculty from role filter since it has its own tab
+                          .filter(role => {
+                            // Exclude Faculty from role filter (case-insensitive) since it has its own tab
+                            // We'll add Faculty option separately below
+                            const roleName = String(role.name || '').toUpperCase().trim()
+                            return roleName !== 'FACULTY'
+                          })
                           .map(role => (
                             <option key={role.role_id} value={role.role_id}>
                               {formatRoleName(role.name)}
