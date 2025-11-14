@@ -31,7 +31,18 @@ const api = axios.create({
   withCredentials: false, // Disable credentials for cross-origin requests
 });
 
-// Request interceptor
+// Create a separate axios instance for user profile requests with shorter timeout
+// This prevents background refresh from blocking for too long
+const profileApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000, // 10 seconds - sufficient for user profile requests
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false,
+});
+
+// Request interceptor for main API
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
@@ -48,6 +59,39 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Request interceptor for profile API (same as main API)
+profileApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add user ID to headers for department access control (safe parse)
+    const user = safeParseJson(localStorage.getItem('userData'), {});
+    if (user.id) {
+      config.headers['user-id'] = user.id;
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for profile API (no retry, fail fast)
+profileApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle 401 errors
+    if (error.response?.status === 401) {
+      console.warn('[ProfileAPI] 401 Unauthorized - token may be invalid or expired');
+    }
     return Promise.reject(error);
   }
 );
@@ -428,4 +472,6 @@ export const enhancedApi = {
 }
 
 // Export the main API instance
+// Export both API instances
+export { profileApi };
 export default api; 

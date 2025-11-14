@@ -1,5 +1,5 @@
 // Frontend authentication service - calls backend API
-import api, { endpoints } from '../utils/api.js';
+import api, { profileApi, endpoints } from '../utils/api.js';
 
 class AuthService {
   // User login via backend API - Optimized for performance
@@ -96,12 +96,31 @@ class AuthService {
   }
   
   // Get current user profile via backend API
-  async getCurrentUserProfile() {
+  // Uses profileApi with shorter timeout for background refresh
+  async getCurrentUserProfile(signal = null) {
     try {
-      const { data } = await api.get('/auth/profile');
+      const config = signal ? { signal } : {};
+      const { data } = await profileApi.get('/auth/profile', config);
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Get current user profile error:', error);
+      // Handle abort errors (request cancelled)
+      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+        return {
+          success: false,
+          error: 'Request cancelled'
+        };
+      }
+      
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+        console.warn('Get current user profile error (timeout): Request took too long');
+        return {
+          success: false,
+          error: 'Request timeout'
+        };
+      }
+      
+      console.warn('Get current user profile error:', error.message);
       return {
         success: false,
         error: error.response?.data?.error || error.message
@@ -110,23 +129,42 @@ class AuthService {
   }
 
   // Get user by ID via backend API
-  async getUserById(userId) {
+  // Uses profileApi with shorter timeout for background refresh
+  async getUserById(userId, signal = null) {
     try {
-      const { data } = await api.get(`${endpoints.users}/${userId}/profile`);
+      const config = signal ? { signal } : {};
+      const { data } = await profileApi.get(`${endpoints.users}/${userId}/profile`, config);
       return { success: true, user: data.user };
     } catch (error) {
+      // Handle abort errors (request cancelled)
+      if (error.name === 'AbortError' || error.name === 'CanceledError') {
+        return {
+          success: false,
+          error: 'Request cancelled'
+        };
+      }
+      
+      // Handle timeout errors
+      if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '')) {
+        console.warn('Get user error (timeout): Request took too long, using cached data');
+        return {
+          success: false,
+          error: 'Request timeout - using cached user data'
+        };
+      }
+      
       // Handle network errors (CORS, timeout, connection refused, etc.)
       if (!error.response) {
         // Network error - server might be down or unreachable
-        console.error('Get user error (network):', error.message);
+        console.warn('Get user error (network):', error.message);
         return {
           success: false,
-          error: 'Network error - unable to connect to server. Please try again later.'
+          error: 'Network error - unable to connect to server. Using cached data.'
         };
       }
       
       // Handle HTTP errors
-      console.error('Get user error:', error.response?.status, error.response?.data?.error || error.message);
+      console.warn('Get user error:', error.response?.status, error.response?.data?.error || error.message);
       return {
         success: false,
         error: error.response?.data?.error || error.message

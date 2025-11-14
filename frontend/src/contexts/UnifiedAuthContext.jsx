@@ -77,25 +77,42 @@ export const UnifiedAuthProvider = ({ children }) => {
               payload: { user, token } 
             })
             
-            // Try to refresh user data in the background (non-blocking)
-            try {
-              const userId = user.user_id || user.id
-              console.log('[UnifiedAuth] Refreshing user data in background for user ID:', userId)
-              const profileResult = await authService.getUserById(userId)
-              if (profileResult.success) {
-                console.log('[UnifiedAuth] User data refreshed successfully:', profileResult.user)
-                localStorage.setItem('userData', JSON.stringify(profileResult.user))
-                dispatch({ 
-                  type: 'UPDATE_USER', 
-                  payload: { user: profileResult.user } 
-                })
-              } else {
-                console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+            // Try to refresh user data in the background (non-blocking, with timeout)
+            // Use setTimeout to ensure it doesn't block the main thread
+            setTimeout(async () => {
+              try {
+                const userId = user.user_id || user.id
+                if (!userId) return
+                
+                // Create AbortController for timeout cancellation
+                const abortController = new AbortController()
+                const timeoutId = setTimeout(() => abortController.abort(), 8000) // 8 second timeout
+                
+                try {
+                  const profileResult = await authService.getUserById(userId, abortController.signal)
+                  clearTimeout(timeoutId)
+                  
+                  if (profileResult.success) {
+                    console.log('[UnifiedAuth] User data refreshed successfully')
+                    localStorage.setItem('userData', JSON.stringify(profileResult.user))
+                    dispatch({ 
+                      type: 'UPDATE_USER', 
+                      payload: { user: profileResult.user } 
+                    })
+                  } else {
+                    // Silently fail - user already logged in with stored data
+                    console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+                  }
+                } catch (refreshError) {
+                  clearTimeout(timeoutId)
+                  // Silently fail - user already logged in with stored data
+                  console.warn('[UnifiedAuth] User data refresh failed, keeping stored data')
+                }
+              } catch (error) {
+                // Silently fail - user already logged in with stored data
+                console.warn('[UnifiedAuth] User data refresh error:', error.message)
               }
-            } catch (error) {
-              console.warn('[UnifiedAuth] User data refresh failed, keeping stored data:', error.message)
-              // Don't log out user if refresh fails
-            }
+            }, 0)
             return
           } else {
             console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
@@ -152,18 +169,32 @@ export const UnifiedAuthProvider = ({ children }) => {
         // Use setTimeout to ensure it doesn't block the main thread
         setTimeout(async () => {
           try {
-            const profileResult = await authService.getCurrentUserProfile()
-            if (profileResult.success && profileResult.user) {
-              localStorage.setItem('userData', JSON.stringify(profileResult.user))
-              dispatch({ 
-                type: 'UPDATE_USER', 
-                payload: { user: profileResult.user } 
-              })
+            // Create AbortController for timeout cancellation
+            const abortController = new AbortController()
+            const timeoutId = setTimeout(() => abortController.abort(), 8000) // 8 second timeout
+            
+            try {
+              const profileResult = await authService.getCurrentUserProfile(abortController.signal)
+              clearTimeout(timeoutId)
+              
+              if (profileResult.success && profileResult.user) {
+                localStorage.setItem('userData', JSON.stringify(profileResult.user))
+                dispatch({ 
+                  type: 'UPDATE_USER', 
+                  payload: { user: profileResult.user } 
+                })
+              }
+            } catch (profileError) {
+              clearTimeout(timeoutId)
+              // Silently fail - user already logged in with basic data
+              if (isDev) {
+                console.warn('[UnifiedAuth] Background profile fetch failed:', profileError.message);
+              }
             }
-          } catch (profileError) {
+          } catch (error) {
             // Silently fail - user already logged in with basic data
             if (isDev) {
-              console.warn('[UnifiedAuth] Background profile fetch failed:', profileError.message);
+              console.warn('[UnifiedAuth] Background profile fetch error:', error.message);
             }
           }
         }, 0);
