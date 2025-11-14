@@ -453,7 +453,29 @@ const AssignFaculty = () => {
 
   const activeTerms = useMemo(() => terms.filter(t => t.is_active), [terms])
 
-  // Filter available students based on search query and year level
+  // Helper function to extract last name (last word) for sorting
+  const extractLastName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }
+
+  // Helper function to format name as "Last name, First name Middle"
+  const formatStudentName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }
+
+  // Filter and sort available students based on search query and year level
   const filteredAvailableStudents = useMemo(() => {
     let filtered = availableStudents
     
@@ -472,6 +494,19 @@ const AssignFaculty = () => {
         String(student.year_level) === String(yearLevelFilter)
       )
     }
+    
+    // Sort by last name (last word), then by full name
+    filtered.sort((a, b) => {
+      const aLastName = extractLastName(a.full_name || '')
+      const bLastName = extractLastName(b.full_name || '')
+      
+      if (aLastName !== bLastName) {
+        return aLastName.localeCompare(bLastName)
+      }
+      
+      // If last names are the same, sort by full name
+      return (a.full_name || '').localeCompare(b.full_name || '')
+    })
     
     return filtered
   }, [availableStudents, studentSearchQuery, yearLevelFilter])
@@ -617,7 +652,7 @@ const AssignFaculty = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
-                                {student.full_name}
+                                {formatStudentName(student.full_name)}
                               </p>
                               <p className="text-xs text-gray-500 truncate">
                                 {student.student_number}
@@ -1019,7 +1054,7 @@ const AssignFaculty = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-gray-900 truncate">
-                            {student.full_name}
+                            {formatStudentName(student.full_name)}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {student.student_number}

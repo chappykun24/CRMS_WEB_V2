@@ -3170,7 +3170,16 @@ app.get('/api/section-courses/:id/students', async (req, res) => {
        FROM course_enrollments ce
        JOIN students s ON ce.student_id = s.student_id
        WHERE ce.section_course_id = $1
-       ORDER BY s.full_name`,
+       ORDER BY 
+         -- Extract last name (last word) for sorting
+         SPLIT_PART(TRIM(s.full_name), ' ', 
+           CASE 
+             WHEN (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) = 0 THEN 1
+             ELSE (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) + 1
+           END
+         ) ASC,
+         -- Then sort by full name for consistent ordering
+         s.full_name ASC`,
       [id]
     );
     
@@ -3225,7 +3234,16 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
        AND (
          $2 = '' OR LOWER(s.full_name) LIKE '%'||$2||'%' OR LOWER(s.student_number) LIKE '%'||$2||'%'
        )
-       ORDER BY s.full_name
+       ORDER BY 
+         -- Extract last name (last word) for sorting
+         SPLIT_PART(TRIM(s.full_name), ' ', 
+           CASE 
+             WHEN (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) = 0 THEN 1
+             ELSE (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) + 1
+           END
+         ) ASC,
+         -- Then sort by full name for consistent ordering
+         s.full_name ASC
       `,
       [id, search]
     );
