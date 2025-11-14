@@ -211,35 +211,47 @@ const UserManagement = () => {
       
       // Apply frontend filtering based on active tab
       if (activeTab === 'all') {
-        // For "All Users" tab: Filter out pending faculty users
-        // But only when no specific role filter is selected (or when "Faculty" filter is selected)
-        // When a specific non-faculty role is selected, backend already filtered correctly
-        if (!roleFilter || roleFilter === 'faculty') {
-          // Only apply faculty filtering when showing all users or filtering by faculty
+        // First, ensure role filter is applied correctly
+        if (roleFilter && roleFilter !== 'faculty') {
+          // When a specific role is selected, filter to show ONLY that role
+          const selectedRoleId = Number(roleFilter)
+          usersList = usersList.filter(user => {
+            const userRoleId = Number(user.role_id)
+            return userRoleId === selectedRoleId
+          })
+        } else if (roleFilter === 'faculty') {
+          // When "Faculty" filter is selected, show only approved faculty
           const facultyRoleId = roles && roles.length > 0 
             ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
-            : null // Don't use fallback if roles aren't loaded yet
+            : null
           
           if (facultyRoleId) {
+            const facultyId = Number(facultyRoleId)
             usersList = usersList.filter(user => {
-              // If user is faculty, only include if approved
-              // Compare role_id as numbers to handle string/number mismatches
               const userRoleId = Number(user.role_id)
-              const facultyId = Number(facultyRoleId)
-              
+              // Only include faculty users, and only if approved
+              return userRoleId === facultyId && isUserApproved(user)
+            })
+          }
+        } else {
+          // No role filter: Show all roles but filter out pending faculty
+          const facultyRoleId = roles && roles.length > 0 
+            ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+            : null
+          
+          if (facultyRoleId) {
+            const facultyId = Number(facultyRoleId)
+            usersList = usersList.filter(user => {
+              const userRoleId = Number(user.role_id)
+              // If user is faculty, only include if approved
               if (userRoleId === facultyId) {
-                // Only include approved faculty users
                 return isUserApproved(user)
               }
               // Include all non-faculty users (admin, dean, program chair, staff)
               return true
             })
           }
-          // If facultyRoleId is not found yet (roles not loaded), don't filter - show all users
-          // This prevents approved faculty from being hidden before roles are loaded
         }
-        // When a specific non-faculty role is selected, no additional filtering needed
-        // Backend already filtered by role_id
       } else if (activeTab === 'faculty') {
         // For "Faculty Approval" tab: Only show pending faculty users
         // This should already be filtered by backend, but ensure it's correct
@@ -407,29 +419,45 @@ const UserManagement = () => {
     
     // Additional filtering based on active tab (already filtered in loadUsers, but ensure consistency)
     if (activeTab === 'all') {
-      // Only apply faculty filtering when no specific role filter is selected or when filtering by faculty
-      // When a specific non-faculty role is selected, users are already filtered correctly
-      if (!roleFilter || roleFilter === 'faculty') {
+      // Ensure role filter is applied correctly
+      if (roleFilter && roleFilter !== 'faculty') {
+        // When a specific role is selected, filter to show ONLY that role
+        const selectedRoleId = Number(roleFilter)
+        list = list.filter(user => {
+          const userRoleId = Number(user.role_id)
+          return userRoleId === selectedRoleId
+        })
+      } else if (roleFilter === 'faculty') {
+        // When "Faculty" filter is selected, show only approved faculty
         const facultyRoleId = roles && roles.length > 0 
           ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
-          : null // Don't use fallback if roles aren't loaded yet
+          : null
         
         if (facultyRoleId) {
+          const facultyId = Number(facultyRoleId)
           list = list.filter(user => {
-            // If user is faculty, only include if approved
-            // Compare role_id as numbers to handle string/number mismatches
             const userRoleId = Number(user.role_id)
-            const facultyId = Number(facultyRoleId)
-            
+            // Only include faculty users, and only if approved
+            return userRoleId === facultyId && isUserApproved(user)
+          })
+        }
+      } else {
+        // No role filter: Show all roles but filter out pending faculty
+        const facultyRoleId = roles && roles.length > 0 
+          ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+          : null
+        
+        if (facultyRoleId) {
+          const facultyId = Number(facultyRoleId)
+          list = list.filter(user => {
+            const userRoleId = Number(user.role_id)
+            // If user is faculty, only include if approved
             if (userRoleId === facultyId) {
-              // Only include approved faculty users
               return isUserApproved(user)
             }
             return true
           })
         }
-        // If facultyRoleId is not found yet (roles not loaded), don't filter - show all users
-        // This prevents approved faculty from being hidden before roles are loaded
       }
     } else if (activeTab === 'faculty') {
       // Ensure only pending faculty users are shown in "Faculty Approval" tab
