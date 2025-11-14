@@ -29,6 +29,8 @@ const AssignFaculty = () => {
   const [availableStudents, setAvailableStudents] = useState([])
   const [loadingAvailableStudents, setLoadingAvailableStudents] = useState(false)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
+  const [yearLevelFilter, setYearLevelFilter] = useState('')
+  const [sectionYearLevel, setSectionYearLevel] = useState(null)
   const [enrollingStudents, setEnrollingStudents] = useState(new Set())
 
   // Success message state
@@ -87,15 +89,18 @@ const AssignFaculty = () => {
     setShowStudentsModal(true)
     setLoadingAvailableStudents(true)
     setStudentSearchQuery('')
+    setYearLevelFilter('') // Reset filter when opening modal
     
     try {
       const response = await fetch(`/api/students/available-for-section/${selectedClass.id}`)
       if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
       const data = await response.json()
       setAvailableStudents(Array.isArray(data.students) ? data.students : [])
+      setSectionYearLevel(data.sectionYearLevel || null)
     } catch (error) {
       console.error('Error loading available students:', error)
       setAvailableStudents([])
+      setSectionYearLevel(null)
     } finally {
       setLoadingAvailableStudents(false)
     }
@@ -448,16 +453,28 @@ const AssignFaculty = () => {
 
   const activeTerms = useMemo(() => terms.filter(t => t.is_active), [terms])
 
-  // Filter available students based on search query
+  // Filter available students based on search query and year level
   const filteredAvailableStudents = useMemo(() => {
-    if (!studentSearchQuery.trim()) return availableStudents
+    let filtered = availableStudents
     
-    const query = studentSearchQuery.toLowerCase()
-    return availableStudents.filter(student =>
-      (student.full_name || '').toLowerCase().includes(query) ||
-      (student.student_number || '').toLowerCase().includes(query)
-    )
-  }, [availableStudents, studentSearchQuery])
+    // Filter by search query
+    if (studentSearchQuery.trim()) {
+      const query = studentSearchQuery.toLowerCase()
+      filtered = filtered.filter(student =>
+        (student.full_name || '').toLowerCase().includes(query) ||
+        (student.student_number || '').toLowerCase().includes(query)
+      )
+    }
+    
+    // Filter by year level
+    if (yearLevelFilter) {
+      filtered = filtered.filter(student => 
+        String(student.year_level) === String(yearLevelFilter)
+      )
+    }
+    
+    return filtered
+  }, [availableStudents, studentSearchQuery, yearLevelFilter])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -938,7 +955,7 @@ const AssignFaculty = () => {
 
             {/* Modal Body */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Search Bar and Students Count */}
+              {/* Search Bar, Year Level Filter and Students Count */}
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center space-x-4">
                   <div className="flex-1 relative">
@@ -950,6 +967,20 @@ const AssignFaculty = () => {
                       onChange={(e) => setStudentSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     />
+                  </div>
+                  <div className="flex-shrink-0">
+                    <select
+                      value={yearLevelFilter}
+                      onChange={(e) => setYearLevelFilter(e.target.value)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white"
+                    >
+                      <option value="">All Year Levels</option>
+                      <option value="1">1st Year</option>
+                      <option value="2">2nd Year</option>
+                      <option value="3">3rd Year</option>
+                      <option value="4">4th Year</option>
+                      <option value="5">5th Year</option>
+                    </select>
                   </div>
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-gray-900">Available Students</h4>

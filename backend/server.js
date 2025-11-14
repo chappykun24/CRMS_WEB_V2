@@ -3187,8 +3187,36 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const search = (req.query.search || '').toString().toLowerCase();
+    
+    // Get the section_id and year_level from the section_course
+    const sectionCourseResult = await pool.query(
+      `SELECT sc.section_id, sec.year_level
+       FROM section_courses sc
+       JOIN sections sec ON sc.section_id = sec.section_id
+       WHERE sc.section_course_id = $1`,
+      [id]
+    );
+    
+    const sectionYearLevel = sectionCourseResult.rows[0]?.year_level || null;
+    
     const result = await pool.query(
-      `SELECT s.student_id, s.full_name, s.student_number, s.student_photo
+      `SELECT 
+        s.student_id, 
+        s.full_name, 
+        s.student_number, 
+        s.student_photo,
+        -- Get student's current year level from their most recent active section enrollment
+        COALESCE(
+          (SELECT sec.year_level 
+           FROM course_enrollments ce
+           JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+           JOIN sections sec ON sc.section_id = sec.section_id
+           WHERE ce.student_id = s.student_id 
+             AND ce.status = 'enrolled'
+           ORDER BY ce.enrollment_date DESC
+           LIMIT 1),
+          NULL
+        ) as year_level
        FROM students s
        WHERE NOT EXISTS (
          SELECT 1 FROM course_enrollments ce
@@ -3201,7 +3229,7 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
       `,
       [id, search]
     );
-    res.json({ students: result.rows });
+    res.json({ students: result.rows, sectionYearLevel });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
