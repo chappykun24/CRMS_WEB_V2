@@ -30,8 +30,22 @@ export const getUsers = async (req, res) => {
 
     if (status) {
       paramCount++;
-      whereClause += ` AND u.is_active = $${paramCount}`;
-      queryParams.push(status === 'active');
+      // Handle both is_approved and is_active fields
+      // If status is 'pending', check for FALSE or NULL in either field
+      if (status === 'pending') {
+        whereClause += ` AND (COALESCE(u.is_approved, u.is_active, FALSE) = FALSE OR COALESCE(u.is_approved, u.is_active) IS NULL)`;
+      } else {
+        whereClause += ` AND COALESCE(u.is_approved, u.is_active, FALSE) = $${paramCount}`;
+        queryParams.push(status === 'active' || status === 'approved');
+      }
+    }
+    
+    // If role_id is provided and it's for faculty (role_id = 2), 
+    // optionally filter for pending approval
+    // Note: This can be controlled via a separate 'pending_only' parameter
+    if (req.query.pending_only === 'true' && role_id) {
+      paramCount++;
+      whereClause += ` AND (COALESCE(u.is_approved, u.is_active, FALSE) = FALSE OR COALESCE(u.is_approved, u.is_active) IS NULL)`;
     }
 
     // Get total count
@@ -50,10 +64,16 @@ export const getUsers = async (req, res) => {
     const offsetParam = `$${paramCount}`;
     queryParams.push(limit, offset);
 
+    // Build SELECT query - handle both is_approved and is_active fields
+    // Try is_approved first (from schema), fallback to is_active if needed
     const result = await db.query(`
-      SELECT u.user_id, u.email, u.first_name, u.last_name, u.middle_name, 
-             u.role_id, u.department_id, u.employee_id, u.phone, u.is_active, 
-             u.last_login, u.created_at, u.updated_at,
+      SELECT u.user_id, u.email, 
+             COALESCE(u.first_name || ' ' || COALESCE(u.middle_name || '', '') || ' ' || u.last_name, u.name) as name,
+             u.first_name, u.last_name, u.middle_name, 
+             u.role_id, u.department_id, u.employee_id, u.phone, 
+             COALESCE(u.is_approved, u.is_active, FALSE) as is_approved,
+             COALESCE(u.is_active, u.is_approved, FALSE) as is_active,
+             u.profile_pic, u.last_login, u.created_at, u.updated_at,
              r.name as role_name, d.name as department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.role_id

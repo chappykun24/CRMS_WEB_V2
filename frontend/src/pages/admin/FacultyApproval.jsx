@@ -27,7 +27,12 @@ const FacultyApproval = () => {
         setLoading(true)
         setError('')
         
-        const response = await enhancedApi.getUsers()
+        // Fetch users - could add role_id=2 and pending_only=true for backend filtering
+        // For now, fetch all and filter on frontend for maximum compatibility
+        const response = await enhancedApi.getUsers({ 
+          // role_id: 2,  // Uncomment to filter on backend
+          // pending_only: 'true'  // Uncomment to filter pending on backend
+        })
         
         if (!isMounted) return
         

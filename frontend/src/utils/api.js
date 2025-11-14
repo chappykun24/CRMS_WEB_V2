@@ -140,6 +140,7 @@ export const enhancedApi = {
     if (params.department_id) queryParams.append('department_id', params.department_id);
     if (params.search) queryParams.append('search', params.search);
     if (params.status) queryParams.append('status', params.status);
+    if (params.pending_only) queryParams.append('pending_only', params.pending_only);
     
     const url = queryParams.toString() 
       ? `${endpoints.users}?${queryParams.toString()}`
