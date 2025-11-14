@@ -465,12 +465,19 @@ const Analytics = () => {
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data && result.data.length > 0) {
-          setClassFilteredData(result.data[0]); // Get the student's data for this class
-          console.log('✅ [DEAN ANALYTICS] Loaded class-specific analytics');
+          const classData = result.data[0]; // Get the student's data for this class
+          console.log('✅ [DEAN ANALYTICS] Loaded class-specific analytics:', {
+            student_id: studentId,
+            section_course_id: sectionCourseId,
+            data: classData
+          });
+          setClassFilteredData(classData);
         } else {
+          console.warn('⚠️ [DEAN ANALYTICS] No class-specific data found');
           setClassFilteredData(null);
         }
       } else {
+        console.error('❌ [DEAN ANALYTICS] Failed to fetch class analytics:', response.status);
         setClassFilteredData(null);
       }
     } catch (error) {
@@ -1798,6 +1805,9 @@ const Analytics = () => {
                       </span>
                     </div>
                   )}
+                  {selectedClassId !== 'all' && !loadingClassData && !classFilteredData && (
+                    <div className="ml-auto text-xs text-red-500">No class data available</div>
+                  )}
                 </div>
               )}
             </div>
@@ -1807,26 +1817,35 @@ const Analytics = () => {
               {loadingPhoto && !studentPhoto && !studentPhotoCache.current.has(selectedStudent.student_id) ? (
                 <ModalSkeleton />
               ) : (() => {
-                // Use filtered data if a class is selected, otherwise use selectedStudent (overall)
-                const displayData = classFilteredData || selectedStudent;
-                
-                // Calculate overall percentages when "All Classes" is selected
-                // If we have multiple enrollments and no classFilteredData, calculate weighted average
+                // Calculate metrics based on filter selection
+                // If a specific class is selected AND we have classFilteredData, use per-class data
+                // Otherwise, use overall data from selectedStudent
                 const calculateOverallMetrics = () => {
-                  if (selectedClassId !== 'all' || classFilteredData) {
-                    // Per-class view - use the filtered data directly
+                  // Per-class view - use classFilteredData if available and a class is selected
+                  if (selectedClassId !== 'all' && classFilteredData) {
+                    console.log('📊 [DEAN ANALYTICS] Using per-class metrics:', {
+                      classId: selectedClassId,
+                      attendance: classFilteredData.attendance_percentage,
+                      score: classFilteredData.average_score,
+                      submission: classFilteredData.submission_rate
+                    });
                     return {
-                      attendance_percentage: displayData.attendance_percentage,
-                      average_score: displayData.average_score,
-                      submission_rate: displayData.submission_rate,
-                      attendance_present_count: displayData.attendance_present_count,
-                      attendance_absent_count: displayData.attendance_absent_count,
-                      attendance_late_count: displayData.attendance_late_count,
-                      attendance_total_sessions: displayData.attendance_total_sessions
+                      attendance_percentage: classFilteredData.attendance_percentage,
+                      average_score: classFilteredData.average_score,
+                      submission_rate: classFilteredData.submission_rate,
+                      attendance_present_count: classFilteredData.attendance_present_count,
+                      attendance_absent_count: classFilteredData.attendance_absent_count,
+                      attendance_late_count: classFilteredData.attendance_late_count,
+                      attendance_total_sessions: classFilteredData.attendance_total_sessions
                     };
                   }
                   
                   // Overall view - use selectedStudent data (already aggregated from backend)
+                  console.log('📊 [DEAN ANALYTICS] Using overall metrics:', {
+                    attendance: selectedStudent.attendance_percentage,
+                    score: selectedStudent.average_score,
+                    submission: selectedStudent.submission_rate
+                  });
                   return {
                     attendance_percentage: selectedStudent.attendance_percentage,
                     average_score: selectedStudent.average_score,
@@ -1839,6 +1858,8 @@ const Analytics = () => {
                 };
                 
                 const metrics = calculateOverallMetrics();
+                // Use filtered data for display (grade level, cluster, etc.) but metrics for analytics
+                const displayData = classFilteredData || selectedStudent;
                 
                 return (
                   <>
