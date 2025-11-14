@@ -520,8 +520,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
       : '';
     
     // Build section_course filter for subqueries (when filtering by specific class)
+    // Each filter uses the correct alias for its subquery
     const sectionCourseFilter = sectionCourseIdValue 
       ? `AND ce_att.section_course_id = ${sectionCourseIdValue}` 
+      : '';
+    const sectionCourseFilterGrade = sectionCourseIdValue 
+      ? `AND ce_grade.section_course_id = ${sectionCourseIdValue}` 
       : '';
     const sectionCourseFilterWeighted = sectionCourseIdValue 
       ? `AND ce_weighted.section_course_id = ${sectionCourseIdValue}` 
@@ -575,7 +579,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_grade.status = 'enrolled'
             AND sec_grade.year_level IS NOT NULL
             ${termIdValue ? `AND sc_grade.term_id = ${termIdValue}` : ''}
-            ${sectionCourseFilter}
+            ${sectionCourseFilterGrade}
         )::INTEGER AS grade_level,
         -- Attendance percentage: count of present / total attendance sessions
         COALESCE(
