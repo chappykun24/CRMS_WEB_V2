@@ -175,6 +175,7 @@ const Analytics = () => {
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedYearLevel, setSelectedYearLevel] = useState('');
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
@@ -553,7 +554,8 @@ const Analytics = () => {
       selectedTermId || 'all',
       selectedSectionId || 'all',
       selectedProgramId || 'all',
-      selectedDepartmentId || 'all'
+      selectedDepartmentId || 'all',
+      selectedYearLevel || 'all'
     ].join('_');
     
     // If force refresh, clear all caches first
@@ -656,6 +658,7 @@ const Analytics = () => {
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
     if (selectedDepartmentId) params.append('department_id', selectedDepartmentId);
+    // Note: year_level filtering is done client-side since backend doesn't support it directly
     // Add force_refresh parameter to bypass backend cache and recompute clusters
     if (forceRefresh) {
       params.append('force_refresh', 'true');
@@ -785,7 +788,8 @@ const Analytics = () => {
             selectedTermId || 'all',
             selectedSectionId || 'all',
             selectedProgramId || 'all',
-            selectedDepartmentId || 'all'
+            selectedDepartmentId || 'all',
+            selectedYearLevel || 'all'
           ].join('_');
           
           // Store in sessionStorage for instant next load
@@ -877,7 +881,7 @@ const Analytics = () => {
           trackEvent('dean_analytics_error', { message: String(err?.message || err) });
         } catch {}
       });
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel]);
 
   const getClusterStyle = (label) => {
     // Return null if no valid cluster label (don't show "Not Clustered" fallback)
@@ -981,6 +985,17 @@ const Analytics = () => {
       });
     }
 
+    // Filter by year level (3rd year or 4th year)
+    if (selectedYearLevel) {
+      filtered = filtered.filter(row => {
+        const yearLevel = row.grade_level;
+        if (!yearLevel) return false;
+        // Convert to number if it's a string
+        const yearLevelNum = typeof yearLevel === 'string' ? parseInt(yearLevel, 10) : yearLevel;
+        return yearLevelNum.toString() === selectedYearLevel;
+      });
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -1003,7 +1018,7 @@ const Analytics = () => {
     });
 
     return filtered;
-  }, [data, selectedCluster, searchQuery]);
+  }, [data, selectedCluster, searchQuery, selectedYearLevel]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -1016,7 +1031,7 @@ const Analytics = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -1369,6 +1384,21 @@ const Analytics = () => {
                               {section.section_code}
                             </option>
                           ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Year Level Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <select
+                        value={selectedYearLevel}
+                        onChange={(e) => setSelectedYearLevel(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        <option value="">All Year Levels</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
                       </select>
                     </div>
                   </div>
