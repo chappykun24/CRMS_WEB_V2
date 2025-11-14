@@ -587,6 +587,7 @@ const AssignFaculty = () => {
                                 size="md"
                                 shape="circle"
                                 className="border-2 border-gray-200"
+                                priority={false}
                               />
                             </div>
                             <div className="flex-1 min-w-0">

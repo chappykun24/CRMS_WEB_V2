@@ -1012,6 +1012,7 @@ const StudentManagement = () => {
                                     size="md"
                                     shape="circle"
                                     className="border-2 border-gray-200"
+                                    priority={false}
                                   />
                                 </div>
                               </div>
@@ -1062,6 +1063,7 @@ const StudentManagement = () => {
                         size="lg"
                         shape="circle"
                         className="border-2 border-gray-200"
+                        priority={true}
                       />
                       <div className="ml-4">
                         <div className="text-base font-semibold text-gray-900">{selectedStudent.full_name}</div>
