@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PencilSquareIcon, TrashIcon, CalendarDaysIcon, BuildingOffice2Icon, AcademicCapIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import { departmentService, schoolTermService } from '../../services/schoolConfigService';
-// Removed SidebarContext import - using local state instead
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons';
 import { prefetchAdminData } from '../../services/dataPrefetchService';
+import { useSidebar } from '../../contexts/SidebarContext';
 import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager';
 
 const SchoolConfiguration = () => {
-  const [sidebarExpanded] = useState(true); // Default to expanded
+  const { sidebarExpanded } = useSidebar();
   const [activeTab, setActiveTab] = useState(() => {
     // Get the active tab from localStorage or default to departments
     const saved = getLocalStorageItem('schoolConfigActiveTab')
@@ -474,7 +474,7 @@ const SchoolConfiguration = () => {
 
           {/* Content Skeleton */}
           <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full transition-all duration-500 ease-in-out">
               {/* List Container Skeleton */}
               <div className="lg:col-span-3 h-full">
                 {/* Controls toolbar skeleton */}
@@ -608,7 +608,7 @@ const SchoolConfiguration = () => {
           {/* Tab Content */}
           <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
             {activeTab === 'departments' && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full transition-all duration-500 ease-in-out">
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
                   {/* Controls toolbar */}
@@ -766,7 +766,7 @@ const SchoolConfiguration = () => {
             )}
 
             {activeTab === 'terms' && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full transition-all duration-500 ease-in-out">
                 {/* List Container - Left Side */}
                 <div className="lg:col-span-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 h-full">
                   {/* Controls toolbar */}

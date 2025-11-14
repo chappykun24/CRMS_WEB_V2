@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { UsersIcon, UserPlusIcon, MagnifyingGlassIcon, ShieldCheckIcon, NoSymbolIcon, PlusIcon } from '@heroicons/react/24/solid'
-// Removed SidebarContext import - using local state instead
 import api, { enhancedApi, endpoints } from '../../utils/api'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
+import { useSidebar } from '../../contexts/SidebarContext'
 import { setLocalStorageItem, getLocalStorageItem } from '../../utils/localStorageManager'
 
 const TabButton = ({ isActive, onClick, children }) => (
@@ -20,7 +20,7 @@ const TabButton = ({ isActive, onClick, children }) => (
 
 const UserManagement = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [sidebarExpanded] = useState(true) // Default to expanded
+  const { sidebarExpanded } = useSidebar()
   const [activeTab, setActiveTab] = useState(() => {
     const saved = getLocalStorageItem('userMgmtActiveTab')
     return saved || 'all'
@@ -571,7 +571,7 @@ const UserManagement = () => {
 
             {/* Content */}
             <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-              <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full`}>
+              <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full transition-all duration-500 ease-in-out`}>
                 {/* List */}
                 <div className={`lg:col-span-3 h-full`}>
                   {/* Controls outside the table */}
@@ -685,7 +685,7 @@ const UserManagement = () => {
 
           {/* Content */}
           <div className="pt-16 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-            <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full`}>
+            <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 px-8 h-full transition-all duration-500 ease-in-out`}>
               {/* List */}
               <div className={`lg:col-span-3 h-full`}>
                 {/* Controls outside the table */}
