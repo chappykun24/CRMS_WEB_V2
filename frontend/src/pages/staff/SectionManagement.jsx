@@ -1024,21 +1024,6 @@ const SectionManagement = () => {
                       </p>
                     )}
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Year Level</label>
-                    <select
-                      value={formData.yearLevel}
-                      onChange={(e) => setFormData(prev => ({ ...prev, yearLevel: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                    >
-                      <option value="">Select year level</option>
-                      <option value="1">1st Year</option>
-                      <option value="2">2nd Year</option>
-                      <option value="3">3rd Year</option>
-                      <option value="4">4th Year</option>
-                    </select>
-                  </div>
                 </div>
               </div>
 
