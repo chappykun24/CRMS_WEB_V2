@@ -535,21 +535,13 @@ const AssignFaculty = () => {
                         {students.map((student) => (
                           <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex-shrink-0">
-                              {student.student_photo ? (
-                                <ImageSkeleton
-                                  src={student.student_photo}
-                                  alt={student.full_name}
-                                  size="md"
-                                  shape="circle"
-                                  className="border-2 border-gray-200"
-                                />
-                              ) : (
-                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                  <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                </div>
-                              )}
+                              <ImageSkeleton
+                                src={student.student_photo}
+                                alt={student.full_name}
+                                size="md"
+                                shape="circle"
+                                className="border-2 border-gray-200"
+                              />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">

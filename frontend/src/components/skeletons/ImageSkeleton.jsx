@@ -1,20 +1,29 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 /**
- * Modern image skeleton loader component
- * Shows a skeleton while image is loading, then fades in the image
+ * Image skeleton loader component
+ * Shows skeleton while loading, then displays image
+ * No fallbacks - always shows skeleton if image fails or is missing
  */
 const ImageSkeleton = ({ 
   src, 
   alt = '', 
   className = '', 
-  fallbackIcon: FallbackIcon = null,
   size = 'md', // 'xs', 'sm', 'md', 'lg', 'xl'
   shape = 'circle', // 'circle', 'square', 'rounded'
-  onError = null
 }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+  const [imageSrc, setImageSrc] = useState(src)
+
+  // Update imageSrc when src prop changes
+  useEffect(() => {
+    if (src) {
+      setImageSrc(src)
+      setIsLoading(true)
+      setHasError(false)
+    }
+  }, [src])
 
   // Size presets
   const sizeClasses = {
@@ -34,73 +43,21 @@ const ImageSkeleton = ({
 
   const handleLoad = () => {
     setIsLoading(false)
+    setHasError(false)
   }
 
-  const handleError = (e) => {
+  const handleError = () => {
     setIsLoading(false)
     setHasError(true)
-    if (onError) {
-      onError(e)
-    }
   }
 
-  // If no src and no fallback, show skeleton with gradient
-  if (!src && !FallbackIcon) {
-    return (
-      <div 
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse border-2 border-gray-200 ${className}`}
-        role="status"
-        aria-label="Loading image"
-      />
-    )
-  }
+  // Always show skeleton if no src, error, or still loading
+  const showSkeleton = !imageSrc || hasError || isLoading
 
-  // If error and no fallback icon, show skeleton
-  if (hasError && !FallbackIcon) {
-    return (
-      <div 
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-gray-200 flex items-center justify-center ${className}`}
-        role="img"
-        aria-label={alt || 'Image placeholder'}
-      >
-        <svg className="h-1/2 w-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      </div>
-    )
-  }
-
-  // If error and has fallback icon, show fallback with colored background
-  if (hasError && FallbackIcon) {
-    return (
-      <div 
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-primary-600 flex items-center justify-center ${className}`}
-        role="img"
-        aria-label={alt || 'Image placeholder'}
-      >
-        <FallbackIcon className="h-1/2 w-1/2 text-white" />
-      </div>
-    )
-  }
-
-  // If no src but has fallback icon, show fallback with colored background
-  if (!src && FallbackIcon) {
-    return (
-      <div 
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-primary-600 flex items-center justify-center ${className}`}
-        role="img"
-        aria-label={alt || 'Image placeholder'}
-      >
-        <FallbackIcon className="h-1/2 w-1/2 text-white" />
-      </div>
-    )
-  }
-
-  // Show image with skeleton while loading
   return (
-    <div className={`${sizeClasses[size]} ${shapeClasses[shape]} relative overflow-hidden ${className}`}>
-      {/* Skeleton overlay while loading - improved with gradient */}
-      {isLoading && (
+    <div className={`${sizeClasses[size]} ${shapeClasses[shape]} relative overflow-hidden flex-shrink-0 ${className}`}>
+      {/* Skeleton - always shown when loading, no src, or error */}
+      {showSkeleton && (
         <div 
           className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse border-2 border-gray-200"
           role="status"
@@ -108,17 +65,19 @@ const ImageSkeleton = ({
         />
       )}
       
-      {/* Actual image */}
-      <img
-        src={src}
-        alt={alt}
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} object-cover transition-opacity duration-300 ${
-          isLoading ? 'opacity-0 absolute inset-0' : 'opacity-100 relative'
-        }`}
-        onLoad={handleLoad}
-        onError={handleError}
-        loading="lazy"
-      />
+      {/* Actual image - only show when loaded successfully */}
+      {imageSrc && !hasError && (
+        <img
+          src={imageSrc}
+          alt={alt}
+          className={`${sizeClasses[size]} ${shapeClasses[shape]} object-cover transition-opacity duration-300 ${
+            isLoading ? 'opacity-0' : 'opacity-100'
+          }`}
+          onLoad={handleLoad}
+          onError={handleError}
+          loading="lazy"
+        />
+      )}
     </div>
   )
 }
