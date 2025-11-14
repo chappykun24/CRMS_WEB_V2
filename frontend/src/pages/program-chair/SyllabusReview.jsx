@@ -374,12 +374,15 @@ const SyllabusReview = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredSyllabi.map((syllabus) => (
-                    <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                    <tr 
+                      key={syllabus.syllabus_id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openViewModal(syllabus)}
+                    >
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                         <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
@@ -393,41 +396,6 @@ const SyllabusReview = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {formatDate(syllabus.created_at)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openViewModal(syllabus)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="View"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleReview(syllabus, 'approved')}
-                            disabled={reviewing}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-                            title="Approve"
-                          >
-                            <CheckCircleIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleReview(syllabus, 'rejected')}
-                            disabled={reviewing}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                            title="Reject"
-                          >
-                            <XCircleIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleReview(syllabus, 'needs_revision')}
-                            disabled={reviewing}
-                            className="p-2 text-yellow-600 hover:bg-yellow-50 rounded transition-colors disabled:opacity-50"
-                            title="Needs Revision"
-                          >
-                            <ClockIcon className="h-5 w-5" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -460,12 +428,15 @@ const SyllabusReview = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredApprovedSyllabi.map((syllabus) => (
-                      <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                      <tr 
+                        key={syllabus.syllabus_id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => openViewModal(syllabus)}
+                      >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                           <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
@@ -484,15 +455,6 @@ const SyllabusReview = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {formatDate(syllabus.created_at)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => openViewModal(syllabus)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="View"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -779,33 +741,35 @@ const SyllabusReview = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    <button
-                      onClick={() => handleReview(selectedSyllabus, 'approved')}
-                      disabled={reviewing}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <CheckCircleIcon className="h-5 w-5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReview(selectedSyllabus, 'needs_revision')}
-                      disabled={reviewing}
-                      className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <ClockIcon className="h-5 w-5" />
-                      Needs Revision
-                    </button>
-                    <button
-                      onClick={() => handleReview(selectedSyllabus, 'rejected')}
-                      disabled={reviewing}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <XCircleIcon className="h-5 w-5" />
-                      Reject
-                    </button>
-                  </div>
+                  {/* Action Buttons - Only show if syllabus is pending review */}
+                  {selectedSyllabus.review_status === 'pending' && (
+                    <div className="flex gap-3 pt-4 border-t">
+                      <button
+                        onClick={() => handleReview(selectedSyllabus, 'approved')}
+                        disabled={reviewing}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReview(selectedSyllabus, 'needs_revision')}
+                        disabled={reviewing}
+                        className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <ClockIcon className="h-5 w-5" />
+                        Needs Revision
+                      </button>
+                      <button
+                        onClick={() => handleReview(selectedSyllabus, 'rejected')}
+                        disabled={reviewing}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <XCircleIcon className="h-5 w-5" />
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

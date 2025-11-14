@@ -287,12 +287,15 @@ const SyllabusApproval = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reviewed</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredSyllabi.map((syllabus) => (
-                    <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                    <tr 
+                      key={syllabus.syllabus_id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openViewModal(syllabus)}
+                    >
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                         <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
@@ -311,33 +314,6 @@ const SyllabusApproval = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {formatDate(syllabus.reviewed_at)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => openViewModal(syllabus)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="View"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleApprove(syllabus, 'approved')}
-                            disabled={approving}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-                            title="Approve"
-                          >
-                            <CheckCircleIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleApprove(syllabus, 'rejected')}
-                            disabled={approving}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                            title="Reject"
-                          >
-                            <XCircleIcon className="h-5 w-5" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}
@@ -370,12 +346,15 @@ const SyllabusApproval = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredApprovedSyllabi.map((syllabus) => (
-                      <tr key={syllabus.syllabus_id} className="hover:bg-gray-50">
+                      <tr 
+                        key={syllabus.syllabus_id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => openViewModal(syllabus)}
+                      >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                           <div className="text-sm text-gray-500">{syllabus.description || 'No description'}</div>
@@ -394,15 +373,6 @@ const SyllabusApproval = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {formatDate(syllabus.created_at)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => openViewModal(syllabus)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="View"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -689,25 +659,27 @@ const SyllabusApproval = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    <button
-                      onClick={() => handleApprove(selectedSyllabus, 'approved')}
-                      disabled={approving}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <CheckCircleIcon className="h-5 w-5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleApprove(selectedSyllabus, 'rejected')}
-                      disabled={approving}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <XCircleIcon className="h-5 w-5" />
-                      Reject
-                    </button>
-                  </div>
+                  {/* Action Buttons - Only show if syllabus is pending approval */}
+                  {selectedSyllabus.approval_status === 'pending' && (
+                    <div className="flex gap-3 pt-4 border-t">
+                      <button
+                        onClick={() => handleApprove(selectedSyllabus, 'approved')}
+                        disabled={approving}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleApprove(selectedSyllabus, 'rejected')}
+                        disabled={approving}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <XCircleIcon className="h-5 w-5" />
+                        Reject
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
