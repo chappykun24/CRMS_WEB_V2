@@ -223,16 +223,13 @@ const UserManagement = () => {
           if (facultyRoleId) {
             usersList = usersList.filter(user => {
               // If user is faculty, only include if approved
-              // Handle both boolean true and truthy values (1, 'true', etc.)
-              if (user.role_id === facultyRoleId) {
-                // Check if approved - handle boolean, number, or string representations
-                const isApproved = user.is_approved === true || 
-                                  user.is_approved === 1 || 
-                                  user.is_approved === 'true' || 
-                                  user.is_approved === '1' ||
-                                  (typeof user.is_approved === 'boolean' && user.is_approved) ||
-                                  (typeof user.is_approved === 'number' && user.is_approved > 0)
-                return isApproved
+              // Compare role_id as numbers to handle string/number mismatches
+              const userRoleId = Number(user.role_id)
+              const facultyId = Number(facultyRoleId)
+              
+              if (userRoleId === facultyId) {
+                // Only include approved faculty users
+                return isUserApproved(user)
               }
               // Include all non-faculty users (admin, dean, program chair, staff)
               return true
@@ -420,16 +417,13 @@ const UserManagement = () => {
         if (facultyRoleId) {
           list = list.filter(user => {
             // If user is faculty, only include if approved
-            // Handle both boolean true and truthy values (1, 'true', etc.)
-            if (user.role_id === facultyRoleId) {
-              // Check if approved - handle boolean, number, or string representations
-              const isApproved = user.is_approved === true || 
-                                user.is_approved === 1 || 
-                                user.is_approved === 'true' || 
-                                user.is_approved === '1' ||
-                                (typeof user.is_approved === 'boolean' && user.is_approved) ||
-                                (typeof user.is_approved === 'number' && user.is_approved > 0)
-              return isApproved
+            // Compare role_id as numbers to handle string/number mismatches
+            const userRoleId = Number(user.role_id)
+            const facultyId = Number(facultyRoleId)
+            
+            if (userRoleId === facultyId) {
+              // Only include approved faculty users
+              return isUserApproved(user)
             }
             return true
           })
