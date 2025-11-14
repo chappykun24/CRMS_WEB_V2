@@ -299,8 +299,9 @@ const SyllabusReview = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
+      <div className="flex-shrink-0 p-6 pb-4">
+        <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -338,7 +339,7 @@ const SyllabusReview = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -350,7 +351,13 @@ const SyllabusReview = () => {
             />
           </div>
         </div>
+        </div>
+      </div>
 
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-6 pt-0">
+          <div className="max-w-7xl mx-auto">
         {/* Tab Content */}
         {loading ? (
           <TableSkeleton rows={6} columns={6} />
@@ -364,8 +371,8 @@ const SyllabusReview = () => {
         ) : activeTab === 'pending' ? (
           /* Pending Reviews Tab */
           filteredSyllabi.length > 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden flex flex-col max-h-[calc(100vh-280px)]">
+            <div className="overflow-x-auto overflow-y-auto flex-1">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -775,6 +782,8 @@ const SyllabusReview = () => {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   )
