@@ -78,6 +78,12 @@ const MyClasses = () => {
     window.dispatchEvent(new CustomEvent('selectedClassChanged', {
       detail: { class: classData ?? null }
     }))
+    // Also update localStorage to keep it in sync
+    if (classData) {
+      saveSelectedClass(classData)
+    } else {
+      removeLocalStorageItem('selectedClass')
+    }
   }, [])
 
   // Attendance mode state

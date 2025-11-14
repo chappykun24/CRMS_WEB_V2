@@ -300,7 +300,10 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
       const breadcrumbParts = []
       
       // Add selected class if it exists
-      if (selectedClass && selectedClass.course_title) {
+      // IMPORTANT: On the 'classes' page, don't show class name in breadcrumbs
+      // The classes page shows the class list, so breadcrumb should just be "My Classes"
+      // For other pages (assessments, grades, syllabus), show class name if it exists
+      if (selectedClass && selectedClass.course_title && pageName !== 'classes') {
         breadcrumbParts.push(selectedClass.course_title)
       }
       
