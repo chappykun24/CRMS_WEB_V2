@@ -485,7 +485,12 @@ const Syllabus = () => {
   
   // Submit syllabus for review (Faculty)
   const handleSubmitForReview = async (syllabus) => {
-    if (!confirm('Are you sure you want to submit this syllabus for review? You won\'t be able to edit it until it\'s reviewed.')) {
+    const isResubmission = syllabus.review_status === 'needs_revision'
+    const confirmMessage = isResubmission 
+      ? 'Are you sure you want to resubmit this syllabus for review? Make sure you have made the requested revisions.'
+      : 'Are you sure you want to submit this syllabus for review? You won\'t be able to edit it until it\'s reviewed.'
+    
+    if (!confirm(confirmMessage)) {
       return
     }
     
@@ -502,7 +507,11 @@ const Syllabus = () => {
       })
       
       if (response.ok) {
-        alert('Syllabus submitted for review successfully!')
+        const successMessage = isResubmission 
+          ? 'Syllabus resubmitted for review successfully!'
+          : 'Syllabus submitted for review successfully!'
+        alert(successMessage)
+        setShowViewModal(false)
         if (selectedClass) {
           loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
         }
@@ -1822,6 +1831,37 @@ const Syllabus = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Revision Requested Section - Show Edit/Resubmit buttons when revision is requested */}
+                {viewingSyllabus.review_status === 'needs_revision' && (
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-orange-800">
+                        <strong>Revision Requested:</strong> The program chair has requested revisions to this syllabus. 
+                        Please edit the syllabus and resubmit it for review.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          openEditModal(viewingSyllabus)
+                          setShowViewModal(false)
+                        }}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                        Edit Syllabus
+                      </button>
+                      <button
+                        onClick={() => handleSubmitForReview(viewingSyllabus)}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Resubmit for Review
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Edit Request Section - Only show for approved syllabi */}
                 {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
