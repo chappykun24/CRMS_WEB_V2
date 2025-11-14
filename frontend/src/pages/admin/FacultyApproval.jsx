@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ShieldCheckIcon, NoSymbolIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/solid'
+import { ShieldCheckIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/solid'
 import { enhancedApi } from '../../utils/api'
 import { prefetchAdminData } from '../../services/dataPrefetchService'
 
@@ -8,9 +8,7 @@ const FacultyApproval = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('') // '', 'approved', 'pending'
   const [isApproving, setIsApproving] = useState({})
-  const [isRejecting, setIsRejecting] = useState({})
 
   const formatDateTime = (value) => {
     if (!value) return '—'
@@ -26,10 +24,13 @@ const FacultyApproval = () => {
       try {
         setLoading(true)
         const data = await enhancedApi.getUsers()
-        // Filter for faculty users only
+        // Filter for faculty users with pending approval only
         const facultyUsers = Array.isArray(data) ? data.filter(user => {
           const roleName = (user.role_name || '').toString().toUpperCase()
-          return roleName === 'FACULTY' || Number(user.role_id) === 2
+          const isFaculty = roleName === 'FACULTY' || Number(user.role_id) === 2
+          // Only show faculty with pending approval (is_approved is false, null, or undefined)
+          const isPending = !user.is_approved
+          return isFaculty && isPending
         }) : []
         setFaculty(facultyUsers)
       } catch (e) {
@@ -46,17 +47,14 @@ const FacultyApproval = () => {
     }, 1000)
   }, [])
 
+  // Filter faculty by search query only (all are pending by default)
   const filteredFaculty = faculty.filter(user => {
     const q = query.trim().toLowerCase()
     const matchesQuery = !q || 
       (user.name || '').toLowerCase().includes(q) ||
       (user.email || '').toLowerCase().includes(q)
     
-    const matchesStatus = !statusFilter || 
-      (statusFilter === 'approved' && user.is_approved) ||
-      (statusFilter === 'pending' && !user.is_approved)
-    
-    return matchesQuery && matchesStatus
+    return matchesQuery
   })
 
   const handleApprove = async (userId) => {
@@ -64,12 +62,8 @@ const FacultyApproval = () => {
       setIsApproving(prev => ({ ...prev, [userId]: true }))
       await enhancedApi.approveUser(userId)
       
-      // Update local state
-      setFaculty(prev => prev.map(user => 
-        user.user_id === userId 
-          ? { ...user, is_approved: true }
-          : user
-      ))
+      // Remove approved user from the list (since we only show pending)
+      setFaculty(prev => prev.filter(user => user.user_id !== userId))
     } catch (e) {
       setError(e.message || 'Failed to approve faculty')
     } finally {
@@ -77,23 +71,6 @@ const FacultyApproval = () => {
     }
   }
 
-  const handleReject = async (userId) => {
-    try {
-      setIsRejecting(prev => ({ ...prev, [userId]: true }))
-      await enhancedApi.rejectUser(userId)
-      
-      // Update local state
-      setFaculty(prev => prev.map(user => 
-        user.user_id === userId 
-          ? { ...user, is_approved: false }
-          : user
-      ))
-    } catch (e) {
-      setError(e.message || 'Failed to reject faculty')
-    } finally {
-      setIsRejecting(prev => ({ ...prev, [userId]: false }))
-    }
-  }
 
   if (loading) {
     return (
@@ -123,23 +100,12 @@ const FacultyApproval = () => {
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search faculty by name or email..."
+                  placeholder="Search pending faculty by name or email..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
-            </div>
-            <div className="sm:w-48">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-              </select>
             </div>
           </div>
         </div>
@@ -156,9 +122,9 @@ const FacultyApproval = () => {
           {filteredFaculty.length === 0 ? (
             <div className="text-center py-12">
               <UserIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No faculty found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No pending faculty found</h3>
               <p className="text-gray-500">
-                {query || statusFilter ? 'Try adjusting your search criteria.' : 'No faculty members have been registered yet.'}
+                {query ? 'Try adjusting your search criteria.' : 'No faculty members are pending approval.'}
               </p>
             </div>
           ) : (
@@ -217,12 +183,8 @@ const FacultyApproval = () => {
                         {user.department_name || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          user.is_approved 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {user.is_approved ? 'Approved' : 'Pending'}
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          Pending
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -230,25 +192,14 @@ const FacultyApproval = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {!user.is_approved ? (
-                            <button
-                              onClick={() => handleApprove(user.user_id)}
-                              disabled={isApproving[user.user_id]}
-                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <ShieldCheckIcon className="h-4 w-4 mr-1" />
-                              {isApproving[user.user_id] ? 'Approving...' : 'Approve'}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleReject(user.user_id)}
-                              disabled={isRejecting[user.user_id]}
-                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <NoSymbolIcon className="h-4 w-4 mr-1" />
-                              {isRejecting[user.user_id] ? 'Rejecting...' : 'Reject'}
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleApprove(user.user_id)}
+                            disabled={isApproving[user.user_id]}
+                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShieldCheckIcon className="h-4 w-4 mr-1" />
+                            {isApproving[user.user_id] ? 'Approving...' : 'Approve'}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -264,12 +215,7 @@ const FacultyApproval = () => {
           <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="text-sm text-blue-800">
-                <strong>{filteredFaculty.length}</strong> faculty member{filteredFaculty.length !== 1 ? 's' : ''} found
-                {statusFilter && (
-                  <span className="ml-2">
-                    ({filteredFaculty.filter(u => u.is_approved).length} approved, {filteredFaculty.filter(u => !u.is_approved).length} pending)
-                  </span>
-                )}
+                <strong>{filteredFaculty.length}</strong> pending faculty member{filteredFaculty.length !== 1 ? 's' : ''} found
               </div>
             </div>
           </div>
