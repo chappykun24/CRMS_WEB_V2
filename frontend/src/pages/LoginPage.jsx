@@ -9,7 +9,6 @@ import {
   ArrowRight,
   CheckCircle
 } from 'lucide-react'
-import logo from '../images/logo.png'
 
 const LoginPage = () => {
   console.log('LoginPage component is rendering')
@@ -22,10 +21,48 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
+  const [logoLoaded, setLogoLoaded] = useState(false)
+  const [logoSrc, setLogoSrc] = useState(null)
   
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Asynchronously load logo image after interface renders
+  useEffect(() => {
+    // Load logo after interface is shown (deferred loading)
+    const loadLogo = async () => {
+      try {
+        // Use dynamic import for async loading
+        const logoModule = await import('../images/logo.png')
+        setLogoSrc(logoModule.default)
+        
+        // Preload the image
+        const img = new Image()
+        img.onload = () => {
+          setLogoLoaded(true)
+        }
+        img.onerror = () => {
+          console.warn('Failed to load logo image')
+          setLogoLoaded(true) // Still set to true to show placeholder
+        }
+        img.src = logoModule.default
+      } catch (error) {
+        console.warn('Error loading logo:', error)
+        setLogoLoaded(true) // Show placeholder even if load fails
+      }
+    }
+
+    // Delay logo loading to prioritize interface rendering
+    // Use requestIdleCallback for better performance, fallback to setTimeout
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        setTimeout(loadLogo, 100) // Small delay to ensure interface renders first
+      }, { timeout: 500 })
+    } else {
+      setTimeout(loadLogo, 100)
+    }
+  }, [])
 
   // If already authenticated, don't allow visiting the login page
   useEffect(() => {
@@ -108,25 +145,38 @@ const LoginPage = () => {
       {isLoading && (
         <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
           <div className="text-center">
-            <img 
-              src={logo} 
-              alt="CRMS Logo" 
-              className="w-40 h-40 mx-auto mb-8 animate-pulse object-contain"
-            />
+            {logoLoaded && logoSrc ? (
+              <img 
+                src={logoSrc} 
+                alt="CRMS Logo" 
+                className="w-40 h-40 mx-auto mb-8 animate-pulse object-contain"
+                loading="eager"
+              />
+            ) : (
+              <div className="w-40 h-40 mx-auto mb-8 bg-gray-200 rounded-lg animate-pulse flex items-center justify-center">
+                <div className="text-gray-400 text-sm">Loading...</div>
+              </div>
+            )}
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Signing in...</p>
           </div>
         </div>
       )}
       
-      {/* BSU Logo at Top Left */}
+      {/* BSU Logo at Top Left - Lazy loaded */}
       <div className="fixed top-4 left-4 z-40">
-        <Link to="/" className="hover:opacity-80 transition-opacity">
-          <img 
-            src={logo} 
-            alt="BSU Logo" 
-            className="w-10 h-10 object-contain"
-          />
+        <Link to="/" className="hover:opacity-80 transition-opacity inline-block">
+          {logoLoaded && logoSrc ? (
+            <img 
+              src={logoSrc} 
+              alt="BSU Logo" 
+              className="w-10 h-10 object-contain"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 rounded animate-pulse" />
+          )}
         </Link>
       </div>
       
