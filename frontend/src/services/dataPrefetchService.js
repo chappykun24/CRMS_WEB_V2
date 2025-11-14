@@ -544,32 +544,66 @@ export const prefetchAdminData = async () => {
   return prefetchPromise
 };
 
+// Track prefetch state to prevent multiple simultaneous calls
+let staffPrefetchInProgress = false
+let staffPrefetchPromise = null
+
 /**
  * Prefetch all data for staff dashboard pages
+ * Optimized to only prefetch if data is not already cached
  */
 export const prefetchStaffData = async () => {
+  // If already in progress, return the existing promise
+  if (staffPrefetchInProgress && staffPrefetchPromise) {
+    return staffPrefetchPromise
+  }
+
+  // Check if critical data is already cached - skip if so
+  const hasCachedData = 
+    getCachedData('students_all') &&
+    getCachedData('departments_all') &&
+    getCachedData('school_terms')
+  
+  if (hasCachedData) {
+    console.log('📦 [Prefetch] Staff data already cached, skipping prefetch')
+    return Promise.resolve()
+  }
+
+  staffPrefetchInProgress = true
   console.log('🚀 [Prefetch] Starting staff data prefetch...');
   
-  try {
-    // Prefetch all data in parallel (non-blocking)
-    Promise.all([
-      prefetchStudents(),
-      prefetchDepartments(),
-      prefetchPrograms(),
-      prefetchSchoolTerms(),
-      prefetchClasses(),
-      prefetchCourses(),
-      prefetchSections(),
-      prefetchFaculty(),
-    ]).then(() => {
-      console.log('✅ [Prefetch] All staff data prefetched');
-    }).catch(error => {
-      console.error('❌ [Prefetch] Error in parallel prefetch:', error);
-    });
-    
-  } catch (error) {
-    console.error('❌ [Prefetch] Error prefetching staff data:', error);
-  }
+  staffPrefetchPromise = (async () => {
+    try {
+      // Prefetch critical data first, then secondary data
+      // Use Promise.allSettled to prevent one failure from blocking others
+      await Promise.allSettled([
+        prefetchStudents(),
+        prefetchDepartments(),
+        prefetchSchoolTerms(),
+      ])
+      
+      // Prefetch secondary data after critical data is loaded
+      Promise.allSettled([
+        prefetchPrograms(),
+        prefetchClasses(),
+        prefetchCourses(),
+        prefetchSections(),
+        prefetchFaculty(),
+      ]).then(() => {
+        console.log('✅ [Prefetch] All staff data prefetched');
+      }).catch(error => {
+        console.error('❌ [Prefetch] Error in secondary prefetch:', error);
+      });
+      
+    } catch (error) {
+      console.error('❌ [Prefetch] Error prefetching staff data:', error);
+    } finally {
+      staffPrefetchInProgress = false
+      staffPrefetchPromise = null
+    }
+  })()
+
+  return staffPrefetchPromise
 };
 
 /**

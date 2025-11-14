@@ -280,16 +280,20 @@ const SectionManagement = () => {
     }
   }, [])
 
-  // Load all data on mount
+  // Load all data on mount - prioritize critical data first
   useEffect(() => {
-    loadTerms()
-    loadPrograms()
+    // Load critical data immediately (sections and terms)
     loadSections()
+    loadTerms()
     
-    // Prefetch data for other staff pages in the background
-    setTimeout(() => {
-      prefetchStaffData()
-    }, 1000)
+    // Load programs asynchronously after critical data
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        loadPrograms()
+      }, { timeout: 1000 })
+    } else {
+      setTimeout(() => loadPrograms(), 500)
+    }
     
     // Cleanup function to abort pending requests
     return () => {

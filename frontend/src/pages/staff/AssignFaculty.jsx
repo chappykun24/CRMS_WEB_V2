@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
-import { prefetchStaffData } from '../../services/dataPrefetchService'
+import { safeGetItem, safeSetItem } from '../../utils/cacheUtils'
 
 
 
@@ -291,12 +291,24 @@ const AssignFaculty = () => {
     }
   }, [showCreateModal])
 
-  // Load existing section courses when component mounts
+  // Load existing section courses when component mounts - with caching
   useEffect(() => {
+    // Check cache first for instant display
+    const cacheKey = 'staff_classes_session'
+    const cached = safeGetItem(cacheKey)
+    
+    if (cached) {
+      console.log('📦 [STAFF ASSIGN FACULTY] Using cached classes')
+      setClasses(Array.isArray(cached) ? cached : [])
+      setLoadingClasses(false)
+      // Continue to fetch fresh data in background
+    } else {
+      setLoadingClasses(true)
+    }
+    
     let isMounted = true
     ;(async () => {
       try {
-        setLoadingClasses(true)
         const response = await fetch(`${API_BASE_URL}/section-courses/assigned`)
         if (!response.ok) throw new Error(`Failed to fetch assigned courses: ${response.status}`)
         const data = await response.json()
@@ -313,19 +325,24 @@ const AssignFaculty = () => {
             avatarUrl: item.faculty_avatar
           }))
           setClasses(formattedClasses)
+          
+          // Cache the formatted classes for next load
+          if (!cached) {
+            safeSetItem(cacheKey, formattedClasses)
+          }
         }
       } catch (error) {
         console.error('Error loading assigned courses:', error)
-        if (isMounted) setClasses([])
+        if (isMounted) {
+          // If we have cached data, use it even on error
+          if (!cached) {
+            setClasses([])
+          }
+        }
       } finally {
         if (isMounted) setLoadingClasses(false)
       }
     })()
-    
-    // Prefetch data for other staff pages in the background
-    setTimeout(() => {
-      prefetchStaffData()
-    }, 1000)
     
     return () => {
       isMounted = false

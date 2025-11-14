@@ -402,17 +402,24 @@ const StudentManagement = () => {
     }
   }, [])
 
-  // Load all data on mount
+  // Load all data on mount - prioritize critical data, lazy load others
   useEffect(() => {
+    // Load critical data immediately (students - main content)
     loadStudents()
-    loadDepartments()
-    loadPrograms()
-    loadTerms()
     
-    // Prefetch data for other staff pages in the background
-    setTimeout(() => {
-      prefetchStaffData()
-    }, 1000)
+    // Load filter data asynchronously (non-blocking)
+    // Use requestIdleCallback if available, otherwise setTimeout
+    const loadFilterData = () => {
+      loadDepartments()
+      loadPrograms()
+      loadTerms()
+    }
+    
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadFilterData, { timeout: 1000 })
+    } else {
+      setTimeout(loadFilterData, 300)
+    }
     
     // Cleanup function to abort pending requests
     return () => {

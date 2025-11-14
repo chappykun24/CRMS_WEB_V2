@@ -10,19 +10,35 @@ const StaffDashboard = ({ user }) => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
-  // Prefetch data for other pages in the background - only after authentication and initial load
+  // Defer prefetch to idle time - non-blocking
   useEffect(() => {
-    // Don't prefetch if not authenticated
     if (!isAuthenticated || authLoading) {
       return
     }
 
-    // Wait for initial page load, then prefetch other interface data
-    const timer = setTimeout(() => {
-      console.log('🚀 [StaffDashboard] Starting async prefetch after initial load')
-      prefetchStaffData()
-      setInitialLoadComplete(true)
-    }, 1000) // Wait 1 second after dashboard mounts to start prefetching
+    // Use requestIdleCallback for non-blocking prefetch
+    const schedulePrefetch = () => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          console.log('🚀 [StaffDashboard] Starting idle-time prefetch')
+          prefetchStaffData().catch(err => {
+            console.error('Prefetch error (non-blocking):', err)
+          })
+        }, { timeout: 5000 })
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          console.log('🚀 [StaffDashboard] Starting deferred prefetch')
+          prefetchStaffData().catch(err => {
+            console.error('Prefetch error (non-blocking):', err)
+          })
+        }, 3000)
+      }
+    }
+
+    // Schedule prefetch after a delay to ensure UI is responsive first
+    const timer = setTimeout(schedulePrefetch, 2000)
+    setInitialLoadComplete(true)
     
     return () => clearTimeout(timer)
   }, [isAuthenticated, authLoading])
