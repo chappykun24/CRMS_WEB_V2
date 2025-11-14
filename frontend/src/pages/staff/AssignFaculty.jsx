@@ -60,7 +60,8 @@ const AssignFaculty = () => {
     setLoadingStudents(true)
     
     try {
-      const response = await fetch(`/api/section-courses/${classItem.id}/students`)
+      // Include photos in the response for better UX
+      const response = await fetch(`/api/section-courses/${classItem.id}/students?includePhotos=true`)
       if (!response.ok) throw new Error(`Failed to fetch students: ${response.status}`)
       const studentData = await response.json()
       setStudents(Array.isArray(studentData) ? studentData : [])
@@ -969,19 +970,14 @@ const AssignFaculty = () => {
                           </div>
                         </div>
                         <div className="flex-shrink-0">
-                          {student.student_photo ? (
-                            <img 
-                              src={student.student_photo} 
-                              alt={student.full_name}
-                              className="h-8 w-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                              <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                          )}
+                          <ImageSkeleton
+                            src={student.student_photo}
+                            alt={student.full_name}
+                            size="sm"
+                            shape="circle"
+                            className="border-2 border-gray-200"
+                            priority={false}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-gray-900 truncate">
