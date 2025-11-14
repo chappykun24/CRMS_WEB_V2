@@ -31,12 +31,15 @@ const CourseManagement = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('')
   const [selectedSpecializationId, setSelectedSpecializationId] = useState('')
   const [selectedTermId, setSelectedTermId] = useState('')
+  const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
+  const [selectedSemester, setSelectedSemester] = useState('')
 
   // Data
   const [programs, setPrograms] = useState([])
   const [specializations, setSpecializations] = useState([])
   const [terms, setTerms] = useState([])
   const [courses, setCourses] = useState([])
+  const [sectionCourses, setSectionCourses] = useState([]) // For grade level filtering
 
   // UI state
   const [selectedCourse, setSelectedCourse] = useState(null)
@@ -708,6 +711,55 @@ const CourseManagement = () => {
     setSelectedCourse(null)
   }, [selectedProgramId, loadSpecializations])
 
+  // Load section courses for grade level filtering
+  const loadSectionCourses = useCallback(async () => {
+    if (!selectedProgramId) {
+      setSectionCourses([])
+      return
+    }
+    
+    try {
+      // First get all sections with year_level
+      const sectionsResponse = await fetch('/api/section-courses/sections', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!sectionsResponse.ok) return
+      
+      const sections = await sectionsResponse.json()
+      const sectionsMap = new Map(
+        (Array.isArray(sections) ? sections : []).map(s => [String(s.section_id), s.year_level])
+      )
+      
+      // Then get section courses
+      const scResponse = await fetch('/api/section-courses/assigned', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (scResponse.ok) {
+        const data = await scResponse.json()
+        const sectionCoursesData = (Array.isArray(data) ? data : [])
+          .map(sc => ({
+            course_id: sc.course_id,
+            section_id: sc.section_id,
+            year_level: sectionsMap.get(String(sc.section_id)) || null
+          }))
+          .filter(sc => sc.year_level !== null)
+        
+        setSectionCourses(sectionCoursesData)
+      }
+    } catch (error) {
+      console.error('Error loading section courses:', error)
+    }
+  }, [selectedProgramId])
+
   // Load courses with caching - lazy load ONLY when program/term is selected
   const loadCourses = useCallback(async () => {
     if (!selectedProgramId) {
@@ -790,11 +842,13 @@ const CourseManagement = () => {
   useEffect(() => {
     if (selectedProgramId) {
       loadCourses()
+      loadSectionCourses()
     } else {
       setCourses([])
+      setSectionCourses([])
     }
     setSelectedCourse(null)
-  }, [selectedProgramId, selectedTermId, loadCourses]) // Removed selectedSpecializationId dependency
+  }, [selectedProgramId, selectedTermId, loadCourses, loadSectionCourses]) // Removed selectedSpecializationId dependency
 
   // Filtered views for current tab and search
   const filteredPrograms = useMemo(() => {
@@ -806,9 +860,32 @@ const CourseManagement = () => {
 
   const filteredSpecializations = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const filtered = specializations
+    let filtered = specializations
       .filter(s => (selectedProgramId ? String(s.program_id) === String(selectedProgramId) : true))
       .filter(s => !q || (s.name || '').toLowerCase().includes(q) || (s.abbreviation || '').toLowerCase().includes(q))
+    
+    // Filter by semester (term) if selected
+    if (selectedSemester) {
+      const coursesInSemester = courses.filter(c => String(c.term_id) === String(selectedSemester))
+      const specializationIdsInSemester = new Set(coursesInSemester.map(c => String(c.specialization_id)))
+      filtered = filtered.filter(s => specializationIdsInSemester.has(String(s.specialization_id)))
+    }
+    
+    // Filter by grade level if selected
+    if (selectedGradeLevel) {
+      // Get course IDs that are used in sections with the selected grade level
+      const courseIdsInGradeLevel = new Set(
+        sectionCourses
+          .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
+          .map(sc => String(sc.course_id))
+      )
+      
+      // Filter specializations that have courses in this grade level
+      filtered = filtered.filter(s => {
+        const specCourses = courses.filter(c => String(c.specialization_id) === String(s.specialization_id))
+        return specCourses.some(c => courseIdsInGradeLevel.has(String(c.course_id)))
+      })
+    }
     
     // Sort to show General first, then alphabetically by name
     return filtered.sort((a, b) => {
@@ -816,7 +893,7 @@ const CourseManagement = () => {
       if (b.name === 'General') return 1
       return (a.name || '').localeCompare(b.name || '')
     })
-  }, [specializations, selectedProgramId, query])
+  }, [specializations, selectedProgramId, query, selectedSemester, selectedGradeLevel, courses, sectionCourses])
 
   const formatDate = (value) => {
     if (!value) return '—'
@@ -1061,16 +1138,54 @@ const CourseManagement = () => {
               {/* List */}
               <div className={`lg:col-span-3 h-full`}>
                 {/* Controls */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={selectedSpecializationId ? 'Search course code or title' : selectedProgramId ? 'Search specialization' : 'Search program'}
-                      className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300"
-                    />
-                    <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                <div className="flex flex-col gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={selectedSpecializationId ? 'Search course code or title' : selectedProgramId ? 'Search specialization' : 'Search program'}
+                        className="w-full px-3 py-2 pl-9 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300"
+                      />
+                      <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                    </div>
+                    
+                    {/* Filters - Only show when viewing specializations */}
+                    {selectedProgramId && !selectedSpecializationId && (
+                      <>
+                        {/* Grade Level Filter */}
+                        <div className="relative min-w-[150px]">
+                          <select
+                            value={selectedGradeLevel}
+                            onChange={(e) => setSelectedGradeLevel(e.target.value)}
+                            className="w-full px-3 py-2 pr-10 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 appearance-none bg-white cursor-pointer text-sm"
+                          >
+                            <option value="">All Grade Levels</option>
+                            <option value="1">1st Year</option>
+                            <option value="2">2nd Year</option>
+                            <option value="3">3rd Year</option>
+                            <option value="4">4th Year</option>
+                          </select>
+                        </div>
+                        
+                        {/* Semester Filter */}
+                        <div className="relative min-w-[150px]">
+                          <select
+                            value={selectedSemester}
+                            onChange={(e) => setSelectedSemester(e.target.value)}
+                            className="w-full px-3 py-2 pr-10 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 appearance-none bg-white cursor-pointer text-sm"
+                          >
+                            <option value="">All Semesters</option>
+                            {terms.map(term => (
+                              <option key={term.term_id} value={term.term_id}>
+                                {term.semester === '1' ? '1st Semester' : term.semester === '2' ? '2nd Semester' : term.semester === '3' ? 'Summer' : term.semester} {term.school_year}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   {/* Show General Subjects Toggle - Only show when viewing courses */}
@@ -1192,9 +1307,28 @@ const CourseManagement = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="text-xs text-gray-400 mr-4">
-                                {courses.filter(c => 
-                                  String(c.specialization_id) === String(s.specialization_id)
-                                ).length} Subjects
+                                {(() => {
+                                  let courseCount = courses.filter(c => 
+                                    String(c.specialization_id) === String(s.specialization_id)
+                                  )
+                                  
+                                  // Apply semester filter if selected
+                                  if (selectedSemester) {
+                                    courseCount = courseCount.filter(c => String(c.term_id) === String(selectedSemester))
+                                  }
+                                  
+                                  // Apply grade level filter if selected
+                                  if (selectedGradeLevel) {
+                                    const courseIdsInGradeLevel = new Set(
+                                      sectionCourses
+                                        .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
+                                        .map(sc => String(sc.course_id))
+                                    )
+                                    courseCount = courseCount.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
+                                  }
+                                  
+                                  return courseCount.length
+                                })()} Subjects
                                 </div>
                                 <button
                                   onClick={(e) => {
