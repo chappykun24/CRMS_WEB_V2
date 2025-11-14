@@ -44,11 +44,11 @@ const ImageSkeleton = ({
     }
   }
 
-  // If no src and no fallback, show skeleton
+  // If no src and no fallback, show skeleton with gradient
   if (!src && !FallbackIcon) {
     return (
       <div 
-        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-gray-200 animate-pulse ${className}`}
+        className={`${sizeClasses[size]} ${shapeClasses[shape]} bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse border-2 border-gray-200 ${className}`}
         role="status"
         aria-label="Loading image"
       />
@@ -99,10 +99,10 @@ const ImageSkeleton = ({
   // Show image with skeleton while loading
   return (
     <div className={`${sizeClasses[size]} ${shapeClasses[shape]} relative overflow-hidden ${className}`}>
-      {/* Skeleton overlay while loading */}
+      {/* Skeleton overlay while loading - improved with gradient */}
       {isLoading && (
         <div 
-          className="absolute inset-0 bg-gray-200 animate-pulse"
+          className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse border-2 border-gray-200"
           role="status"
           aria-label="Loading image"
         />
@@ -113,7 +113,7 @@ const ImageSkeleton = ({
         src={src}
         alt={alt}
         className={`${sizeClasses[size]} ${shapeClasses[shape]} object-cover transition-opacity duration-300 ${
-          isLoading ? 'opacity-0' : 'opacity-100'
+          isLoading ? 'opacity-0 absolute inset-0' : 'opacity-100 relative'
         }`}
         onLoad={handleLoad}
         onError={handleError}

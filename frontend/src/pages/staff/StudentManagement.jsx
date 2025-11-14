@@ -1063,7 +1063,13 @@ const StudentManagement = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       {selectedStudent.student_photo ? (
-                        <img className="h-14 w-14 rounded-full object-cover" src={selectedStudent.student_photo} alt={selectedStudent.full_name} />
+                        <ImageSkeleton
+                          src={selectedStudent.student_photo}
+                          alt={selectedStudent.full_name}
+                          size="lg"
+                          shape="circle"
+                          className="border-2 border-gray-200"
+                        />
                       ) : (
                         <div className="h-14 w-14 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
                           <span className="text-red-700 text-base font-semibold">{(selectedStudent.full_name || 'S').charAt(0)}</span>

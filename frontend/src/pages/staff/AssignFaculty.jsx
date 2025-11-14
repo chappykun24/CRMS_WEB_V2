@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
-import ClassCardSkeleton from '../../components/ClassCardSkeleton'
-import { ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
+import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
 import { safeGetItem, safeSetItem } from '../../utils/cacheUtils'
 
 
@@ -470,11 +469,7 @@ const AssignFaculty = () => {
               {/* Classes Grid */}
               <div className="flex-1 min-h-0 overflow-auto">
                 {loadingClasses ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, index) => (
-                      <ClassCardSkeleton key={index} />
-                    ))}
-                  </div>
+                  <CardGridSkeleton cards={6} />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filtered.map(cls => (
