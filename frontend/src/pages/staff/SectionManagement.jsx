@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
-import { prefetchStaffData } from '../../services/dataPrefetchService'
 import staffCacheService from '../../services/staffCacheService'
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 
@@ -280,19 +279,22 @@ const SectionManagement = () => {
     }
   }, [])
 
-  // Load all data on mount - prioritize critical data first
+  // Load data on mount with prioritization - no prefetching
   useEffect(() => {
-    // Load critical data immediately (sections and terms)
+    // Priority 1: Load critical data immediately (sections - main content)
     loadSections()
-    loadTerms()
     
-    // Load programs asynchronously after critical data
+    // Priority 2: Load terms (needed for creating/editing sections)
+    // Load after sections start loading
+    const loadSecondaryData = () => {
+      loadTerms()
+    }
+    
+    // Load secondary data after sections start loading
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => {
-        loadPrograms()
-      }, { timeout: 1000 })
+      requestIdleCallback(loadSecondaryData, { timeout: 500 })
     } else {
-      setTimeout(() => loadPrograms(), 500)
+      setTimeout(loadSecondaryData, 300)
     }
     
     // Cleanup function to abort pending requests
@@ -368,6 +370,14 @@ const SectionManagement = () => {
       setFormData(prev => ({ ...prev, specializationId: '' }))
     }
   }, [formData.yearLevel])
+
+  // Load programs on-demand when modal opens (no prefetching)
+  useEffect(() => {
+    if (showCreateModal || showEditModal) {
+      // Load programs when form is accessed
+      loadPrograms()
+    }
+  }, [showCreateModal, showEditModal, loadPrograms])
 
   const openCreateModal = () => setShowCreateModal(true)
   

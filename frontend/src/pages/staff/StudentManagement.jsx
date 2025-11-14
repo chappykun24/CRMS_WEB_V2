@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { prefetchStaffData } from '../../services/dataPrefetchService'
 import { 
   UserPlusIcon, 
   MagnifyingGlassIcon, 
@@ -402,23 +401,32 @@ const StudentManagement = () => {
     }
   }, [])
 
-  // Load all data on mount - prioritize critical data, lazy load others
+  // Load data on mount with prioritization - no prefetching
   useEffect(() => {
-    // Load critical data immediately (students - main content)
+    // Priority 1: Load critical data immediately (students - main content)
     loadStudents()
     
-    // Load filter data asynchronously (non-blocking)
-    // Use requestIdleCallback if available, otherwise setTimeout
-    const loadFilterData = () => {
+    // Priority 2: Load filter data after critical data starts loading
+    // Departments are needed for filtering, so load them next
+    const loadSecondaryData = () => {
       loadDepartments()
+    }
+    
+    // Priority 3: Load tertiary data (programs, terms) only when needed
+    // These are only used in filters, so load them after departments
+    const loadTertiaryData = () => {
       loadPrograms()
       loadTerms()
     }
     
+    // Load secondary data after a short delay
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(loadFilterData, { timeout: 1000 })
+      requestIdleCallback(loadSecondaryData, { timeout: 500 })
+      // Load tertiary data even later
+      requestIdleCallback(loadTertiaryData, { timeout: 1500 })
     } else {
-      setTimeout(loadFilterData, 300)
+      setTimeout(loadSecondaryData, 200)
+      setTimeout(loadTertiaryData, 800)
     }
     
     // Cleanup function to abort pending requests

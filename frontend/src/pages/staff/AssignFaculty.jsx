@@ -243,10 +243,13 @@ const AssignFaculty = () => {
   // Compute API base URL similar to other services
   const API_BASE_URL = '/api'
 
-  // Load courses when the create modal opens (once per open)
+  // Load data when create modal opens - with prioritization (on-demand, no prefetching)
   useEffect(() => {
     if (!showCreateModal) return
+    
     let isMounted = true
+    
+    // Priority 1: Load critical data immediately (courses and terms - needed for form)
     ;(async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/courses`)
@@ -257,6 +260,7 @@ const AssignFaculty = () => {
         console.error('Error loading courses:', error)
       }
     })()
+    
     ;(async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/school-terms`)
@@ -267,26 +271,40 @@ const AssignFaculty = () => {
         console.error('Error loading school terms:', error)
       }
     })()
-    ;(async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/section-courses/sections`)
-        if (!response.ok) throw new Error(`Failed to fetch sections: ${response.status}`)
-        const data = await response.json()
-        if (isMounted) setSections(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Error loading sections:', error)
-      }
-    })()
-    ;(async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/section-courses/faculty`)
-        if (!response.ok) throw new Error(`Failed to fetch faculty: ${response.status}`)
-        const data = await response.json()
-        if (isMounted) setFaculty(Array.isArray(data) ? data : [])
-      } catch (error) {
-        console.error('Error loading faculty:', error)
-      }
-    })()
+    
+    // Priority 2: Load secondary data (sections and faculty - needed for dropdowns)
+    // Load after critical data starts loading
+    const loadSecondaryData = () => {
+      ;(async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/section-courses/sections`)
+          if (!response.ok) throw new Error(`Failed to fetch sections: ${response.status}`)
+          const data = await response.json()
+          if (isMounted) setSections(Array.isArray(data) ? data : [])
+        } catch (error) {
+          console.error('Error loading sections:', error)
+        }
+      })()
+      
+      ;(async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/section-courses/faculty`)
+          if (!response.ok) throw new Error(`Failed to fetch faculty: ${response.status}`)
+          const data = await response.json()
+          if (isMounted) setFaculty(Array.isArray(data) ? data : [])
+        } catch (error) {
+          console.error('Error loading faculty:', error)
+        }
+      })()
+    }
+    
+    // Load secondary data after a short delay
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadSecondaryData, { timeout: 300 })
+    } else {
+      setTimeout(loadSecondaryData, 200)
+    }
+    
     return () => {
       isMounted = false
     }
