@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import db from '../config/database.js';
 import { generateToken } from '../middleware/auth.js';
+import { sanitizeUserData, sanitizeRequestBody, safeStringify } from '../utils/sanitizeLogs.js';
 
 // Register new user
 export const register = async (req, res) => {
@@ -60,9 +61,13 @@ export const register = async (req, res) => {
 // Login user
 export const login = async (req, res) => {
   try {
-    console.log('🔐 [AUTH CONTROLLER] Login attempt for email:', req.body.email);
-    console.log('🔐 [AUTH CONTROLLER] Request body:', JSON.stringify(req.body, null, 2));
-    console.log('🔐 [AUTH CONTROLLER] Request headers:', JSON.stringify(req.headers, null, 2));
+    // Sanitize email for logging
+    const sanitizedEmail = req.body.email ? (() => {
+      const [localPart, domain] = req.body.email.split('@');
+      return localPart && domain ? `${localPart.substring(0, 3)}***@${domain}` : '***';
+    })() : 'N/A';
+    console.log('🔐 [AUTH CONTROLLER] Login attempt for email:', sanitizedEmail);
+    console.log('🔐 [AUTH CONTROLLER] Request body:', safeStringify(req.body, sanitizeRequestBody));
     
     const { email, password } = req.body;
 
@@ -143,7 +148,8 @@ export const login = async (req, res) => {
     }
     
     console.log('🔐 [AUTH CONTROLLER] Query result:', result.rows.length, 'rows found');
-    console.log('🔐 [AUTH CONTROLLER] Query result data:', JSON.stringify(result.rows, null, 2));
+    // Sanitize user data before logging
+    console.log('🔐 [AUTH CONTROLLER] Query result data:', safeStringify(result.rows, sanitizeUserData));
 
     if (result.rows.length === 0) {
       return res.status(401).json({
@@ -289,7 +295,8 @@ export const getProfile = async (req, res) => {
       position: userData.position
     };
 
-    console.log('🔍 [AUTH CONTROLLER] Transformed user data:', user);
+    // Sanitize user data before logging
+    console.log('🔍 [AUTH CONTROLLER] Transformed user data:', safeStringify(user, sanitizeUserData));
 
     res.json({
       success: true,

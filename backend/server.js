@@ -9,6 +9,7 @@ import multer from 'multer';
 import compression from 'compression';
 import db from './config/database.js';
 import { authenticateToken } from './middleware/auth.js';
+import { sanitizeUserData, safeStringify } from './utils/sanitizeLogs.js';
 
 const { Pool } = pg;
 // Load environment variables
@@ -1706,7 +1707,8 @@ app.get('/api/debug/profile-photos', async (req, res) => {
       ORDER BY user_id
     `);
     
-    console.log('🔍 [DEBUG] Users with profile photos:', result.rows);
+    // Sanitize user data before logging
+    console.log('🔍 [DEBUG] Users with profile photos:', safeStringify(result.rows, sanitizeUserData));
     
     res.json({
       success: true,
@@ -2076,7 +2078,12 @@ app.post('/api/debug/login', async (req, res) => {
       });
     }
     
-    console.log('🔍 [DEBUG LOGIN] Querying user with email:', email);
+    // Sanitize email for logging
+    const sanitizedEmail = email ? (() => {
+      const [localPart, domain] = email.split('@');
+      return localPart && domain ? `${localPart.substring(0, 3)}***@${domain}` : '***';
+    })() : 'N/A';
+    console.log('🔍 [DEBUG LOGIN] Querying user with email:', sanitizedEmail);
     const result = await db.query('SELECT user_id, email, name FROM users WHERE email = $1', [email]);
     
     if (result.rows.length === 0) {
@@ -2087,7 +2094,8 @@ app.post('/api/debug/login', async (req, res) => {
     }
     
     const user = result.rows[0];
-    console.log('🔍 [DEBUG LOGIN] User found:', user);
+    // Sanitize user data before logging
+    console.log('🔍 [DEBUG LOGIN] User found:', safeStringify(user, sanitizeUserData));
     
     res.json({
       success: true,
