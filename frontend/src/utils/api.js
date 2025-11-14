@@ -123,10 +123,10 @@ export const endpoints = {
   performanceStats: '/analytics/performance',
   
   // Catalog endpoints
-  programs: '/programs',
-  specializations: '/program-specializations',
-  terms: '/terms',
-  catalogCourses: '/courses',
+  programs: '/catalog/programs',
+  specializations: '/catalog/program-specializations',
+  terms: '/catalog/terms',
+  catalogCourses: '/catalog/courses',
 };
 
 // Simple API helper methods (API only)

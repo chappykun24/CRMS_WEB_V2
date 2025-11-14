@@ -317,7 +317,7 @@ const prefetchPrograms = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching programs...');
-    const response = await fetch(`${API_BASE_URL}/programs`);
+    const response = await fetch(`${API_BASE_URL}/catalog/programs`);
     if (!response.ok) throw new Error(`Programs fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
@@ -348,7 +348,7 @@ const prefetchCourses = async () => {
     }
     
     console.log('🔄 [Prefetch] Fetching courses...');
-    const response = await fetch(`${API_BASE_URL}/courses`);
+    const response = await fetch(`${API_BASE_URL}/catalog/courses`);
     if (!response.ok) throw new Error(`Courses fetch failed: ${response.status}`);
     
     const contentType = response.headers.get('content-type');
