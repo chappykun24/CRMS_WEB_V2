@@ -1371,7 +1371,7 @@ const Analytics = () => {
                     onClick={() => handleFetch(true)}
                     disabled={loading}
                     className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm flex-shrink-0"
-                    title="Refresh data and recompute clusters from latest dataset"
+                    title="Refresh data and recompute clusters (will update cluster labels like 'On Track' → 'Average Performance')"
                   >
                     <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                   </button>
@@ -1660,6 +1660,16 @@ const Analytics = () => {
                     {parseFloat(clusterMeta.silhouetteScore).toFixed(4)}
                   </p>
                   <p className="text-[10px] text-indigo-500 mt-0.5">Silhouette Score</p>
+                </div>
+              )}
+
+              {/* Note about cluster labels */}
+              {data.some(row => row.cluster_label === 'On Track') && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                  <p className="text-xs text-yellow-800">
+                    <span className="font-semibold">Note:</span> Some clusters show "On Track" from cached data. 
+                    Click the refresh button to update to "Average Performance".
+                  </p>
                 </div>
               )}
 
