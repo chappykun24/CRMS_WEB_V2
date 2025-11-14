@@ -200,14 +200,24 @@ const SyllabusApproval = () => {
     request.requested_by_name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Safe date formatting function
+  const formatDate = (dateString) => {
+    if (!dateString) return '—'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return '—'
+      }
+      return date.toLocaleDateString()
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return '—'
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Syllabus Approval</h1>
-          <p className="text-gray-600">Manage syllabus approvals and edit requests</p>
-        </div>
-
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -300,7 +310,7 @@ const SyllabusApproval = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {syllabus.reviewed_at ? new Date(syllabus.reviewed_at).toLocaleDateString() : '—'}
+                        {formatDate(syllabus.reviewed_at)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
@@ -383,7 +393,7 @@ const SyllabusApproval = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
-                          {syllabus.created_at ? new Date(syllabus.created_at).toLocaleDateString() : '—'}
+                          {formatDate(syllabus.created_at)}
                         </td>
                         <td className="px-6 py-4">
                           <button
@@ -444,7 +454,7 @@ const SyllabusApproval = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
-                          {request.created_at ? new Date(request.created_at).toLocaleDateString() : '—'}
+                          {formatDate(request.created_at)}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
