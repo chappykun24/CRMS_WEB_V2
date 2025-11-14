@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { 
   UserGroupIcon, 
@@ -8,16 +8,9 @@ import {
   DocumentTextIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/solid'
-import {
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  ZAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts'
+
+// Lazy load scatterplot component
+const ScatterPlotChart = lazy(() => import('../../components/charts/ScatterPlotChart'))
 import Analytics from './Analytics'
 import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
