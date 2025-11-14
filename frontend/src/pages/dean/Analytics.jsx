@@ -939,14 +939,14 @@ const Analytics = () => {
       return { text: label, className: 'bg-orange-100 text-orange-700' };
     }
 
-    // Excellent Performance - Green
-    if (normalized.includes('excellent') || normalized.includes('high') || normalized.includes('performance')) {
-      return { text: label, className: 'bg-emerald-100 text-emerald-700' };
-    }
-
-    // Average Performance/Performing Well - Blue
+    // Average Performance/Performing Well - Blue (check before Excellent to avoid matching "performance")
     if (normalized.includes('average') || normalized.includes('performing') || normalized.includes('track')) {
       return { text: label, className: 'bg-blue-100 text-blue-700' };
+    }
+
+    // Excellent Performance - Green (check after Average to avoid conflicts)
+    if (normalized.includes('excellent') || normalized.includes('high')) {
+      return { text: label, className: 'bg-emerald-100 text-emerald-700' };
     }
 
     // Default - Gray
