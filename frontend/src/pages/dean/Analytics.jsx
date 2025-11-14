@@ -1826,15 +1826,6 @@ const Analytics = () => {
                       <div className="text-xs text-gray-500">Loading...</div>
                     )}
                   </div>
-                  {/* Class Score Display */}
-                  {selectedClassId !== 'all' && classFilteredData && classFilteredData.average_score !== null && classFilteredData.average_score !== undefined && (
-                    <div className="ml-auto flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg px-4 py-2 border border-emerald-200">
-                      <span className="text-xs font-medium text-emerald-700">Class Score:</span>
-                      <span className="text-lg font-bold text-emerald-900">
-                        {parseFloat(classFilteredData.average_score).toFixed(1)}%
-                      </span>
-                    </div>
-                  )}
                   {selectedClassId !== 'all' && !loadingClassData && !classFilteredData && (
                     <div className="ml-auto flex items-center gap-2">
                       <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
