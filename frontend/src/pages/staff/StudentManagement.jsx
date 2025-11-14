@@ -15,7 +15,7 @@ import {
 import studentService from '../../services/studentService'
 // Removed studentSpec import - using inline validation instead
 import api, { endpoints } from '../../utils/api'
-import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
+import { TableSkeleton, SidebarSkeleton, ImageSkeleton } from '../../components/skeletons'
 import staffCacheService from '../../services/staffCacheService'
 import { safeSetItem, safeGetItem, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 
@@ -999,7 +999,13 @@ const StudentManagement = () => {
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10">
                                   {student.student_photo ? (
-                                    <img className="h-10 w-10 rounded-full object-cover" src={student.student_photo} alt={student.full_name} />
+                                    <ImageSkeleton
+                                      src={student.student_photo}
+                                      alt={student.full_name}
+                                      size="md"
+                                      shape="circle"
+                                      className="border-2 border-gray-200"
+                                    />
                                   ) : (
                                     <div className="h-10 w-10 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
                                       <span className="text-red-700 text-sm font-semibold">{(student.full_name || 'S').charAt(0)}</span>

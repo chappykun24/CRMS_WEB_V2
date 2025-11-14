@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
+import { ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
 import { safeGetItem, safeSetItem } from '../../utils/cacheUtils'
 
 
@@ -480,7 +481,9 @@ const AssignFaculty = () => {
 
             {/* Right Section - Class Details and Students */}
             <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-auto">
-              {selectedClass ? (
+              {loadingStudents && !selectedClass ? (
+                <ClassDetailsSkeleton />
+              ) : selectedClass ? (
                 <div className="h-full flex flex-col">
                   {/* Class Header */}
                   <div className="mb-4 pb-4 border-b border-gray-200">
@@ -498,7 +501,7 @@ const AssignFaculty = () => {
                       <h4 className="text-md font-medium text-gray-900">Enrolled Students</h4>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {students.length} student{students.length !== 1 ? 's' : ''}
+                          {loadingStudents ? '...' : `${students.length} student${students.length !== 1 ? 's' : ''}`}
                         </span>
                         <button
                           onClick={handleOpenStudentsModal}
@@ -511,9 +514,8 @@ const AssignFaculty = () => {
                     </div>
                     
                     {loadingStudents ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                        <span className="ml-2 text-sm text-gray-600">Loading students...</span>
+                      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
+                        <StudentListItemSkeleton count={6} />
                       </div>
                     ) : students.length > 0 ? (
                       <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
@@ -521,10 +523,12 @@ const AssignFaculty = () => {
                           <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex-shrink-0">
                               {student.student_photo ? (
-                                <img 
-                                  src={student.student_photo} 
+                                <ImageSkeleton
+                                  src={student.student_photo}
                                   alt={student.full_name}
-                                  className="h-10 w-10 rounded-full object-cover"
+                                  size="md"
+                                  shape="circle"
+                                  className="border-2 border-gray-200"
                                 />
                               ) : (
                                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
