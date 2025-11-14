@@ -387,7 +387,12 @@ npm run lint:fix         # Fix ESLint errors
 
 ---
 
-## 📚 API Documentation
+## 📚 Documentation
+
+### User Guides
+- **[User Accessibilities and Features](./USER_ACCESSIBILITIES_AND_FEATURES.md)** - Complete guide to user roles, access levels, and features
+
+### API Documentation
 
 ### Authentication Endpoints
 
@@ -423,6 +428,8 @@ npm run lint:fix         # Fix ESLint errors
 ### Health Check
 
 - `GET /api/health` - API health status
+
+> **📖 For detailed information about user roles, access levels, and features, see the [User Accessibilities and Features Guide](./USER_ACCESSIBILITIES_AND_FEATURES.md).**
 
 ---
 
