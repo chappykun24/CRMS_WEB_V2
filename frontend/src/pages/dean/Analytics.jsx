@@ -172,6 +172,9 @@ const Analytics = () => {
   const [sections, setSections] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+  const [selectedSpecializationId, setSelectedSpecializationId] = useState('');
+  const [studentEnrollmentsMap, setStudentEnrollmentsMap] = useState(new Map()); // Map<student_id, specialization_ids[]>
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
@@ -554,7 +557,8 @@ const Analytics = () => {
       selectedTermId || 'all',
       selectedSectionId || 'all',
       selectedProgramId || 'all',
-      selectedYearLevel || 'all'
+      selectedYearLevel || 'all',
+      selectedSpecializationId || 'all'
     ].join('_');
     
     // If force refresh, clear all caches first
@@ -781,12 +785,27 @@ const Analytics = () => {
           setData(studentsData);
           setClusterMeta(json.clustering || { enabled: false });
           
+          // Build student enrollments map for specialization filtering
+          // Backend now includes enrolled_specializations array for each student
+          const enrollmentsMap = new Map();
+          studentsData.forEach(student => {
+            // enrolled_specializations is an array of specialization_ids from backend
+            const specializationIds = student.enrolled_specializations || [];
+            // Convert to array of integers if needed
+            const specIds = Array.isArray(specializationIds) 
+              ? specializationIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id).filter(id => !isNaN(id))
+              : [];
+            enrollmentsMap.set(student.student_id, specIds);
+          });
+          setStudentEnrollmentsMap(enrollmentsMap);
+          
           // Build cache key with all filters
           const filterKey = [
             selectedTermId || 'all',
             selectedSectionId || 'all',
             selectedProgramId || 'all',
-            selectedYearLevel || 'all'
+            selectedYearLevel || 'all',
+            selectedSpecializationId || 'all'
           ].join('_');
           
           // Store in sessionStorage for instant next load
@@ -878,7 +897,7 @@ const Analytics = () => {
           trackEvent('dean_analytics_error', { message: String(err?.message || err) });
         } catch {}
       });
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel, selectedSpecializationId]);
 
   const getClusterStyle = (label) => {
     // Return null if no valid cluster label (don't show "Not Clustered" fallback)
@@ -982,7 +1001,7 @@ const Analytics = () => {
       });
     }
 
-    // Filter by year level (3rd year or 4th year)
+    // Filter by year level (1st, 2nd, 3rd, or 4th year)
     if (selectedYearLevel) {
       filtered = filtered.filter(row => {
         const yearLevel = row.grade_level;
@@ -990,6 +1009,18 @@ const Analytics = () => {
         // Convert to number if it's a string
         const yearLevelNum = typeof yearLevel === 'string' ? parseInt(yearLevel, 10) : yearLevel;
         return yearLevelNum.toString() === selectedYearLevel;
+      });
+    }
+
+    // Filter by specialization (based on enrolled courses)
+    if (selectedSpecializationId) {
+      filtered = filtered.filter(row => {
+        // Check if student has enrollments in courses with the selected specialization
+        const studentSpecializations = studentEnrollmentsMap.get(row.student_id);
+        if (!studentSpecializations || studentSpecializations.length === 0) {
+          return false;
+        }
+        return studentSpecializations.includes(parseInt(selectedSpecializationId, 10));
       });
     }
 
@@ -1015,7 +1046,7 @@ const Analytics = () => {
     });
 
     return filtered;
-  }, [data, selectedCluster, searchQuery, selectedYearLevel]);
+  }, [data, selectedCluster, searchQuery, selectedYearLevel, selectedSpecializationId]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -1028,7 +1059,7 @@ const Analytics = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel]);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -1332,7 +1363,10 @@ const Analytics = () => {
                     <div className="relative">
                       <select
                         value={selectedProgramId}
-                        onChange={(e) => setSelectedProgramId(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedProgramId(e.target.value);
+                          setSelectedSpecializationId(''); // Reset specialization when program changes
+                        }}
                         className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Programs</option>
@@ -1344,6 +1378,26 @@ const Analytics = () => {
                       </select>
                     </div>
                   </div>
+
+                  {/* Specialization/Major Filter */}
+                  {specializations.length > 0 && (
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <select
+                          value={selectedSpecializationId}
+                          onChange={(e) => setSelectedSpecializationId(e.target.value)}
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="">All Specializations</option>
+                          {specializations.map(spec => (
+                            <option key={spec.specialization_id} value={spec.specialization_id.toString()}>
+                              {spec.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Section Filter */}
                   <div className="flex-1 min-w-[200px]">
@@ -1374,6 +1428,8 @@ const Analytics = () => {
                         className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Year Levels</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
                         <option value="3">3rd Year</option>
                         <option value="4">4th Year</option>
                       </select>

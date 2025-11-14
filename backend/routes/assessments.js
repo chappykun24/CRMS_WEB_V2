@@ -893,7 +893,21 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
-        )::INTEGER AS submission_total_assessments
+        )::INTEGER AS submission_total_assessments,
+        -- Specializations: array of specialization_ids from courses the student is enrolled in
+        -- This allows filtering by specialization (Business Analytics, Networking, Service Management)
+        -- Note: We don't filter by section_course_id here because we want ALL specializations
+        -- the student is enrolled in, not just for a specific class
+        (
+          SELECT ARRAY_AGG(DISTINCT c.specialization_id)
+          FROM course_enrollments ce_spec
+          INNER JOIN section_courses sc_spec ON ce_spec.section_course_id = sc_spec.section_course_id
+          INNER JOIN courses c ON sc_spec.course_id = c.course_id
+          WHERE ce_spec.student_id = s.student_id
+            AND ce_spec.status = 'enrolled'
+            AND c.specialization_id IS NOT NULL
+            ${termIdValue ? `AND sc_spec.term_id = ${termIdValue}` : ''}
+        )::INTEGER[] AS enrolled_specializations
       FROM students s
       INNER JOIN course_enrollments ce ON s.student_id = ce.student_id
       INNER JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
