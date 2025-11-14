@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/UnifiedAuthContext'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  BellIcon,
   UserIcon,
   Cog6ToothIcon,
   Bars3Icon,
@@ -513,13 +512,6 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
 
         {/* Right side - Profile */}
         <div className="flex items-center space-x-2 md:space-x-4">
-          {/* Notification Bell */}
-          <div className="relative">
-            <button className="p-2 rounded-lg hover:bg-gray-200 transition-colors focus:outline-none focus:ring-0 focus:border-0">
-              <BellIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          
           {/* Profile Menu */}
           <div className="relative">
             <button
