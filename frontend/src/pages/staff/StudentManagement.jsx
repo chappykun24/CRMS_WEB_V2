@@ -741,6 +741,33 @@ const StudentManagement = () => {
     return dept ? dept.name : departmentId
   }
 
+  const getDepartmentAbbreviation = (departmentId) => {
+    const dept = departments.find(d => String(d.department_id) === String(departmentId))
+    return dept ? (dept.department_abbreviation || dept.name) : '—'
+  }
+
+  // Helper function to extract last name (last word) for sorting
+  const extractLastName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }
+
+  // Helper function to format name as "Last name, First name Middle"
+  const formatStudentName = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }
+
   const getProgramName = (programId) => {
     const prog = programs.find(p => String(p.program_id) === String(programId))
     return prog ? prog.name : programId
@@ -769,10 +796,30 @@ const StudentManagement = () => {
         filtered.sort((a, b) => new Date(a.created_at || a.createdAt) - new Date(b.created_at || b.createdAt))
         break
       case 'name_asc':
-        filtered.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+        // Sort by last name (last word), then by full name
+        filtered.sort((a, b) => {
+          const aLastName = extractLastName(a.full_name || '')
+          const bLastName = extractLastName(b.full_name || '')
+          
+          if (aLastName !== bLastName) {
+            return aLastName.localeCompare(bLastName)
+          }
+          
+          return (a.full_name || '').localeCompare(b.full_name || '')
+        })
         break
       case 'name_desc':
-        filtered.sort((a, b) => (b.full_name || '').localeCompare(a.full_name || ''))
+        // Sort by last name (last word) descending, then by full name
+        filtered.sort((a, b) => {
+          const aLastName = extractLastName(a.full_name || '')
+          const bLastName = extractLastName(b.full_name || '')
+          
+          if (aLastName !== bLastName) {
+            return bLastName.localeCompare(aLastName)
+          }
+          
+          return (b.full_name || '').localeCompare(a.full_name || '')
+        })
         break
       default:
         break
@@ -981,18 +1028,18 @@ const StudentManagement = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROFILE</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NAME</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EMAIL</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR-CODE</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DEPARTMENT</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROFILE</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NAME</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EMAIL</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SR-CODE</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DEPARTMENT</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {currentStudents.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                          <td colSpan="6" className="px-3 py-8 text-center text-gray-500">
                             {query ? 'No students match your search' : 'No students found'}
                           </td>
                         </tr>
@@ -1000,16 +1047,16 @@ const StudentManagement = () => {
                         currentStudents.map((student) => (
                           <tr
                             key={student.student_id}
-                            className={`hover:bg-gray-50 cursor-pointer h-16 ${selectedStudent?.student_id === student.student_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
+                            className={`hover:bg-gray-50 cursor-pointer ${selectedStudent?.student_id === student.student_id ? 'bg-red-50 border-l-4 border-red-500' : ''}`}
                             onClick={() => setSelectedStudent(student)}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 py-2 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
+                                <div className="flex-shrink-0 h-8 w-8">
                                   <ImageSkeleton
                                     src={student.student_photo}
                                     alt={student.full_name}
-                                    size="md"
+                                    size="sm"
                                     shape="circle"
                                     className="border-2 border-gray-200"
                                     priority={false}
@@ -1017,17 +1064,17 @@ const StudentManagement = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.full_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.contact_email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.student_number}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatStudentName(student.full_name)}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{student.contact_email}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{student.student_number}</td>
                             
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center">
                                 <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                                {student.department_name || student.department_abbreviation || getDepartmentName(student.department_id) || '—'}
+                                {student.department_abbreviation || (student.department_id ? getDepartmentAbbreviation(student.department_id) : '—')}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                               <span className={`font-semibold ${
                                 student.status === 'Active' 
                                   ? 'text-green-600' 
