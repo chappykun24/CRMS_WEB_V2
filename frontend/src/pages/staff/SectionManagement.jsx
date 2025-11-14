@@ -159,7 +159,7 @@ const SectionManagement = () => {
     
     try {
       console.log('🔄 [STAFF SECTIONS] Fetching fresh programs...')
-      const response = await fetch(`${API_BASE_URL}/programs`, {
+      const response = await fetch(`${API_BASE_URL}/catalog/programs`, {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -325,7 +325,7 @@ const SectionManagement = () => {
     ;(async () => {
       try {
         console.log('Loading specializations for program:', formData.programId)
-        const response = await fetch(`${API_BASE_URL}/program-specializations?programId=${formData.programId}`)
+        const response = await fetch(`${API_BASE_URL}/catalog/program-specializations?programId=${formData.programId}`)
         if (!response.ok) throw new Error(`Failed to fetch specializations: ${response.status}`)
         const data = await response.json()
         console.log('Specializations loaded:', data)
@@ -344,7 +344,7 @@ const SectionManagement = () => {
     ;(async () => {
       try {
         console.log('Loading all specializations for display')
-        const response = await fetch(`${API_BASE_URL}/program-specializations`)
+        const response = await fetch(`${API_BASE_URL}/catalog/program-specializations`)
         if (!response.ok) throw new Error(`Failed to fetch all specializations: ${response.status}`)
         const data = await response.json()
         console.log('All specializations loaded:', data)
