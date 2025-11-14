@@ -1345,6 +1345,27 @@ const Analytics = () => {
                     })()}
                   </p>
 
+                  {/* Cluster Filter */}
+                  {uniqueClusters.length > 0 && (
+                    <div className="flex-shrink-0 min-w-[200px]">
+                      <div className="relative">
+                        <select
+                          value={selectedCluster}
+                          onChange={(e) => setSelectedCluster(e.target.value)}
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="all">All Clusters ({data.length})</option>
+                          {uniqueClusters.map(cluster => (
+                            <option key={cluster} value={cluster}>
+                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Refresh Button */}
                   <button
                     onClick={() => handleFetch(true)}
@@ -1458,25 +1479,6 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* Cluster Filter */}
-                  {uniqueClusters.length > 0 && (
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="relative">
-                        <select
-                          value={selectedCluster}
-                          onChange={(e) => setSelectedCluster(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                        >
-                          <option value="all">All Clusters ({data.length})</option>
-                          {uniqueClusters.map(cluster => (
-                            <option key={cluster} value={cluster}>
-                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
