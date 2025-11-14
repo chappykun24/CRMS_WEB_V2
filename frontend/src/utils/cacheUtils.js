@@ -88,6 +88,19 @@ export const safeSetItem = (key, value, minimizeFn = null) => {
     const sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
     if (sizeInMB > 4) { // Leave 1MB buffer
       console.warn(`⚠️ [CACHE] Data too large (${sizeInMB.toFixed(2)}MB) for ${key}, skipping cache`);
+      
+      // If it's a staff cache entry, try to clear large staff entries
+      if (key.includes('staff_')) {
+        try {
+          // Import dynamically to avoid circular dependencies
+          import('../services/staffCacheService').then(({ clearStaffLargeCache }) => {
+            clearStaffLargeCache();
+          });
+        } catch (e) {
+          // Ignore if import fails
+        }
+      }
+      
       return false;
     }
     
@@ -254,5 +267,32 @@ export const minimizeSyllabusData = (syllabi) => {
     // Exclude large fields like full syllabus content if not needed for list view
     _has_content: !!syllabus.content
   }));
+};
+
+/**
+ * Clear all staff-related cache entries from sessionStorage
+ */
+export const clearStaffSessionCache = () => {
+  try {
+    const allKeys = Object.keys(sessionStorage);
+    const staffKeys = allKeys.filter(key => 
+      key.startsWith('staff_') || 
+      key.includes('staff_')
+    );
+    
+    staffKeys.forEach(key => {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+    
+    console.log(`🧹 [CACHE] Cleared ${staffKeys.length} staff sessionStorage entries`);
+    return staffKeys.length;
+  } catch (error) {
+    console.error('❌ [CACHE] Error clearing staff session cache:', error);
+    return 0;
+  }
 };
 

@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
-import { safeGetItem, safeSetItem } from '../../utils/cacheUtils'
+import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
+import staffCacheService, { resetStaffCache, clearStaffLargeCache } from '../../services/staffCacheService'
 
 
 
@@ -317,7 +318,26 @@ const AssignFaculty = () => {
     
     if (cached) {
       console.log('📦 [STAFF ASSIGN FACULTY] Using cached classes')
-      setClasses(Array.isArray(cached) ? cached : [])
+      // Restore classes - handle both minimized and full format
+      const restoredClasses = Array.isArray(cached) ? cached.map(cls => {
+        // Check if it's already in the formatted structure
+        if (cls.id) {
+          return cls
+        }
+        // Otherwise, restore from minimized format
+        return {
+          id: String(cls.section_course_id || ''),
+          title: cls.course_title || '',
+          code: cls.course_code || '',
+          section: cls.section_code || '',
+          instructor: cls.faculty_name || '',
+          bannerType: cls.banner_type || 'color',
+          bannerColor: cls.banner_color || '#3B82F6',
+          bannerImage: null, // Images not cached in minimized format
+          avatarUrl: null // Images not cached in minimized format
+        }
+      }) : []
+      setClasses(restoredClasses)
       setLoadingClasses(false)
       // Continue to fetch fresh data in background
     } else {
@@ -344,9 +364,35 @@ const AssignFaculty = () => {
           }))
           setClasses(formattedClasses)
           
-          // Cache the formatted classes for next load
+          // Cache the formatted classes for next load - use minimizeClassData to reduce size
           if (!cached) {
-            safeSetItem(cacheKey, formattedClasses)
+            // Use minimizeClassData to exclude large base64 images
+            const minimized = minimizeClassData(formattedClasses.map(cls => ({
+              section_course_id: cls.id,
+              section_id: null,
+              section_code: cls.section,
+              course_id: null,
+              course_code: cls.code,
+              course_title: cls.title,
+              instructor_id: null,
+              faculty_name: cls.instructor,
+              term_id: null,
+              semester: null,
+              school_year: null,
+              banner_type: cls.bannerType,
+              banner_color: cls.bannerColor,
+              banner_image: cls.bannerImage,
+              faculty_avatar: cls.avatarUrl
+            })))
+            
+            // Try to cache minimized data
+            const cached = safeSetItem(cacheKey, minimized)
+            if (!cached) {
+              // If still too large, clear large staff cache entries
+              clearStaffLargeCache()
+              // Try again with minimized data
+              safeSetItem(cacheKey, minimized)
+            }
           }
         }
       } catch (error) {

@@ -185,10 +185,85 @@ class StaffCacheService {
       this.set(cacheType, key, data);
     });
   }
+
+  // Reset all staff cache (both enhanced cache and sessionStorage)
+  resetAll() {
+    // Clear all enhanced cache
+    this.clearAll();
+    
+    // Clear all staff-related sessionStorage entries
+    try {
+      const allKeys = Object.keys(sessionStorage);
+      const staffKeys = allKeys.filter(key => 
+        key.startsWith('staff_') || 
+        key.includes('staff_')
+      );
+      
+      staffKeys.forEach(key => {
+        try {
+          sessionStorage.removeItem(key);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+      
+      console.log(`🧹 [STAFF CACHE] Reset complete - cleared ${staffKeys.length} sessionStorage entries`);
+    } catch (error) {
+      console.error('❌ [STAFF CACHE] Error resetting sessionStorage:', error);
+    }
+  }
+
+  // Clear large cache entries that might be causing issues
+  clearLargeEntries() {
+    try {
+      const allKeys = Object.keys(sessionStorage);
+      const staffKeys = allKeys.filter(key => 
+        key.startsWith('staff_') || 
+        key.includes('staff_')
+      );
+      
+      let cleared = 0;
+      staffKeys.forEach(key => {
+        try {
+          const item = sessionStorage.getItem(key);
+          if (item) {
+            const sizeInMB = new Blob([item]).size / (1024 * 1024);
+            // Clear entries larger than 2MB
+            if (sizeInMB > 2) {
+              sessionStorage.removeItem(key);
+              cleared++;
+              console.log(`🧹 [STAFF CACHE] Cleared large entry: ${key} (${sizeInMB.toFixed(2)}MB)`);
+            }
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+      
+      // Also clear enhanced cache for classes (often the largest)
+      this.clear('classes');
+      
+      if (cleared > 0) {
+        console.log(`🧹 [STAFF CACHE] Cleared ${cleared} large cache entries`);
+      }
+    } catch (error) {
+      console.error('❌ [STAFF CACHE] Error clearing large entries:', error);
+    }
+  }
 }
 
 // Create singleton instance
 const staffCacheService = new StaffCacheService();
+
+// Export reset function for easy access
+export const resetStaffCache = () => {
+  staffCacheService.resetAll();
+};
+
+// Export clear large entries function
+export const clearStaffLargeCache = () => {
+  staffCacheService.clearLargeEntries();
+};
 
 export default staffCacheService;
 
