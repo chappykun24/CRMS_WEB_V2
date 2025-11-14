@@ -554,7 +554,6 @@ const Analytics = () => {
       selectedTermId || 'all',
       selectedSectionId || 'all',
       selectedProgramId || 'all',
-      selectedDepartmentId || 'all',
       selectedYearLevel || 'all'
     ].join('_');
     
@@ -657,7 +656,6 @@ const Analytics = () => {
     if (selectedTermId) params.append('term_id', selectedTermId);
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
-    if (selectedDepartmentId) params.append('department_id', selectedDepartmentId);
     // Note: year_level filtering is done client-side since backend doesn't support it directly
     // Add force_refresh parameter to bypass backend cache and recompute clusters
     if (forceRefresh) {
@@ -788,7 +786,6 @@ const Analytics = () => {
             selectedTermId || 'all',
             selectedSectionId || 'all',
             selectedProgramId || 'all',
-            selectedDepartmentId || 'all',
             selectedYearLevel || 'all'
           ].join('_');
           
@@ -881,7 +878,7 @@ const Analytics = () => {
           trackEvent('dean_analytics_error', { message: String(err?.message || err) });
         } catch {}
       });
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel]);
 
   const getClusterStyle = (label) => {
     // Return null if no valid cluster label (don't show "Not Clustered" fallback)
@@ -1330,25 +1327,7 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* Department Filter */}
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="relative">
-                      <select
-                        value={selectedDepartmentId}
-                        onChange={(e) => setSelectedDepartmentId(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Departments</option>
-                        {departments.map(dept => (
-                          <option key={dept.department_id} value={dept.department_id.toString()}>
-                            {dept.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Program Filter */}
+                  {/* Program Filter (Major) */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
                       <select
@@ -1357,13 +1336,11 @@ const Analytics = () => {
                         className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
                         <option value="">All Programs</option>
-                        {programs
-                          .filter(p => !selectedDepartmentId || p.department_id?.toString() === selectedDepartmentId)
-                          .map(program => (
-                            <option key={program.program_id} value={program.program_id.toString()}>
-                              {program.name}
-                            </option>
-                          ))}
+                        {programs.map(program => (
+                          <option key={program.program_id} value={program.program_id.toString()}>
+                            {program.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
