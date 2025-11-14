@@ -443,6 +443,58 @@ router.put('/:attendanceId', authenticateToken, async (req, res) => {
 router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
+    const userId = req.user?.user_id || req.user?.id;
+    const userRole = req.user?.role;
+
+    // Validation: Check if session exists and get session details
+    const sessionCheck = await db.query(
+      `SELECT s.session_id, s.faculty_id, sc.faculty_id as section_faculty_id
+       FROM sessions s
+       LEFT JOIN section_courses sc ON s.section_course_id = sc.section_course_id
+       WHERE s.session_id = $1`,
+      [sessionId]
+    );
+
+    if (sessionCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session not found'
+      });
+    }
+
+    const session = sessionCheck.rows[0];
+
+    // Validation: Check permissions
+    // Faculty can only delete their own sessions
+    // Dean/Admin can delete any session
+    const isFaculty = userRole === 'faculty';
+    const isDean = userRole === 'dean';
+    const isAdmin = userRole === 'admin';
+
+    if (isFaculty) {
+      // Faculty must own the session (check both session.faculty_id and section_courses.faculty_id)
+      const sessionFacultyId = session.faculty_id || session.section_faculty_id;
+      if (sessionFacultyId !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. You can only delete your own attendance sessions.'
+        });
+      }
+    } else if (!isDean && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Permission denied. Only faculty, dean, or admin can delete sessions.'
+      });
+    }
+
+    // Validation: Check if session has attendance records
+    const attendanceCheck = await db.query(
+      'SELECT COUNT(*) as count FROM attendance_logs WHERE session_id = $1',
+      [sessionId]
+    );
+    const recordCount = parseInt(attendanceCheck.rows[0]?.count || 0);
+
+    console.log(`🗑️ [ATTENDANCE API] Deleting session ${sessionId} with ${recordCount} attendance records`);
 
     // Delete attendance logs first (due to foreign key constraint)
     await db.query('DELETE FROM attendance_logs WHERE session_id = $1', [sessionId]);
@@ -453,19 +505,21 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Session not found'
+        error: 'Session not found or already deleted'
       });
     }
 
+    console.log(`✅ [ATTENDANCE API] Successfully deleted session ${sessionId}`);
+
     res.json({
       success: true,
-      message: 'Session and attendance records deleted successfully'
+      message: `Session and ${recordCount} attendance record${recordCount !== 1 ? 's' : ''} deleted successfully`
     });
   } catch (error) {
-    console.error('Error deleting session:', error);
+    console.error('❌ [ATTENDANCE API] Error deleting session:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to delete session'
     });
   }
 });

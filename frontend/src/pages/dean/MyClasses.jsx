@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/solid'
+import { MagnifyingGlassIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/solid'
+import { Loader2 } from 'lucide-react'
 import ClassCard from '../../components/ClassCard'
 import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 import LazyImage from '../../components/LazyImage'
@@ -7,6 +8,7 @@ import { getPrefetchedClasses } from '../../services/dataPrefetchService'
 import { API_BASE_URL } from '../../utils/api'
 import deanCacheService from '../../services/deanCacheService'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
+import attendanceService from '../../services/attendanceService'
 
 // Cache helpers
 const getCachedData = createCacheGetter(deanCacheService);
@@ -45,6 +47,11 @@ const MyClasses = () => {
   const [imagesLoaded, setImagesLoaded] = useState(false)
   const [cachedStudentsList, setCachedStudentsList] = useState(null)
   const attendanceAbortControllerRef = useRef(null)
+  
+  // Delete session state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [sessionToDelete, setSessionToDelete] = useState(null)
+  const [deletingSession, setDeletingSession] = useState(false)
 
   // Helper function to enrich minimized data with images from enhanced cache
   const enrichWithImages = useCallback((minimizedClasses, fullClassesData) => {
@@ -589,6 +596,80 @@ const MyClasses = () => {
     loadSessionData(session, tabIndex, sessionData, students, cachedStudentsList)
   }, [sessionList, sessionData, students, cachedStudentsList, loadSessionData])
 
+  // Handle delete session with validation
+  const handleDeleteSession = useCallback((session) => {
+    // Validation: Check if session exists
+    if (!session || !session.session_id) {
+      alert('Invalid session. Cannot delete.')
+      return
+    }
+
+    // Validation: Check if user has permission (dean can delete any session)
+    if (!selectedClass) {
+      alert('Permission denied. Please refresh and try again.')
+      return
+    }
+
+    // Set session to delete and show confirmation
+    setSessionToDelete(session)
+    setShowDeleteConfirm(true)
+  }, [selectedClass])
+
+  // Confirm and execute deletion
+  const confirmDeleteSession = useCallback(async () => {
+    if (!sessionToDelete || !sessionToDelete.session_id) {
+      setShowDeleteConfirm(false)
+      setSessionToDelete(null)
+      return
+    }
+
+    setDeletingSession(true)
+
+    try {
+      // Call delete API
+      await attendanceService.deleteSession(sessionToDelete.session_id)
+
+      // Remove session from sessionList
+      setSessionList(prev => {
+        const updated = prev.filter(s => s.session_id !== sessionToDelete.session_id)
+        
+        // Adjust active tab if needed
+        if (activeSessionTab >= updated.length && updated.length > 0) {
+          setActiveSessionTab(updated.length - 1)
+        } else if (updated.length === 0) {
+          setActiveSessionTab(0)
+        }
+        
+        return updated
+      })
+
+      // Remove session data from cache
+      setSessionData(prev => {
+        const updated = { ...prev }
+        delete updated[sessionToDelete.session_key]
+        return updated
+      })
+
+      // Show success message
+      alert(`Session "${sessionToDelete.title || 'Untitled'}" deleted successfully.`)
+
+      // Close confirmation modal
+      setShowDeleteConfirm(false)
+      setSessionToDelete(null)
+    } catch (error) {
+      console.error('❌ [DEAN MYCLASSES] Error deleting session:', error)
+      alert(`Failed to delete session: ${error.message || 'Unknown error'}. Please try again.`)
+    } finally {
+      setDeletingSession(false)
+    }
+  }, [sessionToDelete, activeSessionTab])
+
+  // Cancel delete
+  const cancelDeleteSession = useCallback(() => {
+    setShowDeleteConfirm(false)
+    setSessionToDelete(null)
+  }, [])
+
   // Load classes when component mounts
   useEffect(() => {
     fetchClasses()
@@ -1123,27 +1204,39 @@ const MyClasses = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 text-xs">
-                                {statusCounts.present && (
-                                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
-                                    {statusCounts.present} Present
-                                  </span>
-                                )}
-                                {statusCounts.absent && (
-                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
-                                    {statusCounts.absent} Absent
-                                  </span>
-                                )}
-                                {statusCounts.late && (
-                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                    {statusCounts.late} Late
-                                  </span>
-                                )}
-                                {statusCounts.excuse && (
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                    {statusCounts.excuse} Excuse
-                                  </span>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 text-xs">
+                                  {statusCounts.present && (
+                                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                                      {statusCounts.present} Present
+                                    </span>
+                                  )}
+                                  {statusCounts.absent && (
+                                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
+                                      {statusCounts.absent} Absent
+                                    </span>
+                                  )}
+                                  {statusCounts.late && (
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                      {statusCounts.late} Late
+                                    </span>
+                                  )}
+                                  {statusCounts.excuse && (
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                      {statusCounts.excuse} Excuse
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleDeleteSession(session)}
+                                  disabled={deletingSession || isAttendanceLoading}
+                                  className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete this attendance session"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1225,6 +1318,88 @@ const MyClasses = () => {
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && sessionToDelete && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              cancelDeleteSession()
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <TrashIcon className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Attendance Session</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-700 mb-2">
+                Are you sure you want to delete this attendance session?
+              </p>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <p className="text-sm font-medium text-gray-900">
+                  {sessionToDelete.title || 'Untitled Session'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(() => {
+                    try {
+                      const date = new Date(sessionToDelete.session_date)
+                      return date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })
+                    } catch {
+                      return sessionToDelete.session_date || 'N/A'
+                    }
+                  })()} • {sessionToDelete.student_count || 0} students
+                </p>
+              </div>
+              <p className="text-xs text-red-600 mt-3 font-medium">
+                ⚠️ All attendance records for this session will be permanently deleted.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={cancelDeleteSession}
+                disabled={deletingSession}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteSession}
+                disabled={deletingSession}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deletingSession ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <TrashIcon className="h-4 w-4" />
+                    Delete Session
+                  </>
+                )}
               </button>
             </div>
           </div>
