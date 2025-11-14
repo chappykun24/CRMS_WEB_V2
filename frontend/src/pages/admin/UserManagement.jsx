@@ -38,7 +38,6 @@ const UserManagement = () => {
   const [departments, setDepartments] = useState([])
   const [departmentsLoading, setDepartmentsLoading] = useState(false)
   const [roleFilter, setRoleFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('') // '', 'approved', 'pending'
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [successMessage, setSuccessMessage] = useState('')
@@ -97,10 +96,6 @@ const UserManagement = () => {
     if (activeTab === 'faculty' && roleFilter) {
       setRoleFilter('')
     }
-    // Ensure default status is All when switching tabs
-    if (statusFilter !== '') {
-      setStatusFilter('')
-    }
     // Clear department filter when switching tabs
     if (departmentFilter !== '') {
       setDepartmentFilter('')
@@ -112,7 +107,7 @@ const UserManagement = () => {
   // Reset pagination when filters change
   useEffect(() => {
     resetPagination()
-  }, [query, roleFilter, statusFilter, departmentFilter, sortOption])
+  }, [query, roleFilter, departmentFilter, sortOption])
 
   // Load users with pagination - only fetch when authenticated
   const loadUsers = useCallback(async (page = 1, append = false) => {
@@ -139,7 +134,8 @@ const UserManagement = () => {
       
       // Add filters based on active tab
       if (activeTab === 'faculty') {
-        // Filter for faculty users - try to find faculty role, but don't block if roles aren't loaded yet
+        // Faculty Approval tab: Show ONLY faculties with pending requests
+        // Find faculty role
         if (roles && roles.length > 0) {
           const facultyRole = roles.find(r => String(r.name).toUpperCase() === 'FACULTY')
           if (facultyRole) {
@@ -147,19 +143,30 @@ const UserManagement = () => {
           }
         } else {
           // Fallback: use common faculty role_id (usually 2, but this is a fallback)
-          // The server-side filtering will handle this better
-          params.role_id = 2 // This might need adjustment based on your database
+          params.role_id = 2
         }
-        // Add status filter for faculty tab
-        if (statusFilter === 'approved') {
-          params.status = 'active' // Adjust based on backend
-        } else if (statusFilter === 'pending') {
-          // Pending users might need special handling
-        }
+        // Always filter for pending status on Faculty Approval tab
+        params.status = 'pending'
       } else if (activeTab === 'all') {
-        if (roleFilter && roleFilter !== 'faculty') {
-          params.role_id = parseInt(roleFilter, 10)
+        // All Users tab: Show all roles (admin, dean, program chair, staff, and faculties)
+        // But only approved faculties (pending faculties will be filtered out on frontend)
+        if (roleFilter) {
+          if (roleFilter === 'faculty') {
+            // When "Faculty" is selected, fetch faculty users but filter approved ones on frontend
+            const facultyRole = roles && roles.length > 0 
+              ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')
+              : null
+            if (facultyRole) {
+              params.role_id = facultyRole.role_id
+            } else {
+              params.role_id = 2 // fallback
+            }
+          } else {
+            params.role_id = parseInt(roleFilter, 10)
+          }
         }
+        // Note: When no role filter or "Faculty" filter is selected,
+        // we'll filter out pending faculty users on the frontend
         if (departmentFilter) {
           params.department_id = parseInt(departmentFilter, 10)
         }
@@ -186,7 +193,41 @@ const UserManagement = () => {
         responseData = response
       }
       
-      const usersList = Array.isArray(responseData?.users) ? responseData.users : Array.isArray(responseData) ? responseData : []
+      let usersList = Array.isArray(responseData?.users) ? responseData.users : Array.isArray(responseData) ? responseData : []
+      
+      // Apply frontend filtering based on active tab
+      if (activeTab === 'all') {
+        // For "All Users" tab: Filter out pending faculty users
+        // Keep all non-faculty users and only approved faculty users
+        const facultyRoleId = roles && roles.length > 0 
+          ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+          : 2 // fallback
+        
+        if (facultyRoleId) {
+          usersList = usersList.filter(user => {
+            // If user is faculty, only include if approved
+            if (user.role_id === facultyRoleId) {
+              return user.is_approved === true
+            }
+            // Include all non-faculty users (admin, dean, program chair, staff)
+            return true
+          })
+        }
+      } else if (activeTab === 'faculty') {
+        // For "Faculty Approval" tab: Only show pending faculty users
+        // This should already be filtered by backend, but ensure it's correct
+        const facultyRoleId = roles && roles.length > 0 
+          ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+          : 2 // fallback
+        
+        if (facultyRoleId) {
+          usersList = usersList.filter(user => {
+            // Only include faculty users with pending status
+            return user.role_id === facultyRoleId && !user.is_approved
+          })
+        }
+      }
+      
       const pagination = responseData?.pagination || {}
       
       if (append) {
@@ -208,7 +249,7 @@ const UserManagement = () => {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [isAuthenticated, authLoading, activeTab, roleFilter, statusFilter, departmentFilter, query, itemsPerPage, roles])
+  }, [isAuthenticated, authLoading, activeTab, roleFilter, departmentFilter, query, itemsPerPage, roles])
 
   // Load initial users when authenticated (async, non-blocking)
   useEffect(() => {
@@ -241,7 +282,7 @@ const UserManagement = () => {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [query, activeTab, roleFilter, statusFilter, departmentFilter, isInitialMount])
+  }, [query, activeTab, roleFilter, departmentFilter, isInitialMount])
 
   // Load roles and departments asynchronously after initial users load (only once)
   const rolesLoadedRef = useRef(false)
@@ -337,7 +378,35 @@ const UserManagement = () => {
   const filteredUsers = useMemo(() => {
     let list = [...users]
     
-    // Apply client-side sorting (server handles filtering)
+    // Additional filtering based on active tab (already filtered in loadUsers, but ensure consistency)
+    if (activeTab === 'all') {
+      // Ensure no pending faculty users are shown in "All Users" tab
+      const facultyRoleId = roles && roles.length > 0 
+        ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+        : 2 // fallback
+      
+      if (facultyRoleId) {
+        list = list.filter(user => {
+          if (user.role_id === facultyRoleId) {
+            return user.is_approved === true
+          }
+          return true
+        })
+      }
+    } else if (activeTab === 'faculty') {
+      // Ensure only pending faculty users are shown in "Faculty Approval" tab
+      const facultyRoleId = roles && roles.length > 0 
+        ? roles.find(r => String(r.name).toUpperCase() === 'FACULTY')?.role_id 
+        : 2 // fallback
+      
+      if (facultyRoleId) {
+        list = list.filter(user => {
+          return user.role_id === facultyRoleId && !user.is_approved
+        })
+      }
+    }
+    
+    // Apply client-side sorting
     switch (sortOption) {
       case 'created_asc':
         list.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
@@ -364,7 +433,7 @@ const UserManagement = () => {
         break
     }
     return list
-  }, [users, sortOption])
+  }, [users, sortOption, activeTab, roles])
 
   const resetPagination = () => {
     setCurrentPage(1)
@@ -760,17 +829,6 @@ const UserManagement = () => {
                     </>
                   )}
                   
-                  {activeTab === 'faculty' && (
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="px-2 py-2 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 text-sm w-28"
-                    >
-                      <option value="">All Status</option>
-                      <option value="approved">Approved</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  )}
                   <select
                     value={sortOption}
                     onChange={(e) => setSortOption(e.target.value)}
