@@ -1260,9 +1260,14 @@ const SyllabusCreationWizard = ({
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
-                  {editingILO ? 'Edit ILO' : 'Create New ILO'}
-                </h3>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {editingILO ? 'Edit ILO' : 'Create New ILO'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Define what students should be able to do after completing this course
+                  </p>
+                </div>
                 <button
                   onClick={() => {
                     setShowILOModal(false)
@@ -1274,72 +1279,39 @@ const SyllabusCreationWizard = ({
                 </button>
               </div>
               
+              {/* Instructions Banner */}
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AcademicCapIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Quick Guide</h4>
+                    <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                      <li><strong>ILO Code:</strong> Use a unique identifier (e.g., ILO1, ILO2)</li>
+                      <li><strong>Description:</strong> Write a clear, measurable learning outcome</li>
+                      <li><strong>Mapping:</strong> Link ILOs to Student Outcomes (SO), IGA, CDIO, or SDG to show alignment</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ILO Code <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={iloFormData.code}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="e.g., ILO1"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category
-                    </label>
-                    <select
-                      value={iloFormData.category}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, category: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="">Select category</option>
-                      <option value="Knowledge">Knowledge</option>
-                      <option value="Skills">Skills</option>
-                      <option value="Attitudes">Attitudes</option>
-                    </select>
-                  </div>
+                {/* ILO Code */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ILO Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={iloFormData.code}
+                    onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., ILO1, ILO2"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Use a unique code to identify this learning outcome</p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Level
-                    </label>
-                    <select
-                      value={iloFormData.level}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, level: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    >
-                      <option value="">Select level</option>
-                      <option value="Basic">Basic</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Weight Percentage
-                    </label>
-                    <input
-                      type="number"
-                      value={iloFormData.weight_percentage}
-                      onChange={(e) => setIloFormData(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="0-100"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-                </div>
-                
+                {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Description <span className="text-red-500">*</span>
@@ -1347,51 +1319,52 @@ const SyllabusCreationWizard = ({
                   <textarea
                     value={iloFormData.description}
                     onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
+                    rows={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Describe the intended learning outcome..."
+                    placeholder="Example: 'Students will be able to analyze and design database systems using SQL and NoSQL technologies to solve real-world data management problems.'"
                     required
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Assessment Methods (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={iloFormData.assessment_methods}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, assessment_methods: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., Quiz, Exam, Project"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Separate multiple methods with commas</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Learning Activities (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={iloFormData.learning_activities}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, learning_activities: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., Lecture, Lab, Assignment"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Separate multiple activities with commas</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Write a clear, measurable statement. Use action verbs like "analyze", "design", "evaluate", "create"
+                  </p>
                 </div>
                 
                 {/* Mapping Section */}
-                <div className="mt-6 border-t border-gray-200 pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Map to Educational Goals (Optional)</h4>
-                  <p className="text-xs text-gray-600 mb-4">
-                    Optionally map this ILO to educational goals. You can also do this later in the ILO Mapping section.
-                  </p>
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Map to Educational Goals (Optional)</h4>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-amber-800">
+                        <strong>Why map ILOs?</strong> Mapping connects your course learning outcomes to institutional goals (SO, IGA, CDIO, SDG). 
+                        This demonstrates how your course contributes to program objectives. You can add mappings now or later in the ILO Mapping section.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                      <div className="text-xs">
+                        <p className="font-medium text-gray-700 mb-1">📋 SO (Student Outcomes)</p>
+                        <p className="text-gray-600">Program-specific learning outcomes</p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-medium text-gray-700 mb-1">🎓 IGA (Institutional Graduate Attributes)</p>
+                        <p className="text-gray-600">University-wide graduate attributes</p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-medium text-gray-700 mb-1">🔧 CDIO</p>
+                        <p className="text-gray-600">Conceive, Design, Implement, Operate framework</p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-medium text-gray-700 mb-1">🌍 SDG (Sustainable Development Goals)</p>
+                        <p className="text-gray-600">UN sustainability goals alignment</p>
+                      </div>
+                    </div>
+                  </div>
                   
                   {/* SO Mappings */}
                   <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">Student Outcomes (SO)</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Student Outcomes (SO)
+                      <span className="ml-2 text-xs font-normal text-gray-500">- Link to program outcomes</span>
+                    </label>
                     <div className="space-y-2">
                       {iloFormData.so_mappings.map((mapping, index) => {
                         const so = soReferences.find(r => r.so_id === mapping.so_id)
@@ -1499,7 +1472,10 @@ const SyllabusCreationWizard = ({
                   
                   {/* IGA Mappings */}
                   <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">Institutional Graduate Attributes (IGA)</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Institutional Graduate Attributes (IGA)
+                      <span className="ml-2 text-xs font-normal text-gray-500">- Link to university attributes</span>
+                    </label>
                     <div className="space-y-2">
                       {iloFormData.iga_mappings.map((mapping, index) => {
                         const iga = igaReferences.find(r => r.iga_id === mapping.iga_id)
@@ -1607,7 +1583,10 @@ const SyllabusCreationWizard = ({
                   
                   {/* CDIO Mappings */}
                   <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">CDIO Skills</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      CDIO Framework
+                      <span className="ml-2 text-xs font-normal text-gray-500">- Link to engineering framework</span>
+                    </label>
                     <div className="space-y-2">
                       {iloFormData.cdio_mappings.map((mapping, index) => {
                         const cdio = cdioReferences.find(r => r.cdio_id === mapping.cdio_id)
@@ -1715,7 +1694,10 @@ const SyllabusCreationWizard = ({
                   
                   {/* SDG Mappings */}
                   <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">SDG Skills</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      SDG (Sustainable Development Goals)
+                      <span className="ml-2 text-xs font-normal text-gray-500">- Link to UN sustainability goals</span>
+                    </label>
                     <div className="space-y-2">
                       {iloFormData.sdg_mappings.map((mapping, index) => {
                         const sdg = sdgReferences.find(r => r.sdg_id === mapping.sdg_id)
@@ -1821,9 +1803,12 @@ const SyllabusCreationWizard = ({
                     </div>
                   </div>
                   
-                  <p className="text-xs text-gray-500 mt-2">
-                    Click the edit icon on any mapping to select assessment tasks. Tasks are synced from your assessment framework defined in Step 4.
-                  </p>
+                  <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-xs text-green-800">
+                      <strong>💡 Tip:</strong> Click the edit icon (✏️) on any mapping to select which assessment tasks measure this ILO. 
+                      Tasks are automatically synced from your Assessment Framework (Step 4).
+                    </p>
+                  </div>
                 </div>
                 
                 <div className="flex gap-3 pt-4 border-t border-gray-200">
