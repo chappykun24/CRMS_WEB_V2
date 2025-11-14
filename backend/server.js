@@ -1770,10 +1770,48 @@ app.get('/api/users/:id/photo', async (req, res) => {
   }
 });
 
-// Get students endpoint
+// Get students endpoint with enrollment status and department based on enrolled classes
 app.get('/api/students', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM students');
+    const result = await pool.query(`
+      SELECT DISTINCT ON (s.student_id)
+        s.*,
+        COALESCE(enrollment_data.enrollment_count, 0) as enrollment_count,
+        CASE 
+          WHEN COALESCE(enrollment_data.enrollment_count, 0) > 0 THEN 'Active'
+          ELSE 'Inactive'
+        END as status,
+        enrollment_data.department_id,
+        enrollment_data.department_name,
+        enrollment_data.department_abbreviation
+      FROM students s
+      LEFT JOIN (
+        SELECT 
+          ce.student_id,
+          COUNT(DISTINCT ce.enrollment_id) as enrollment_count,
+          -- Prioritize CICS department, otherwise get the most common department
+          COALESCE(
+            MAX(CASE WHEN UPPER(d.department_abbreviation) = 'CICS' THEN d.department_id END),
+            MAX(d.department_id)
+          ) as department_id,
+          COALESCE(
+            MAX(CASE WHEN UPPER(d.department_abbreviation) = 'CICS' THEN d.name END),
+            MAX(d.name)
+          ) as department_name,
+          COALESCE(
+            MAX(CASE WHEN UPPER(d.department_abbreviation) = 'CICS' THEN d.department_abbreviation END),
+            MAX(d.department_abbreviation)
+          ) as department_abbreviation
+        FROM course_enrollments ce
+        JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+        JOIN sections sec ON sc.section_id = sec.section_id
+        JOIN programs p ON sec.program_id = p.program_id
+        JOIN departments d ON p.department_id = d.department_id
+        WHERE ce.status = 'enrolled'
+        GROUP BY ce.student_id
+      ) enrollment_data ON s.student_id = enrollment_data.student_id
+      ORDER BY s.student_id, s.full_name
+    `);
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });

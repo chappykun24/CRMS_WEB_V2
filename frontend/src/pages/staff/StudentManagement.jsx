@@ -1024,11 +1024,17 @@ const StudentManagement = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <div className="flex items-center">
                                 <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                                {getDepartmentName(student.department_id) || '—'}
+                                {student.department_name || student.department_abbreviation || getDepartmentName(student.department_id) || '—'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="text-green-600 font-semibold">Active</span>
+                              <span className={`font-semibold ${
+                                student.status === 'Active' 
+                                  ? 'text-green-600' 
+                                  : 'text-gray-500'
+                              }`}>
+                                {student.status || 'Inactive'}
+                              </span>
                             </td>
                           </tr>
                         ))
