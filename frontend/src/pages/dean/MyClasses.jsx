@@ -23,6 +23,7 @@ const MyClasses = () => {
   const [error, setError] = useState(null)
   const abortControllerRef = useRef(null)
   const studentsAbortControllerRef = useRef(null)
+  const sidebarRef = useRef(null)
   
   // Modal states
   const [showStudentStatsModal, setShowStudentStatsModal] = useState(false)
