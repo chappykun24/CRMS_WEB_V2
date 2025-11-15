@@ -145,8 +145,14 @@ const MyClasses = () => {
   }, [isAttendanceMode])
 
   // Close student modal when entering or exiting attendance mode
+  // Also clear cached students list when exiting attendance mode to prevent duplicates
   useEffect(() => {
     setShowStudentModal(false)
+    if (!isAttendanceMode) {
+      // Clear cached students list when exiting attendance mode
+      setCachedStudentsList(null)
+      cachedClassIdRef.current = null
+    }
   }, [isAttendanceMode])
 
   // Reset breadcrumb tab on unmount
@@ -1910,8 +1916,8 @@ const MyClasses = () => {
         </div>
       </div>
 
-      {/* Expanded Student List - Only show when class is selected */}
-      {selectedClass && (
+      {/* Expanded Student List - Only show when class is selected and NOT in attendance mode (attendance shows its own list) */}
+      {selectedClass && !isAttendanceMode && (
         <div 
           ref={sidebarRef}
           className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
@@ -1951,7 +1957,102 @@ const MyClasses = () => {
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
-              {isAttendanceMode && selectedClass && (
+              {/* Students List - Normal View */}
+              <div className="flex-1 overflow-auto min-h-0">
+                {loadingStudents ? (
+                  <StudentListSkeleton students={5} />
+                ) : students.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {students.map((student, index) => {
+                      // Calculate sequential number for grid layout
+                      const sequentialNumber = index + 1
+                      
+                      return (
+                      <div 
+                        key={student.student_id} 
+                        onClick={() => handleStudentClick(student)}
+                        className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex-shrink-0 w-6 text-center">
+                          <span className="text-xs font-medium text-gray-500">
+                            {sequentialNumber}
+                          </span>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <LazyImage
+                            src={student.student_photo} 
+                            alt={student.full_name}
+                            size="md"
+                            shape="circle"
+                            className="border border-gray-200"
+                            delayLoad={!imagesLoaded}
+                            priority={false}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {formatName(student.full_name)}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {student.student_number}
+                          </p>
+                        </div>
+                      </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-8 text-center">
+                    <div>
+                      <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-900 mb-1">No students enrolled</h3>
+                      <p className="text-xs text-gray-500">This class has no enrolled students yet.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Attendance Mode Container - Separate from normal student list */}
+      {selectedClass && isAttendanceMode && (
+        <div 
+          ref={sidebarRef}
+          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
+        >
+          <div className="h-full flex flex-col">
+            {/* Class Header */}
+            <div className="mb-3 pb-3 border-b border-gray-200">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
+                    {selectedClass.course_title}
+                  </h2>
+                   </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsAttendanceMode(false)
+                    setShowStudentModal(false) // Close student modal when exiting attendance
+                  }}
+                  className="ml-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Attendance Controls */}
+            <div className="flex-1 flex flex-col min-h-0">
+              {selectedClass && (
                 <div className="mb-3 bg-white p-3 sticky top-0 z-20">
                    <div className="flex items-center justify-between gap-3">
                      {/* Left: Meta only (no title) */}
@@ -2035,12 +2136,12 @@ const MyClasses = () => {
                 </div>
               )}
 
-              {/* Students List */}
+              {/* Students List - Attendance Mode (2 columns) */}
               <div className="flex-1 overflow-auto min-h-0">
                 {loadingStudents ? (
                   <StudentListSkeleton students={5} />
                 ) : students.length > 0 ? (
-                  <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"}>
+                  <div className="grid grid-cols-2 gap-3">
                     {students.map((student, index) => {
                       // Calculate sequential number for grid layout
                       const sequentialNumber = index + 1
@@ -2048,8 +2149,7 @@ const MyClasses = () => {
                       return (
                       <div 
                         key={student.student_id} 
-                        onClick={() => !isAttendanceMode && handleStudentClick(student)}
-                        className={`flex items-center space-x-3 p-3 bg-gray-50 rounded-lg ${!isAttendanceMode ? 'cursor-pointer hover:bg-gray-100 transition-colors' : ''}`}
+                        className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="flex-shrink-0 w-6 text-center">
                           <span className="text-xs font-medium text-gray-500">
