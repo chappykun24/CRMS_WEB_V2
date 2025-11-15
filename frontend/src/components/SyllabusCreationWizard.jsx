@@ -48,8 +48,7 @@ const SyllabusCreationWizard = ({
     term_id: '',
     
     // Step 2: Course Rationale and Description
-    course_rationale_paragraph1: '',
-    course_rationale_paragraph2: '',
+    course_rationale: '',
     
     // Step 3: Contact Hours and Assessment Criteria
     contact_hours: {
@@ -281,9 +280,11 @@ const SyllabusCreationWizard = ({
         version: editingSyllabus.version || '1.0',
         term_id: editingSyllabus.term_id || '',
         
-        // Course Rationale
-        course_rationale_paragraph1: editingSyllabus.course_rationale_paragraph1 || '',
-        course_rationale_paragraph2: editingSyllabus.course_rationale_paragraph2 || '',
+        // Course Rationale - handle both old format (paragraph1 + paragraph2) and new format (single field)
+        course_rationale: editingSyllabus.course_rationale || 
+          (editingSyllabus.course_rationale_paragraph1 && editingSyllabus.course_rationale_paragraph2
+            ? `${editingSyllabus.course_rationale_paragraph1}\n\n${editingSyllabus.course_rationale_paragraph2}`
+            : editingSyllabus.description || ''),
         
         // Contact Hours and Assessment
         contact_hours: contactHours,
@@ -352,8 +353,7 @@ const SyllabusCreationWizard = ({
         if (!formData.term_id) newErrors.term_id = 'School term is required'
         break
       case 2:
-        if (!formData.course_rationale_paragraph1.trim()) newErrors.course_rationale_paragraph1 = 'First paragraph is required'
-        if (!formData.course_rationale_paragraph2.trim()) newErrors.course_rationale_paragraph2 = 'Second paragraph is required'
+        if (!formData.course_rationale.trim()) newErrors.course_rationale = 'Course rationale is required'
         break
       case 3:
         // Require at least one assessment criterion
@@ -652,7 +652,7 @@ const SyllabusCreationWizard = ({
     const syllabusData = {
       ...formData,
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
-      description: formData.course_rationale_paragraph1 + '\n\n' + formData.course_rationale_paragraph2 || formData.description,
+      description: formData.course_rationale || formData.description,
       assessment_criteria: formattedAssessmentCriteria, // Explicitly include and format assessment criteria
       ilos: ilos // Include ILOs to be saved
     }
@@ -938,40 +938,21 @@ const SyllabusCreationWizard = ({
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                First Paragraph <span className="text-red-500">*</span>
+                Course Rationale and Description <span className="text-red-500">*</span>
               </label>
               <textarea
-                name="course_rationale_paragraph1"
-                value={formData.course_rationale_paragraph1}
+                name="course_rationale"
+                value={formData.course_rationale}
                 onChange={handleInputChange}
                 required
-                rows={6}
+                rows={12}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                  errors.course_rationale_paragraph1 ? 'border-red-500' : 'border-gray-300'
+                  errors.course_rationale ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="The course equips students with essential skills for implementing advanced analytics techniques, addressing the growing need for data-driven decision-making in various industries..."
+                placeholder="The course equips students with essential skills for implementing advanced analytics techniques, addressing the growing need for data-driven decision-making in various industries. This course provides a comprehensive introduction to analytics techniques and tools, with an emphasis on their practical applications in solving real-world challenges..."
               />
-              {errors.course_rationale_paragraph1 && <p className="mt-1 text-sm text-red-600">{errors.course_rationale_paragraph1}</p>}
-              <p className="mt-1 text-xs text-gray-500">Describe the course rationale, its importance, and how it supports educational goals</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Second Paragraph <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="course_rationale_paragraph2"
-                value={formData.course_rationale_paragraph2}
-                onChange={handleInputChange}
-                required
-                rows={8}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                  errors.course_rationale_paragraph2 ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="This course provides a comprehensive introduction to analytics techniques and tools, with an emphasis on their practical applications in solving real-world challenges..."
-              />
-              {errors.course_rationale_paragraph2 && <p className="mt-1 text-sm text-red-600">{errors.course_rationale_paragraph2}</p>}
-              <p className="mt-1 text-xs text-gray-500">Describe the course content, topics covered, tools used, and learning outcomes</p>
+              {errors.course_rationale && <p className="mt-1 text-sm text-red-600">{errors.course_rationale}</p>}
+              <p className="mt-1 text-xs text-gray-500">Describe the course rationale, its importance, course content, topics covered, tools used, and learning outcomes</p>
             </div>
           </div>
         )
