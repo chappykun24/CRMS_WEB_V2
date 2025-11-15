@@ -1350,18 +1350,18 @@ const SyllabusCreationWizard = ({
                               <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                                 <input
                                   type="text"
+                                  value={newSubAssessment.name}
+                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
+                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="Sub-assessment Name"
+                                />
+                                <input
+                                  type="text"
                                   value={newSubAssessment.abbreviation}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
                                   className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Abbreviation (e.g., QZ1)"
                                   maxLength="10"
-                                />
-                                <input
-                                  type="text"
-                                  value={newSubAssessment.name}
-                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
-                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="Sub-assessment Name"
                                 />
                                 <input
                                   type="number"
