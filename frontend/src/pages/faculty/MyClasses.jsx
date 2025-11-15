@@ -72,9 +72,12 @@ const MyClasses = () => {
   })
   const [savingEdit, setSavingEdit] = useState(false)
 
-  // Success message state
+  // Success message state (for class banner updates)
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  
+  // Success message state for attendance history modal
+  const [attendanceSuccessMessage, setAttendanceSuccessMessage] = useState('')
 
   const dispatchSelectedClassChange = useCallback((classData) => {
     window.dispatchEvent(new CustomEvent('selectedClassChanged', {
@@ -1410,21 +1413,24 @@ const MyClasses = () => {
       const responseData = await response.json()
       console.log('✅ [FRONTEND DEBUG] Attendance submitted successfully:', responseData)
 
-      // Show success message
-      setSuccessMessage('Attendance submitted successfully!')
-      setShowSuccessModal(true)
-
       // Clear session to edit if it was set
       setSessionToEdit(null)
       
       // Exit attendance mode
       setIsAttendanceMode(false)
       
+      // Set success message for the attendance history modal
+      setAttendanceSuccessMessage('Attendance recorded successfully!')
+      
       // Open attendance history modal to show the new/updated data
       if (selectedClass) {
         // Small delay to ensure modal can open properly and state updates complete
         setTimeout(() => {
           loadFullAttendanceList()
+          // Auto-hide success message after 5 seconds
+          setTimeout(() => {
+            setAttendanceSuccessMessage('')
+          }, 5000)
         }, 500)
       }
 
@@ -2661,6 +2667,7 @@ const MyClasses = () => {
             // Close modal if clicking on backdrop (not modal content)
             if (e.target === e.currentTarget) {
               setShowFullAttendanceModal(false)
+              setAttendanceSuccessMessage('') // Clear success message when closing modal
             }
           }}
         >
@@ -2717,7 +2724,10 @@ const MyClasses = () => {
                 </div>
               </div>
               <button
-                onClick={() => setShowFullAttendanceModal(false)}
+                onClick={() => {
+                  setShowFullAttendanceModal(false)
+                  setAttendanceSuccessMessage('') // Clear success message when closing modal
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2725,6 +2735,26 @@ const MyClasses = () => {
                 </svg>
               </button>
             </div>
+
+            {/* Success Message Banner */}
+            {attendanceSuccessMessage && (
+              <div className="mx-4 mt-4 mb-0 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <p className="text-sm font-medium text-green-800">{attendanceSuccessMessage}</p>
+                </div>
+                <button
+                  onClick={() => setAttendanceSuccessMessage('')}
+                  className="text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* Modal Body - Tabs for Sessions */}
             <div className="flex-1 flex flex-col min-h-0">
@@ -3139,7 +3169,10 @@ const MyClasses = () => {
                 )}
               </div>
               <button
-                onClick={() => setShowFullAttendanceModal(false)}
+                onClick={() => {
+                  setShowFullAttendanceModal(false)
+                  setAttendanceSuccessMessage('') // Clear success message when closing modal
+                }}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
                 Close
