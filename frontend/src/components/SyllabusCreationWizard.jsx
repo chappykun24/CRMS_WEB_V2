@@ -1535,165 +1535,86 @@ const SyllabusCreationWizard = ({
         
       case 5:
         return (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
-              <p className="text-xs text-gray-600 mb-2">
-                Define the learning outcomes for this course and optionally map them to educational goals (SO, IGA, CDIO, SDG).
-              </p>
-            </div>
-            
-            <div className="mb-2">
-              <button
-                type="button"
-                onClick={() => openILOModal()}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                 <PlusIcon className="h-4 w-4" />
-                 Add ILO
-               </button>
-             </div>
-             
-             {ilos.length === 0 ? (
-               <div className="text-center py-4 border-2 border-dashed border-gray-300 rounded-lg">
-                 <AcademicCapIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                 <p className="text-xs text-gray-500 mb-1">No ILOs added yet.</p>
-                 <p className="text-xs text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
-                 <p className="text-xs text-gray-400 mt-1">Note: ILOs are optional but recommended for outcome-based education.</p>
+          <div className="space-y-6">
+            {/* Step 1: ILO Creation */}
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Step 1: Create Intended Learning Outcomes (ILOs)</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  Define the learning outcomes for this course.
+                </p>
+              </div>
+              
+              <div className="mb-2">
+                <button
+                  type="button"
+                  onClick={() => openILOModal()}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                   <PlusIcon className="h-4 w-4" />
+                   Add ILO
+                 </button>
                </div>
-             ) : (
-               <div className="space-y-2">
-                 {ilos.map((ilo, index) => (
-                   <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
-                     <div className="flex items-start justify-between mb-1.5">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-semibold text-gray-900">{ilo.code}</span>
-                          {ilo.category && (
-                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{ilo.category}</span>
-                          )}
-                          {ilo.level && (
-                            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{ilo.level}</span>
-                          )}
-                          {ilo.weight_percentage && (
-                            <span className="text-xs text-gray-600">Weight: {ilo.weight_percentage}%</span>
-                          )}
-                        </div>
-                         <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
-                        {ilo.assessment_methods?.length > 0 && (
-                          <p className="text-xs text-gray-600 mb-1">
-                            <strong>Assessment Methods:</strong> {Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods.join(', ') : ilo.assessment_methods}
-                          </p>
-                        )}
-                        {ilo.learning_activities?.length > 0 && (
-                          <p className="text-xs text-gray-600 mb-2">
-                            <strong>Learning Activities:</strong> {Array.isArray(ilo.learning_activities) ? ilo.learning_activities.join(', ') : ilo.learning_activities}
-                          </p>
-                        )}
-                        
-                         {/* Show mappings if any */}
-                         {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
-                           ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
-                           <div className="mt-2 pt-2 border-t border-gray-200">
-                             <p className="text-xs font-medium text-gray-700 mb-1">Mappings:</p>
-                            <div className="space-y-1">
-                              {ilo.so_mappings?.length > 0 && (
-                                <div className="text-xs text-gray-600">
-                                  <strong>SO:</strong> {' '}
-                                  {ilo.so_mappings.map((m, i) => {
-                                    const so = soReferences.find(r => r.so_id === m.so_id)
-                                    return (
-                                      <span key={i}>
-                                        {so?.so_code || m.so_id}
-                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
-                                        {i < ilo.so_mappings.length - 1 && ', '}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                              {ilo.iga_mappings?.length > 0 && (
-                                <div className="text-xs text-gray-600">
-                                  <strong>IGA:</strong> {' '}
-                                  {ilo.iga_mappings.map((m, i) => {
-                                    const iga = igaReferences.find(r => r.iga_id === m.iga_id)
-                                    return (
-                                      <span key={i}>
-                                        {iga?.iga_code || m.iga_id}
-                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
-                                        {i < ilo.iga_mappings.length - 1 && ', '}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                              {ilo.cdio_mappings?.length > 0 && (
-                                <div className="text-xs text-gray-600">
-                                  <strong>CDIO:</strong> {' '}
-                                  {ilo.cdio_mappings.map((m, i) => {
-                                    const cdio = cdioReferences.find(r => r.cdio_id === m.cdio_id)
-                                    return (
-                                      <span key={i}>
-                                        {cdio?.cdio_code || m.cdio_id}
-                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
-                                        {i < ilo.cdio_mappings.length - 1 && ', '}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                              {ilo.sdg_mappings?.length > 0 && (
-                                <div className="text-xs text-gray-600">
-                                  <strong>SDG:</strong> {' '}
-                                  {ilo.sdg_mappings.map((m, i) => {
-                                    const sdg = sdgReferences.find(r => r.sdg_id === m.sdg_id)
-                                    return (
-                                      <span key={i}>
-                                        {sdg?.sdg_code || m.sdg_id}
-                                        {m.assessment_tasks?.length > 0 && ` [${m.assessment_tasks.join(', ')}]`}
-                                        {i < ilo.sdg_mappings.length - 1 && ', '}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
+               
+               {ilos.length === 0 ? (
+                 <div className="text-center py-4 border-2 border-dashed border-gray-300 rounded-lg">
+                   <AcademicCapIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                   <p className="text-xs text-gray-500 mb-1">No ILOs added yet.</p>
+                   <p className="text-xs text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
+                 </div>
+               ) : (
+                 <div className="space-y-2">
+                   {ilos.map((ilo, index) => (
+                     <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
+                       <div className="flex items-start justify-between mb-1.5">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-semibold text-gray-900">{ilo.code}</span>
+                            {ilo.category && (
+                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{ilo.category}</span>
+                            )}
+                            {ilo.level && (
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{ilo.level}</span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openILOModal(ilo)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit ILO"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteILO(ilo.ilo_id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete ILO"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
+                           <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openILOModal(ilo)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit ILO"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteILO(ilo.ilo_id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Delete ILO"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Map ILO to Sub-Assessments */}
+            {ilos.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-1">Step 2: Map ILOs to Sub-Assessments</h3>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Select which sub-assessments assess each ILO.
+                  </p>
+                </div>
             
-            {/* Assessment Task Mapping to ILOs Section */}
-             {ilos.length > 0 && (
-               <div className="mt-4 border-t pt-4">
-                 <h4 className="text-sm font-semibold text-gray-900 mb-2">Assessment Task Mapping to ILOs</h4>
-                 <p className="text-xs text-gray-600 mb-2">
-                  Map assessment tasks (from your sub-assessments and assessment criteria) to ILOs to show how each learning outcome is assessed.
-                </p>
-                
-                {/* Get all available assessment tasks from sub-assessments and assessment criteria */}
+                {/* Get all available assessment tasks from sub-assessments */}
                 {(() => {
                   const allAssessmentTasks = []
                   // Primary: Add sub-assessments as tasks with scores and weights
@@ -1722,68 +1643,77 @@ const SyllabusCreationWizard = ({
                     }
                   })
                   
-                   return (
-                     <div className="space-y-2">
-                       {ilos.map((ilo, iloIndex) => {
-                         // Get assessment tasks for this ILO from all mappings
-                         const iloTasks = new Set()
-                         ilo.so_mappings?.forEach(m => {
-                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                         })
-                         ilo.iga_mappings?.forEach(m => {
-                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                         })
-                         ilo.cdio_mappings?.forEach(m => {
-                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                         })
-                         ilo.sdg_mappings?.forEach(m => {
-                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                         })
-                         
-                         return (
-                           <div key={iloIndex} className="border border-gray-300 rounded-lg p-2 bg-white">
-                             <div className="flex items-center justify-between mb-2">
-                               <div className="flex items-center gap-1.5">
-                                 <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
-                                 <span className="text-xs text-gray-600">- {ilo.description}</span>
-                               </div>
-                               <button
-                                 type="button"
-                                 onClick={() => openILOModal(ilo)}
-                                 className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                               >
-                                Map Assessment Tasks
+                  if (allAssessmentTasks.length === 0) {
+                    return (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                        <p className="font-medium mb-1">No sub-assessments available</p>
+                        <p>Please add sub-assessments in Step 3 before mapping them to ILOs.</p>
+                      </div>
+                    )
+                  }
+                  
+                  return (
+                    <div className="space-y-2">
+                      {ilos.map((ilo, iloIndex) => {
+                        // Get assessment tasks for this ILO from all mappings
+                        const iloTasks = new Set()
+                        ilo.so_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.iga_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.cdio_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.sdg_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        
+                        return (
+                          <div key={iloIndex} className="border border-gray-300 rounded-lg p-2 bg-white">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
+                                <span className="text-xs text-gray-600">- {ilo.description}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openILOModal(ilo)}
+                                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              >
+                                Map Sub-Assessments
                               </button>
                             </div>
                             
-                             {iloTasks.size > 0 ? (
-                               <div className="flex flex-wrap gap-1.5">
-                                 {Array.from(iloTasks).map(taskCode => {
-                                   const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode, weight: 0, score: 0 }
-                                   let displayText = task.code
-                                   if (task.name) displayText += ` (${task.name}`
-                                   if (task.weight > 0 || task.score > 0) {
-                                     if (!task.name) displayText += ' ('
-                                     displayText += task.weight > 0 ? `W:${task.weight}%` : ''
-                                     displayText += task.weight > 0 && task.score > 0 ? ', ' : ''
-                                     displayText += task.score > 0 ? `S:${task.score}` : ''
-                                     displayText += ')'
-                                   } else if (task.name) {
-                                     displayText += ')'
-                                   }
-                                   return (
-                                     <span
-                                       key={taskCode}
-                                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs"
-                                     >
-                                       {displayText}
-                                     </span>
-                                   )
-                                 })}
-                               </div>
-                             ) : (
-                               <p className="text-xs text-gray-500 italic">No assessment tasks mapped yet. Click "Map Assessment Tasks" to add mappings.</p>
-                             )}
+                            {iloTasks.size > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {Array.from(iloTasks).map(taskCode => {
+                                  const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode, weight: 0, score: 0 }
+                                  let displayText = task.code
+                                  if (task.name) displayText += ` (${task.name}`
+                                  if (task.weight > 0 || task.score > 0) {
+                                    if (!task.name) displayText += ' ('
+                                    displayText += task.weight > 0 ? `W:${task.weight}%` : ''
+                                    displayText += task.weight > 0 && task.score > 0 ? ', ' : ''
+                                    displayText += task.score > 0 ? `S:${task.score}` : ''
+                                    displayText += ')'
+                                  } else if (task.name) {
+                                    displayText += ')'
+                                  }
+                                  return (
+                                    <span
+                                      key={taskCode}
+                                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs"
+                                    >
+                                      {displayText}
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500 italic">No sub-assessments mapped yet. Click "Map Sub-Assessments" to add mappings.</p>
+                            )}
                           </div>
                         )
                       })}
@@ -1792,6 +1722,192 @@ const SyllabusCreationWizard = ({
                 })()}
               </div>
             )}
+
+            {/* Step 3: Map Sub-Assessments to Student Outcomes */}
+            {ilos.length > 0 && formData.assessment_criteria.length > 0 && soReferences.length > 0 && (() => {
+              // Get all sub-assessments
+              const allSubAssessments = []
+              formData.assessment_criteria.forEach((criterion, idx) => {
+                const subAssessments = formData.sub_assessments[idx] || []
+                subAssessments.forEach(sub => {
+                  if (sub.abbreviation || sub.name) {
+                    allSubAssessments.push({
+                      code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                      name: sub.name,
+                      weight: parseFloat(sub.weight_percentage) || 0,
+                      score: parseFloat(sub.score) || 0
+                    })
+                  }
+                })
+              })
+
+              if (allSubAssessments.length === 0) return null
+
+              // Get SO mappings for each sub-assessment from ILOs
+              const getSOMappingsForSubAssessment = (taskCode) => {
+                const soMappings = new Set()
+                ilos.forEach(ilo => {
+                  if (ilo.so_mappings) {
+                    ilo.so_mappings.forEach(mapping => {
+                      if (mapping.assessment_tasks && mapping.assessment_tasks.includes(taskCode)) {
+                        soMappings.add(mapping.so_id)
+                      }
+                    })
+                  }
+                })
+                return Array.from(soMappings)
+              }
+
+              return (
+                <div className="space-y-3 border-t pt-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Step 3: Map Sub-Assessments to Student Outcomes (SO)</h3>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Select which Student Outcomes each sub-assessment maps to. This is automatically populated from ILO mappings.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {allSubAssessments.map((sub, idx) => {
+                      const currentSOMappings = getSOMappingsForSubAssessment(sub.code)
+
+                      return (
+                        <div key={idx} className="border border-gray-300 rounded-lg p-2 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-semibold text-gray-900">{sub.code}</span>
+                                <span className="text-xs text-gray-700">- {sub.name}</span>
+                                {sub.weight > 0 && (
+                                  <span className="text-xs text-gray-500">(W:{sub.weight}%</span>
+                                )}
+                                {sub.score > 0 && (
+                                  <span className="text-xs text-gray-500">, S:{sub.score}</span>
+                                )}
+                                {sub.weight > 0 && <span className="text-xs text-gray-500">)</span>}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <select
+                                value={currentSOMappings.length > 0 ? currentSOMappings.map(id => id.toString()).join(',') : ''}
+                                onChange={(e) => {
+                                  const selectedSOIds = e.target.value ? e.target.value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : []
+                                  // Find ILOs that have this sub-assessment and update their SO mappings
+                                  const updatedIlos = ilos.map(ilo => {
+                                    // Check if this ILO has this sub-assessment mapped
+                                    const hasTask = ilo.so_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                   ilo.iga_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                   ilo.cdio_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                   ilo.sdg_mappings?.some(m => m.assessment_tasks?.includes(sub.code))
+                                    
+                                    if (hasTask && selectedSOIds.length > 0) {
+                                      // Create new ILO object with updated SO mappings
+                                      const currentSoMappings = ilo.so_mappings || []
+                                      const newSoMappings = []
+                                      
+                                      // Add or update mappings for selected SOs
+                                      selectedSOIds.forEach(soId => {
+                                        let existingMapping = currentSoMappings.find(m => m.so_id === soId)
+                                        if (existingMapping) {
+                                          // Update existing mapping - add task if not present
+                                          const tasks = existingMapping.assessment_tasks || []
+                                          if (!tasks.includes(sub.code)) {
+                                            newSoMappings.push({
+                                              ...existingMapping,
+                                              assessment_tasks: [...tasks, sub.code]
+                                            })
+                                          } else {
+                                            newSoMappings.push(existingMapping)
+                                          }
+                                        } else {
+                                          // Create new mapping
+                                          newSoMappings.push({
+                                            so_id: soId,
+                                            assessment_tasks: [sub.code]
+                                          })
+                                        }
+                                      })
+                                      
+                                      // Keep mappings that don't involve this task, or are in selected list
+                                      currentSoMappings.forEach(m => {
+                                        if (!m.assessment_tasks?.includes(sub.code) || selectedSOIds.includes(m.so_id)) {
+                                          if (!newSoMappings.find(nm => nm.so_id === m.so_id && nm.assessment_tasks?.includes(sub.code))) {
+                                            newSoMappings.push(m)
+                                          }
+                                        }
+                                      })
+                                      
+                                      return {
+                                        ...ilo,
+                                        so_mappings: newSoMappings
+                                      }
+                                    }
+                                    return ilo
+                                  })
+                                  
+                                  // Update state
+                                  setIlos(updatedIlos)
+                                }}
+                                className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                multiple
+                                size={Math.min(5, soReferences.length)}
+                              >
+                                <option value="">Select Student Outcome(s)...</option>
+                                {soReferences.map(so => (
+                                  <option key={so.so_id} value={so.so_id}>
+                                    {so.so_code} - {so.description?.substring(0, 50)}
+                                  </option>
+                                ))}
+                              </select>
+                              {currentSOMappings.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {currentSOMappings.map(soId => {
+                                    const so = soReferences.find(r => r.so_id === soId)
+                                    return so ? (
+                                      <span key={soId} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                                        {so.so_code}
+                                      </span>
+                                    ) : null
+                                  })}
+                                </div>
+                              )}
+                              {currentSOMappings.length === 0 && (
+                                <p className="mt-1 text-xs text-gray-400 italic">No Student Outcomes mapped yet</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Find an ILO that maps this sub-assessment and open its modal
+                                const iloWithMapping = ilos.find(ilo => {
+                                  const hasTask = ilo.so_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                  ilo.iga_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                  ilo.cdio_mappings?.some(m => m.assessment_tasks?.includes(sub.code)) ||
+                                                  ilo.sdg_mappings?.some(m => m.assessment_tasks?.includes(sub.code))
+                                  return hasTask
+                                })
+                                if (iloWithMapping) {
+                                  openILOModal(iloWithMapping)
+                                } else {
+                                  // If no mapping exists, open first ILO to create mapping
+                                  if (ilos.length > 0) {
+                                    openILOModal(ilos[0])
+                                  }
+                                }
+                              }}
+                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
+                              title="Edit mapping via ILO"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
             
             {/* Dynamic Assessment Method and Distribution Map Table */}
             {ilos.length > 0 && formData.assessment_criteria.length > 0 && (() => {
