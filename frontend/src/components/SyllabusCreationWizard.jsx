@@ -1783,6 +1783,476 @@ const SyllabusCreationWizard = ({
               </div>
             )}
             
+            {/* Dynamic Assessment Method and Distribution Map Table */}
+            {ilos.length > 0 && formData.assessment_criteria.length > 0 && (() => {
+              // Get all sub-assessments with their data
+              const allSubAssessments = []
+              formData.assessment_criteria.forEach((criterion, idx) => {
+                const subAssessments = formData.sub_assessments[idx] || []
+                subAssessments.forEach(sub => {
+                  if (sub.abbreviation || sub.name) {
+                    allSubAssessments.push({
+                      code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                      name: sub.name,
+                      weight: parseFloat(sub.weight_percentage) || 0,
+                      score: parseFloat(sub.score) || 0,
+                      criterionName: criterion.name || '',
+                      criterionWeight: parseFloat(criterion.weight) || 0
+                    })
+                  }
+                })
+              })
+
+              // Calculate distribution percentages
+              const totalWeight = allSubAssessments.reduce((sum, sub) => sum + sub.weight, 0)
+              
+              // Get ILO mappings for each sub-assessment with score calculations
+              const getILOMappings = (taskCode, subScore, subWeight) => {
+                const mappings = {}
+                const subAssessment = allSubAssessments.find(s => s.code === taskCode)
+                if (!subAssessment) return mappings
+                
+                ilos.forEach((ilo, iloIndex) => {
+                  let found = false
+                  // Check all mapping types
+                  ;['so_mappings', 'iga_mappings', 'cdio_mappings', 'sdg_mappings'].forEach(mappingType => {
+                    if (ilo[mappingType]) {
+                      ilo[mappingType].forEach(mapping => {
+                        if (mapping.assessment_tasks && mapping.assessment_tasks.includes(taskCode)) {
+                          found = true
+                        }
+                      })
+                    }
+                  })
+                  if (found) {
+                    // Calculate contribution percentage based on weight
+                    const weightContribution = (totalWeight > 0) ? 
+                      (subAssessment.weight / totalWeight * 100) : 0
+                    
+                    // Calculate score contribution: (score * weight) / total possible
+                    // Assuming scores are out of 100, calculate weighted contribution
+                    const scoreContribution = subScore > 0 && totalWeight > 0 ?
+                      (subScore * subAssessment.weight) / totalWeight : 0
+                    
+                    mappings[iloIndex + 1] = {
+                      weightPct: Math.round(weightContribution * 10) / 10,
+                      score: Math.round(scoreContribution * 10) / 10
+                    }
+                  }
+                })
+                return mappings
+              }
+
+              if (allSubAssessments.length === 0) return null
+
+              return (
+                <div className="mt-4 border-t pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Assessment Method and Distribution Map</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border border-gray-300">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">Code</th>
+                          <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">Assessment Tasks</th>
+                          <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">I/R/D</th>
+                          <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">(%)</th>
+                          {ilos.map((ilo, idx) => (
+                            <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{idx + 1}</th>
+                          ))}
+                          <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">Domains</th>
+                        </tr>
+                        <tr className="bg-gray-100">
+                          <th colSpan="4" className="px-2 py-1 border border-gray-300"></th>
+                          <th colSpan={ilos.length} className="px-2 py-1 border border-gray-300 text-center font-medium text-gray-700">Intended Learning Outcomes</th>
+                          <th className="px-2 py-1 border border-gray-300"></th>
+                        </tr>
+                        <tr className="bg-gray-100">
+                          <th colSpan="4" className="px-2 py-1 border border-gray-300"></th>
+                          {ilos.map((ilo, idx) => (
+                            <th key={idx} className="px-2 py-1 border border-gray-300 text-center font-medium text-gray-700">{ilo.code}</th>
+                          ))}
+                          <th className="px-2 py-1 border border-gray-300 text-center font-medium text-gray-700">
+                            <div className="flex justify-center gap-2">
+                              <span>C</span>
+                              <span>P</span>
+                              <span>A</span>
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white">
+                        {allSubAssessments.map((sub, idx) => {
+                          const iloMappings = getILOMappings(sub.code, sub.score, sub.weight)
+                          const distributionPct = totalWeight > 0 ? 
+                            Math.round((sub.weight / totalWeight) * 100) : 0
+                          
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50">
+                              <td className="px-2 py-1.5 border border-gray-300 font-medium text-gray-900">{sub.code}</td>
+                              <td className="px-2 py-1.5 border border-gray-300 text-gray-700">{sub.name}</td>
+                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">R</td>
+                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{sub.weight}%</td>
+                              {ilos.map((ilo, iloIdx) => {
+                                const mapping = iloMappings[iloIdx + 1]
+                                const contribution = mapping ? mapping.weightPct : 0
+                                const scoreValue = mapping ? mapping.score : 0
+                                return (
+                                  <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                    {contribution > 0 ? (
+                                      <div>
+                                        <div className="font-medium">{contribution}%</div>
+                                        {scoreValue > 0 && (
+                                          <div className="text-xs text-gray-500">({scoreValue.toFixed(1)})</div>
+                                        )}
+                                      </div>
+                                    ) : '—'}
+                                  </td>
+                                )
+                              })}
+                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                <div className="flex justify-center gap-2">
+                                  <span>—</span>
+                                  <span>{sub.score > 0 ? sub.score.toFixed(1) : '100'}</span>
+                                  <span>—</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        <tr className="bg-gray-100 font-semibold">
+                          <td colSpan="3" className="px-2 py-1.5 border border-gray-300 text-right">Total:</td>
+                          <td className="px-2 py-1.5 border border-gray-300 text-center">{totalWeight}%</td>
+                          {ilos.map((ilo, iloIdx) => {
+                            const totalStats = allSubAssessments.reduce((acc, sub) => {
+                              const iloMappings = getILOMappings(sub.code, sub.score, sub.weight)
+                              const mapping = iloMappings[iloIdx + 1]
+                              if (mapping) {
+                                acc.weightPct += mapping.weightPct
+                                acc.score += mapping.score
+                              }
+                              return acc
+                            }, { weightPct: 0, score: 0 })
+                            
+                            return (
+                              <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center">
+                                {totalStats.weightPct > 0 ? (
+                                  <div>
+                                    <div className="font-medium">{totalStats.weightPct.toFixed(1)}%</div>
+                                    {totalStats.score > 0 && (
+                                      <div className="text-xs text-gray-600">({totalStats.score.toFixed(1)})</div>
+                                    )}
+                                  </div>
+                                ) : '—'}
+                              </td>
+                            )
+                          })}
+                          <td className="px-2 py-1.5 border border-gray-300 text-center">
+                            <div className="flex justify-center gap-2">
+                              <span>—</span>
+                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.score || 0), 0).toFixed(1)}</span>
+                              <span>—</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Dynamic ILO Mapping Tables */}
+            {ilos.length > 0 && (() => {
+              // Get all sub-assessments for score calculations
+              const allSubAssessmentsForScore = []
+              formData.assessment_criteria.forEach((criterion, idx) => {
+                const subAssessments = formData.sub_assessments[idx] || []
+                subAssessments.forEach(sub => {
+                  if (sub.abbreviation || sub.name) {
+                    allSubAssessmentsForScore.push({
+                      code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                      name: sub.name,
+                      weight: parseFloat(sub.weight_percentage) || 0,
+                      score: parseFloat(sub.score) || 0
+                    })
+                  }
+                })
+              })
+              
+              const totalWeightForScore = allSubAssessmentsForScore.reduce((sum, sub) => sum + sub.weight, 0)
+              
+              // Calculate score contribution for mapped tasks
+              const calculateScoreForTasks = (taskCodes) => {
+                if (!taskCodes || taskCodes.length === 0) return { totalScore: 0, totalWeight: 0, display: '—' }
+                
+                let totalScore = 0
+                let totalWeight = 0
+                const taskDetails = []
+                
+                taskCodes.forEach(code => {
+                  const sub = allSubAssessmentsForScore.find(s => s.code === code)
+                  if (sub) {
+                    // Calculate weighted contribution
+                    const weightedScore = totalWeightForScore > 0 ? 
+                      (sub.score * sub.weight) / totalWeightForScore : 0
+                    totalScore += weightedScore
+                    totalWeight += sub.weight
+                    taskDetails.push(`${code}(${weightedScore.toFixed(1)})`)
+                  }
+                })
+                
+                return {
+                  totalScore: Math.round(totalScore * 10) / 10,
+                  totalWeight,
+                  display: taskCodes.join(', '),
+                  details: taskDetails.join(', ')
+                }
+              }
+              
+              // Build comprehensive mapping tables
+              const getAssessmentTasksForMapping = (ilo, mappingType) => {
+                const tasks = new Set()
+                if (ilo[mappingType]) {
+                  ilo[mappingType].forEach(mapping => {
+                    if (mapping.assessment_tasks) {
+                      mapping.assessment_tasks.forEach(task => tasks.add(task))
+                    }
+                  })
+                }
+                return Array.from(tasks)
+              }
+
+              return (
+                <div className="mt-4 border-t pt-4 space-y-4">
+                  {/* ILO-SO and ILO-CPA Mapping */}
+                  {soReferences.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-SO and ILO-CPA Mapping</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border border-gray-300">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">ILOs</th>
+                              {soReferences.map((so, idx) => (
+                                <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{so.so_code}</th>
+                              ))}
+                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">C</th>
+                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">P</th>
+                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">A</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                              <th className="px-2 py-1 border border-gray-300 text-left font-medium text-gray-700">STUDENT OUTCOMES (SO): Mapping of Assessment Tasks (AT)</th>
+                              {soReferences.map((so, idx) => (
+                                <th key={idx} className="px-2 py-1 border border-gray-300"></th>
+                              ))}
+                              <th colSpan="3" className="px-2 py-1 border border-gray-300 text-center font-medium text-gray-700">Domains</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white">
+                            {ilos.map((ilo, iloIdx) => {
+                              const soTasks = getAssessmentTasksForMapping(ilo, 'so_mappings')
+                              const soTaskScores = calculateScoreForTasks(soTasks)
+                              return (
+                                <tr key={iloIdx} className="hover:bg-gray-50">
+                                  <td className="px-2 py-1.5 border border-gray-300">
+                                    <div className="font-medium text-gray-900">{ilo.code}</div>
+                                    <div className="text-xs text-gray-500 truncate max-w-xs">{ilo.description}</div>
+                                  </td>
+                                  {soReferences.map((so, soIdx) => {
+                                    const mapping = ilo.so_mappings?.find(m => m.so_id === so.so_id)
+                                    const tasks = mapping?.assessment_tasks || []
+                                    const taskScores = calculateScoreForTasks(tasks)
+                                    return (
+                                      <td key={soIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                        {tasks.length > 0 ? (
+                                          <div>
+                                            <div className="text-xs">{taskScores.display}</div>
+                                            {taskScores.totalScore > 0 && (
+                                              <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                            )}
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">—</td>
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                    {soTasks.length > 0 ? (
+                                      <div>
+                                        <div className="text-xs">{soTaskScores.display}</div>
+                                        {soTaskScores.totalScore > 0 && (
+                                          <div className="text-xs font-semibold text-red-600 mt-0.5">{soTaskScores.totalScore.toFixed(1)}</div>
+                                        )}
+                                      </div>
+                                    ) : '—'}
+                                  </td>
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">—</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ILO-IGA Mapping */}
+                  {igaReferences.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-IGA Mapping</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border border-gray-300">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">ILOs</th>
+                              {igaReferences.map((iga, idx) => (
+                                <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{iga.iga_code}</th>
+                              ))}
+                            </tr>
+                            <tr className="bg-gray-100">
+                              <th className="px-2 py-1 border border-gray-300 text-left font-medium text-gray-700">INSTITUTIONAL GRADUATE ATTRIBUTES (IGA): Mapping of Assessment Tasks (AT)</th>
+                              {igaReferences.map((iga, idx) => (
+                                <th key={idx} className="px-2 py-1 border border-gray-300"></th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white">
+                            {ilos.map((ilo, iloIdx) => (
+                              <tr key={iloIdx} className="hover:bg-gray-50">
+                                <td className="px-2 py-1.5 border border-gray-300">
+                                  <div className="font-medium text-gray-900">{ilo.code}</div>
+                                  <div className="text-xs text-gray-500 truncate max-w-xs">{ilo.description}</div>
+                                </td>
+                                {igaReferences.map((iga, igaIdx) => {
+                                  const mapping = ilo.iga_mappings?.find(m => m.iga_id === iga.iga_id)
+                                  const tasks = mapping?.assessment_tasks || []
+                                  const taskScores = calculateScoreForTasks(tasks)
+                                  return (
+                                    <td key={igaIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                      {tasks.length > 0 ? (
+                                        <div>
+                                          <div className="text-xs">{taskScores.display}</div>
+                                          {taskScores.totalScore > 0 && (
+                                            <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                          )}
+                                        </div>
+                                      ) : '—'}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ILO-CDIO and ILO-SDG Mapping */}
+                  {(cdioReferences.length > 0 || sdgReferences.length > 0) && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-CDIO and ILO-SDG Mapping</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {cdioReferences.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border border-gray-300">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">ILOs</th>
+                                  {cdioReferences.map((cdio, idx) => (
+                                    <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{cdio.cdio_code}</th>
+                                  ))}
+                                </tr>
+                                <tr className="bg-gray-100">
+                                  <th className="px-2 py-1 border border-gray-300 text-left font-medium text-gray-700">CDIO SKILLS</th>
+                                  {cdioReferences.map((cdio, idx) => (
+                                    <th key={idx} className="px-2 py-1 border border-gray-300"></th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white">
+                                {ilos.map((ilo, iloIdx) => (
+                                  <tr key={iloIdx} className="hover:bg-gray-50">
+                                    <td className="px-2 py-1.5 border border-gray-300">
+                                      <div className="font-medium text-gray-900">{ilo.code}</div>
+                                    </td>
+                                    {cdioReferences.map((cdio, cdioIdx) => {
+                                      const mapping = ilo.cdio_mappings?.find(m => m.cdio_id === cdio.cdio_id)
+                                      const tasks = mapping?.assessment_tasks || []
+                                      const taskScores = calculateScoreForTasks(tasks)
+                                      return (
+                                        <td key={cdioIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                          {tasks.length > 0 ? (
+                                            <div>
+                                              <div className="text-xs">{taskScores.display}</div>
+                                              {taskScores.totalScore > 0 && (
+                                                <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                              )}
+                                            </div>
+                                          ) : '—'}
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {sdgReferences.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs border border-gray-300">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-2 py-1.5 border border-gray-300 text-left font-semibold text-gray-900">ILOs</th>
+                                  {sdgReferences.map((sdg, idx) => (
+                                    <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{sdg.sdg_code}</th>
+                                  ))}
+                                </tr>
+                                <tr className="bg-gray-100">
+                                  <th className="px-2 py-1 border border-gray-300 text-left font-medium text-gray-700">SDG Skills</th>
+                                  {sdgReferences.map((sdg, idx) => (
+                                    <th key={idx} className="px-2 py-1 border border-gray-300"></th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white">
+                                {ilos.map((ilo, iloIdx) => (
+                                  <tr key={iloIdx} className="hover:bg-gray-50">
+                                    <td className="px-2 py-1.5 border border-gray-300">
+                                      <div className="font-medium text-gray-900">{ilo.code}</div>
+                                    </td>
+                                    {sdgReferences.map((sdg, sdgIdx) => {
+                                      const mapping = ilo.sdg_mappings?.find(m => m.sdg_id === sdg.sdg_id)
+                                      const tasks = mapping?.assessment_tasks || []
+                                      const taskScores = calculateScoreForTasks(tasks)
+                                      return (
+                                        <td key={sdgIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
+                                          {tasks.length > 0 ? (
+                                            <div>
+                                              <div className="text-xs">{taskScores.display}</div>
+                                              {taskScores.totalScore > 0 && (
+                                                <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                              )}
+                                            </div>
+                                          ) : '—'}
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* ILO to Student Outcomes Mapping Section */}
              {ilos.length > 0 && (
                <div className="mt-4 border-t pt-4">
