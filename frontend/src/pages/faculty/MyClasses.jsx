@@ -2335,8 +2335,7 @@ const MyClasses = () => {
                       >
                         <option>Lecture</option>
                         <option>Laboratory</option>
-                        <option>Recitation</option>
-                        <option>Seminar</option>
+                        <option>Others</option>
                       </select>
                       <select
                         value={sessionDetails.meeting_type}
@@ -2345,7 +2344,7 @@ const MyClasses = () => {
                       >
                         <option>Face-to-Face</option>
                         <option>Online</option>
-                        <option>Hybrid</option>
+                        <option>Others</option>
                       </select>
                       <button
                         onClick={markAllPresent}
