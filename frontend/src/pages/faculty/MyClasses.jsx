@@ -1124,19 +1124,52 @@ const MyClasses = () => {
       // Close attendance history modal
       setShowFullAttendanceModal(false)
       
-      // Fetch attendance records for this session
-      const response = await fetch(`/api/attendance/session/${session.session_id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      // Check if session data is already cached in sessionData
+      const sessionKey = session.session_key || `${session.session_date}_${session.title || 'Untitled'}`
+      const cachedSessionData = sessionData[sessionKey]
+      
+      let attendanceRecordsData = []
+      
+      if (cachedSessionData && cachedSessionData.records && cachedSessionData.loaded) {
+        // Use cached data - instant load!
+        console.log('✅ [MYCLASSES] Using cached attendance data for editing session:', sessionKey)
+        attendanceRecordsData = cachedSessionData.records
+      } else {
+        // Fetch attendance records for this session (only if not cached)
+        console.log('🔄 [MYCLASSES] Fetching attendance data for editing session:', session.session_id)
+        const response = await fetch(`/api/attendance/session/${session.session_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch attendance records')
         }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch attendance records')
+        
+        const result = await response.json()
+        attendanceRecordsData = result.data || []
+        
+        // Cache the data for future use
+        if (attendanceRecordsData.length > 0) {
+          setSessionData(prev => ({
+            ...prev,
+            [sessionKey]: {
+              records: attendanceRecordsData,
+              statusCounts: (() => {
+                const counts = { present: 0, absent: 0, late: 0, excuse: 0 }
+                attendanceRecordsData.forEach(record => {
+                  if (record.status && counts[record.status] !== undefined) {
+                    counts[record.status]++
+                  }
+                })
+                return counts
+              })(),
+              loaded: true
+            }
+          }))
+        }
       }
-      
-      const result = await response.json()
-      const attendanceRecordsData = result.data || []
       
       // Set session details for editing
       setSessionDetails({
@@ -1169,16 +1202,17 @@ const MyClasses = () => {
       // Enable attendance mode
       setIsAttendanceMode(true)
       
-      // Ensure students are loaded
+      // Students should already be loaded when class is selected
+      // If not, they will be loaded automatically by handleClassSelect
       if (!students || students.length === 0) {
-        await loadStudents(selectedClass.section_course_id)
+        console.warn('⚠️ [MYCLASSES] Students not loaded yet, they should load automatically')
       }
       
     } catch (error) {
       console.error('❌ [MYCLASSES] Error loading session for editing:', error)
       alert(`Failed to load session data: ${error.message}. Please try again.`)
     }
-  }, [selectedClass, students])
+  }, [selectedClass, students, sessionData])
 
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
