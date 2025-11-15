@@ -55,7 +55,6 @@ const SyllabusCreationWizard = ({
       { name: 'Laboratory', hours: 3 }
     ],
     assessment_criteria: [],
-    abbreviations: '',
     
     // Step 4: Teaching, Learning, and Assessment Strategies
     teaching_strategies: {
@@ -324,8 +323,6 @@ const SyllabusCreationWizard = ({
         // Contact Hours and Assessment
         contact_hours: contactHours,
         assessment_criteria: assessmentCriteria,
-        abbreviations: editingSyllabus.abbreviations || 
-          (gradingPolicy && gradingPolicy.abbreviations ? gradingPolicy.abbreviations : ''),
         
         // Teaching Strategies
         teaching_strategies: teachingStrategies,
@@ -1128,33 +1125,6 @@ const SyllabusCreationWizard = ({
               <h4 className="text-md font-semibold text-gray-900 mb-4">Criteria for Assessment</h4>
               <p className="text-sm text-gray-600 mb-4">Total must equal 100%</p>
               
-              {/* Abbreviation Textbox */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Abbreviations
-                </label>
-                <textarea
-                  name="abbreviations"
-                  value={formData.abbreviations || ''}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder={`Enter abbreviations and their meanings, e.g.
-QZ = Quiz
-ME = Midterm Exam
-FE = Final Exam
-FP = Final Project
-P = Presentation
-LA = Lab Activity
-A = Assignment
-PS = Problem Sets
-HW = Homework`}
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Enter abbreviations used in assessment criteria for reference
-                </p>
-              </div>
-              
               {formData.assessment_criteria.length > 0 && (
                 <div className="space-y-3 mb-4">
                   {formData.assessment_criteria.map((item, index) => (
@@ -1165,7 +1135,7 @@ HW = Homework`}
                           value={item.name}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Assessment Name (e.g., Problem Sets)"
+                          placeholder="Assessment Name (e.g., QZ - Quiz, ME - Midterm Exam)"
                         />
                         <input
                           type="number"
@@ -1197,7 +1167,7 @@ HW = Homework`}
                     value={newAssessmentCriteria.name}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
                     className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Assessment Name"
+                    placeholder="Assessment Name (e.g., QZ - Quiz, ME - Midterm Exam)"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
                   <input

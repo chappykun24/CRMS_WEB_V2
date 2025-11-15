@@ -280,12 +280,9 @@ const Syllabus = () => {
       // Prepare JSON fields - they should already be objects from the wizard
       const assessmentFramework = wizardFormData.assessment_framework || null
       
-      // Merge assessment_criteria and abbreviations into grading_policy if they exist
+      // Merge assessment_criteria into grading_policy if it exists
       let gradingPolicy = wizardFormData.grading_policy || null
-      const hasAssessmentCriteria = wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0
-      const hasAbbreviations = wizardFormData.abbreviations && wizardFormData.abbreviations.trim()
-      
-      if (hasAssessmentCriteria || hasAbbreviations) {
+      if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
         // Ensure grading_policy is an object
         if (!gradingPolicy || typeof gradingPolicy === 'string') {
           try {
@@ -294,11 +291,10 @@ const Syllabus = () => {
             gradingPolicy = {}
           }
         }
-        // Add assessment_criteria and abbreviations to grading_policy
+        // Add assessment_criteria to grading_policy
         gradingPolicy = {
           ...gradingPolicy,
-          ...(hasAssessmentCriteria && { assessment_criteria: wizardFormData.assessment_criteria }),
-          ...(hasAbbreviations && { abbreviations: wizardFormData.abbreviations })
+          assessment_criteria: wizardFormData.assessment_criteria
         }
       }
 
@@ -362,12 +358,9 @@ const Syllabus = () => {
       // Prepare JSON fields
       const assessmentFramework = wizardFormData.assessment_framework || null
       
-      // Merge assessment_criteria and abbreviations into grading_policy if they exist
+      // Merge assessment_criteria into grading_policy if it exists
       let gradingPolicy = wizardFormData.grading_policy || null
-      const hasAssessmentCriteria = wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0
-      const hasAbbreviations = wizardFormData.abbreviations && wizardFormData.abbreviations.trim()
-      
-      if (hasAssessmentCriteria || hasAbbreviations) {
+      if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
         // Ensure grading_policy is an object
         if (!gradingPolicy || typeof gradingPolicy === 'string') {
           try {
@@ -376,11 +369,10 @@ const Syllabus = () => {
             gradingPolicy = {}
           }
         }
-        // Add assessment_criteria and abbreviations to grading_policy
+        // Add assessment_criteria to grading_policy
         gradingPolicy = {
           ...gradingPolicy,
-          ...(hasAssessmentCriteria && { assessment_criteria: wizardFormData.assessment_criteria }),
-          ...(hasAbbreviations && { abbreviations: wizardFormData.abbreviations })
+          assessment_criteria: wizardFormData.assessment_criteria
         }
       }
 
