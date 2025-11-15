@@ -1918,13 +1918,14 @@ const MyClasses = () => {
         </div>
       </div>
 
-      {/* Expanded Student List - Only show when class is selected and NOT in attendance mode (attendance shows its own list) */}
-      {selectedClass && !isAttendanceMode ? (
-        <div 
-          key="normal-student-list"
-          ref={sidebarRef}
-          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
-        >
+      {/* Student List Container - Shows normal list OR attendance mode based on isAttendanceMode */}
+      {selectedClass ? (
+        !isAttendanceMode ? (
+          <div 
+            key="normal-student-list"
+            ref={sidebarRef}
+            className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
+          >
           <div className="h-full flex flex-col">
             {/* Class Header */}
             <div className="mb-3 pb-3 border-b border-gray-200">
@@ -2004,15 +2005,12 @@ const MyClasses = () => {
             </div>
           </div>
         </div>
-      ) : null}
-
-      {/* Attendance Mode Container - Separate from normal student list */}
-      {selectedClass && isAttendanceMode ? (
-        <div 
-          key="attendance-container"
-          ref={attendanceContainerRef}
-          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
-        >
+        ) : (
+          <div 
+            key="attendance-container"
+            ref={attendanceContainerRef}
+            className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
+          >
           <div className="h-full flex flex-col">
             {/* Class Header */}
             <div className="mb-3 pb-3 border-b border-gray-200">
@@ -2244,6 +2242,7 @@ const MyClasses = () => {
             </div>
           </div>
         </div>
+        )
       ) : null}
 
       {/* Edit Modal */}
