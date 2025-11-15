@@ -168,6 +168,8 @@ const Assessments = () => {
   const [selectedSyllabusDetails, setSelectedSyllabusDetails] = useState(null)
   // Assessment components from selected syllabus
   const [assessmentComponents, setAssessmentComponents] = useState([])
+  // Assessment criteria from selected syllabus
+  const [assessmentCriteria, setAssessmentCriteria] = useState([])
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -584,13 +586,14 @@ const Assessments = () => {
       [name]: value
     }))
     
-    // If syllabus_id changes, load the syllabus details to get assessment framework
+    // If syllabus_id changes, load the syllabus details to get assessment framework and criteria
     if (name === 'syllabus_id') {
       if (value) {
         loadSyllabusDetails(value)
       } else {
         setSelectedSyllabusDetails(null)
         setAssessmentComponents([])
+        setAssessmentCriteria([])
         // Reset type and weight when syllabus is unlinked
         setFormData(prev => ({
           ...prev,
@@ -601,7 +604,7 @@ const Assessments = () => {
     }
   }
   
-  // Load syllabus details to get assessment framework
+  // Load syllabus details to get assessment framework and assessment criteria
   const loadSyllabusDetails = async (syllabusId) => {
     try {
       const response = await fetch(`/api/syllabi/${syllabusId}`, {
@@ -630,10 +633,47 @@ const Assessments = () => {
         } else {
           setAssessmentComponents([])
         }
+        
+        // Extract assessment_criteria from grading_policy or syllabus data
+        let criteria = []
+        if (syllabus.assessment_criteria) {
+          // If assessment_criteria is directly in syllabus
+          if (Array.isArray(syllabus.assessment_criteria)) {
+            criteria = syllabus.assessment_criteria
+          } else if (typeof syllabus.assessment_criteria === 'string') {
+            try {
+              criteria = JSON.parse(syllabus.assessment_criteria)
+            } catch (e) {
+              console.error('Error parsing assessment_criteria:', e)
+            }
+          } else if (typeof syllabus.assessment_criteria === 'object') {
+            // Convert object format {name: weight} to array format [{name, weight}]
+            criteria = Object.entries(syllabus.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+          }
+        } else if (syllabus.grading_policy) {
+          // Check if assessment_criteria is stored within grading_policy
+          let gradingPolicy = syllabus.grading_policy
+          if (typeof gradingPolicy === 'string') {
+            try {
+              gradingPolicy = JSON.parse(gradingPolicy)
+            } catch (e) {
+              console.error('Error parsing grading_policy:', e)
+            }
+          }
+          if (gradingPolicy && gradingPolicy.assessment_criteria) {
+            if (Array.isArray(gradingPolicy.assessment_criteria)) {
+              criteria = gradingPolicy.assessment_criteria
+            } else if (typeof gradingPolicy.assessment_criteria === 'object') {
+              criteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+            }
+          }
+        }
+        setAssessmentCriteria(criteria)
       }
     } catch (error) {
       console.error('Error loading syllabus details:', error)
       setAssessmentComponents([])
+      setAssessmentCriteria([])
     }
   }
   
@@ -649,6 +689,21 @@ const Assessments = () => {
       ...prev,
       type: component.type || prev.type,
       weight_percentage: component.weight || prev.weight_percentage
+    }))
+  }
+  
+  // Handle assessment criteria selection
+  const handleAssessmentCriteriaChange = (e) => {
+    const selectedIndex = e.target.value
+    if (selectedIndex === '' || !assessmentCriteria[selectedIndex]) {
+      return
+    }
+    
+    const criterion = assessmentCriteria[selectedIndex]
+    setFormData(prev => ({
+      ...prev,
+      type: criterion.name || prev.type,
+      weight_percentage: criterion.weight || prev.weight_percentage
     }))
   }
 
@@ -2106,6 +2161,9 @@ const Assessments = () => {
                     {assessmentComponents.length > 0 && (
                       <span className="ml-2 text-xs text-green-600">✓ Framework loaded</span>
                     )}
+                    {assessmentCriteria.length > 0 && (
+                      <span className="ml-2 text-xs text-green-600">✓ Criteria loaded</span>
+                    )}
                   </label>
                   <select
                     name="syllabus_id"
@@ -2126,7 +2184,7 @@ const Assessments = () => {
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
                     Link this assessment to an approved syllabus to connect it with ILOs and course outcomes. 
-                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework.
+                    Only approved syllabi are available for linking. Selecting a syllabus will load its assessment framework and criteria.
                   </p>
                   {assessmentComponents.length > 0 && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
@@ -2140,7 +2198,44 @@ const Assessments = () => {
                       </ul>
                     </div>
                   )}
+                  {assessmentCriteria.length > 0 && (
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                      <strong>Assessment Criteria from syllabus (Step 3):</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {assessmentCriteria.map((criterion, index) => (
+                          <li key={index}>
+                            {criterion.name}: {criterion.weight}%
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 font-medium">Select from assessment criteria below to auto-fill the assessment type and weight.</p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Assessment Criteria Selection */}
+                {assessmentCriteria.length > 0 && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Assessment Criteria (from Syllabus Step 3)
+                      <span className="ml-2 text-xs text-green-600">✓ Criteria loaded</span>
+                    </label>
+                    <select
+                      onChange={handleAssessmentCriteriaChange}
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white text-sm"
+                    >
+                      <option value="">Select from assessment criteria...</option>
+                      {assessmentCriteria.map((criterion, index) => (
+                        <option key={index} value={index}>
+                          {criterion.name} - {criterion.weight}%
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Selecting a criterion will automatically fill the assessment type (title) and weight percentage.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -2259,8 +2354,15 @@ const Assessments = () => {
                       {assessmentComponents.length > 0 && formData.weight_percentage && (
                         <span className="ml-2 text-xs text-gray-500">
                           {assessmentComponents.some(comp => comp.weight === parseFloat(formData.weight_percentage))
-                            ? '✓ Matches syllabus'
-                            : '⚠ Different from syllabus'}
+                            ? '✓ Matches syllabus framework'
+                            : '⚠ Different from syllabus framework'}
+                        </span>
+                      )}
+                      {assessmentCriteria.length > 0 && formData.weight_percentage && (
+                        <span className="ml-2 text-xs text-green-600">
+                          {assessmentCriteria.some(criterion => criterion.weight === parseFloat(formData.weight_percentage))
+                            ? '✓ Matches assessment criteria'
+                            : ''}
                         </span>
                       )}
                     </label>
@@ -2282,7 +2384,12 @@ const Assessments = () => {
                     />
                     {assessmentComponents.length > 0 && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Syllabus weights: {assessmentComponents.map(comp => `${comp.type} (${comp.weight}%)`).join(', ')}
+                        Syllabus framework weights: {assessmentComponents.map(comp => `${comp.type} (${comp.weight}%)`).join(', ')}
+                      </p>
+                    )}
+                    {assessmentCriteria.length > 0 && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Assessment criteria weights: {assessmentCriteria.map(criterion => `${criterion.name} (${criterion.weight}%)`).join(', ')}
                       </p>
                     )}
                   </div>
