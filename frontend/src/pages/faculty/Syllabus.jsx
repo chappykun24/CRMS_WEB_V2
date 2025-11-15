@@ -279,7 +279,24 @@ const Syllabus = () => {
 
       // Prepare JSON fields - they should already be objects from the wizard
       const assessmentFramework = wizardFormData.assessment_framework || null
-      const gradingPolicy = wizardFormData.grading_policy || null
+      
+      // Merge assessment_criteria into grading_policy if it exists
+      let gradingPolicy = wizardFormData.grading_policy || null
+      if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
+        // Ensure grading_policy is an object
+        if (!gradingPolicy || typeof gradingPolicy === 'string') {
+          try {
+            gradingPolicy = gradingPolicy ? JSON.parse(gradingPolicy) : {}
+          } catch (e) {
+            gradingPolicy = {}
+          }
+        }
+        // Add assessment_criteria to grading_policy
+        gradingPolicy = {
+          ...gradingPolicy,
+          assessment_criteria: wizardFormData.assessment_criteria
+        }
+      }
 
       const response = await fetch('/api/syllabi', {
         method: 'POST',
@@ -340,7 +357,24 @@ const Syllabus = () => {
 
       // Prepare JSON fields
       const assessmentFramework = wizardFormData.assessment_framework || null
-      const gradingPolicy = wizardFormData.grading_policy || null
+      
+      // Merge assessment_criteria into grading_policy if it exists
+      let gradingPolicy = wizardFormData.grading_policy || null
+      if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
+        // Ensure grading_policy is an object
+        if (!gradingPolicy || typeof gradingPolicy === 'string') {
+          try {
+            gradingPolicy = gradingPolicy ? JSON.parse(gradingPolicy) : {}
+          } catch (e) {
+            gradingPolicy = {}
+          }
+        }
+        // Add assessment_criteria to grading_policy
+        gradingPolicy = {
+          ...gradingPolicy,
+          assessment_criteria: wizardFormData.assessment_criteria
+        }
+      }
 
       const response = await fetch(`/api/syllabi/${editingSyllabus.syllabus_id}`, {
         method: 'PUT',

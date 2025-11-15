@@ -270,13 +270,31 @@ const SyllabusCreationWizard = ({
         }
       }
       
-      const assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria)
-        ? editingSyllabus.assessment_criteria
-        : (typeof editingSyllabus.assessment_criteria === 'object' && editingSyllabus.assessment_criteria
-          ? (Array.isArray(editingSyllabus.assessment_criteria) 
+      // Extract assessment_criteria - check both direct field and within grading_policy
+      let assessmentCriteria = []
+      if (editingSyllabus.assessment_criteria) {
+        // If assessment_criteria is directly on the syllabus
+        if (Array.isArray(editingSyllabus.assessment_criteria)) {
+          assessmentCriteria = editingSyllabus.assessment_criteria
+        } else if (typeof editingSyllabus.assessment_criteria === 'object') {
+          assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria) 
             ? editingSyllabus.assessment_criteria 
-            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ name, weight })))
-          : (editingSyllabus.assessment_criteria ? JSON.parse(editingSyllabus.assessment_criteria) : []))
+            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+        } else if (typeof editingSyllabus.assessment_criteria === 'string') {
+          try {
+            assessmentCriteria = JSON.parse(editingSyllabus.assessment_criteria)
+          } catch {
+            assessmentCriteria = []
+          }
+        }
+      } else if (gradingPolicy && gradingPolicy.assessment_criteria) {
+        // If assessment_criteria is stored within grading_policy
+        if (Array.isArray(gradingPolicy.assessment_criteria)) {
+          assessmentCriteria = gradingPolicy.assessment_criteria
+        } else if (typeof gradingPolicy.assessment_criteria === 'object') {
+          assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+        }
+      }
       
       setFormData(prev => ({
         ...prev,
