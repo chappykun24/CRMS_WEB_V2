@@ -381,10 +381,15 @@ router.get('/stats/:sectionCourseId', authenticateToken, async (req, res) => {
         COUNT(CASE WHEN al.status = 'absent' THEN 1 END) as absent_count,
         COUNT(CASE WHEN al.status = 'late' THEN 1 END) as late_count,
         COUNT(CASE WHEN al.status = 'excused' THEN 1 END) as excused_count,
-        ROUND(
-          (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::FLOAT / 
-           NULLIF(COUNT(al.attendance_id), 0)) * 100, 2
-        ) as attendance_percentage
+        CASE 
+          WHEN COUNT(al.attendance_id) > 0 THEN
+            ROUND(
+              (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::NUMERIC / 
+               COUNT(al.attendance_id)::NUMERIC) * 100, 
+              2
+            )
+          ELSE NULL
+        END as attendance_percentage
       FROM students s
       JOIN course_enrollments ce ON s.student_id = ce.student_id
       LEFT JOIN attendance_logs al ON ce.enrollment_id = al.enrollment_id ${dateFilter}
