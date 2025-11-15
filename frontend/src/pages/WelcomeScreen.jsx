@@ -236,16 +236,6 @@ const WelcomeScreen = () => {
               </div>
             </div>
           </div>
-          {/* Social Media Row */}
-          <div className="mt-6 flex justify-center gap-4">
-            <a href="#" aria-label="Facebook" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-facebook-f"></i></a>
-            <a href="#" aria-label="X" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-x-twitter"></i></a>
-            <a href="#" aria-label="YouTube" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-youtube"></i></a>
-            <a href="#" aria-label="Location" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-solid fa-location-dot"></i></a>
-            <a href="#" aria-label="LinkedIn" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-linkedin-in"></i></a>
-            <a href="#" aria-label="Instagram" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-instagram"></i></a>
-            <a href="#" aria-label="Spotify" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-spotify"></i></a>
-          </div>
         </div>
       </footer>
       </div>
