@@ -356,11 +356,16 @@ const SyllabusCreationWizard = ({
         if (!formData.course_rationale_paragraph2.trim()) newErrors.course_rationale_paragraph2 = 'Second paragraph is required'
         break
       case 3:
-        const assessmentTotal = Array.isArray(formData.assessment_criteria)
-          ? formData.assessment_criteria.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0)
-          : 0
-        if (assessmentTotal !== 100 && formData.assessment_criteria.length > 0) {
-          newErrors.assessment_criteria = `Total assessment weight must equal 100% (currently ${assessmentTotal}%)`
+        // Require at least one assessment criterion
+        if (!formData.assessment_criteria || formData.assessment_criteria.length === 0) {
+          newErrors.assessment_criteria = 'At least one assessment criterion is required'
+        } else {
+          const assessmentTotal = Array.isArray(formData.assessment_criteria)
+            ? formData.assessment_criteria.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0)
+            : 0
+          if (assessmentTotal !== 100) {
+            newErrors.assessment_criteria = `Total assessment weight must equal 100% (currently ${assessmentTotal}%)`
+          }
         }
         break
       case 4:
@@ -638,10 +643,17 @@ const SyllabusCreationWizard = ({
     }
     
     // Include ILOs in the form data and set title for backward compatibility
+    // Ensure assessment_criteria is properly formatted with numeric weights
+    const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
+      name: item.name.trim(),
+      weight: parseFloat(item.weight) || 0
+    }))
+    
     const syllabusData = {
       ...formData,
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
       description: formData.course_rationale_paragraph1 + '\n\n' + formData.course_rationale_paragraph2 || formData.description,
+      assessment_criteria: formattedAssessmentCriteria, // Explicitly include and format assessment criteria
       ilos: ilos // Include ILOs to be saved
     }
     
