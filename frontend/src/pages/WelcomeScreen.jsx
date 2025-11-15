@@ -41,39 +41,51 @@ const WelcomeScreen = () => {
   const features = [
     {
       icon: BookOpen,
-      title: 'Class Management',
-      description: 'Efficiently manage your classes, attendance, and assessments with intuitive tools.',
+      title: 'Course & Section Management',
+      description: 'Organize courses, sections, and class schedules with real-time updates. Manage course assignments, section configurations, and class rosters efficiently.',
       color: 'bg-blue-500'
     },
     {
       icon: Users,
-      title: 'Student Tracking',
-      description: 'Track student progress and performance with detailed analytics and insights.',
+      title: 'Student Enrollment & Records',
+      description: 'Maintain comprehensive student profiles, track enrollment status, and manage academic records throughout their educational journey with detailed tracking capabilities.',
       color: 'bg-green-500'
     },
     {
+      icon: Clock,
+      title: 'Attendance Tracking',
+      description: 'Digital attendance management with real-time recording, session history, and detailed analytics. Monitor student engagement and attendance patterns effectively.',
+      color: 'bg-orange-500'
+    },
+    {
       icon: BarChart3,
-      title: 'Analytics & Reports',
-      description: 'Generate comprehensive reports and insights for better decision making.',
+      title: 'Grade Management',
+      description: 'Streamlined grading system supporting various assessment types with automated calculations. Generate comprehensive grade reports and track student performance.',
       color: 'bg-purple-500'
+    },
+    {
+      icon: GraduationCap,
+      title: 'Syllabus Management',
+      description: 'Digital syllabus creation, review, and approval workflow ensuring compliance with academic standards. Link learning outcomes to program goals and assessments.',
+      color: 'bg-indigo-500'
+    },
+    {
+      icon: BarChart3,
+      title: 'Performance Analytics',
+      description: 'Advanced analytics and reporting tools providing insights into student performance, class statistics, and academic trends using data-driven clustering and visualization.',
+      color: 'bg-purple-500'
+    },
+    {
+      icon: BookOpen,
+      title: 'Program & Curriculum',
+      description: 'Manage academic programs, specializations, and curriculum structures with support for multiple year levels, course prerequisites, and program requirements.',
+      color: 'bg-blue-500'
     },
     {
       icon: Shield,
       title: 'Secure & Reliable',
-      description: 'Your data is protected with enterprise-grade security measures.',
+      description: 'Enterprise-grade security measures protect your data. Centralized storage ensures reliability and accessibility with role-based access control.',
       color: 'bg-red-500'
-    },
-    {
-      icon: Clock,
-      title: 'Real-time Updates',
-      description: 'Get instant notifications and real-time updates on all activities.',
-      color: 'bg-orange-500'
-    },
-    {
-      icon: GraduationCap,
-      title: 'Academic Excellence',
-      description: 'Support academic excellence with comprehensive record management.',
-      color: 'bg-indigo-500'
     }
   ]
 
@@ -175,95 +187,6 @@ const WelcomeScreen = () => {
          </div>
        </section>
 
-      {/* About System Section */}
-      <section className="py-20 bg-gradient-to-br from-primary-50 to-blue-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              About the Class Record Management System
-            </h2>
-            <div className="prose prose-lg max-w-none text-left text-gray-700 space-y-6">
-              <p className="text-lg leading-relaxed">
-                The Class Record Management System (CRMS) is a comprehensive digital platform designed to modernize 
-                and streamline academic operations at Batangas State University. This integrated system provides a 
-                centralized solution for managing all aspects of academic administration, from course planning to 
-                student performance tracking.
-              </p>
-              
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">What CRMS Offers:</h3>
-                <ul className="space-y-3 text-gray-700">
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Course & Section Management:</strong> Efficiently organize courses, sections, and class schedules with real-time updates and flexible configuration options.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Student Enrollment & Records:</strong> Maintain comprehensive student profiles, track enrollment status, and manage academic records throughout their educational journey.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Attendance Tracking:</strong> Digital attendance management with real-time recording, session history, and detailed attendance analytics for better student engagement monitoring.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Grade Management:</strong> Streamlined grading system supporting various assessment types, automated calculations, and comprehensive grade reporting.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Syllabus Management:</strong> Digital syllabus creation, review, and approval workflow ensuring compliance with academic standards and program outcomes.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Performance Analytics:</strong> Advanced analytics and reporting tools that provide insights into student performance, class statistics, and academic trends using data-driven clustering and visualization.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <span><strong>Program & Curriculum Management:</strong> Manage academic programs, specializations, and curriculum structures with support for multiple year levels and course prerequisites.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-md mt-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Key Benefits:</h3>
-                <div className="grid md:grid-cols-2 gap-4 text-gray-700">
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Reduced paperwork and manual record-keeping</span>
-                  </div>
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Real-time access to academic information</span>
-                  </div>
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Improved communication and collaboration</span>
-                  </div>
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Data-driven decision making</span>
-                  </div>
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Enhanced student engagement tracking</span>
-                  </div>
-                  <div className="flex items-start">
-                    <ArrowRight className="h-5 w-5 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>Secure and centralized data storage</span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-lg leading-relaxed mt-6">
-                CRMS is built with modern web technologies to ensure reliability, security, and ease of use. 
-                The system is designed to grow with the university's needs, supporting scalability and continuous 
-                improvement of academic processes.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
       <section className="py-20 bg-white relative">
         {/* Background Image */}
@@ -276,10 +199,13 @@ const WelcomeScreen = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Everything you need to manage your classes
+              Comprehensive Academic Management Platform
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Powerful features designed to streamline your academic workflow and enhance student success.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
+              The Class Record Management System (CRMS) is a centralized digital platform designed to modernize and streamline academic operations at Batangas State University.
+            </p>
+            <p className="text-lg text-gray-500 max-w-3xl mx-auto">
+              From course planning to student performance tracking, CRMS provides all the tools needed to manage academic administration efficiently and effectively.
             </p>
           </div>
 
