@@ -750,23 +750,7 @@ const SyllabusCreationWizard = ({
   const [editingMapping, setEditingMapping] = useState({ type: null, index: null })
   const [mappingTaskSelection, setMappingTaskSelection] = useState([])
   
-  const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return
-    
-    // Validate all steps before submitting
-    let allValid = true
-    for (let i = 1; i <= totalSteps; i++) {
-      if (!validateStep(i)) {
-        allValid = false
-        break
-      }
-    }
-    
-    if (!allValid) {
-      setCurrentStep(1)
-      return
-    }
-    
+  const prepareSyllabusData = (isDraft = false) => {
     // Include ILOs in the form data and set title for backward compatibility
     // Ensure assessment_criteria is properly formatted with numeric weights
     const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
@@ -786,15 +770,41 @@ const SyllabusCreationWizard = ({
       }))
     })
     
-    const syllabusData = {
+    return {
       ...formData,
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
       description: formData.course_rationale || formData.description,
       assessment_criteria: formattedAssessmentCriteria, // Explicitly include and format assessment criteria
       sub_assessments: formattedSubAssessments, // Include sub-assessments
-      ilos: ilos // Include ILOs to be saved
+      ilos: ilos, // Include ILOs to be saved
+      status: isDraft ? 'draft' : 'published' // Add status field
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    // Save as draft without validation
+    const syllabusData = prepareSyllabusData(true)
+    await onSave(syllabusData)
+  }
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return
+    
+    // Validate all steps before submitting
+    let allValid = true
+    for (let i = 1; i <= totalSteps; i++) {
+      if (!validateStep(i)) {
+        allValid = false
+        break
+      }
     }
     
+    if (!allValid) {
+      setCurrentStep(1)
+      return
+    }
+    
+    const syllabusData = prepareSyllabusData(false)
     await onSave(syllabusData)
   }
   
@@ -2563,9 +2573,22 @@ const SyllabusCreationWizard = ({
         <div className="px-4 py-2 border-t border-gray-200 flex items-center justify-between bg-gray-50">
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
             <span>Step {currentStep} of {totalSteps}</span>
+            {editingSyllabus && editingSyllabus.status === 'draft' && (
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">Draft</span>
+            )}
           </div>
           
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors flex items-center gap-1"
+              title="Save as draft without validation"
+            >
+              <DocumentTextIcon className="h-3 w-3" />
+              Save Draft
+            </button>
+            
             <button
               type="button"
               onClick={onClose}
