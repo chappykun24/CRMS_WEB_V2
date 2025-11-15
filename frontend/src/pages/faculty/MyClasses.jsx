@@ -1902,14 +1902,9 @@ const MyClasses = () => {
       {selectedClass && (
         <div 
           ref={sidebarRef}
-          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 ${
+          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right ${
             isAttendanceMode ? 'w-full' : 'w-80'
           }`}
-          style={{ 
-            animation: 'none',
-            transform: 'none',
-            transition: 'none'
-          }}
         >
           <div className="h-full flex flex-col">
             {/* Class Header */}
