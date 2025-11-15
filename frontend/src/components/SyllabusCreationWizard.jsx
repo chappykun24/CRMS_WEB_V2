@@ -55,6 +55,7 @@ const SyllabusCreationWizard = ({
       { name: 'Laboratory', hours: 3 }
     ],
     assessment_criteria: [],
+    sub_assessments: {}, // { criterionIndex: [{ abbreviation, name, weight_percentage }] }
     
     // Step 4: Teaching, Learning, and Assessment Strategies
     teaching_strategies: {
@@ -109,6 +110,12 @@ const SyllabusCreationWizard = ({
     name: '', 
     weight: '' 
   })
+  const [newSubAssessment, setNewSubAssessment] = useState({ 
+    abbreviation: '',
+    name: '', 
+    weight_percentage: '' 
+  })
+  const [editingSubAssessmentFor, setEditingSubAssessmentFor] = useState(null) // criterion index
   const [newContactHour, setNewContactHour] = useState({ 
     name: '', 
     hours: '' 
@@ -324,6 +331,8 @@ const SyllabusCreationWizard = ({
         // Contact Hours and Assessment
         contact_hours: contactHours,
         assessment_criteria: assessmentCriteria,
+        sub_assessments: editingSyllabus.sub_assessments || 
+          (gradingPolicy && gradingPolicy.sub_assessments ? gradingPolicy.sub_assessments : {}),
         
         // Teaching Strategies
         teaching_strategies: teachingStrategies,
@@ -698,11 +707,22 @@ const SyllabusCreationWizard = ({
       weight: parseFloat(item.weight) || 0
     }))
     
+    // Format sub-assessments for saving
+    const formattedSubAssessments = {}
+    Object.keys(formData.sub_assessments || {}).forEach(criterionIndex => {
+      formattedSubAssessments[criterionIndex] = formData.sub_assessments[criterionIndex].map(sub => ({
+        abbreviation: (sub.abbreviation || '').trim(),
+        name: sub.name.trim(),
+        weight_percentage: parseFloat(sub.weight_percentage) || 0
+      }))
+    })
+    
     const syllabusData = {
       ...formData,
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
       description: formData.course_rationale || formData.description,
       assessment_criteria: formattedAssessmentCriteria, // Explicitly include and format assessment criteria
+      sub_assessments: formattedSubAssessments, // Include sub-assessments
       ilos: ilos // Include ILOs to be saved
     }
     
@@ -1229,6 +1249,145 @@ const SyllabusCreationWizard = ({
                   </p>
                 )}
               </div>
+              
+              {/* Sub-Assessments Section */}
+              {formData.assessment_criteria.length > 0 && (
+                <div className="border-t pt-6 mt-6">
+                  <h4 className="text-md font-semibold text-gray-900 mb-4">Sub-Assessments</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Create sub-assessments for each assessment criterion. The total weight of sub-assessments must equal the parent criterion weight.
+                  </p>
+                  
+                  <div className="space-y-6">
+                    {formData.assessment_criteria.map((criterion, criterionIndex) => {
+                      const subAssessments = formData.sub_assessments[criterionIndex] || []
+                      const subTotal = subAssessments.reduce((sum, sub) => sum + (parseFloat(sub.weight_percentage) || 0), 0)
+                      const isExpanded = editingSubAssessmentFor === criterionIndex
+                      
+                      return (
+                        <div key={criterionIndex} className="border border-gray-300 rounded-lg p-4 bg-white">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h5 className="font-medium text-gray-900">
+                                {criterion.abbreviation && `${criterion.abbreviation} - `}{criterion.name}
+                              </h5>
+                              <p className="text-sm text-gray-600">Parent Weight: {criterion.weight}%</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditingSubAssessmentFor(isExpanded ? null : criterionIndex)}
+                              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
+                            >
+                              {isExpanded ? 'Hide' : 'Add'} Sub-Assessments
+                              {subAssessments.length > 0 && (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                  {subAssessments.length}
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                          
+                          {subAssessments.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                              {subAssessments.map((sub, subIndex) => (
+                                <div key={subIndex} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                                  <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+                                    <span className="font-medium text-gray-700">
+                                      {sub.abbreviation && `${sub.abbreviation} - `}{sub.name}
+                                    </span>
+                                    <span className="text-gray-600">Weight: {sub.weight_percentage}%</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = { ...formData.sub_assessments }
+                                      updated[criterionIndex] = updated[criterionIndex].filter((_, i) => i !== subIndex)
+                                      if (updated[criterionIndex].length === 0) delete updated[criterionIndex]
+                                      setFormData(prev => ({ ...prev, sub_assessments: updated }))
+                                    }}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                    title="Remove"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <span className="text-sm font-medium text-gray-700">Sub-total:</span>
+                                <span className={`text-sm font-bold ${subTotal === parseFloat(criterion.weight) ? 'text-green-600' : 'text-red-600'}`}>
+                                  {subTotal}% / {criterion.weight}%
+                                </span>
+                              </div>
+                              {subTotal !== parseFloat(criterion.weight) && (
+                                <p className="text-xs text-red-600">
+                                  {subTotal < parseFloat(criterion.weight)
+                                    ? `Need ${parseFloat(criterion.weight) - subTotal}% more to match parent weight`
+                                    : `Exceeds parent weight by ${subTotal - parseFloat(criterion.weight)}%`}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
+                          {isExpanded && (
+                            <div className="mt-4 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <input
+                                  type="text"
+                                  value={newSubAssessment.abbreviation}
+                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
+                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="Abbreviation (e.g., QZ1)"
+                                  maxLength="10"
+                                />
+                                <input
+                                  type="text"
+                                  value={newSubAssessment.name}
+                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
+                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="Sub-assessment Name"
+                                />
+                                <input
+                                  type="number"
+                                  value={newSubAssessment.weight_percentage}
+                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, weight_percentage: e.target.value }))}
+                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="Weight %"
+                                  min="0"
+                                  max={criterion.weight}
+                                  step="0.1"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (newSubAssessment.name && newSubAssessment.weight_percentage) {
+                                      const updated = { ...formData.sub_assessments }
+                                      if (!updated[criterionIndex]) updated[criterionIndex] = []
+                                      updated[criterionIndex] = [...updated[criterionIndex], {
+                                        abbreviation: newSubAssessment.abbreviation.trim(),
+                                        name: newSubAssessment.name.trim(),
+                                        weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0
+                                      }]
+                                      setFormData(prev => ({ ...prev, sub_assessments: updated }))
+                                      setNewSubAssessment({ abbreviation: '', name: '', weight_percentage: '' })
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                                >
+                                  <PlusIcon className="h-5 w-5" />
+                                  Add
+                                </button>
+                              </div>
+                              <p className="mt-2 text-xs text-gray-500">
+                                Remaining weight: {Math.max(0, parseFloat(criterion.weight) - subTotal).toFixed(1)}%
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )
@@ -1412,12 +1571,167 @@ const SyllabusCreationWizard = ({
               </div>
             )}
             
+            {/* Assessment Task Mapping to ILOs Section */}
+            {ilos.length > 0 && (
+              <div className="mt-6 border-t pt-6">
+                <h4 className="text-md font-semibold text-gray-900 mb-4">Assessment Task Mapping to ILOs</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Map assessment tasks (from your sub-assessments and assessment criteria) to ILOs to show how each learning outcome is assessed.
+                </p>
+                
+                {/* Get all available assessment tasks from sub-assessments and assessment criteria */}
+                {(() => {
+                  const allAssessmentTasks = []
+                  // Add assessment criteria abbreviations/names as tasks
+                  formData.assessment_criteria.forEach((criterion, idx) => {
+                    if (criterion.abbreviation || criterion.name) {
+                      allAssessmentTasks.push({
+                        code: criterion.abbreviation || criterion.name.substring(0, 2).toUpperCase(),
+                        name: criterion.name,
+                        type: 'criterion'
+                      })
+                    }
+                    // Add sub-assessments as tasks
+                    const subAssessments = formData.sub_assessments[idx] || []
+                    subAssessments.forEach(sub => {
+                      if (sub.abbreviation || sub.name) {
+                        allAssessmentTasks.push({
+                          code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                          name: sub.name,
+                          type: 'sub-assessment'
+                        })
+                      }
+                    })
+                  })
+                  
+                  return (
+                    <div className="space-y-4">
+                      {ilos.map((ilo, iloIndex) => {
+                        // Get assessment tasks for this ILO from all mappings
+                        const iloTasks = new Set()
+                        ilo.so_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.iga_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.cdio_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        ilo.sdg_mappings?.forEach(m => {
+                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                        })
+                        
+                        return (
+                          <div key={iloIndex} className="border border-gray-300 rounded-lg p-4 bg-white">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900">{ilo.code}</span>
+                                <span className="text-sm text-gray-600">- {ilo.description}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openILOModal(ilo)}
+                                className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                              >
+                                Map Assessment Tasks
+                              </button>
+                            </div>
+                            
+                            {iloTasks.size > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {Array.from(iloTasks).map(taskCode => {
+                                  const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode }
+                                  return (
+                                    <span
+                                      key={taskCode}
+                                      className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs"
+                                    >
+                                      {task.code} {task.name && `(${task.name})`}
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">No assessment tasks mapped yet. Click "Map Assessment Tasks" to add mappings.</p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+            
+            {/* ILO to Student Outcomes Mapping Section */}
+            {ilos.length > 0 && (
+              <div className="mt-6 border-t pt-6">
+                <h4 className="text-md font-semibold text-gray-900 mb-4">ILO Mapping to Student Outcomes</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Map ILOs to Student Outcomes (SO) to demonstrate alignment with program outcomes. Click "Edit ILO" to add or modify mappings.
+                </p>
+                
+                <div className="space-y-4">
+                  {ilos.map((ilo, index) => (
+                    <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold text-gray-900">{ilo.code}</span>
+                            <span className="text-sm text-gray-600">{ilo.description}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openILOModal(ilo)}
+                          className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Edit Mappings
+                        </button>
+                      </div>
+                      
+                      {ilo.so_mappings && ilo.so_mappings.length > 0 ? (
+                        <div className="space-y-2">
+                          {ilo.so_mappings.map((mapping, mapIndex) => {
+                            const so = soReferences.find(r => r.so_id === mapping.so_id)
+                            return (
+                              <div key={mapIndex} className="p-2 bg-blue-50 rounded border border-blue-200">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-blue-900 text-sm">
+                                    {so?.so_code || mapping.so_id}
+                                  </span>
+                                  {mapping.assessment_tasks && mapping.assessment_tasks.length > 0 && (
+                                    <>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="text-xs text-gray-600">
+                                        Assessment Tasks: {mapping.assessment_tasks.join(', ')}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                {so?.description && (
+                                  <p className="text-xs text-gray-600 mt-1">{so.description}</p>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">No Student Outcomes mapped yet. Click "Edit Mappings" to add mappings.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> ILOs will be saved when you create/update the syllabus. 
-                You can add mappings to Student Outcomes (SO), Institutional Graduate Attributes (IGA), 
-                CDIO Skills, and SDG Skills when editing an ILO. 
-                After the syllabus is created, you can also manage mappings in the ILO Mapping section.
+                Click "Edit ILO" or "Map Assessment Tasks" on any ILO to add mappings to Student Outcomes (SO), 
+                Institutional Graduate Attributes (IGA), CDIO Skills, and SDG Skills. 
+                You can also manage mappings in the ILO Mapping section after the syllabus is created.
               </p>
             </div>
           </div>

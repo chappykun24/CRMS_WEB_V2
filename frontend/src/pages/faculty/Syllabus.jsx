@@ -291,10 +291,13 @@ const Syllabus = () => {
             gradingPolicy = {}
           }
         }
-        // Add assessment_criteria to grading_policy
+        // Add assessment_criteria and sub_assessments to grading_policy
         gradingPolicy = {
           ...gradingPolicy,
-          assessment_criteria: wizardFormData.assessment_criteria
+          assessment_criteria: wizardFormData.assessment_criteria,
+          ...(wizardFormData.sub_assessments && Object.keys(wizardFormData.sub_assessments).length > 0 && {
+            sub_assessments: wizardFormData.sub_assessments
+          })
         }
       }
 
@@ -369,10 +372,13 @@ const Syllabus = () => {
             gradingPolicy = {}
           }
         }
-        // Add assessment_criteria to grading_policy
+        // Add assessment_criteria and sub_assessments to grading_policy
         gradingPolicy = {
           ...gradingPolicy,
-          assessment_criteria: wizardFormData.assessment_criteria
+          assessment_criteria: wizardFormData.assessment_criteria,
+          ...(wizardFormData.sub_assessments && Object.keys(wizardFormData.sub_assessments).length > 0 && {
+            sub_assessments: wizardFormData.sub_assessments
+          })
         }
       }
 
