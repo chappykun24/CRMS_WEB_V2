@@ -22,6 +22,7 @@ const MyClasses = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState(null)
   const [initialLoad, setInitialLoad] = useState(true)
+  const [activeTermId, setActiveTermId] = useState(null)
   
   // Force loading to be visible for testing
   const [forceLoading, setForceLoading] = useState(true)
@@ -1877,16 +1878,51 @@ const MyClasses = () => {
     }
   }, [])
 
-  // Filter classes based on search query
+  // Fetch active term
+  useEffect(() => {
+    const fetchActiveTerm = async () => {
+      try {
+        const response = await fetch('/api/school-terms')
+        if (response.ok) {
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [MYCLASSES] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          } else {
+            console.warn('⚠️ [MYCLASSES] No active term found')
+          }
+        }
+      } catch (error) {
+        console.error('❌ [MYCLASSES] Error fetching active term:', error)
+      }
+    }
+    fetchActiveTerm()
+  }, [])
+
+  // Filter classes based on search query and active term
   const filteredClasses = useMemo(() => {
-    if (!searchQuery.trim()) return classes
+    // Only show classes from active term - if no active term is set yet, show empty array
+    // (This prevents showing all classes while active term is being fetched)
+    let filtered = []
+    if (activeTermId !== null) {
+      filtered = classes.filter(cls => cls.term_id === activeTermId)
+      console.log(`🔍 [MYCLASSES] Filtered by active term (${activeTermId}): ${filtered.length} of ${classes.length} classes`)
+    } else if (activeTermId === null && classes.length > 0) {
+      // If we have classes but no active term found, show empty (waiting for active term to be determined)
+      console.log('⏳ [MYCLASSES] Waiting for active term to be determined...')
+      return []
+    }
+    
+    // Then filter by search query if provided
+    if (!searchQuery.trim()) return filtered
     const query = searchQuery.toLowerCase()
-    return classes.filter(cls => 
+    return filtered.filter(cls => 
       cls.course_title?.toLowerCase().includes(query) ||
       cls.course_code?.toLowerCase().includes(query) ||
       cls.section_code?.toLowerCase().includes(query)
     )
-  }, [classes, searchQuery])
+  }, [classes, searchQuery, activeTermId])
 
   useEffect(() => {
     console.log('🔍 [FACULTY] useEffect triggered - facultyId:', facultyId, 'loading:', loading, 'initialLoad:', initialLoad)
