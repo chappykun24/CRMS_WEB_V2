@@ -153,6 +153,18 @@ const Grades = () => {
     }
   }
 
+  // Validate selected class is from active term
+  useEffect(() => {
+    if (selectedClass && activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [GRADES] Selected class is not from active term, clearing selection')
+      setSelectedClass(null)
+      setStudents([])
+      setStudentGrades({})
+      setAssessments([])
+      setAssessmentScores({})
+    }
+  }, [activeTermId, selectedClass])
+
   // Load section-specific data ONLY when class is selected (lazy loading)
   useEffect(() => {
     if (!selectedClass) {
@@ -161,6 +173,12 @@ const Grades = () => {
       setStudentGrades({})
       setAssessments([])
       setAssessmentScores({})
+      return
+    }
+    
+    // Ensure selected class is from active term
+    if (activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [GRADES] Selected class is not from active term, skipping data load')
       return
     }
     

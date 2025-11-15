@@ -247,12 +247,29 @@ const Assessments = () => {
       loadClasses()
   }, [user, location.state])
 
+  // Validate selected class is from active term
+  useEffect(() => {
+    if (selectedClass && activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [ASSESSMENTS] Selected class is not from active term, clearing selection')
+      setSelectedClass(null)
+      setAssessments([])
+      setSyllabi([])
+      setCachedStudentsList(null)
+    }
+  }, [activeTermId, selectedClass])
+
   // Cache students list when class is selected (for fast assessment switching)
   useEffect(() => {
     if (!selectedClass) {
       // Clear cache when no class is selected
       setCachedStudentsList(null)
       cachedClassIdRef.current = null
+      return
+    }
+    
+    // Ensure selected class is from active term
+    if (activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [ASSESSMENTS] Selected class is not from active term, skipping student load')
       return
     }
     
@@ -536,6 +553,13 @@ const Assessments = () => {
   // Load assessments ONLY when class is selected (lazy loading)
   useEffect(() => {
     if (!selectedClass) {
+      return
+    }
+    
+    // Ensure selected class is from active term
+    if (activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [ASSESSMENTS] Selected class is not from active term, skipping assessment load')
+      setAssessments([])
       return
     }
     
@@ -2040,9 +2064,9 @@ const Assessments = () => {
                                 </div>
                               ))}
                             </div>
-                          ) : classes.length > 0 ? (
+                          ) : filteredClasses.length > 0 ? (
                             <div className="p-4 space-y-2">
-                              {classes.map((cls) => (
+                              {filteredClasses.map((cls) => (
                                 <div
                                   key={cls.section_course_id}
                                   onClick={() => setSelectedClass(cls)}

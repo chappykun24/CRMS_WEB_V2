@@ -190,11 +190,28 @@ const Syllabus = () => {
     loadSchoolTerms()
   }, [])
 
+  // Validate selected class is from active term
+  useEffect(() => {
+    if (selectedClass && activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [SYLLABUS] Selected class is not from active term, clearing selection')
+      setSelectedClass(null)
+      setSyllabi([])
+      setSelectedSyllabusForILO(null)
+    }
+  }, [activeTermId, selectedClass])
+
   // Load syllabi when class is selected
   useEffect(() => {
     if (!selectedClass) {
       setSyllabi([])
       setSelectedSyllabusForILO(null) // Reset selected syllabus when class changes
+      return
+    }
+    
+    // Ensure selected class is from active term
+    if (activeTermId !== null && selectedClass.term_id !== activeTermId) {
+      console.warn('⚠️ [SYLLABUS] Selected class is not from active term, skipping syllabi load')
+      setSyllabi([])
       return
     }
     
