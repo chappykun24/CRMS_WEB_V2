@@ -1196,21 +1196,43 @@ const MyClasses = () => {
       }
       
       // Set session details for editing
+      // Format the date to YYYY-MM-DD format for the date input
+      let formattedDate = session.session_date
+      if (formattedDate) {
+        // If it's a date string, ensure it's in YYYY-MM-DD format
+        if (typeof formattedDate === 'string') {
+          // Handle ISO date strings or date strings with time
+          const dateObj = new Date(formattedDate)
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toISOString().split('T')[0]
+          } else {
+            // If it's already in YYYY-MM-DD format, use it as is
+            formattedDate = formattedDate.split('T')[0]
+          }
+        } else if (formattedDate instanceof Date) {
+          formattedDate = formattedDate.toISOString().split('T')[0]
+        }
+      } else {
+        formattedDate = new Date().toISOString().split('T')[0]
+      }
+      
       setSessionDetails({
         title: session.title || 'Untitled Session',
-        session_date: session.session_date || new Date().toISOString().split('T')[0],
+        session_date: formattedDate,
         session_type: session.session_type || 'Lecture',
         meeting_type: session.meeting_type || 'Face-to-Face'
       })
       
       // Convert attendance records to the format expected by attendance mode
+      // Use the formatted date to ensure consistency
       const newAttendanceRecords = {}
       attendanceRecordsData.forEach(record => {
         if (record.enrollment_id) {
           if (!newAttendanceRecords[record.enrollment_id]) {
             newAttendanceRecords[record.enrollment_id] = {}
           }
-          newAttendanceRecords[record.enrollment_id][session.session_date] = {
+          // Use formattedDate to ensure the date key matches the calendar input
+          newAttendanceRecords[record.enrollment_id][formattedDate] = {
             status: record.status || 'present',
             remarks: record.remarks || ''
           }
