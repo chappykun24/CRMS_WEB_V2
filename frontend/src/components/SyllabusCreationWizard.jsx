@@ -752,7 +752,7 @@ const SyllabusCreationWizard = ({
                   required
                   readOnly
                   disabled
-                  className={`w-full px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed ${
+                  className={`w-full px-2.5 py-1 text-xs border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_title ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., Analytics Techniques and Tools"
@@ -773,7 +773,7 @@ const SyllabusCreationWizard = ({
                   required
                   readOnly
                   disabled
-                  className={`w-full px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed ${
+                  className={`w-full px-2.5 py-1 text-xs border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_code ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., BAT 404"
@@ -791,7 +791,7 @@ const SyllabusCreationWizard = ({
                   name="course_category"
                   value={formData.course_category}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Professional Elective"
                 />
               </div>
@@ -805,7 +805,7 @@ const SyllabusCreationWizard = ({
                   name="semester_year"
                   value={formData.semester_year}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Second Semester & A.Y 2024-2025"
                 />
               </div>
@@ -819,7 +819,7 @@ const SyllabusCreationWizard = ({
                   name="credit_hours"
                   value={formData.credit_hours}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 5 hours"
                 />
               </div>
@@ -833,7 +833,7 @@ const SyllabusCreationWizard = ({
                   name="prerequisites"
                   value={formData.prerequisites}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., BAT 402"
                 />
               </div>
@@ -847,7 +847,7 @@ const SyllabusCreationWizard = ({
                   name="id_number"
                   value={formData.id_number}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 55609"
                 />
               </div>
@@ -861,7 +861,7 @@ const SyllabusCreationWizard = ({
                   name="reference_cmo"
                   value={formData.reference_cmo}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., CMO 25, Series 2015"
                 />
               </div>
@@ -875,7 +875,7 @@ const SyllabusCreationWizard = ({
                   name="date_prepared"
                   value={formData.date_prepared}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
@@ -888,7 +888,7 @@ const SyllabusCreationWizard = ({
                   name="revision_no"
                   value={formData.revision_no}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="0"
                 />
               </div>
@@ -902,7 +902,7 @@ const SyllabusCreationWizard = ({
                   name="revision_date"
                   value={formData.revision_date}
                   onChange={handleInputChange}
-                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
@@ -915,7 +915,7 @@ const SyllabusCreationWizard = ({
                   value={formData.term_id}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  className={`w-full px-2.5 py-1 text-xs border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                     errors.term_id ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
@@ -941,7 +941,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.name}
                     onChange={(e) => handleNestedChange('course_instructor.name', e.target.value)}
-                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Daryl Tiquio"
                   />
                 </div>
@@ -954,7 +954,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.qualification}
                     onChange={(e) => handleNestedChange('course_instructor.qualification', e.target.value)}
-                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Master in Business Analytics (30 units/ ongoing)"
                   />
                 </div>
@@ -967,7 +967,7 @@ const SyllabusCreationWizard = ({
                     type="email"
                     value={formData.course_instructor.contact_email}
                     onChange={(e) => handleNestedChange('course_instructor.contact_email', e.target.value)}
-                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., daryl.m.tiquio@g.batstate-u.edu.ph"
                   />
                 </div>
@@ -980,7 +980,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.contact_phone}
                     onChange={(e) => handleNestedChange('course_instructor.contact_phone', e.target.value)}
-                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., 0908-877-8671"
                   />
                 </div>
@@ -1006,8 +1006,8 @@ const SyllabusCreationWizard = ({
                 value={formData.course_rationale}
                 onChange={handleInputChange}
                 required
-                rows={12}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                rows={8}
+                className={`w-full px-2.5 py-1.5 text-xs border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                   errors.course_rationale ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="The course equips students with essential skills for implementing advanced analytics techniques, addressing the growing need for data-driven decision-making in various industries. This course provides a comprehensive introduction to analytics techniques and tools, with an emphasis on their practical applications in solving real-world challenges..."
@@ -1079,7 +1079,7 @@ const SyllabusCreationWizard = ({
                             updated[index] = { ...updated[index], name: e.target.value }
                             setFormData(prev => ({ ...prev, contact_hours: updated }))
                           }}
-                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Type (e.g., Lecture, Laboratory)"
                         />
                         <input
@@ -1090,7 +1090,7 @@ const SyllabusCreationWizard = ({
                             updated[index] = { ...updated[index], hours: parseInt(e.target.value) || 0 }
                             setFormData(prev => ({ ...prev, contact_hours: updated }))
                           }}
-                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Hours"
                           min="0"
                         />
@@ -1119,7 +1119,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={newContactHour.name}
                     onChange={(e) => setNewContactHour(prev => ({ ...prev, name: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Type (e.g., Lecture)"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddContactHour()}
                   />
@@ -1127,7 +1127,7 @@ const SyllabusCreationWizard = ({
                     type="number"
                     value={newContactHour.hours}
                     onChange={(e) => setNewContactHour(prev => ({ ...prev, hours: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Hours"
                     min="0"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddContactHour()}
@@ -1135,7 +1135,7 @@ const SyllabusCreationWizard = ({
                   <button
                     type="button"
                     onClick={handleAddContactHour}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add
@@ -1157,7 +1157,7 @@ const SyllabusCreationWizard = ({
                           type="text"
                           value={item.abbreviation || ''}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
-                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Abbreviation (e.g., QZ, ME)"
                           maxLength="10"
                         />
@@ -1165,14 +1165,14 @@ const SyllabusCreationWizard = ({
                           type="text"
                           value={item.name}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
-                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                         />
                         <input
                           type="number"
                           value={item.weight}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'weight', e.target.value)}
-                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Weight %"
                           min="0"
                           max="100"
@@ -1197,7 +1197,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={newAssessmentCriteria.abbreviation}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, abbreviation: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Abbreviation (e.g., QZ, ME)"
                     maxLength="10"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
@@ -1206,7 +1206,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={newAssessmentCriteria.name}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
@@ -1214,7 +1214,7 @@ const SyllabusCreationWizard = ({
                     type="number"
                     value={newAssessmentCriteria.weight}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, weight: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Weight %"
                     min="0"
                     max="100"
@@ -1223,7 +1223,7 @@ const SyllabusCreationWizard = ({
                   <button
                     type="button"
                     onClick={handleAddAssessmentCriteria}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add
@@ -1335,7 +1335,7 @@ const SyllabusCreationWizard = ({
                                   type="text"
                                   value={newSubAssessment.abbreviation}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
-                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Abbreviation (e.g., QZ1)"
                                   maxLength="10"
                                 />
@@ -1343,14 +1343,14 @@ const SyllabusCreationWizard = ({
                                   type="text"
                                   value={newSubAssessment.name}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
-                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Sub-assessment Name"
                                 />
                                 <input
                                   type="number"
                                   value={newSubAssessment.weight_percentage}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Weight %"
                                   min="0"
                                   max={criterion.weight}
@@ -1371,7 +1371,7 @@ const SyllabusCreationWizard = ({
                                       setNewSubAssessment({ abbreviation: '', name: '', weight_percentage: '' })
                                     }
                                   }}
-                                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                                  className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
                                 >
                                   <PlusIcon className="h-5 w-5" />
                                   Add
@@ -1407,8 +1407,8 @@ const SyllabusCreationWizard = ({
               <textarea
                 value={formData.teaching_strategies.general_description}
                 onChange={(e) => handleNestedChange('teaching_strategies.general_description', e.target.value)}
-                rows={8}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                rows={6}
+                className={`w-full px-2.5 py-1.5 text-xs border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                   errors.teaching_strategies ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="The course uses a blended learning approach, combining online and face-to-face sessions..."
@@ -1433,7 +1433,7 @@ const SyllabusCreationWizard = ({
               <button
                 type="button"
                 onClick={() => openILOModal()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                  <PlusIcon className="h-4 w-4" />
                  Add ILO
@@ -1773,13 +1773,13 @@ const SyllabusCreationWizard = ({
                   value={newResource}
                   onChange={(e) => setNewResource(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddResource())}
-                  className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Enter reference (e.g., Author, Title. Publisher. Retrieved date, from URL)"
                 />
                 <button
                   type="button"
                   onClick={handleAddResource}
-                  className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-1.5"
+                  className="px-3 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-1.5"
                 >
                   <PlusIcon className="h-4 w-4" />
                   Add
@@ -1817,7 +1817,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].grade = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Grade (e.g., 1.00)"
                       />
                       <input
@@ -1828,7 +1828,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].range = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Range (e.g., 98-100)"
                       />
                       <input
@@ -1839,7 +1839,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].description = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Description (e.g., Excellent)"
                       />
                     </div>
@@ -1859,27 +1859,27 @@ const SyllabusCreationWizard = ({
                   type="text"
                   value={newGradeItem.grade}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, grade: e.target.value }))}
-                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Grade"
                 />
                 <input
                   type="text"
                   value={newGradeItem.range}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, range: e.target.value }))}
-                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Range"
                 />
                 <input
                   type="text"
                   value={newGradeItem.description}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, description: e.target.value }))}
-                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Description"
                 />
                 <button
                   type="button"
                   onClick={handleAddGradeItem}
-                  className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700"
+                  className="px-2.5 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                 >
                   <PlusIcon className="h-4 w-4" />
                 </button>
@@ -1893,8 +1893,8 @@ const SyllabusCreationWizard = ({
               <textarea
                 value={formData.grading_policy.remedial_note}
                 onChange={(e) => handleNestedChange('grading_policy.remedial_note', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                rows={2}
+                className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Students who got a computed grade of 70-74 will be given an appropriate remedial activity..."
               />
               <p className="mt-1 text-xs text-gray-500">Note about remedial activities for students with grades 70-74</p>
@@ -1966,7 +1966,7 @@ const SyllabusCreationWizard = ({
         </div>
         
         {/* Content */}
-        <div className="px-4 py-4 max-h-[60vh] overflow-y-auto">
+        <div className="px-3 py-3 max-h-[60vh] overflow-y-auto">
           {renderStepContent()}
         </div>
         
@@ -2069,7 +2069,7 @@ const SyllabusCreationWizard = ({
                      type="text"
                      value={iloFormData.code}
                      onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                     className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                     className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., ILO1, ILO2"
                     required
                   />
@@ -2084,8 +2084,8 @@ const SyllabusCreationWizard = ({
                    <textarea
                      value={iloFormData.description}
                      onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
-                     rows={4}
-                     className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                     rows={3}
+                     className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Example: 'Students will be able to analyze and design database systems using SQL and NoSQL technologies to solve real-world data management problems.'"
                     required
                   />
@@ -2225,7 +2225,7 @@ const SyllabusCreationWizard = ({
                             e.target.value = ''
                           }
                         }}
-                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                         className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="">Add SO mapping...</option>
                         {soReferences.filter(so => !iloFormData.so_mappings.some(m => m.so_id === so.so_id)).map(so => (
@@ -2336,7 +2336,7 @@ const SyllabusCreationWizard = ({
                             e.target.value = ''
                           }
                         }}
-                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                         className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="">Add IGA mapping...</option>
                         {igaReferences.filter(iga => !iloFormData.iga_mappings.some(m => m.iga_id === iga.iga_id)).map(iga => (
@@ -2447,7 +2447,7 @@ const SyllabusCreationWizard = ({
                             e.target.value = ''
                           }
                         }}
-                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                         className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="">Add CDIO mapping...</option>
                         {cdioReferences.filter(cdio => !iloFormData.cdio_mappings.some(m => m.cdio_id === cdio.cdio_id)).map(cdio => (
@@ -2558,7 +2558,7 @@ const SyllabusCreationWizard = ({
                             e.target.value = ''
                           }
                         }}
-                        className="w-full text-xs px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                         className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       >
                         <option value="">Add SDG mapping...</option>
                         {sdgReferences.filter(sdg => !iloFormData.sdg_mappings.some(m => m.sdg_id === sdg.sdg_id)).map(sdg => (
@@ -2583,7 +2583,7 @@ const SyllabusCreationWizard = ({
                       setShowILOModal(false)
                       resetILOForm()
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="flex-1 px-3 py-1.5 text-xs border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                   >
                     Cancel
                   </button>
@@ -2591,7 +2591,7 @@ const SyllabusCreationWizard = ({
                     type="button"
                     onClick={handleSaveILO}
                     disabled={!iloFormData.code || !iloFormData.description}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {editingILO ? 'Update ILO' : 'Add ILO'}
                   </button>
