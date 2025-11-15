@@ -25,24 +25,86 @@ const SyllabusCreationWizard = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
-    title: '',
+    // Step 1: Course Information
+    course_title: '',
+    course_code: '',
+    course_category: '',
+    semester_year: '',
+    course_instructor: {
+      name: '',
+      qualification: '',
+      contact_email: '',
+      contact_phone: ''
+    },
+    period_of_study: '',
+    credit_hours: '',
+    prerequisites: '',
+    id_number: '',
+    reference_cmo: '',
+    date_prepared: new Date().toISOString().split('T')[0],
+    revision_no: '0',
+    revision_date: '',
     version: '1.0',
     term_id: '',
-    description: '',
-    course_objectives: '',
-    prerequisites: '',
-    course_outline: '',
+    
+    // Step 2: Course Rationale and Description
+    course_rationale_paragraph1: '',
+    course_rationale_paragraph2: '',
+    
+    // Step 3: Contact Hours and Assessment Criteria
+    contact_hours: {
+      lecture: 2,
+      laboratory: 3
+    },
+    assessment_criteria: {
+      problem_sets: 20,
+      midterm_exam: 20,
+      final_project: 30,
+      laboratory_activities: 30
+    },
+    
+    // Step 4: Teaching, Learning, and Assessment Strategies
+    teaching_strategies: {
+      general_description: '',
+      assessment_components: [],
+      technology_integration: {
+        python: false,
+        r: false,
+        knime: false,
+        excel: false,
+        flask: false
+      }
+    },
+    
+    // Step 5: ILOs and Assessment Distribution
+    // (ILOs handled separately in state)
+    
+    // Step 6: Books and References
     learning_resources: [],
+    
+    // Step 7: Grading System
     grading_policy: {
       scale: [
-        { grade: 'A', range: '90-100', description: 'Excellent' },
-        { grade: 'B', range: '80-89', description: 'Good' },
-        { grade: 'C', range: '70-79', description: 'Satisfactory' },
-        { grade: 'D', range: '60-69', description: 'Passing' },
-        { grade: 'F', range: '0-59', description: 'Failing' }
+        { grade: '1.00', range: '98-100', description: 'Excellent' },
+        { grade: '1.25', range: '94-97', description: 'Superior' },
+        { grade: '1.5', range: '90-93', description: 'Very Good' },
+        { grade: '1.75', range: '88-89', description: 'Good' },
+        { grade: '2.00', range: '85-87', description: 'Meritorious' },
+        { grade: '2.25', range: '83-84', description: 'Very Satisfactory' },
+        { grade: '2.50', range: '80-82', description: 'Satisfactory' },
+        { grade: '2.75', range: '78-79', description: 'Fairly Satisfactory' },
+        { grade: '3.00', range: '75-77', description: 'Passing' },
+        { grade: '5.00', range: 'Below 70', description: 'Failure' },
+        { grade: 'INC', range: '', description: 'Incomplete' }
       ],
-      components: []
+      remedial_note: 'Students who got a computed grade of 70-74 will be given an appropriate remedial activity in which the final grade should be either passing (3.0) or failure (5.0). No rounding off of grades shall be allowed.'
     },
+    
+    // Legacy fields for backward compatibility
+    title: '',
+    description: '',
+    course_objectives: '',
+    course_outline: '',
     assessment_framework: {
       components: []
     }
@@ -58,15 +120,16 @@ const SyllabusCreationWizard = ({
   })
   const [errors, setErrors] = useState({})
   
-  const totalSteps = 6
+  const totalSteps = 7
   
   const steps = [
-    { number: 1, title: 'Basic Information', icon: DocumentTextIcon },
-    { number: 2, title: 'Course Details', icon: BookOpenIcon },
-    { number: 3, title: 'Grading Policy', icon: ChartBarIcon },
-    { number: 4, title: 'Assessment Framework', icon: ClipboardDocumentListIcon },
-    { number: 5, title: 'Learning Resources', icon: ListBulletIcon },
-    { number: 6, title: 'ILOs & Mapping', icon: AcademicCapIcon }
+    { number: 1, title: 'Course Information', icon: DocumentTextIcon },
+    { number: 2, title: 'Course Rationale & Description', icon: BookOpenIcon },
+    { number: 3, title: 'Contact Hours & Assessment', icon: ClipboardDocumentListIcon },
+    { number: 4, title: 'Teaching & Learning Strategies', icon: AcademicCapIcon },
+    { number: 5, title: 'ILOs & Assessment Distribution', icon: ChartBarIcon },
+    { number: 6, title: 'Books & References', icon: ListBulletIcon },
+    { number: 7, title: 'Grading System', icon: ChartBarIcon }
   ]
   
   // ILOs state
@@ -177,45 +240,86 @@ const SyllabusCreationWizard = ({
   
   useEffect(() => {
     if (editingSyllabus) {
-      setFormData({
-        title: editingSyllabus.title || '',
+      const gradingPolicy = typeof editingSyllabus.grading_policy === 'object' 
+        ? editingSyllabus.grading_policy 
+        : (editingSyllabus.grading_policy ? JSON.parse(editingSyllabus.grading_policy) : {
+            scale: formData.grading_policy.scale,
+            remedial_note: formData.grading_policy.remedial_note
+          })
+      
+      const teachingStrategies = typeof editingSyllabus.teaching_strategies === 'object'
+        ? editingSyllabus.teaching_strategies
+        : (editingSyllabus.teaching_strategies ? JSON.parse(editingSyllabus.teaching_strategies) : formData.teaching_strategies)
+      
+      const contactHours = typeof editingSyllabus.contact_hours === 'object'
+        ? editingSyllabus.contact_hours
+        : (editingSyllabus.contact_hours ? JSON.parse(editingSyllabus.contact_hours) : formData.contact_hours)
+      
+      const assessmentCriteria = typeof editingSyllabus.assessment_criteria === 'object'
+        ? editingSyllabus.assessment_criteria
+        : (editingSyllabus.assessment_criteria ? JSON.parse(editingSyllabus.assessment_criteria) : formData.assessment_criteria)
+      
+      setFormData(prev => ({
+        ...prev,
+        // Course Information
+        course_title: editingSyllabus.course_title || editingSyllabus.title || '',
+        course_code: editingSyllabus.course_code || selectedClass?.course_code || '',
+        course_category: editingSyllabus.course_category || '',
+        semester_year: editingSyllabus.semester_year || '',
+        course_instructor: editingSyllabus.course_instructor || prev.course_instructor,
+        period_of_study: editingSyllabus.period_of_study || '',
+        credit_hours: editingSyllabus.credit_hours || '',
+        prerequisites: editingSyllabus.prerequisites || '',
+        id_number: editingSyllabus.id_number || '',
+        reference_cmo: editingSyllabus.reference_cmo || '',
+        date_prepared: editingSyllabus.date_prepared || prev.date_prepared,
+        revision_no: editingSyllabus.revision_no || '0',
+        revision_date: editingSyllabus.revision_date || '',
         version: editingSyllabus.version || '1.0',
         term_id: editingSyllabus.term_id || '',
-        description: editingSyllabus.description || '',
-        course_objectives: editingSyllabus.course_objectives || '',
-        prerequisites: editingSyllabus.prerequisites || '',
-        course_outline: editingSyllabus.course_outline || '',
+        
+        // Course Rationale
+        course_rationale_paragraph1: editingSyllabus.course_rationale_paragraph1 || '',
+        course_rationale_paragraph2: editingSyllabus.course_rationale_paragraph2 || '',
+        
+        // Contact Hours and Assessment
+        contact_hours: contactHours,
+        assessment_criteria: assessmentCriteria,
+        
+        // Teaching Strategies
+        teaching_strategies: teachingStrategies,
+        
+        // Learning Resources
         learning_resources: Array.isArray(editingSyllabus.learning_resources) 
           ? editingSyllabus.learning_resources 
           : [],
-        grading_policy: typeof editingSyllabus.grading_policy === 'object' 
-          ? editingSyllabus.grading_policy 
-          : (editingSyllabus.grading_policy ? JSON.parse(editingSyllabus.grading_policy) : {
-              scale: [
-                { grade: 'A', range: '90-100', description: 'Excellent' },
-                { grade: 'B', range: '80-89', description: 'Good' },
-                { grade: 'C', range: '70-79', description: 'Satisfactory' },
-                { grade: 'D', range: '60-69', description: 'Passing' },
-                { grade: 'F', range: '0-59', description: 'Failing' }
-              ],
-              components: []
-            }),
+        
+        // Grading Policy
+        grading_policy: gradingPolicy,
+        
+        // Legacy fields
+        title: editingSyllabus.title || '',
+        description: editingSyllabus.description || '',
+        course_objectives: editingSyllabus.course_objectives || '',
+        course_outline: editingSyllabus.course_outline || '',
         assessment_framework: typeof editingSyllabus.assessment_framework === 'object'
           ? editingSyllabus.assessment_framework
           : (editingSyllabus.assessment_framework ? JSON.parse(editingSyllabus.assessment_framework) : {
               components: []
             })
-      })
+      }))
       
       // Load ILOs if editing
       if (editingSyllabus.syllabus_id) {
         loadILOs(editingSyllabus.syllabus_id)
       }
     } else if (selectedClass) {
-      // Set default term_id from selected class
+      // Set default values from selected class
       setFormData(prev => ({
         ...prev,
         term_id: selectedClass.term_id || '',
+        course_title: selectedClass.course_title || '',
+        course_code: selectedClass.course_code || '',
         title: selectedClass.course_title ? `${selectedClass.course_title} Syllabus` : ''
       }))
     }
@@ -240,24 +344,36 @@ const SyllabusCreationWizard = ({
     
     switch(step) {
       case 1:
-        if (!formData.title.trim()) newErrors.title = 'Title is required'
+        if (!formData.course_title.trim()) newErrors.course_title = 'Course title is required'
+        if (!formData.course_code.trim()) newErrors.course_code = 'Course code is required'
         if (!formData.term_id) newErrors.term_id = 'School term is required'
         break
       case 2:
-        if (!formData.description.trim()) newErrors.description = 'Description is required'
-        if (!formData.course_objectives.trim()) newErrors.course_objectives = 'Course objectives are required'
+        if (!formData.course_rationale_paragraph1.trim()) newErrors.course_rationale_paragraph1 = 'First paragraph is required'
+        if (!formData.course_rationale_paragraph2.trim()) newErrors.course_rationale_paragraph2 = 'Second paragraph is required'
         break
       case 3:
-        const totalWeight = formData.grading_policy.components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
-        if (totalWeight !== 100 && formData.grading_policy.components.length > 0) {
-          newErrors.grading_policy = `Total weight must equal 100% (currently ${totalWeight}%)`
+        const assessmentTotal = (formData.assessment_criteria.problem_sets || 0) + 
+                                (formData.assessment_criteria.midterm_exam || 0) + 
+                                (formData.assessment_criteria.final_project || 0) + 
+                                (formData.assessment_criteria.laboratory_activities || 0)
+        if (assessmentTotal !== 100) {
+          newErrors.assessment_criteria = `Total assessment weight must equal 100% (currently ${assessmentTotal}%)`
         }
         break
       case 4:
-        const assessmentTotal = formData.assessment_framework.components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
-        if (assessmentTotal !== 100 && formData.assessment_framework.components.length > 0) {
-          newErrors.assessment_framework = `Total assessment weight must equal 100% (currently ${assessmentTotal}%)`
+        if (!formData.teaching_strategies.general_description.trim()) {
+          newErrors.teaching_strategies = 'General description is required'
         }
+        break
+      case 5:
+        // ILOs validation can be added here if needed
+        break
+      case 6:
+        // References are optional
+        break
+      case 7:
+        // Grading system validation
         break
     }
     
@@ -519,9 +635,11 @@ const SyllabusCreationWizard = ({
       return
     }
     
-    // Include ILOs in the form data
+    // Include ILOs in the form data and set title for backward compatibility
     const syllabusData = {
       ...formData,
+      title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
+      description: formData.course_rationale_paragraph1 + '\n\n' + formData.course_rationale_paragraph2 || formData.description,
       ilos: ilos // Include ILOs to be saved
     }
     
@@ -534,42 +652,183 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-              <p className="text-sm text-gray-600 mb-6">Provide the basic details for your syllabus</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Syllabus Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., Introduction to Computer Science"
-              />
-              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Information</h3>
+              <p className="text-sm text-gray-600 mb-6">Provide the course details and instructor information</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Version
+                  Course Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="version"
-                  value={formData.version}
+                  name="course_title"
+                  value={formData.course_title}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                    errors.course_title ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="e.g., Analytics Techniques and Tools"
+                />
+                {errors.course_title && <p className="mt-1 text-sm text-red-600">{errors.course_title}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="course_code"
+                  value={formData.course_code}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                    errors.course_code ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="e.g., BAT 404"
+                />
+                {errors.course_code && <p className="mt-1 text-sm text-red-600">{errors.course_code}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Category
+                </label>
+                <input
+                  type="text"
+                  name="course_category"
+                  value={formData.course_category}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="1.0"
+                  placeholder="e.g., Professional Elective"
                 />
-                <p className="mt-1 text-xs text-gray-500">Syllabus version number</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Semester/Year
+                </label>
+                <input
+                  type="text"
+                  name="semester_year"
+                  value={formData.semester_year}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., Second Semester & A.Y 2024-2025"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Hours
+                </label>
+                <input
+                  type="text"
+                  name="credit_hours"
+                  value={formData.credit_hours}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., 5 hours"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prerequisite(s)
+                </label>
+                <input
+                  type="text"
+                  name="prerequisites"
+                  value={formData.prerequisites}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., BAT 402"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ID No.
+                </label>
+                <input
+                  type="text"
+                  name="id_number"
+                  value={formData.id_number}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., 55609"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reference CMO
+                </label>
+                <input
+                  type="text"
+                  name="reference_cmo"
+                  value={formData.reference_cmo}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., CMO 25, Series 2015"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date Prepared
+                </label>
+                <input
+                  type="date"
+                  name="date_prepared"
+                  value={formData.date_prepared}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Revision No.
+                </label>
+                <input
+                  type="text"
+                  name="revision_no"
+                  value={formData.revision_no}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="0"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Revision Date
+                </label>
+                <input
+                  type="date"
+                  name="revision_date"
+                  value={formData.revision_date}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Period of Study
+                </label>
+                <input
+                  type="text"
+                  name="period_of_study"
+                  value={formData.period_of_study}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="e.g., Second Semester & A.Y 2024-2025"
+                />
               </div>
               
               <div>
@@ -596,18 +855,61 @@ const SyllabusCreationWizard = ({
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Brief description of the course..."
-              />
+            <div className="border-t pt-6">
+              <h4 className="text-md font-semibold text-gray-900 mb-4">Course Instructor</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Instructor Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.course_instructor.name}
+                    onChange={(e) => handleNestedChange('course_instructor.name', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., Daryl Tiquio"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Qualification
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.course_instructor.qualification}
+                    onChange={(e) => handleNestedChange('course_instructor.qualification', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., Master in Business Analytics (30 units/ ongoing)"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.course_instructor.contact_email}
+                    onChange={(e) => handleNestedChange('course_instructor.contact_email', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., daryl.m.tiquio@g.batstate-u.edu.ph"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.course_instructor.contact_phone}
+                    onChange={(e) => handleNestedChange('course_instructor.contact_phone', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="e.g., 0908-877-8671"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )
@@ -616,304 +918,214 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Details</h3>
-              <p className="text-sm text-gray-600 mb-6">Define the course objectives, outline, and prerequisites</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Rationale and Description</h3>
+              <p className="text-sm text-gray-600 mb-6">Provide a comprehensive description of the course rationale and objectives</p>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Course Objectives <span className="text-red-500">*</span>
+                First Paragraph <span className="text-red-500">*</span>
               </label>
               <textarea
-                name="course_objectives"
-                value={formData.course_objectives}
+                name="course_rationale_paragraph1"
+                value={formData.course_rationale_paragraph1}
                 onChange={handleInputChange}
                 required
                 rows={6}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
-                  errors.course_objectives ? 'border-red-500' : 'border-gray-300'
+                  errors.course_rationale_paragraph1 ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="List the learning objectives for this course. You can use bullet points or numbered lists."
+                placeholder="The course equips students with essential skills for implementing advanced analytics techniques, addressing the growing need for data-driven decision-making in various industries..."
               />
-              {errors.course_objectives && <p className="mt-1 text-sm text-red-600">{errors.course_objectives}</p>}
-              <p className="mt-1 text-xs text-gray-500">Describe what students will learn in this course</p>
+              {errors.course_rationale_paragraph1 && <p className="mt-1 text-sm text-red-600">{errors.course_rationale_paragraph1}</p>}
+              <p className="mt-1 text-xs text-gray-500">Describe the course rationale, its importance, and how it supports educational goals</p>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Course Outline
+                Second Paragraph <span className="text-red-500">*</span>
               </label>
               <textarea
-                name="course_outline"
-                value={formData.course_outline}
+                name="course_rationale_paragraph2"
+                value={formData.course_rationale_paragraph2}
                 onChange={handleInputChange}
+                required
                 rows={8}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Week 1: Introduction&#10;Week 2: Fundamentals&#10;..."
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  errors.course_rationale_paragraph2 ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="This course provides a comprehensive introduction to analytics techniques and tools, with an emphasis on their practical applications in solving real-world challenges..."
               />
-              <p className="mt-1 text-xs text-gray-500">Provide a detailed course outline or schedule</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prerequisites
-              </label>
-              <textarea
-                name="prerequisites"
-                value={formData.prerequisites}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="List any prerequisites or recommended prior knowledge"
-              />
+              {errors.course_rationale_paragraph2 && <p className="mt-1 text-sm text-red-600">{errors.course_rationale_paragraph2}</p>}
+              <p className="mt-1 text-xs text-gray-500">Describe the course content, topics covered, tools used, and learning outcomes</p>
             </div>
           </div>
         )
         
       case 3:
-        const gradingTotal = formData.grading_policy.components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
+        const assessmentTotal = (formData.assessment_criteria.problem_sets || 0) + 
+                                (formData.assessment_criteria.midterm_exam || 0) + 
+                                (formData.assessment_criteria.final_project || 0) + 
+                                (formData.assessment_criteria.laboratory_activities || 0)
         
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Grading Policy</h3>
-              <p className="text-sm text-gray-600 mb-6">Define the grading scale and assessment component weights</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Hours and Assessment Criteria</h3>
+              <p className="text-sm text-gray-600 mb-6">Define the contact hours and assessment breakdown</p>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Grade Scale
-              </label>
-              <div className="space-y-2">
-                {formData.grading_policy.scale.map((item, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1 grid grid-cols-3 gap-3">
-                      <input
-                        type="text"
-                        value={item.grade}
-                        onChange={(e) => {
-                          const newScale = [...formData.grading_policy.scale]
-                          newScale[index].grade = e.target.value
-                          handleNestedChange('grading_policy.scale', newScale)
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Grade"
-                      />
-                      <input
-                        type="text"
-                        value={item.range}
-                        onChange={(e) => {
-                          const newScale = [...formData.grading_policy.scale]
-                          newScale[index].range = e.target.value
-                          handleNestedChange('grading_policy.scale', newScale)
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Range (e.g., 90-100)"
-                      />
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => {
-                          const newScale = [...formData.grading_policy.scale]
-                          newScale[index].description = e.target.value
-                          handleNestedChange('grading_policy.scale', newScale)
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Description"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGradeItem(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lecture Hours
+                </label>
+                <input
+                  type="number"
+                  value={formData.contact_hours.lecture}
+                  onChange={(e) => handleNestedChange('contact_hours.lecture', parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  min="0"
+                />
               </div>
               
-              <div className="mt-3 flex gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Laboratory Hours
+                </label>
                 <input
-                  type="text"
-                  value={newGradeItem.grade}
-                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, grade: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Grade"
+                  type="number"
+                  value={formData.contact_hours.laboratory}
+                  onChange={(e) => handleNestedChange('contact_hours.laboratory', parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  min="0"
                 />
-                <input
-                  type="text"
-                  value={newGradeItem.range}
-                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, range: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Range"
-                />
-                <input
-                  type="text"
-                  value={newGradeItem.description}
-                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, description: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Description"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddGradeItem}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  <PlusIcon className="h-5 w-5" />
-                </button>
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Assessment Components Weight
-                {formData.grading_policy.components.length > 0 && (
-                  <span className={`ml-2 text-sm ${gradingTotal === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                    (Total: {gradingTotal}%)
-                  </span>
-                )}
-              </label>
+            <div className="border-t pt-6">
+              <h4 className="text-md font-semibold text-gray-900 mb-4">Criteria for Assessment</h4>
+              <p className="text-sm text-gray-600 mb-4">Total must equal 100%</p>
               
-              {formData.grading_policy.components.length === 0 ? (
-                <p className="text-sm text-gray-500 mb-3">No components added yet. Add components in the Assessment Framework step.</p>
-              ) : (
-                <div className="space-y-2">
-                  {formData.grading_policy.components.map((comp, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-900">{comp.type}: {comp.weight}%</span>
-                    </div>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Problem Sets (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.assessment_criteria.problem_sets}
+                    onChange={(e) => handleNestedChange('assessment_criteria.problem_sets', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    min="0"
+                    max="100"
+                  />
                 </div>
-              )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Midterm Exam (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.assessment_criteria.midterm_exam}
+                    onChange={(e) => handleNestedChange('assessment_criteria.midterm_exam', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Final Project (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.assessment_criteria.final_project}
+                    onChange={(e) => handleNestedChange('assessment_criteria.final_project', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Laboratory Activities (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.assessment_criteria.laboratory_activities}
+                    onChange={(e) => handleNestedChange('assessment_criteria.laboratory_activities', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              </div>
               
-              {errors.grading_policy && (
-                <p className="mt-2 text-sm text-red-600">{errors.grading_policy}</p>
-              )}
-              
-              <p className="mt-2 text-xs text-gray-500">
-                Assessment components are defined in the next step. Total weight must equal 100%.
-              </p>
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Total:</span>
+                  <span className={`text-lg font-bold ${assessmentTotal === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                    {assessmentTotal}%
+                  </span>
+                </div>
+                {errors.assessment_criteria && (
+                  <p className="mt-2 text-sm text-red-600">{errors.assessment_criteria}</p>
+                )}
+              </div>
             </div>
           </div>
         )
         
       case 4:
-        const assessmentTotal = formData.assessment_framework.components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
-        
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Framework</h3>
-              <p className="text-sm text-gray-600 mb-6">Define the assessment components and their weights</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Teaching, Learning, and Assessment Strategies</h3>
+              <p className="text-sm text-gray-600 mb-6">Describe the teaching approach, assessment components, and technology integration</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Assessment Components
-                {formData.assessment_framework.components.length > 0 && (
-                  <span className={`ml-2 text-sm ${assessmentTotal === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                    (Total: {assessmentTotal}%)
-                  </span>
-                )}
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                General Description <span className="text-red-500">*</span>
               </label>
-              
-              <div className="space-y-3">
-                {formData.assessment_framework.components.map((comp, index) => (
-                  <div key={index} className="p-4 border border-gray-300 rounded-lg">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-medium text-gray-900">{comp.type}</span>
-                          <span className="text-sm text-gray-600">({comp.count} {comp.count === 1 ? 'item' : 'items'})</span>
-                          <span className="text-sm font-medium text-gray-700">{comp.weight}%</span>
-                        </div>
-                        {comp.description && (
-                          <p className="text-sm text-gray-600">{comp.description}</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAssessmentComponent(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                  <select
-                    value={newAssessmentComponent.type}
-                    onChange={(e) => setNewAssessmentComponent(prev => ({ ...prev, type: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="">Type</option>
-                    <option value="Quiz">Quiz</option>
-                    <option value="Exam">Exam</option>
-                    <option value="Project">Project</option>
-                    <option value="Assignment">Assignment</option>
-                    <option value="Lab">Lab</option>
-                    <option value="Presentation">Presentation</option>
-                    <option value="Participation">Participation</option>
-                  </select>
-                  
-                  <input
-                    type="number"
-                    value={newAssessmentComponent.weight}
-                    onChange={(e) => setNewAssessmentComponent(prev => ({ ...prev, weight: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Weight %"
-                    min="0"
-                    max="100"
-                  />
-                  
-                  <input
-                    type="number"
-                    value={newAssessmentComponent.count}
-                    onChange={(e) => setNewAssessmentComponent(prev => ({ ...prev, count: parseInt(e.target.value) || 1 }))}
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Count"
-                    min="1"
-                  />
-                  
-                  <button
-                    type="button"
-                    onClick={handleAddAssessmentComponent}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                    Add
-                  </button>
-                </div>
-                
-                <input
-                  type="text"
-                  value={newAssessmentComponent.description}
-                  onChange={(e) => setNewAssessmentComponent(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Description (optional)"
-                />
-              </div>
-              
-              {errors.assessment_framework && (
-                <p className="mt-2 text-sm text-red-600">{errors.assessment_framework}</p>
-              )}
-              
-              <p className="mt-2 text-xs text-gray-500">
-                Add assessment components and their weights. Total must equal 100%.
-              </p>
+              <textarea
+                value={formData.teaching_strategies.general_description}
+                onChange={(e) => handleNestedChange('teaching_strategies.general_description', e.target.value)}
+                rows={8}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  errors.teaching_strategies ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="The course uses a blended learning approach, combining online and face-to-face sessions..."
+              />
+              {errors.teaching_strategies && <p className="mt-1 text-sm text-red-600">{errors.teaching_strategies}</p>}
+              <p className="mt-1 text-xs text-gray-500">Describe the teaching methodology, learning approach, and assessment strategy</p>
             </div>
             
-            {/* Sync with grading policy */}
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Assessment components added here will be synced with the grading policy. 
-                Make sure the total weight equals 100%.
-              </p>
+            <div className="border-t pt-6">
+              <h4 className="text-md font-semibold text-gray-900 mb-4">Technology Integration</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { key: 'python', label: 'Python (Jupyter Notebook, pandas, scikit-learn)' },
+                  { key: 'r', label: 'R (RStudio, dplyr, caret)' },
+                  { key: 'knime', label: 'KNIME Analytics Platform' },
+                  { key: 'excel', label: 'Microsoft Excel' },
+                  { key: 'flask', label: 'Flask (Python Microframework)' }
+                ].map(tech => (
+                  <label key={tech.key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.teaching_strategies.technology_integration[tech.key]}
+                      onChange={(e) => handleNestedChange(`teaching_strategies.technology_integration.${tech.key}`, e.target.checked)}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-sm text-gray-700">{tech.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         )
@@ -922,63 +1134,7 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Resources</h3>
-              <p className="text-sm text-gray-600 mb-6">Add learning resources such as textbooks, websites, and materials</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Resources
-              </label>
-              
-              {formData.learning_resources.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {formData.learning_resources.map((resource, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-900">{resource}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveResource(index)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newResource}
-                  onChange={(e) => setNewResource(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddResource())}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="Enter resource (e.g., Textbook name, URL, etc.)"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddResource}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-                >
-                  <PlusIcon className="h-5 w-5" />
-                  Add
-                </button>
-              </div>
-              
-              <p className="mt-2 text-xs text-gray-500">
-                Press Enter or click Add to add a resource. You can add textbooks, websites, articles, etc.
-              </p>
-            </div>
-          </div>
-        )
-        
-      case 6:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Intended Learning Outcomes (ILOs)</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
               <p className="text-sm text-gray-600 mb-6">
                 Define the learning outcomes for this course and optionally map them to educational goals (SO, IGA, CDIO, SDG).
               </p>
@@ -1133,6 +1289,171 @@ const SyllabusCreationWizard = ({
                 CDIO Skills, and SDG Skills when editing an ILO. 
                 After the syllabus is created, you can also manage mappings in the ILO Mapping section.
               </p>
+            </div>
+          </div>
+        )
+        
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Books and Other References</h3>
+              <p className="text-sm text-gray-600 mb-6">Add learning resources such as textbooks, websites, and materials</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                References
+              </label>
+              
+              {formData.learning_resources.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {formData.learning_resources.map((resource, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-900">{resource}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveResource(index)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newResource}
+                  onChange={(e) => setNewResource(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddResource())}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="Enter reference (e.g., Author, Title. Publisher. Retrieved date, from URL)"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddResource}
+                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  Add
+                </button>
+              </div>
+              
+              <p className="mt-2 text-xs text-gray-500">
+                Press Enter or click Add to add a reference. You can add textbooks, websites, articles, etc.
+              </p>
+            </div>
+          </div>
+        )
+        
+      case 7:
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Policies - Grading System</h3>
+              <p className="text-sm text-gray-600 mb-6">Define the grading scale for the course</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Grade Scale
+              </label>
+              <div className="space-y-2">
+                {formData.grading_policy.scale.map((item, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1 grid grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        value={item.grade}
+                        onChange={(e) => {
+                          const newScale = [...formData.grading_policy.scale]
+                          newScale[index].grade = e.target.value
+                          handleNestedChange('grading_policy.scale', newScale)
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Grade (e.g., 1.00)"
+                      />
+                      <input
+                        type="text"
+                        value={item.range}
+                        onChange={(e) => {
+                          const newScale = [...formData.grading_policy.scale]
+                          newScale[index].range = e.target.value
+                          handleNestedChange('grading_policy.scale', newScale)
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Range (e.g., 98-100)"
+                      />
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => {
+                          const newScale = [...formData.grading_policy.scale]
+                          newScale[index].description = e.target.value
+                          handleNestedChange('grading_policy.scale', newScale)
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Description (e.g., Excellent)"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveGradeItem(index)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="text"
+                  value={newGradeItem.grade}
+                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, grade: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="Grade"
+                />
+                <input
+                  type="text"
+                  value={newGradeItem.range}
+                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, range: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="Range"
+                />
+                <input
+                  type="text"
+                  value={newGradeItem.description}
+                  onChange={(e) => setNewGradeItem(prev => ({ ...prev, description: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder="Description"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGradeItem}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="border-t pt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remedial Activity Note
+              </label>
+              <textarea
+                value={formData.grading_policy.remedial_note}
+                onChange={(e) => handleNestedChange('grading_policy.remedial_note', e.target.value)}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="Students who got a computed grade of 70-74 will be given an appropriate remedial activity..."
+              />
+              <p className="mt-1 text-xs text-gray-500">Note about remedial activities for students with grades 70-74</p>
             </div>
           </div>
         )
