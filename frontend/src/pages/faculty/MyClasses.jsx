@@ -2254,9 +2254,9 @@ const MyClasses = () => {
                 )}
               </div>
             </div>
-            </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Edit Modal */}
       {showEditModal && editingClass && (
