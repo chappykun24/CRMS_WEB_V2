@@ -55,6 +55,7 @@ const SyllabusCreationWizard = ({
       { name: 'Laboratory', hours: 3 }
     ],
     assessment_criteria: [],
+    abbreviations: '',
     
     // Step 4: Teaching, Learning, and Assessment Strategies
     teaching_strategies: {
@@ -323,6 +324,8 @@ const SyllabusCreationWizard = ({
         // Contact Hours and Assessment
         contact_hours: contactHours,
         assessment_criteria: assessmentCriteria,
+        abbreviations: editingSyllabus.abbreviations || 
+          (gradingPolicy && gradingPolicy.abbreviations ? gradingPolicy.abbreviations : ''),
         
         // Teaching Strategies
         teaching_strategies: teachingStrategies,
@@ -728,12 +731,15 @@ const SyllabusCreationWizard = ({
                   value={formData.course_title}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  readOnly
+                  disabled
+                  className={`w-full px-4 py-3 border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_title ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., Analytics Techniques and Tools"
                 />
                 {errors.course_title && <p className="mt-1 text-sm text-red-600">{errors.course_title}</p>}
+                <p className="mt-1 text-xs text-gray-500">Predefined from selected class</p>
               </div>
               
               <div>
@@ -746,12 +752,15 @@ const SyllabusCreationWizard = ({
                   value={formData.course_code}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  readOnly
+                  disabled
+                  className={`w-full px-4 py-3 border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_code ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., BAT 404"
                 />
                 {errors.course_code && <p className="mt-1 text-sm text-red-600">{errors.course_code}</p>}
+                <p className="mt-1 text-xs text-gray-500">Predefined from selected class</p>
               </div>
               
               <div>
@@ -1118,6 +1127,33 @@ const SyllabusCreationWizard = ({
             <div className="border-t pt-6">
               <h4 className="text-md font-semibold text-gray-900 mb-4">Criteria for Assessment</h4>
               <p className="text-sm text-gray-600 mb-4">Total must equal 100%</p>
+              
+              {/* Abbreviation Textbox */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Abbreviations
+                </label>
+                <textarea
+                  name="abbreviations"
+                  value={formData.abbreviations || ''}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  placeholder={`Enter abbreviations and their meanings, e.g.
+QZ = Quiz
+ME = Midterm Exam
+FE = Final Exam
+FP = Final Project
+P = Presentation
+LA = Lab Activity
+A = Assignment
+PS = Problem Sets
+HW = Homework`}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Enter abbreviations used in assessment criteria for reference
+                </p>
+              </div>
               
               {formData.assessment_criteria.length > 0 && (
                 <div className="space-y-3 mb-4">
