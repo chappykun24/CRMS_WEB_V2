@@ -1872,6 +1872,39 @@ const Syllabus = () => {
                   </div>
                 </div>
 
+                {/* Draft Section - Show Edit button for draft syllabi 
+                    Drafts are identified by status='draft' or both review_status and approval_status being 'pending' */}
+                {(viewingSyllabus.status === 'draft' || 
+                  (viewingSyllabus.review_status === 'pending' && 
+                   viewingSyllabus.approval_status === 'pending')) && (
+                  <div className="pt-4 border-t border-gray-300">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Draft Syllabus:</strong> This syllabus is saved as a draft. You can continue editing it or submit it for review when ready.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          openEditModal(viewingSyllabus)
+                          setShowViewModal(false)
+                        }}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                        Edit Syllabus
+                      </button>
+                      <button
+                        onClick={() => handleSubmitForReview(viewingSyllabus)}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <ArrowPathIcon className="h-4 w-4" />
+                        Submit for Review
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Revision Requested Section - Show Edit/Resubmit buttons when revision is requested */}
                 {viewingSyllabus.review_status === 'needs_revision' && (
                   <div className="pt-4 border-t border-gray-300">

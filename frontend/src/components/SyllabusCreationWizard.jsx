@@ -143,11 +143,6 @@ const SyllabusCreationWizard = ({
   const [newILO, setNewILO] = useState({
     code: '',
     description: '',
-    category: '',
-    level: '',
-    weight_percentage: '',
-    assessment_methods: '',
-    learning_activities: '',
     selectedSO: '',
     selectedIGA: '',
     selectedCDIO: '',
@@ -650,7 +645,40 @@ const SyllabusCreationWizard = ({
     }
   }
   
+  // Helper function to check if there's unsaved form data
+  const hasUnsavedChanges = () => {
+    return formData.course_title || 
+           formData.course_code || 
+           formData.course_rationale || 
+           formData.contact_hours?.length > 0 ||
+           formData.assessment_criteria?.length > 0 ||
+           formData.ilos?.length > 0 ||
+           formData.learning_resources?.length > 0 ||
+           Object.keys(formData.grading_policy || {}).length > 0
+  }
+
+  // Handler for closing the wizard with validation
+  const handleClose = () => {
+    if (hasUnsavedChanges()) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Are you sure you want to close? Your progress will be saved if you click "Save Draft" before leaving.'
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+    onClose()
+  }
+
   const handlePrevious = () => {
+    if (hasUnsavedChanges() && currentStep > 1) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Are you sure you want to go back? Your progress will be saved if you click "Save Draft" before leaving.'
+      )
+      if (!confirmed) {
+        return
+      }
+    }
     setCurrentStep(prev => Math.max(prev - 1, 1))
   }
   
@@ -669,7 +697,7 @@ const SyllabusCreationWizard = ({
       cdio_mappings: [],
       sdg_mappings: []
     })
-    setEditingILO(null)
+    // editingILO removed - no edit functionality
   }
   
   const openILOModal = (ilo = null) => {
@@ -699,6 +727,8 @@ const SyllabusCreationWizard = ({
   }
   
   const handleSaveILO = () => {
+    // This function is no longer used - ILOs are added via inline form
+    // Keeping for backward compatibility but should not be called
     const newILO = {
       ...iloFormData,
       assessment_methods: iloFormData.assessment_methods 
@@ -710,14 +740,7 @@ const SyllabusCreationWizard = ({
       weight_percentage: iloFormData.weight_percentage ? parseFloat(iloFormData.weight_percentage) : null
     }
     
-    if (editingILO) {
-      setIlos(prev => prev.map(ilo => 
-        ilo.ilo_id === editingILO.ilo_id ? { ...editingILO, ...newILO } : ilo
-      ))
-    } else {
-      setIlos(prev => [...prev, { ...newILO, ilo_id: `temp_${Date.now()}` }])
-    }
-    
+    setIlos(prev => [...prev, { ...newILO, ilo_id: `temp_${Date.now()}` }])
     setShowILOModal(false)
     resetILOForm()
   }
@@ -1579,7 +1602,7 @@ const SyllabusCreationWizard = ({
               {showILOForm || ilos.length === 0 ? (
                 <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 mb-3">
                   <div className="space-y-2">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <input
                         type="text"
                         value={newILO.code}
@@ -1588,105 +1611,13 @@ const SyllabusCreationWizard = ({
                         placeholder="ILO Code (e.g., ILO1)"
                         maxLength="20"
                       />
-                      <input
-                        type="text"
-                        value={newILO.category}
-                        onChange={(e) => setNewILO(prev => ({ ...prev, category: e.target.value }))}
-                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Category (optional)"
+                      <textarea
+                        value={newILO.description}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="ILO Description (e.g., Students will be able to...)"
+                        rows="2"
                       />
-                      <input
-                        type="text"
-                        value={newILO.level}
-                        onChange={(e) => setNewILO(prev => ({ ...prev, level: e.target.value }))}
-                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Level (optional)"
-                      />
-                    </div>
-                    <textarea
-                      value={newILO.description}
-                      onChange={(e) => setNewILO(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                      placeholder="ILO Description (e.g., Students will be able to...)"
-                      rows="2"
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                      <input
-                        type="number"
-                        value={newILO.weight_percentage}
-                        onChange={(e) => setNewILO(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Weight %"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                      />
-                      <input
-                        type="text"
-                        value={newILO.assessment_methods}
-                        onChange={(e) => setNewILO(prev => ({ ...prev, assessment_methods: e.target.value }))}
-                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Assessment Methods (optional)"
-                      />
-                      <input
-                        type="text"
-                        value={newILO.learning_activities}
-                        onChange={(e) => setNewILO(prev => ({ ...prev, learning_activities: e.target.value }))}
-                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="Learning Activities (optional)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (newILO.code && newILO.description) {
-                            const newILOData = {
-                              code: newILO.code.trim(),
-                              description: newILO.description.trim(),
-                              category: newILO.category.trim() || null,
-                              level: newILO.level.trim() || null,
-                              weight_percentage: newILO.weight_percentage ? parseFloat(newILO.weight_percentage) : null,
-                              assessment_methods: newILO.assessment_methods ? newILO.assessment_methods.split(',').map(s => s.trim()).filter(s => s) : [],
-                              learning_activities: newILO.learning_activities ? newILO.learning_activities.split(',').map(s => s.trim()).filter(s => s) : [],
-                              so_mappings: newILO.selectedSO ? [{
-                                so_id: parseInt(newILO.selectedSO),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              iga_mappings: newILO.selectedIGA ? [{
-                                iga_id: parseInt(newILO.selectedIGA),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              cdio_mappings: newILO.selectedCDIO ? [{
-                                cdio_id: parseInt(newILO.selectedCDIO),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              sdg_mappings: newILO.selectedSDG ? [{
-                                sdg_id: parseInt(newILO.selectedSDG),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : []
-                            }
-                            setIlos(prev => [...prev, { ...newILOData, ilo_id: `temp_${Date.now()}` }])
-                            setNewILO({
-                              code: '',
-                              description: '',
-                              category: '',
-                              level: '',
-                              weight_percentage: '',
-                              assessment_methods: '',
-                              learning_activities: '',
-                              selectedSO: '',
-                              selectedIGA: '',
-                              selectedCDIO: '',
-                              selectedSDG: '',
-                              selectedSubAssessments: []
-                            })
-                            setShowILOForm(false)
-                          }
-                        }}
-                        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
-                      >
-                        <PlusIcon className="h-5 w-5" />
-                        Add ILO
-                      </button>
                     </div>
 
                     {/* Mapping Dropdowns - Sequential Order: Sub-Assessments, SO, IGA, CDIO, SDG */}
@@ -1814,6 +1745,53 @@ const SyllabusCreationWizard = ({
                         </div>
                       )
                     })()}
+                    
+                    {/* Add ILO Button */}
+                    <div className="pt-2 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newILO.code && newILO.description) {
+                            const newILOData = {
+                              code: newILO.code.trim(),
+                              description: newILO.description.trim(),
+                              so_mappings: newILO.selectedSO ? [{
+                                so_id: parseInt(newILO.selectedSO),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              iga_mappings: newILO.selectedIGA ? [{
+                                iga_id: parseInt(newILO.selectedIGA),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              cdio_mappings: newILO.selectedCDIO ? [{
+                                cdio_id: parseInt(newILO.selectedCDIO),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              sdg_mappings: newILO.selectedSDG ? [{
+                                sdg_id: parseInt(newILO.selectedSDG),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : []
+                            }
+                            setIlos(prev => [...prev, { ...newILOData, ilo_id: `temp_${Date.now()}` }])
+                            // Reset form but keep it open for adding more ILOs
+                            setNewILO({
+                              code: '',
+                              description: '',
+                              selectedSO: '',
+                              selectedIGA: '',
+                              selectedCDIO: '',
+                              selectedSDG: '',
+                              selectedSubAssessments: []
+                            })
+                            // Don't close the form - keep it open for adding multiple ILOs
+                          }
+                        }}
+                        className="w-full px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                        Add ILO
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -1827,12 +1805,6 @@ const SyllabusCreationWizard = ({
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <span className="font-semibold text-gray-900">{ilo.code}</span>
-                            {ilo.category && (
-                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{ilo.category}</span>
-                            )}
-                            {ilo.level && (
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{ilo.level}</span>
-                            )}
                           </div>
                           <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
                           {/* Show mappings */}
@@ -1869,14 +1841,6 @@ const SyllabusCreationWizard = ({
                           )}
                         </div>
                         <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openILOModal(ilo)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Edit ILO"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteILO(ilo.ilo_id)}
@@ -1966,13 +1930,6 @@ const SyllabusCreationWizard = ({
                                 <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
                                 <span className="text-xs text-gray-600">- {ilo.description}</span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => openILOModal(ilo)}
-                                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                              >
-                                Map Sub-Assessments
-                              </button>
                             </div>
                             
                             {iloTasks.size > 0 ? (
@@ -2176,16 +2133,16 @@ const SyllabusCreationWizard = ({
                                   return hasTask
                                 })
                                 if (iloWithMapping) {
-                                  openILOModal(iloWithMapping)
+                                  // openILOModal removed - no edit functionality
                                 } else {
                                   // If no mapping exists, open first ILO to create mapping
                                   if (ilos.length > 0) {
-                                    openILOModal(ilos[0])
+                                    // openILOModal removed - no edit functionality
                                   }
                                 }
                               }}
-                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
-                              title="Edit mapping via ILO"
+                              className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap hidden"
+                              title="Edit mapping via ILO (removed)"
                             >
                               Edit
                             </button>
@@ -2686,13 +2643,7 @@ const SyllabusCreationWizard = ({
                             <span className="text-xs text-gray-600">{ilo.description}</span>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => openILOModal(ilo)}
-                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        >
-                          Edit Mappings
-                        </button>
+                        {/* Edit button removed - no edit functionality */}
                       </div>
                       
                        {ilo.so_mappings && ilo.so_mappings.length > 0 ? (
@@ -2925,7 +2876,7 @@ const SyllabusCreationWizard = ({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
           >
             <XCircleIcon className="h-6 w-6" />
@@ -2996,7 +2947,7 @@ const SyllabusCreationWizard = ({
             
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
             >
               Cancel
@@ -3036,8 +2987,8 @@ const SyllabusCreationWizard = ({
         </div>
       </div>
       
-       {/* ILO Creation/Edit Modal */}
-       {showILOModal && (
+       {/* ILO Creation/Edit Modal - REMOVED - Using inline form instead */}
+       {false && showILOModal && (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 z-[60]">
            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
              <div className="p-4">
