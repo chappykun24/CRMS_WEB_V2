@@ -2017,7 +2017,8 @@ const MyClasses = () => {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Attendance Mode Container - Separate from normal student list */}
       {selectedClass && isAttendanceMode && (
