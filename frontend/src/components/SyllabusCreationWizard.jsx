@@ -59,14 +59,7 @@ const SyllabusCreationWizard = ({
     // Step 4: Teaching, Learning, and Assessment Strategies
     teaching_strategies: {
       general_description: '',
-      assessment_components: [],
-      technology_integration: {
-        python: false,
-        r: false,
-        knime: false,
-        excel: false,
-        flask: false
-      }
+      assessment_components: []
     },
     
     // Step 5: ILOs and Assessment Distribution
@@ -455,6 +448,19 @@ const SyllabusCreationWizard = ({
       ...prev,
       learning_resources: prev.learning_resources.filter((_, i) => i !== index)
     }))
+  }
+  
+  const handleAddContactHour = () => {
+    if (newContactHour.name && newContactHour.hours) {
+      setFormData(prev => ({
+        ...prev,
+        contact_hours: [...prev.contact_hours, {
+          name: newContactHour.name.trim(),
+          hours: parseInt(newContactHour.hours) || 0
+        }]
+      }))
+      setNewContactHour({ name: '', hours: '' })
+    }
   }
   
   const handleAddGradeItem = () => {
@@ -1188,7 +1194,7 @@ const SyllabusCreationWizard = ({
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Teaching, Learning, and Assessment Strategies</h3>
-              <p className="text-sm text-gray-600 mb-6">Describe the teaching approach, assessment components, and technology integration</p>
+              <p className="text-sm text-gray-600 mb-6">Describe the teaching approach and assessment components</p>
             </div>
             
             <div>
@@ -1206,29 +1212,6 @@ const SyllabusCreationWizard = ({
               />
               {errors.teaching_strategies && <p className="mt-1 text-sm text-red-600">{errors.teaching_strategies}</p>}
               <p className="mt-1 text-xs text-gray-500">Describe the teaching methodology, learning approach, and assessment strategy</p>
-            </div>
-            
-            <div className="border-t pt-6">
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Technology Integration</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { key: 'python', label: 'Python (Jupyter Notebook, pandas, scikit-learn)' },
-                  { key: 'r', label: 'R (RStudio, dplyr, caret)' },
-                  { key: 'knime', label: 'KNIME Analytics Platform' },
-                  { key: 'excel', label: 'Microsoft Excel' },
-                  { key: 'flask', label: 'Flask (Python Microframework)' }
-                ].map(tech => (
-                  <label key={tech.key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.teaching_strategies.technology_integration[tech.key]}
-                      onChange={(e) => handleNestedChange(`teaching_strategies.technology_integration.${tech.key}`, e.target.checked)}
-                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm text-gray-700">{tech.label}</span>
-                  </label>
-                ))}
-              </div>
             </div>
           </div>
         )
