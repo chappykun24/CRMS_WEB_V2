@@ -449,21 +449,6 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user?.user_id || req.user?.id;
-    
-    // Get user role from database
-    let userRole = null;
-    if (req.user?.role_id) {
-      const roleResult = await db.query(
-        'SELECT name FROM roles WHERE role_id = $1',
-        [req.user.role_id]
-      );
-      if (roleResult.rows.length > 0) {
-        userRole = roleResult.rows[0].name?.toLowerCase();
-        console.log(`🔍 [ATTENDANCE API] User ${userId} role: ${userRole} (from role_id: ${req.user.role_id})`);
-      }
-    } else {
-      console.warn(`⚠️ [ATTENDANCE API] User ${userId} has no role_id`);
-    }
 
     // Validate sessionId
     if (!sessionId || isNaN(parseInt(sessionId))) {
@@ -491,26 +476,18 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
 
     const session = sessionCheck.rows[0];
 
-    // Validation: Check permissions
-    // Faculty can only delete their own sessions
-    // Dean/Admin can delete any session
-    const isFaculty = userRole === 'faculty';
-    const isDean = userRole === 'dean';
-    const isAdmin = userRole === 'admin';
-
-    if (isFaculty) {
-      // Faculty must own the session (check instructor_id from section_courses)
-      const sessionInstructorId = session.instructor_id;
-      if (sessionInstructorId !== userId) {
-        return res.status(403).json({
-          success: false,
-          error: 'Permission denied. You can only delete your own attendance sessions.'
-        });
-      }
-    } else if (!isDean && !isAdmin) {
+    // Validation: Check ownership - user must be the instructor of the session
+    const sessionInstructorId = session.instructor_id;
+    // Convert both to numbers for comparison to handle type mismatches
+    const userIdNum = parseInt(userId);
+    const instructorIdNum = parseInt(sessionInstructorId);
+    
+    console.log(`🔍 [ATTENDANCE API] Ownership check - userId: ${userIdNum}, sessionInstructorId: ${instructorIdNum}`);
+    
+    if (userIdNum !== instructorIdNum) {
       return res.status(403).json({
         success: false,
-        error: 'Permission denied. Only faculty, dean, or admin can delete sessions.'
+        error: 'Permission denied. You can only delete your own attendance sessions.'
       });
     }
 
