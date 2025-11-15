@@ -47,7 +47,6 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
-  console.log('App component is rendering')
   // Guard against BFCache restoring protected content after logout
   const location = useLocation()
   const navigate = useNavigate()

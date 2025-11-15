@@ -11,8 +11,6 @@ import {
 } from 'lucide-react'
 
 const LoginPage = () => {
-  console.log('LoginPage component is rendering')
-  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -111,9 +109,14 @@ const LoginPage = () => {
       }
 
       // Use UserContext login function for proper authentication flow
-      console.log('[LoginPage] submitting', { email: formData.email })
+      const isDev = process.env.NODE_ENV === 'development'
+      if (isDev) {
+        console.log('[LoginPage] submitting', { email: formData.email })
+      }
       const result = await login(formData.email, formData.password)
-      console.log('[LoginPage] login result', result)
+      if (isDev) {
+        console.log('[LoginPage] login result', result)
+      }
       
       if (result.success) {
         // Redirect to role-specific default route
@@ -126,13 +129,18 @@ const LoginPage = () => {
           if (role === 'programchair') return '/program-chair'
           return '/dashboard'
         })()
-        console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
+        if (isDev) {
+          console.log('[LoginPage] navigating to', roleDefaultPath, 'for role', role)
+        }
         navigate(roleDefaultPath, { replace: true })
       } else {
         setError(result.error || 'Login failed. Please check your credentials.')
       }
     } catch (err) {
-      console.error('[LoginPage] login exception', err)
+      const isDev = process.env.NODE_ENV === 'development'
+      if (isDev) {
+        console.error('[LoginPage] login exception', err)
+      }
       setError('An unexpected error occurred. Please try again.')
     } finally {
       setIsLoading(false)

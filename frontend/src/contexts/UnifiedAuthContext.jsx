@@ -60,18 +60,25 @@ export const UnifiedAuthProvider = ({ children }) => {
   // Check if user is already logged in on app start
   useEffect(() => {
     const checkAuthStatus = async () => {
-      console.log('[UnifiedAuth] Checking authentication status...')
+      const isDev = process.env.NODE_ENV === 'development'
+      if (isDev) {
+        console.log('[UnifiedAuth] Checking authentication status...')
+      }
       const userData = localStorage.getItem('userData')
       const token = localStorage.getItem('authToken')
       
       if (userData && userData !== 'undefined' && userData !== 'null' && userData !== '') {
         try {
           const user = JSON.parse(userData)
-          console.log('[UnifiedAuth] Found user data in localStorage:', user)
+          if (isDev) {
+            console.log('[UnifiedAuth] Found user data in localStorage:', user)
+          }
           
           // If we have both user data and token, authenticate immediately
           if (token && (user.user_id || user.id)) {
-            console.log('[UnifiedAuth] Found valid user data and token, authenticating user')
+            if (isDev) {
+              console.log('[UnifiedAuth] Found valid user data and token, authenticating user')
+            }
             dispatch({ 
               type: 'LOGIN_SUCCESS', 
               payload: { user, token } 
@@ -93,7 +100,10 @@ export const UnifiedAuthProvider = ({ children }) => {
                   clearTimeout(timeoutId)
                   
                   if (profileResult.success) {
-                    console.log('[UnifiedAuth] User data refreshed successfully')
+                    const isDev = process.env.NODE_ENV === 'development'
+                    if (isDev) {
+                      console.log('[UnifiedAuth] User data refreshed successfully')
+                    }
                     localStorage.setItem('userData', JSON.stringify(profileResult.user))
                     dispatch({ 
                       type: 'UPDATE_USER', 
@@ -101,35 +111,55 @@ export const UnifiedAuthProvider = ({ children }) => {
                     })
                   } else {
                     // Silently fail - user already logged in with stored data
-                    console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+                    const isDev = process.env.NODE_ENV === 'development'
+                    if (isDev) {
+                      console.warn('[UnifiedAuth] Failed to refresh user data, keeping stored data')
+                    }
                   }
                 } catch (refreshError) {
                   clearTimeout(timeoutId)
                   // Silently fail - user already logged in with stored data
-                  console.warn('[UnifiedAuth] User data refresh failed, keeping stored data')
+                  // Only log in development mode to reduce console noise
+                  const isDev = process.env.NODE_ENV === 'development'
+                  if (isDev) {
+                    console.debug('[UnifiedAuth] User data refresh failed, keeping stored data')
+                  }
                 }
               } catch (error) {
                 // Silently fail - user already logged in with stored data
-                console.warn('[UnifiedAuth] User data refresh error:', error.message)
+                // Only log in development mode to reduce console noise
+                const isDev = process.env.NODE_ENV === 'development'
+                if (isDev) {
+                  console.debug('[UnifiedAuth] User data refresh error:', error.message)
+                }
               }
             }, 0)
             return
           } else {
-            console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
+            const isDev = process.env.NODE_ENV === 'development'
+            if (isDev) {
+              console.log('[UnifiedAuth] No valid user ID or token found, clearing invalid data')
+            }
             localStorage.removeItem('userData')
             localStorage.removeItem('authToken')
             dispatch({ type: 'LOGOUT' })
             return
           }
         } catch (error) {
-          console.error('[UnifiedAuth] User data verification failed:', error)
+          const isDev = process.env.NODE_ENV === 'development'
+          if (isDev) {
+            console.error('[UnifiedAuth] User data verification failed:', error)
+          }
           // User data is invalid, remove it and logout
           localStorage.removeItem('userData')
           localStorage.removeItem('authToken')
           dispatch({ type: 'LOGOUT' })
         }
       } else {
-        console.log('[UnifiedAuth] No user data found, user not authenticated')
+        const isDev = process.env.NODE_ENV === 'development'
+        if (isDev) {
+          console.log('[UnifiedAuth] No user data found, user not authenticated')
+        }
         dispatch({ type: 'SET_LOADING', payload: false })
       }
     }
