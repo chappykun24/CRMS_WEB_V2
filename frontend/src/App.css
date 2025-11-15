@@ -109,6 +109,10 @@
   }
 }
 
+.expand-from-right {
+  transform-origin: right center;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
