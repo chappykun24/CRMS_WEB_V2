@@ -38,8 +38,6 @@ const MyClasses = () => {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [studentGrades, setStudentGrades] = useState([])
   const [loadingStudentGrades, setLoadingStudentGrades] = useState(false)
-  const [studentAttendancePercent, setStudentAttendancePercent] = useState(null)
-  const [studentAttendanceTotals, setStudentAttendanceTotals] = useState({ totalSessions: 0, present: 0, absent: 0, late: 0 })
   
   // Attendance modal state
   const [sessionList, setSessionList] = useState([])
