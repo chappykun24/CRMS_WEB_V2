@@ -279,3 +279,5 @@ secrets/
 # END OF GITIGNORE
 # ==========================================
 USER_ACCESSIBILITIES_AND_FEATURES.md
+db/seed_ilo_references.sql
+db/README_SEED_ILO_REFERENCES.md

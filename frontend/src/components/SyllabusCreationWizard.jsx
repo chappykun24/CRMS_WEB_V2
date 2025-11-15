@@ -56,12 +56,7 @@ const SyllabusCreationWizard = ({
       lecture: 2,
       laboratory: 3
     },
-    assessment_criteria: {
-      problem_sets: 20,
-      midterm_exam: 20,
-      final_project: 30,
-      laboratory_activities: 30
-    },
+    assessment_criteria: [],
     
     // Step 4: Teaching, Learning, and Assessment Strategies
     teaching_strategies: {
@@ -117,6 +112,10 @@ const SyllabusCreationWizard = ({
     weight: '', 
     description: '',
     count: 1
+  })
+  const [newAssessmentCriteria, setNewAssessmentCriteria] = useState({ 
+    name: '', 
+    weight: '' 
   })
   const [errors, setErrors] = useState({})
   
@@ -255,9 +254,13 @@ const SyllabusCreationWizard = ({
         ? editingSyllabus.contact_hours
         : (editingSyllabus.contact_hours ? JSON.parse(editingSyllabus.contact_hours) : formData.contact_hours)
       
-      const assessmentCriteria = typeof editingSyllabus.assessment_criteria === 'object'
+      const assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria)
         ? editingSyllabus.assessment_criteria
-        : (editingSyllabus.assessment_criteria ? JSON.parse(editingSyllabus.assessment_criteria) : formData.assessment_criteria)
+        : (typeof editingSyllabus.assessment_criteria === 'object' && editingSyllabus.assessment_criteria
+          ? (Array.isArray(editingSyllabus.assessment_criteria) 
+            ? editingSyllabus.assessment_criteria 
+            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ name, weight })))
+          : (editingSyllabus.assessment_criteria ? JSON.parse(editingSyllabus.assessment_criteria) : []))
       
       setFormData(prev => ({
         ...prev,
@@ -353,11 +356,10 @@ const SyllabusCreationWizard = ({
         if (!formData.course_rationale_paragraph2.trim()) newErrors.course_rationale_paragraph2 = 'Second paragraph is required'
         break
       case 3:
-        const assessmentTotal = (formData.assessment_criteria.problem_sets || 0) + 
-                                (formData.assessment_criteria.midterm_exam || 0) + 
-                                (formData.assessment_criteria.final_project || 0) + 
-                                (formData.assessment_criteria.laboratory_activities || 0)
-        if (assessmentTotal !== 100) {
+        const assessmentTotal = Array.isArray(formData.assessment_criteria)
+          ? formData.assessment_criteria.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0)
+          : 0
+        if (assessmentTotal !== 100 && formData.assessment_criteria.length > 0) {
           newErrors.assessment_criteria = `Total assessment weight must equal 100% (currently ${assessmentTotal}%)`
         }
         break
@@ -963,10 +965,41 @@ const SyllabusCreationWizard = ({
         )
         
       case 3:
-        const assessmentTotal = (formData.assessment_criteria.problem_sets || 0) + 
-                                (formData.assessment_criteria.midterm_exam || 0) + 
-                                (formData.assessment_criteria.final_project || 0) + 
-                                (formData.assessment_criteria.laboratory_activities || 0)
+        const assessmentTotal = formData.assessment_criteria.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0)
+        
+        const handleAddAssessmentCriteria = () => {
+          if (newAssessmentCriteria.name && newAssessmentCriteria.weight) {
+            setFormData(prev => ({
+              ...prev,
+              assessment_criteria: [...prev.assessment_criteria, {
+                name: newAssessmentCriteria.name.trim(),
+                weight: parseFloat(newAssessmentCriteria.weight) || 0
+              }]
+            }))
+            setNewAssessmentCriteria({ name: '', weight: '' })
+          }
+        }
+        
+        const handleRemoveAssessmentCriteria = (index) => {
+          setFormData(prev => ({
+            ...prev,
+            assessment_criteria: prev.assessment_criteria.filter((_, i) => i !== index)
+          }))
+        }
+        
+        const handleUpdateAssessmentCriteria = (index, field, value) => {
+          setFormData(prev => {
+            const updated = [...prev.assessment_criteria]
+            updated[index] = {
+              ...updated[index],
+              [field]: field === 'weight' ? (parseFloat(value) || 0) : value
+            }
+            return {
+              ...prev,
+              assessment_criteria: updated
+            }
+          })
+        }
         
         return (
           <div className="space-y-6">
@@ -1007,61 +1040,69 @@ const SyllabusCreationWizard = ({
               <h4 className="text-md font-semibold text-gray-900 mb-4">Criteria for Assessment</h4>
               <p className="text-sm text-gray-600 mb-4">Total must equal 100%</p>
               
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Problem Sets (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.assessment_criteria.problem_sets}
-                    onChange={(e) => handleNestedChange('assessment_criteria.problem_sets', parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    min="0"
-                    max="100"
-                  />
+              {formData.assessment_criteria.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {formData.assessment_criteria.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Assessment Name (e.g., Problem Sets)"
+                        />
+                        <input
+                          type="number"
+                          value={item.weight}
+                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'weight', e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Weight %"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssessmentCriteria(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Remove"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Midterm Exam (%)
-                  </label>
+              )}
+              
+              <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={newAssessmentCriteria.name}
+                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Assessment Name"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                  />
                   <input
                     type="number"
-                    value={formData.assessment_criteria.midterm_exam}
-                    onChange={(e) => handleNestedChange('assessment_criteria.midterm_exam', parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    value={newAssessmentCriteria.weight}
+                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, weight: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Weight %"
                     min="0"
                     max="100"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Final Project (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.assessment_criteria.final_project}
-                    onChange={(e) => handleNestedChange('assessment_criteria.final_project', parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Laboratory Activities (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.assessment_criteria.laboratory_activities}
-                    onChange={(e) => handleNestedChange('assessment_criteria.laboratory_activities', parseInt(e.target.value) || 0)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    min="0"
-                    max="100"
-                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAssessmentCriteria}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                    Add
+                  </button>
                 </div>
               </div>
               
@@ -1074,6 +1115,13 @@ const SyllabusCreationWizard = ({
                 </div>
                 {errors.assessment_criteria && (
                   <p className="mt-2 text-sm text-red-600">{errors.assessment_criteria}</p>
+                )}
+                {assessmentTotal !== 100 && formData.assessment_criteria.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {assessmentTotal < 100 
+                      ? `Need ${100 - assessmentTotal}% more to reach 100%`
+                      : `Exceeds 100% by ${assessmentTotal - 100}%`}
+                  </p>
                 )}
               </div>
             </div>
