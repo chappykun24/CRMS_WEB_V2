@@ -1909,7 +1909,7 @@ const SyllabusCreationWizard = ({
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-[98vw] w-full max-h-[98vh] my-4 shadow-xl flex flex-col">
+      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] my-4 shadow-xl flex flex-col mx-auto">
         {/* Header */}
         <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <div>
