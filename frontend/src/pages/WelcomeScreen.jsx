@@ -15,8 +15,6 @@ import alangilanImage from '../images/Alangilan-entrance-facade.jpg'
 import image204107 from '../images/204107.jpg'
 import lipaSliderImage from '../images/lipa-slider-1-scaled.jpg'
 import bwBsuImage from '../images/b&w BSU.jpg'
-import logo from '../images/logo.png'
-import bsuLogoFooter from '../images/bsu-logo.png'
 
 const WelcomeScreen = () => {
   console.log('WelcomeScreen component is rendering')
@@ -228,14 +226,6 @@ const WelcomeScreen = () => {
                 <div>Today's Visitors: <span className="font-bold">1,234</span></div>
                 <div>Total Page Views: <span className="font-bold">45,678</span></div>
               </div>
-            </div>
-            {/* Center: BSU Logo */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <img src={bsuLogoFooter} alt="BSU Logo" className="h-20 w-auto object-contain opacity-80" />
-            </div>
-            {/* Right: Main Logo */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <img src={logo} alt="Main Logo" className="h-20 w-auto object-contain opacity-80" />
             </div>
           </div>
           {/* Social Media Row */}
