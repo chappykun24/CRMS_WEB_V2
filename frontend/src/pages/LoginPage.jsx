@@ -141,6 +141,11 @@ const LoginPage = () => {
 
   return (
     <>
+      {/* Red Progress Bar at Top */}
+      {isLoading && (
+        <div className="fixed top-0 left-0 right-0 z-[60] h-0.5 bg-red-600"></div>
+      )}
+      
       {/* Full Screen Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
