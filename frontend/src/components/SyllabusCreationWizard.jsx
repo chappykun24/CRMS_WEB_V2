@@ -105,6 +105,7 @@ const SyllabusCreationWizard = ({
     count: 1
   })
   const [newAssessmentCriteria, setNewAssessmentCriteria] = useState({ 
+    abbreviation: '',
     name: '', 
     weight: '' 
   })
@@ -279,7 +280,7 @@ const SyllabusCreationWizard = ({
         } else if (typeof editingSyllabus.assessment_criteria === 'object') {
           assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria) 
             ? editingSyllabus.assessment_criteria 
-            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ abbreviation: '', name, weight }))
         } else if (typeof editingSyllabus.assessment_criteria === 'string') {
           try {
             assessmentCriteria = JSON.parse(editingSyllabus.assessment_criteria)
@@ -292,7 +293,7 @@ const SyllabusCreationWizard = ({
         if (Array.isArray(gradingPolicy.assessment_criteria)) {
           assessmentCriteria = gradingPolicy.assessment_criteria
         } else if (typeof gradingPolicy.assessment_criteria === 'object') {
-          assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ name, weight }))
+          assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ abbreviation: '', name, weight }))
         }
       }
       
@@ -692,6 +693,7 @@ const SyllabusCreationWizard = ({
     // Include ILOs in the form data and set title for backward compatibility
     // Ensure assessment_criteria is properly formatted with numeric weights
     const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
+      abbreviation: (item.abbreviation || '').trim(),
       name: item.name.trim(),
       weight: parseFloat(item.weight) || 0
     }))
@@ -1004,11 +1006,12 @@ const SyllabusCreationWizard = ({
             setFormData(prev => ({
               ...prev,
               assessment_criteria: [...prev.assessment_criteria, {
+                abbreviation: newAssessmentCriteria.abbreviation.trim() || '',
                 name: newAssessmentCriteria.name.trim(),
                 weight: parseFloat(newAssessmentCriteria.weight) || 0
               }]
             }))
-            setNewAssessmentCriteria({ name: '', weight: '' })
+            setNewAssessmentCriteria({ abbreviation: '', name: '', weight: '' })
           }
         }
         
@@ -1129,13 +1132,21 @@ const SyllabusCreationWizard = ({
                 <div className="space-y-3 mb-4">
                   {formData.assessment_criteria.map((item, index) => (
                     <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
+                      <div className="flex-1 grid grid-cols-3 gap-3">
+                        <input
+                          type="text"
+                          value={item.abbreviation || ''}
+                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Abbreviation (e.g., QZ, ME)"
+                          maxLength="10"
+                        />
                         <input
                           type="text"
                           value={item.name}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Assessment Name (e.g., QZ - Quiz, ME - Midterm Exam)"
+                          placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                         />
                         <input
                           type="number"
@@ -1161,13 +1172,22 @@ const SyllabusCreationWizard = ({
               )}
               
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input
+                    type="text"
+                    value={newAssessmentCriteria.abbreviation}
+                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, abbreviation: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Abbreviation (e.g., QZ, ME)"
+                    maxLength="10"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                  />
                   <input
                     type="text"
                     value={newAssessmentCriteria.name}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
                     className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Assessment Name (e.g., QZ - Quiz, ME - Midterm Exam)"
+                    placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
                   <input
