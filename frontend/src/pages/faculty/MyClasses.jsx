@@ -1416,6 +1416,20 @@ const MyClasses = () => {
       // Clear session to edit if it was set
       setSessionToEdit(null)
       
+      // Store selected class reference before clearing (needed for modal)
+      const classForModal = selectedClass
+      
+      // Update ref manually before clearing state (needed for loadFullAttendanceList)
+      if (classForModal) {
+        selectedClassRef.current = classForModal
+      }
+      
+      // Clear selected class IMMEDIATELY to prevent normal list from showing in background
+      // This must happen before exiting attendance mode
+      setSelectedClass(null)
+      removeLocalStorageItem('selectedClass')
+      dispatchSelectedClassChange(null)
+      
       // Exit attendance mode
       setIsAttendanceMode(false)
       
@@ -1423,23 +1437,17 @@ const MyClasses = () => {
       setAttendanceSuccessMessage('Attendance recorded successfully!')
       
       // Open attendance history modal to show the new/updated data
-      if (selectedClass) {
+      if (classForModal) {
         // Small delay to ensure modal can open properly and state updates complete
         setTimeout(() => {
+          // Ensure ref is set before loading (useEffect might have cleared it)
+          selectedClassRef.current = classForModal
           loadFullAttendanceList()
           // Auto-hide success message after 5 seconds
           setTimeout(() => {
             setAttendanceSuccessMessage('')
           }, 5000)
         }, 500)
-        
-        // Clear selected class to prevent normal list from showing in background
-        // Do this after a short delay to ensure modal opens first
-        setTimeout(() => {
-          setSelectedClass(null)
-          removeLocalStorageItem('selectedClass')
-          dispatchSelectedClassChange(null)
-        }, 600)
       }
 
     } catch (error) {
