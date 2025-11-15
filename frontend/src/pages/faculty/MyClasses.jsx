@@ -33,6 +33,7 @@ const MyClasses = () => {
   const abortControllerRef = useRef(null)
   const classesCacheRef = useRef(new Map())
   const sidebarRef = useRef(null)
+  const attendanceContainerRef = useRef(null)
   const loadingSessionsRef = useRef(new Set()) // Track which sessions are currently loading
   
   // Enhanced caching for faculty data
@@ -1491,7 +1492,8 @@ const MyClasses = () => {
         return
       }
       
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target) && selectedClass) {
+      const currentContainer = isAttendanceMode ? attendanceContainerRef.current : sidebarRef.current
+      if (currentContainer && !currentContainer.contains(event.target) && selectedClass) {
         // Check if the click is not on a class card
         const isClassCard = event.target.closest('[data-class-card]')
         // Check if click is on modal
@@ -1919,6 +1921,7 @@ const MyClasses = () => {
       {/* Expanded Student List - Only show when class is selected and NOT in attendance mode (attendance shows its own list) */}
       {selectedClass && !isAttendanceMode && (
         <div 
+          key="normal-student-list"
           ref={sidebarRef}
           className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
         >
@@ -1931,25 +1934,8 @@ const MyClasses = () => {
                   <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
                     {selectedClass.course_title}
                   </h2>
-                    {/* Old attendance controls removed; kept exit button below */}
                    </div>
-                   {/* Session Details Inputs in the middle space - Only in attendance mode */}
-                   {/* Old input row removed */}
-
                 </div>
-                {isAttendanceMode && (
-                  <button
-                    onClick={() => {
-                      setIsAttendanceMode(false)
-                      setShowStudentModal(false) // Close student modal when exiting attendance
-                    }}
-                    className="ml-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -2023,7 +2009,8 @@ const MyClasses = () => {
       {/* Attendance Mode Container - Separate from normal student list */}
       {selectedClass && isAttendanceMode && (
         <div 
-          ref={sidebarRef}
+          key="attendance-container"
+          ref={attendanceContainerRef}
           className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full`}
         >
           <div className="h-full flex flex-col">
