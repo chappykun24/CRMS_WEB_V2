@@ -139,6 +139,21 @@ const SyllabusCreationWizard = ({
   const [ilos, setIlos] = useState([])
   const [showILOModal, setShowILOModal] = useState(false)
   const [editingILO, setEditingILO] = useState(null)
+  const [showILOForm, setShowILOForm] = useState(false)
+  const [newILO, setNewILO] = useState({
+    code: '',
+    description: '',
+    category: '',
+    level: '',
+    weight_percentage: '',
+    assessment_methods: '',
+    learning_activities: '',
+    selectedSO: '',
+    selectedIGA: '',
+    selectedCDIO: '',
+    selectedSDG: '',
+    selectedSubAssessments: []
+  })
   const [iloFormData, setIloFormData] = useState({
     code: '',
     description: '',
@@ -1545,28 +1560,270 @@ const SyllabusCreationWizard = ({
                 </p>
               </div>
               
-              <div className="mb-2">
+              {/* ILO Form - Inline */}
+              <div className="mb-3">
                 <button
                   type="button"
-                  onClick={() => openILOModal()}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  onClick={() => setShowILOForm(!showILOForm)}
+                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-1.5"
                 >
-                   <PlusIcon className="h-4 w-4" />
-                   Add ILO
-                 </button>
-               </div>
-               
-               {ilos.length === 0 ? (
-                 <div className="text-center py-4 border-2 border-dashed border-gray-300 rounded-lg">
-                   <AcademicCapIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                   <p className="text-xs text-gray-500 mb-1">No ILOs added yet.</p>
-                   <p className="text-xs text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
-                 </div>
-               ) : (
-                 <div className="space-y-2">
-                   {ilos.map((ilo, index) => (
-                     <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
-                       <div className="flex items-start justify-between mb-1.5">
+                  {showILOForm ? 'Hide' : 'Add'} ILO
+                  {ilos.length > 0 && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                      {ilos.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {showILOForm || ilos.length === 0 ? (
+                <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 mb-3">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={newILO.code}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="ILO Code (e.g., ILO1)"
+                        maxLength="20"
+                      />
+                      <input
+                        type="text"
+                        value={newILO.category}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, category: e.target.value }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Category (optional)"
+                      />
+                      <input
+                        type="text"
+                        value={newILO.level}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, level: e.target.value }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Level (optional)"
+                      />
+                    </div>
+                    <textarea
+                      value={newILO.description}
+                      onChange={(e) => setNewILO(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="ILO Description (e.g., Students will be able to...)"
+                      rows="2"
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                      <input
+                        type="number"
+                        value={newILO.weight_percentage}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, weight_percentage: e.target.value }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Weight %"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                      />
+                      <input
+                        type="text"
+                        value={newILO.assessment_methods}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, assessment_methods: e.target.value }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Assessment Methods (optional)"
+                      />
+                      <input
+                        type="text"
+                        value={newILO.learning_activities}
+                        onChange={(e) => setNewILO(prev => ({ ...prev, learning_activities: e.target.value }))}
+                        className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="Learning Activities (optional)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newILO.code && newILO.description) {
+                            const newILOData = {
+                              code: newILO.code.trim(),
+                              description: newILO.description.trim(),
+                              category: newILO.category.trim() || null,
+                              level: newILO.level.trim() || null,
+                              weight_percentage: newILO.weight_percentage ? parseFloat(newILO.weight_percentage) : null,
+                              assessment_methods: newILO.assessment_methods ? newILO.assessment_methods.split(',').map(s => s.trim()).filter(s => s) : [],
+                              learning_activities: newILO.learning_activities ? newILO.learning_activities.split(',').map(s => s.trim()).filter(s => s) : [],
+                              so_mappings: newILO.selectedSO ? [{
+                                so_id: parseInt(newILO.selectedSO),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              iga_mappings: newILO.selectedIGA ? [{
+                                iga_id: parseInt(newILO.selectedIGA),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              cdio_mappings: newILO.selectedCDIO ? [{
+                                cdio_id: parseInt(newILO.selectedCDIO),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : [],
+                              sdg_mappings: newILO.selectedSDG ? [{
+                                sdg_id: parseInt(newILO.selectedSDG),
+                                assessment_tasks: newILO.selectedSubAssessments
+                              }] : []
+                            }
+                            setIlos(prev => [...prev, { ...newILOData, ilo_id: `temp_${Date.now()}` }])
+                            setNewILO({
+                              code: '',
+                              description: '',
+                              category: '',
+                              level: '',
+                              weight_percentage: '',
+                              assessment_methods: '',
+                              learning_activities: '',
+                              selectedSO: '',
+                              selectedIGA: '',
+                              selectedCDIO: '',
+                              selectedSDG: '',
+                              selectedSubAssessments: []
+                            })
+                            setShowILOForm(false)
+                          }
+                        }}
+                        className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
+                      >
+                        <PlusIcon className="h-5 w-5" />
+                        Add ILO
+                      </button>
+                    </div>
+
+                    {/* Mapping Dropdowns - Sequential Order: Sub-Assessments, SO, IGA, CDIO, SDG */}
+                    {(() => {
+                      // Get all sub-assessments for dropdown
+                      const allSubAssessments = []
+                      formData.assessment_criteria.forEach((criterion, idx) => {
+                        const subAssessments = formData.sub_assessments[idx] || []
+                        subAssessments.forEach(sub => {
+                          if (sub.abbreviation || sub.name) {
+                            allSubAssessments.push({
+                              code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                              name: sub.name,
+                              weight: parseFloat(sub.weight_percentage) || 0,
+                              score: parseFloat(sub.score) || 0
+                            })
+                          }
+                        })
+                      })
+
+                      return (
+                        <div className="space-y-2 pt-2 border-t border-gray-200">
+                          {/* 1. Map Sub-Assessments */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              1. Select Sub-Assessments:
+                            </label>
+                            {allSubAssessments.length > 0 ? (
+                              <select
+                                multiple
+                                value={newILO.selectedSubAssessments}
+                                onChange={(e) => {
+                                  const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                  setNewILO(prev => ({ ...prev, selectedSubAssessments: selected }))
+                                }}
+                                className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[80px]"
+                                size="4"
+                              >
+                                {allSubAssessments.map(task => (
+                                  <option key={task.code} value={task.code}>
+                                    {task.code} - {task.name} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic">No sub-assessments available. Add sub-assessments in Step 3 first.</p>
+                            )}
+                          </div>
+
+                          {/* 2. Map Student Outcomes (SO) */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              2. Select Student Outcome (SO):
+                            </label>
+                            <select
+                              value={newILO.selectedSO}
+                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedSO: e.target.value }))}
+                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            >
+                              <option value="">Select Student Outcome...</option>
+                              {soReferences.map(so => (
+                                <option key={so.so_id} value={so.so_id}>
+                                  {so.so_code} - {so.description?.substring(0, 60)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 3. Map Institutional Graduate Attributes (IGA) */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              3. Select Institutional Graduate Attribute (IGA):
+                            </label>
+                            <select
+                              value={newILO.selectedIGA}
+                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedIGA: e.target.value }))}
+                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            >
+                              <option value="">Select IGA...</option>
+                              {igaReferences.map(iga => (
+                                <option key={iga.iga_id} value={iga.iga_id}>
+                                  {iga.iga_code} - {iga.description?.substring(0, 60)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 4. Map CDIO Skills */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              4. Select CDIO Skill:
+                            </label>
+                            <select
+                              value={newILO.selectedCDIO}
+                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedCDIO: e.target.value }))}
+                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            >
+                              <option value="">Select CDIO...</option>
+                              {cdioReferences.map(cdio => (
+                                <option key={cdio.cdio_id} value={cdio.cdio_id}>
+                                  {cdio.cdio_code} - {cdio.description?.substring(0, 60)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 5. Map SDG Skills */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              5. Select SDG Skill:
+                            </label>
+                            <select
+                              value={newILO.selectedSDG}
+                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedSDG: e.target.value }))}
+                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            >
+                              <option value="">Select SDG...</option>
+                              {sdgReferences.map(sdg => (
+                                <option key={sdg.sdg_id} value={sdg.sdg_id}>
+                                  {sdg.sdg_code} - {sdg.description?.substring(0, 60)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* List of Created ILOs */}
+              {ilos.length > 0 && (
+                <div className="space-y-2 mt-3">
+                  {ilos.map((ilo, index) => (
+                    <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
+                      <div className="flex items-start justify-between mb-1.5">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <span className="font-semibold text-gray-900">{ilo.code}</span>
@@ -1577,7 +1834,39 @@ const SyllabusCreationWizard = ({
                               <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{ilo.level}</span>
                             )}
                           </div>
-                           <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
+                          <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
+                          {/* Show mappings */}
+                          {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
+                            ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
+                            <div className="mt-1 pt-1 border-t border-gray-200">
+                              <div className="flex flex-wrap gap-1 text-xs">
+                                {ilo.so_mappings?.map((m, i) => {
+                                  const so = soReferences.find(r => r.so_id === m.so_id)
+                                  return so ? (
+                                    <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">SO: {so.so_code}</span>
+                                  ) : null
+                                })}
+                                {ilo.iga_mappings?.map((m, i) => {
+                                  const iga = igaReferences.find(r => r.iga_id === m.iga_id)
+                                  return iga ? (
+                                    <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded">IGA: {iga.iga_code}</span>
+                                  ) : null
+                                })}
+                                {ilo.cdio_mappings?.map((m, i) => {
+                                  const cdio = cdioReferences.find(r => r.cdio_id === m.cdio_id)
+                                  return cdio ? (
+                                    <span key={i} className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded">CDIO: {cdio.cdio_code}</span>
+                                  ) : null
+                                })}
+                                {ilo.sdg_mappings?.map((m, i) => {
+                                  const sdg = sdgReferences.find(r => r.sdg_id === m.sdg_id)
+                                  return sdg ? (
+                                    <span key={i} className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded">SDG: {sdg.sdg_code}</span>
+                                  ) : null
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-2">
                           <button
