@@ -2025,7 +2025,7 @@ const MyClasses = () => {
                 {loadingStudents ? (
                   <StudentListSkeleton students={5} />
                 ) : students.length > 0 ? (
-                  <div className={isAttendanceMode ? "grid grid-cols-2 gap-3" : "space-y-3"}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                     {students.map((student, index) => {
                       // Calculate sequential number for grid layout
                       const sequentialNumber = index + 1
