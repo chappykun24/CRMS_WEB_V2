@@ -161,45 +161,112 @@ const SyllabusCreationWizard = ({
   
   // Assessment task options - sync with assessment framework components
   const getAssessmentTasks = () => {
-    const components = formData.assessment_framework?.components || []
-    const taskMap = {
-      'Quiz': 'QZ',
-      'Exam': 'ME',
-      'Major Exam': 'ME',
-      'Final Exam': 'ME',
-      'Project': 'FP',
-      'Final Project': 'FP',
-      'Presentation': 'P',
-      'Lab': 'LA',
-      'Lab Activity': 'LA',
-      'Assignment': 'A',
-      'Homework': 'A',
-      'Report': 'A'
+    const allTasks = []
+    
+    // Primary source: Get tasks from sub-assessments with scores and weights
+    if (formData.sub_assessments) {
+      Object.keys(formData.sub_assessments).forEach(criterionIndex => {
+        const subAssessments = formData.sub_assessments[criterionIndex] || []
+        subAssessments.forEach(sub => {
+          if (sub.abbreviation || sub.name) {
+            const code = sub.abbreviation || sub.name.substring(0, 2).toUpperCase()
+            const label = sub.abbreviation && sub.name 
+              ? `${sub.abbreviation} - ${sub.name}` 
+              : (sub.abbreviation || sub.name)
+            const existingTask = allTasks.find(t => t.code === code)
+            
+            // Include weight and score information
+            if (!existingTask) {
+              allTasks.push({
+                code,
+                label,
+                name: sub.name,
+                weight: parseFloat(sub.weight_percentage) || 0,
+                score: parseFloat(sub.score) || 0,
+                type: 'sub-assessment'
+              })
+            } else {
+              // If duplicate code exists, prefer the one with actual data
+              if ((parseFloat(sub.score) || 0) > 0 || (parseFloat(sub.weight_percentage) || 0) > 0) {
+                const index = allTasks.indexOf(existingTask)
+                allTasks[index] = {
+                  code,
+                  label,
+                  name: sub.name,
+                  weight: parseFloat(sub.weight_percentage) || 0,
+                  score: parseFloat(sub.score) || 0,
+                  type: 'sub-assessment'
+                }
+              }
+            }
+          }
+        })
+      })
     }
     
-    // Get unique task codes from assessment framework
-    const tasksFromFramework = components.map(comp => {
-      const type = comp.type || ''
-      return taskMap[type] || type.substring(0, 2).toUpperCase()
-    }).filter((code, index, self) => self.indexOf(code) === index && code)
+    // Fallback: Get tasks from assessment criteria if no sub-assessments
+    if (allTasks.length === 0 && formData.assessment_criteria) {
+      formData.assessment_criteria.forEach((criterion, idx) => {
+        if (criterion.abbreviation || criterion.name) {
+          const code = criterion.abbreviation || criterion.name.substring(0, 2).toUpperCase()
+          const label = criterion.abbreviation && criterion.name 
+            ? `${criterion.abbreviation} - ${criterion.name}` 
+            : (criterion.abbreviation || criterion.name)
+          
+          if (!allTasks.find(t => t.code === code)) {
+            allTasks.push({
+              code,
+              label,
+              name: criterion.name,
+              weight: parseFloat(criterion.weight) || 0,
+              score: 0,
+              type: 'criterion'
+            })
+          }
+        }
+      })
+    }
     
-    // Default tasks
-    const defaultTasks = [
-      { code: 'QZ', label: 'Quiz' },
-      { code: 'ME', label: 'Major Exam' },
-      { code: 'FP', label: 'Final Project' },
-      { code: 'P', label: 'Presentation' },
-      { code: 'LA', label: 'Lab Activity' },
-      { code: 'A', label: 'Assignment' }
-    ]
-    
-    // Combine and deduplicate
-    const allTasks = [...defaultTasks]
-    tasksFromFramework.forEach(code => {
-      if (!allTasks.find(t => t.code === code)) {
-        allTasks.push({ code, label: code })
+    // Legacy fallback: Get from assessment framework if still no tasks
+    if (allTasks.length === 0) {
+      const components = formData.assessment_framework?.components || []
+      const taskMap = {
+        'Quiz': 'QZ',
+        'Exam': 'ME',
+        'Major Exam': 'ME',
+        'Final Exam': 'ME',
+        'Project': 'FP',
+        'Final Project': 'FP',
+        'Presentation': 'P',
+        'Lab': 'LA',
+        'Lab Activity': 'LA',
+        'Assignment': 'A',
+        'Homework': 'A',
+        'Report': 'A'
       }
-    })
+      
+      const tasksFromFramework = components.map(comp => {
+        const type = comp.type || ''
+        return taskMap[type] || type.substring(0, 2).toUpperCase()
+      }).filter((code, index, self) => self.indexOf(code) === index && code)
+      
+      const defaultTasks = [
+        { code: 'QZ', label: 'Quiz', weight: 0, score: 0, type: 'default' },
+        { code: 'ME', label: 'Major Exam', weight: 0, score: 0, type: 'default' },
+        { code: 'FP', label: 'Final Project', weight: 0, score: 0, type: 'default' },
+        { code: 'P', label: 'Presentation', weight: 0, score: 0, type: 'default' },
+        { code: 'LA', label: 'Lab Activity', weight: 0, score: 0, type: 'default' },
+        { code: 'A', label: 'Assignment', weight: 0, score: 0, type: 'default' }
+      ]
+      
+      tasksFromFramework.forEach(code => {
+        if (!defaultTasks.find(t => t.code === code)) {
+          defaultTasks.push({ code, label: code, weight: 0, score: 0, type: 'default' })
+        }
+      })
+      
+      return defaultTasks
+    }
     
     return allTasks
   }
@@ -1619,26 +1686,30 @@ const SyllabusCreationWizard = ({
                 {/* Get all available assessment tasks from sub-assessments and assessment criteria */}
                 {(() => {
                   const allAssessmentTasks = []
-                  // Add assessment criteria abbreviations/names as tasks
+                  // Primary: Add sub-assessments as tasks with scores and weights
                   formData.assessment_criteria.forEach((criterion, idx) => {
-                    if (criterion.abbreviation || criterion.name) {
-                      allAssessmentTasks.push({
-                        code: criterion.abbreviation || criterion.name.substring(0, 2).toUpperCase(),
-                        name: criterion.name,
-                        type: 'criterion'
-                      })
-                    }
-                    // Add sub-assessments as tasks
                     const subAssessments = formData.sub_assessments[idx] || []
                     subAssessments.forEach(sub => {
                       if (sub.abbreviation || sub.name) {
                         allAssessmentTasks.push({
                           code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
                           name: sub.name,
+                          weight: parseFloat(sub.weight_percentage) || 0,
+                          score: parseFloat(sub.score) || 0,
                           type: 'sub-assessment'
                         })
                       }
                     })
+                    // Fallback: Add assessment criteria if no sub-assessments exist
+                    if (subAssessments.length === 0 && (criterion.abbreviation || criterion.name)) {
+                      allAssessmentTasks.push({
+                        code: criterion.abbreviation || criterion.name.substring(0, 2).toUpperCase(),
+                        name: criterion.name,
+                        weight: parseFloat(criterion.weight) || 0,
+                        score: 0,
+                        type: 'criterion'
+                      })
+                    }
                   })
                   
                    return (
@@ -1678,13 +1749,24 @@ const SyllabusCreationWizard = ({
                              {iloTasks.size > 0 ? (
                                <div className="flex flex-wrap gap-1.5">
                                  {Array.from(iloTasks).map(taskCode => {
-                                   const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode }
+                                   const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode, weight: 0, score: 0 }
+                                   let displayText = task.code
+                                   if (task.name) displayText += ` (${task.name}`
+                                   if (task.weight > 0 || task.score > 0) {
+                                     if (!task.name) displayText += ' ('
+                                     displayText += task.weight > 0 ? `W:${task.weight}%` : ''
+                                     displayText += task.weight > 0 && task.score > 0 ? ', ' : ''
+                                     displayText += task.score > 0 ? `S:${task.score}` : ''
+                                     displayText += ')'
+                                   } else if (task.name) {
+                                     displayText += ')'
+                                   }
                                    return (
                                      <span
                                        key={taskCode}
                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs"
                                      >
-                                       {task.code} {task.name && `(${task.name})`}
+                                       {displayText}
                                      </span>
                                    )
                                  })}
@@ -2208,44 +2290,82 @@ const SyllabusCreationWizard = ({
                             </div>
                             {isEditing ? (
                               <div className="space-y-2">
-                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
-                                <div className="flex flex-wrap gap-2">
-                                  {assessmentTasks.map(task => (
-                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={mappingTaskSelection.includes(task.code)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
-                                          } else {
-                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
-                                          }
-                                        }}
-                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                      />
-                                      <span className="text-xs text-gray-700">{task.label}</span>
-                                    </label>
-                                  ))}
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Select Sub-Assessments:
+                                  {assessmentTasks.length === 0 && (
+                                    <span className="ml-2 text-red-500 text-xs">(No sub-assessments added yet)</span>
+                                  )}
+                                </label>
+                                {assessmentTasks.length > 0 ? (
+                                  <div className="relative">
+                                    <select
+                                      multiple
+                                      value={mappingTaskSelection}
+                                      onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                        setMappingTaskSelection(selected)
+                                      }}
+                                      className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[100px]"
+                                      size="5"
+                                    >
+                                      {assessmentTasks.map(task => (
+                                        <option key={task.code} value={task.code}>
+                                          {task.label} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {mappingTaskSelection.length > 0 
+                                        ? `${mappingTaskSelection.length} sub-assessment(s) selected (Hold Ctrl/Cmd to select multiple)`
+                                        : 'Hold Ctrl/Cmd and click to select multiple sub-assessments'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    <p className="font-medium mb-1">No sub-assessments available</p>
+                                    <p>Please add sub-assessments in Step 3 before mapping them to ILOs.</p>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateMappingTasks('so', index, mappingTaskSelection)
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                                  >
+                                    <CheckCircleIcon className="h-3 w-3" />
+                                    Save Selection
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateMappingTasks('so', index, mappingTaskSelection)
-                                    setEditingMapping({ type: null, index: null })
-                                    setMappingTaskSelection([])
-                                  }}
-                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                >
-                                  Save Tasks
-                                </button>
                               </div>
                             ) : (
                               <div className="text-xs text-gray-600">
                                 {mapping.assessment_tasks?.length > 0 ? (
                                   <span>Tasks: {mapping.assessment_tasks.map(code => {
                                     const task = assessmentTasks.find(t => t.code === code)
-                                    return task?.label || code
+                                    if (!task) return code
+                                    let display = task.label || code
+                                    if (task.weight > 0 || task.score > 0) {
+                                      display += ' ('
+                                      if (task.weight > 0) display += `W:${task.weight}%`
+                                      if (task.weight > 0 && task.score > 0) display += ', '
+                                      if (task.score > 0) display += `S:${task.score}`
+                                      display += ')'
+                                    }
+                                    return display
                                   }).join(', ')}</span>
                                 ) : (
                                   <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
@@ -2319,44 +2439,82 @@ const SyllabusCreationWizard = ({
                             </div>
                             {isEditing ? (
                               <div className="space-y-2">
-                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
-                                <div className="flex flex-wrap gap-2">
-                                  {assessmentTasks.map(task => (
-                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={mappingTaskSelection.includes(task.code)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
-                                          } else {
-                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
-                                          }
-                                        }}
-                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                      />
-                                      <span className="text-xs text-gray-700">{task.label}</span>
-                                    </label>
-                                  ))}
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Select Sub-Assessments:
+                                  {assessmentTasks.length === 0 && (
+                                    <span className="ml-2 text-red-500 text-xs">(No sub-assessments added yet)</span>
+                                  )}
+                                </label>
+                                {assessmentTasks.length > 0 ? (
+                                  <div className="relative">
+                                    <select
+                                      multiple
+                                      value={mappingTaskSelection}
+                                      onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                        setMappingTaskSelection(selected)
+                                      }}
+                                      className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[100px]"
+                                      size="5"
+                                    >
+                                      {assessmentTasks.map(task => (
+                                        <option key={task.code} value={task.code}>
+                                          {task.label} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {mappingTaskSelection.length > 0 
+                                        ? `${mappingTaskSelection.length} sub-assessment(s) selected (Hold Ctrl/Cmd to select multiple)`
+                                        : 'Hold Ctrl/Cmd and click to select multiple sub-assessments'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    <p className="font-medium mb-1">No sub-assessments available</p>
+                                    <p>Please add sub-assessments in Step 3 before mapping them to ILOs.</p>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateMappingTasks('iga', index, mappingTaskSelection)
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                                  >
+                                    <CheckCircleIcon className="h-3 w-3" />
+                                    Save Selection
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateMappingTasks('iga', index, mappingTaskSelection)
-                                    setEditingMapping({ type: null, index: null })
-                                    setMappingTaskSelection([])
-                                  }}
-                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                >
-                                  Save Tasks
-                                </button>
                               </div>
                             ) : (
                               <div className="text-xs text-gray-600">
                                 {mapping.assessment_tasks?.length > 0 ? (
                                   <span>Tasks: {mapping.assessment_tasks.map(code => {
                                     const task = assessmentTasks.find(t => t.code === code)
-                                    return task?.label || code
+                                    if (!task) return code
+                                    let display = task.label || code
+                                    if (task.weight > 0 || task.score > 0) {
+                                      display += ' ('
+                                      if (task.weight > 0) display += `W:${task.weight}%`
+                                      if (task.weight > 0 && task.score > 0) display += ', '
+                                      if (task.score > 0) display += `S:${task.score}`
+                                      display += ')'
+                                    }
+                                    return display
                                   }).join(', ')}</span>
                                 ) : (
                                   <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
@@ -2430,44 +2588,82 @@ const SyllabusCreationWizard = ({
                             </div>
                             {isEditing ? (
                               <div className="space-y-2">
-                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
-                                <div className="flex flex-wrap gap-2">
-                                  {assessmentTasks.map(task => (
-                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={mappingTaskSelection.includes(task.code)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
-                                          } else {
-                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
-                                          }
-                                        }}
-                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                      />
-                                      <span className="text-xs text-gray-700">{task.label}</span>
-                                    </label>
-                                  ))}
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Select Sub-Assessments:
+                                  {assessmentTasks.length === 0 && (
+                                    <span className="ml-2 text-red-500 text-xs">(No sub-assessments added yet)</span>
+                                  )}
+                                </label>
+                                {assessmentTasks.length > 0 ? (
+                                  <div className="relative">
+                                    <select
+                                      multiple
+                                      value={mappingTaskSelection}
+                                      onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                        setMappingTaskSelection(selected)
+                                      }}
+                                      className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[100px]"
+                                      size="5"
+                                    >
+                                      {assessmentTasks.map(task => (
+                                        <option key={task.code} value={task.code}>
+                                          {task.label} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {mappingTaskSelection.length > 0 
+                                        ? `${mappingTaskSelection.length} sub-assessment(s) selected (Hold Ctrl/Cmd to select multiple)`
+                                        : 'Hold Ctrl/Cmd and click to select multiple sub-assessments'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    <p className="font-medium mb-1">No sub-assessments available</p>
+                                    <p>Please add sub-assessments in Step 3 before mapping them to ILOs.</p>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateMappingTasks('cdio', index, mappingTaskSelection)
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                                  >
+                                    <CheckCircleIcon className="h-3 w-3" />
+                                    Save Selection
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateMappingTasks('cdio', index, mappingTaskSelection)
-                                    setEditingMapping({ type: null, index: null })
-                                    setMappingTaskSelection([])
-                                  }}
-                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                >
-                                  Save Tasks
-                                </button>
                               </div>
                             ) : (
                               <div className="text-xs text-gray-600">
                                 {mapping.assessment_tasks?.length > 0 ? (
                                   <span>Tasks: {mapping.assessment_tasks.map(code => {
                                     const task = assessmentTasks.find(t => t.code === code)
-                                    return task?.label || code
+                                    if (!task) return code
+                                    let display = task.label || code
+                                    if (task.weight > 0 || task.score > 0) {
+                                      display += ' ('
+                                      if (task.weight > 0) display += `W:${task.weight}%`
+                                      if (task.weight > 0 && task.score > 0) display += ', '
+                                      if (task.score > 0) display += `S:${task.score}`
+                                      display += ')'
+                                    }
+                                    return display
                                   }).join(', ')}</span>
                                 ) : (
                                   <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
@@ -2541,44 +2737,82 @@ const SyllabusCreationWizard = ({
                             </div>
                             {isEditing ? (
                               <div className="space-y-2">
-                                <label className="block text-xs text-gray-600 mb-1">Select Assessment Tasks:</label>
-                                <div className="flex flex-wrap gap-2">
-                                  {assessmentTasks.map(task => (
-                                    <label key={task.code} className="flex items-center gap-1 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={mappingTaskSelection.includes(task.code)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setMappingTaskSelection([...mappingTaskSelection, task.code])
-                                          } else {
-                                            setMappingTaskSelection(mappingTaskSelection.filter(t => t !== task.code))
-                                          }
-                                        }}
-                                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                      />
-                                      <span className="text-xs text-gray-700">{task.label}</span>
-                                    </label>
-                                  ))}
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Select Sub-Assessments:
+                                  {assessmentTasks.length === 0 && (
+                                    <span className="ml-2 text-red-500 text-xs">(No sub-assessments added yet)</span>
+                                  )}
+                                </label>
+                                {assessmentTasks.length > 0 ? (
+                                  <div className="relative">
+                                    <select
+                                      multiple
+                                      value={mappingTaskSelection}
+                                      onChange={(e) => {
+                                        const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                        setMappingTaskSelection(selected)
+                                      }}
+                                      className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[100px]"
+                                      size="5"
+                                    >
+                                      {assessmentTasks.map(task => (
+                                        <option key={task.code} value={task.code}>
+                                          {task.label} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {mappingTaskSelection.length > 0 
+                                        ? `${mappingTaskSelection.length} sub-assessment(s) selected (Hold Ctrl/Cmd to select multiple)`
+                                        : 'Hold Ctrl/Cmd and click to select multiple sub-assessments'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    <p className="font-medium mb-1">No sub-assessments available</p>
+                                    <p>Please add sub-assessments in Step 3 before mapping them to ILOs.</p>
+                                  </div>
+                                )}
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateMappingTasks('sdg', index, mappingTaskSelection)
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                                  >
+                                    <CheckCircleIcon className="h-3 w-3" />
+                                    Save Selection
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingMapping({ type: null, index: null })
+                                      setMappingTaskSelection([])
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                  >
+                                    Cancel
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleUpdateMappingTasks('sdg', index, mappingTaskSelection)
-                                    setEditingMapping({ type: null, index: null })
-                                    setMappingTaskSelection([])
-                                  }}
-                                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                                >
-                                  Save Tasks
-                                </button>
                               </div>
                             ) : (
                               <div className="text-xs text-gray-600">
                                 {mapping.assessment_tasks?.length > 0 ? (
                                   <span>Tasks: {mapping.assessment_tasks.map(code => {
                                     const task = assessmentTasks.find(t => t.code === code)
-                                    return task?.label || code
+                                    if (!task) return code
+                                    let display = task.label || code
+                                    if (task.weight > 0 || task.score > 0) {
+                                      display += ' ('
+                                      if (task.weight > 0) display += `W:${task.weight}%`
+                                      if (task.weight > 0 && task.score > 0) display += ', '
+                                      if (task.score > 0) display += `S:${task.score}`
+                                      display += ')'
+                                    }
+                                    return display
                                   }).join(', ')}</span>
                                 ) : (
                                   <span className="text-gray-400 italic">No assessment tasks selected - click edit to add</span>
