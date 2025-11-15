@@ -1587,8 +1587,8 @@ const MyClasses = () => {
   // Handle clicks outside sidebar to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Don't close sidebar if modal is open
-      if (showFullAttendanceModal) {
+      // Don't close sidebar if any modal is open
+      if (showFullAttendanceModal || showStudentModal) {
         return
       }
       
@@ -1596,8 +1596,8 @@ const MyClasses = () => {
       if (currentContainer && !currentContainer.contains(event.target) && selectedClass) {
         // Check if the click is not on a class card
         const isClassCard = event.target.closest('[data-class-card]')
-        // Check if click is on modal
-        const isModal = event.target.closest('[data-attendance-modal]')
+        // Check if click is on any modal
+        const isModal = event.target.closest('[data-attendance-modal]') || event.target.closest('[data-student-modal]')
         if (!isClassCard && !isModal) {
           setSelectedClass(null)
           setIsAttendanceMode(false)
@@ -1612,7 +1612,7 @@ const MyClasses = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [selectedClass, showFullAttendanceModal])
+  }, [selectedClass, showFullAttendanceModal, showStudentModal])
 
   // Ensure loading state is shown immediately on mount/reload
   useEffect(() => {
@@ -3233,6 +3233,7 @@ const MyClasses = () => {
         
         return (
           <div 
+            data-student-modal
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={() => setShowStudentModal(false)}
           >
