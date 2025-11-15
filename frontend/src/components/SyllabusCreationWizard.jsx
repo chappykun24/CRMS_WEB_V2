@@ -733,13 +733,13 @@ const SyllabusCreationWizard = ({
     switch(currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Information</h3>
-              <p className="text-xs text-gray-600 mb-4">Provide the course details and instructor information</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Course Information</h3>
+              <p className="text-xs text-gray-600 mb-2">Provide the course details and instructor information</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   Course Title <span className="text-red-500">*</span>
@@ -752,7 +752,7 @@ const SyllabusCreationWizard = ({
                   required
                   readOnly
                   disabled
-                  className={`w-full px-4 py-3 border rounded-lg bg-gray-100 cursor-not-allowed ${
+                  className={`w-full px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_title ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., Analytics Techniques and Tools"
@@ -773,7 +773,7 @@ const SyllabusCreationWizard = ({
                   required
                   readOnly
                   disabled
-                  className={`w-full px-4 py-3 border rounded-lg bg-gray-100 cursor-not-allowed ${
+                  className={`w-full px-3 py-2 border rounded-lg bg-gray-100 cursor-not-allowed ${
                     errors.course_code ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="e.g., BAT 404"
@@ -791,7 +791,7 @@ const SyllabusCreationWizard = ({
                   name="course_category"
                   value={formData.course_category}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Professional Elective"
                 />
               </div>
@@ -805,7 +805,7 @@ const SyllabusCreationWizard = ({
                   name="semester_year"
                   value={formData.semester_year}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Second Semester & A.Y 2024-2025"
                 />
               </div>
@@ -819,7 +819,7 @@ const SyllabusCreationWizard = ({
                   name="credit_hours"
                   value={formData.credit_hours}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 5 hours"
                 />
               </div>
@@ -833,7 +833,7 @@ const SyllabusCreationWizard = ({
                   name="prerequisites"
                   value={formData.prerequisites}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., BAT 402"
                 />
               </div>
@@ -847,7 +847,7 @@ const SyllabusCreationWizard = ({
                   name="id_number"
                   value={formData.id_number}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 55609"
                 />
               </div>
@@ -861,7 +861,7 @@ const SyllabusCreationWizard = ({
                   name="reference_cmo"
                   value={formData.reference_cmo}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., CMO 25, Series 2015"
                 />
               </div>
@@ -875,7 +875,7 @@ const SyllabusCreationWizard = ({
                   name="date_prepared"
                   value={formData.date_prepared}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
@@ -888,7 +888,7 @@ const SyllabusCreationWizard = ({
                   name="revision_no"
                   value={formData.revision_no}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="0"
                 />
               </div>
@@ -902,7 +902,7 @@ const SyllabusCreationWizard = ({
                   name="revision_date"
                   value={formData.revision_date}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
@@ -915,7 +915,7 @@ const SyllabusCreationWizard = ({
                   value={formData.term_id}
                   onChange={handleInputChange}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                     errors.term_id ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
@@ -930,9 +930,9 @@ const SyllabusCreationWizard = ({
               </div>
             </div>
             
-            <div className="border-t pt-6">
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Course Instructor</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Course Instructor</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Instructor Name
@@ -941,7 +941,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.name}
                     onChange={(e) => handleNestedChange('course_instructor.name', e.target.value)}
-                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Daryl Tiquio"
                   />
                 </div>
@@ -954,7 +954,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.qualification}
                     onChange={(e) => handleNestedChange('course_instructor.qualification', e.target.value)}
-                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Master in Business Analytics (30 units/ ongoing)"
                   />
                 </div>
@@ -967,7 +967,7 @@ const SyllabusCreationWizard = ({
                     type="email"
                     value={formData.course_instructor.contact_email}
                     onChange={(e) => handleNestedChange('course_instructor.contact_email', e.target.value)}
-                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., daryl.m.tiquio@g.batstate-u.edu.ph"
                   />
                 </div>
@@ -980,7 +980,7 @@ const SyllabusCreationWizard = ({
                     type="text"
                     value={formData.course_instructor.contact_phone}
                     onChange={(e) => handleNestedChange('course_instructor.contact_phone', e.target.value)}
-                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-2 py-1.5 border text-xs border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., 0908-877-8671"
                   />
                 </div>
@@ -991,14 +991,14 @@ const SyllabusCreationWizard = ({
         
       case 2:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Rationale and Description</h3>
-              <p className="text-xs text-gray-600 mb-3">Provide a comprehensive description of the course rationale and objectives</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Course Rationale and Description</h3>
+              <p className="text-xs text-gray-600 mb-2">Provide a comprehensive description of the course rationale and objectives</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Course Rationale and Description <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -1007,7 +1007,7 @@ const SyllabusCreationWizard = ({
                 onChange={handleInputChange}
                 required
                 rows={12}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                   errors.course_rationale ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="The course equips students with essential skills for implementing advanced analytics techniques, addressing the growing need for data-driven decision-making in various industries. This course provides a comprehensive introduction to analytics techniques and tools, with an emphasis on their practical applications in solving real-world challenges..."
@@ -1057,20 +1057,20 @@ const SyllabusCreationWizard = ({
         }
         
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Contact Hours and Assessment Criteria</h3>
-              <p className="text-xs text-gray-600 mb-3">Define the contact hours and assessment breakdown</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Contact Hours and Assessment Criteria</h3>
+              <p className="text-xs text-gray-600 mb-2">Define the contact hours and assessment breakdown</p>
             </div>
             
-            <div className="border-b pb-6 mb-6">
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Contact Hours</h4>
+            <div className="border-b pb-4 mb-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Contact Hours</h4>
               
               {formData.contact_hours.length > 0 && (
-                <div className="space-y-3 mb-4">
+                <div className="space-y-2 mb-2">
                   {formData.contact_hours.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
                         <input
                           type="text"
                           value={item.name}
@@ -1079,7 +1079,7 @@ const SyllabusCreationWizard = ({
                             updated[index] = { ...updated[index], name: e.target.value }
                             setFormData(prev => ({ ...prev, contact_hours: updated }))
                           }}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Type (e.g., Lecture, Laboratory)"
                         />
                         <input
@@ -1090,7 +1090,7 @@ const SyllabusCreationWizard = ({
                             updated[index] = { ...updated[index], hours: parseInt(e.target.value) || 0 }
                             setFormData(prev => ({ ...prev, contact_hours: updated }))
                           }}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Hours"
                           min="0"
                         />
@@ -1113,8 +1113,8 @@ const SyllabusCreationWizard = ({
                 </div>
               )}
               
-              <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <input
                     type="text"
                     value={newContactHour.name}
@@ -1144,20 +1144,20 @@ const SyllabusCreationWizard = ({
               </div>
             </div>
             
-            <div className="border-t pt-6">
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Criteria for Assessment</h4>
-              <p className="text-sm text-gray-600 mb-4">Total must equal 100%</p>
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Criteria for Assessment</h4>
+              <p className="text-xs text-gray-600 mb-2">Total must equal 100%</p>
               
               {formData.assessment_criteria.length > 0 && (
-                <div className="space-y-3 mb-4">
+                <div className="space-y-2 mb-2">
                   {formData.assessment_criteria.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-3 gap-3">
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-3 gap-2">
                         <input
                           type="text"
                           value={item.abbreviation || ''}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Abbreviation (e.g., QZ, ME)"
                           maxLength="10"
                         />
@@ -1165,14 +1165,14 @@ const SyllabusCreationWizard = ({
                           type="text"
                           value={item.name}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                         />
                         <input
                           type="number"
                           value={item.weight}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'weight', e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Weight %"
                           min="0"
                           max="100"
@@ -1191,8 +1191,8 @@ const SyllabusCreationWizard = ({
                 </div>
               )}
               
-              <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <input
                     type="text"
                     value={newAssessmentCriteria.abbreviation}
@@ -1231,10 +1231,10 @@ const SyllabusCreationWizard = ({
                 </div>
               </div>
               
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Total:</span>
-                  <span className={`text-lg font-bold ${assessmentTotal === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className="text-xs font-medium text-gray-700">Total:</span>
+                  <span className={`text-sm font-bold ${assessmentTotal === 100 ? 'text-green-600' : 'text-red-600'}`}>
                     {assessmentTotal}%
                   </span>
                 </div>
@@ -1252,31 +1252,31 @@ const SyllabusCreationWizard = ({
               
               {/* Sub-Assessments Section */}
               {formData.assessment_criteria.length > 0 && (
-                <div className="border-t pt-6 mt-6">
-                  <h4 className="text-md font-semibold text-gray-900 mb-4">Sub-Assessments</h4>
-                  <p className="text-sm text-gray-600 mb-4">
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Sub-Assessments</h4>
+                  <p className="text-xs text-gray-600 mb-2">
                     Create sub-assessments for each assessment criterion. The total weight of sub-assessments must equal the parent criterion weight.
                   </p>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {formData.assessment_criteria.map((criterion, criterionIndex) => {
                       const subAssessments = formData.sub_assessments[criterionIndex] || []
                       const subTotal = subAssessments.reduce((sum, sub) => sum + (parseFloat(sub.weight_percentage) || 0), 0)
                       const isExpanded = editingSubAssessmentFor === criterionIndex
                       
                       return (
-                        <div key={criterionIndex} className="border border-gray-300 rounded-lg p-4 bg-white">
-                          <div className="flex items-center justify-between mb-3">
+                        <div key={criterionIndex} className="border border-gray-300 rounded-lg p-2 bg-white">
+                          <div className="flex items-center justify-between mb-2">
                             <div>
                               <h5 className="font-medium text-gray-900">
                                 {criterion.abbreviation && `${criterion.abbreviation} - `}{criterion.name}
                               </h5>
-                              <p className="text-sm text-gray-600">Parent Weight: {criterion.weight}%</p>
+                              <p className="text-xs text-gray-600">Parent Weight: {criterion.weight}%</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => setEditingSubAssessmentFor(isExpanded ? null : criterionIndex)}
-                              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2"
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-1.5"
                             >
                               {isExpanded ? 'Hide' : 'Add'} Sub-Assessments
                               {subAssessments.length > 0 && (
@@ -1288,10 +1288,10 @@ const SyllabusCreationWizard = ({
                           </div>
                           
                           {subAssessments.length > 0 && (
-                            <div className="mb-3 space-y-2">
+                            <div className="mb-2 space-y-1.5">
                               {subAssessments.map((sub, subIndex) => (
-                                <div key={subIndex} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                                  <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+                                <div key={subIndex} className="flex items-center gap-1.5 p-1.5 bg-gray-50 rounded">
+                                  <div className="flex-1 grid grid-cols-3 gap-1.5 text-xs">
                                     <span className="font-medium text-gray-700">
                                       {sub.abbreviation && `${sub.abbreviation} - `}{sub.name}
                                     </span>
@@ -1312,9 +1312,9 @@ const SyllabusCreationWizard = ({
                                   </button>
                                 </div>
                               ))}
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <span className="text-sm font-medium text-gray-700">Sub-total:</span>
-                                <span className={`text-sm font-bold ${subTotal === parseFloat(criterion.weight) ? 'text-green-600' : 'text-red-600'}`}>
+                              <div className="flex items-center justify-between pt-1.5 border-t">
+                                <span className="text-xs font-medium text-gray-700">Sub-total:</span>
+                                <span className={`text-xs font-bold ${subTotal === parseFloat(criterion.weight) ? 'text-green-600' : 'text-red-600'}`}>
                                   {subTotal}% / {criterion.weight}%
                                 </span>
                               </div>
@@ -1329,13 +1329,13 @@ const SyllabusCreationWizard = ({
                           )}
                           
                           {isExpanded && (
-                            <div className="mt-4 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="mt-2 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                                 <input
                                   type="text"
                                   value={newSubAssessment.abbreviation}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
-                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Abbreviation (e.g., QZ1)"
                                   maxLength="10"
                                 />
@@ -1343,14 +1343,14 @@ const SyllabusCreationWizard = ({
                                   type="text"
                                   value={newSubAssessment.name}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
-                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Sub-assessment Name"
                                 />
                                 <input
                                   type="number"
                                   value={newSubAssessment.weight_percentage}
                                   onChange={(e) => setNewSubAssessment(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  className="px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                   placeholder="Weight %"
                                   min="0"
                                   max={criterion.weight}
@@ -1394,21 +1394,21 @@ const SyllabusCreationWizard = ({
         
       case 4:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Teaching, Learning, and Assessment Strategies</h3>
-              <p className="text-xs text-gray-600 mb-3">Describe the teaching approach and assessment components</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Teaching, Learning, and Assessment Strategies</h3>
+              <p className="text-xs text-gray-600 mb-2">Describe the teaching approach and assessment components</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 General Description <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={formData.teaching_strategies.general_description}
                 onChange={(e) => handleNestedChange('teaching_strategies.general_description', e.target.value)}
                 rows={8}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 ${
                   errors.teaching_strategies ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="The course uses a blended learning approach, combining online and face-to-face sessions..."
@@ -1421,37 +1421,37 @@ const SyllabusCreationWizard = ({
         
       case 5:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
-              <p className="text-xs text-gray-600 mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
+              <p className="text-xs text-gray-600 mb-2">
                 Define the learning outcomes for this course and optionally map them to educational goals (SO, IGA, CDIO, SDG).
               </p>
             </div>
             
-            <div className="mb-4">
+            <div className="mb-2">
               <button
                 type="button"
                 onClick={() => openILOModal()}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
-                <PlusIcon className="h-5 w-5" />
-                Add ILO
-              </button>
-            </div>
-            
-            {ilos.length === 0 ? (
-              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <p className="text-gray-500 mb-2">No ILOs added yet.</p>
-                <p className="text-sm text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
-                <p className="text-xs text-gray-400 mt-2">Note: ILOs are optional but recommended for outcome-based education.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {ilos.map((ilo, index) => (
-                  <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-start justify-between mb-2">
+                 <PlusIcon className="h-4 w-4" />
+                 Add ILO
+               </button>
+             </div>
+             
+             {ilos.length === 0 ? (
+               <div className="text-center py-4 border-2 border-dashed border-gray-300 rounded-lg">
+                 <AcademicCapIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                 <p className="text-xs text-gray-500 mb-1">No ILOs added yet.</p>
+                 <p className="text-xs text-gray-400">Click "Add ILO" to create learning outcomes for this course.</p>
+                 <p className="text-xs text-gray-400 mt-1">Note: ILOs are optional but recommended for outcome-based education.</p>
+               </div>
+             ) : (
+               <div className="space-y-2">
+                 {ilos.map((ilo, index) => (
+                   <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
+                     <div className="flex items-start justify-between mb-1.5">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="font-semibold text-gray-900">{ilo.code}</span>
@@ -1465,7 +1465,7 @@ const SyllabusCreationWizard = ({
                             <span className="text-xs text-gray-600">Weight: {ilo.weight_percentage}%</span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700 mb-2">{ilo.description}</p>
+                         <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
                         {ilo.assessment_methods?.length > 0 && (
                           <p className="text-xs text-gray-600 mb-1">
                             <strong>Assessment Methods:</strong> {Array.isArray(ilo.assessment_methods) ? ilo.assessment_methods.join(', ') : ilo.assessment_methods}
@@ -1477,11 +1477,11 @@ const SyllabusCreationWizard = ({
                           </p>
                         )}
                         
-                        {/* Show mappings if any */}
-                        {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
-                          ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Mappings:</p>
+                         {/* Show mappings if any */}
+                         {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
+                           ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
+                           <div className="mt-2 pt-2 border-t border-gray-200">
+                             <p className="text-xs font-medium text-gray-700 mb-1">Mappings:</p>
                             <div className="space-y-1">
                               {ilo.so_mappings?.length > 0 && (
                                 <div className="text-xs text-gray-600">
@@ -1572,10 +1572,10 @@ const SyllabusCreationWizard = ({
             )}
             
             {/* Assessment Task Mapping to ILOs Section */}
-            {ilos.length > 0 && (
-              <div className="mt-6 border-t pt-6">
-                <h4 className="text-md font-semibold text-gray-900 mb-4">Assessment Task Mapping to ILOs</h4>
-                <p className="text-sm text-gray-600 mb-4">
+             {ilos.length > 0 && (
+               <div className="mt-4 border-t pt-4">
+                 <h4 className="text-sm font-semibold text-gray-900 mb-2">Assessment Task Mapping to ILOs</h4>
+                 <p className="text-xs text-gray-600 mb-2">
                   Map assessment tasks (from your sub-assessments and assessment criteria) to ILOs to show how each learning outcome is assessed.
                 </p>
                 
@@ -1604,57 +1604,57 @@ const SyllabusCreationWizard = ({
                     })
                   })
                   
-                  return (
-                    <div className="space-y-4">
-                      {ilos.map((ilo, iloIndex) => {
-                        // Get assessment tasks for this ILO from all mappings
-                        const iloTasks = new Set()
-                        ilo.so_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.iga_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.cdio_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.sdg_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        
-                        return (
-                          <div key={iloIndex} className="border border-gray-300 rounded-lg p-4 bg-white">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-gray-900">{ilo.code}</span>
-                                <span className="text-sm text-gray-600">- {ilo.description}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => openILOModal(ilo)}
-                                className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                              >
+                   return (
+                     <div className="space-y-2">
+                       {ilos.map((ilo, iloIndex) => {
+                         // Get assessment tasks for this ILO from all mappings
+                         const iloTasks = new Set()
+                         ilo.so_mappings?.forEach(m => {
+                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                         })
+                         ilo.iga_mappings?.forEach(m => {
+                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                         })
+                         ilo.cdio_mappings?.forEach(m => {
+                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                         })
+                         ilo.sdg_mappings?.forEach(m => {
+                           m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                         })
+                         
+                         return (
+                           <div key={iloIndex} className="border border-gray-300 rounded-lg p-2 bg-white">
+                             <div className="flex items-center justify-between mb-2">
+                               <div className="flex items-center gap-1.5">
+                                 <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
+                                 <span className="text-xs text-gray-600">- {ilo.description}</span>
+                               </div>
+                               <button
+                                 type="button"
+                                 onClick={() => openILOModal(ilo)}
+                                 className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                               >
                                 Map Assessment Tasks
                               </button>
                             </div>
                             
-                            {iloTasks.size > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {Array.from(iloTasks).map(taskCode => {
-                                  const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode }
-                                  return (
-                                    <span
-                                      key={taskCode}
-                                      className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs"
-                                    >
-                                      {task.code} {task.name && `(${task.name})`}
-                                    </span>
-                                  )
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-gray-500 italic">No assessment tasks mapped yet. Click "Map Assessment Tasks" to add mappings.</p>
-                            )}
+                             {iloTasks.size > 0 ? (
+                               <div className="flex flex-wrap gap-1.5">
+                                 {Array.from(iloTasks).map(taskCode => {
+                                   const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode }
+                                   return (
+                                     <span
+                                       key={taskCode}
+                                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs"
+                                     >
+                                       {task.code} {task.name && `(${task.name})`}
+                                     </span>
+                                   )
+                                 })}
+                               </div>
+                             ) : (
+                               <p className="text-xs text-gray-500 italic">No assessment tasks mapped yet. Click "Map Assessment Tasks" to add mappings.</p>
+                             )}
                           </div>
                         )
                       })}
@@ -1665,69 +1665,69 @@ const SyllabusCreationWizard = ({
             )}
             
             {/* ILO to Student Outcomes Mapping Section */}
-            {ilos.length > 0 && (
-              <div className="mt-6 border-t pt-6">
-                <h4 className="text-md font-semibold text-gray-900 mb-4">ILO Mapping to Student Outcomes</h4>
-                <p className="text-sm text-gray-600 mb-4">
+             {ilos.length > 0 && (
+               <div className="mt-4 border-t pt-4">
+                 <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO Mapping to Student Outcomes</h4>
+                 <p className="text-xs text-gray-600 mb-2">
                   Map ILOs to Student Outcomes (SO) to demonstrate alignment with program outcomes. Click "Edit ILO" to add or modify mappings.
                 </p>
                 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {ilos.map((ilo, index) => (
-                    <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white">
-                      <div className="flex items-start justify-between mb-3">
+                    <div key={index} className="border border-gray-300 rounded-lg p-2 bg-white">
+                      <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-semibold text-gray-900">{ilo.code}</span>
-                            <span className="text-sm text-gray-600">{ilo.description}</span>
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
+                            <span className="text-xs text-gray-600">{ilo.description}</span>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => openILOModal(ilo)}
-                          className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                         >
                           Edit Mappings
                         </button>
                       </div>
                       
-                      {ilo.so_mappings && ilo.so_mappings.length > 0 ? (
-                        <div className="space-y-2">
-                          {ilo.so_mappings.map((mapping, mapIndex) => {
-                            const so = soReferences.find(r => r.so_id === mapping.so_id)
-                            return (
-                              <div key={mapIndex} className="p-2 bg-blue-50 rounded border border-blue-200">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-blue-900 text-sm">
-                                    {so?.so_code || mapping.so_id}
-                                  </span>
-                                  {mapping.assessment_tasks && mapping.assessment_tasks.length > 0 && (
-                                    <>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="text-xs text-gray-600">
-                                        Assessment Tasks: {mapping.assessment_tasks.join(', ')}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                                {so?.description && (
-                                  <p className="text-xs text-gray-600 mt-1">{so.description}</p>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500 italic">No Student Outcomes mapped yet. Click "Edit Mappings" to add mappings.</p>
-                      )}
+                       {ilo.so_mappings && ilo.so_mappings.length > 0 ? (
+                         <div className="space-y-1.5">
+                           {ilo.so_mappings.map((mapping, mapIndex) => {
+                             const so = soReferences.find(r => r.so_id === mapping.so_id)
+                             return (
+                               <div key={mapIndex} className="p-1.5 bg-blue-50 rounded border border-blue-200">
+                                 <div className="flex items-center gap-1.5">
+                                   <span className="font-medium text-blue-900 text-xs">
+                                     {so?.so_code || mapping.so_id}
+                                   </span>
+                                   {mapping.assessment_tasks && mapping.assessment_tasks.length > 0 && (
+                                     <>
+                                       <span className="text-gray-400">•</span>
+                                       <span className="text-xs text-gray-600">
+                                         Assessment Tasks: {mapping.assessment_tasks.join(', ')}
+                                       </span>
+                                     </>
+                                   )}
+                                 </div>
+                                 {so?.description && (
+                                   <p className="text-xs text-gray-600 mt-0.5">{so.description}</p>
+                                 )}
+                               </div>
+                             )
+                           })}
+                         </div>
+                       ) : (
+                         <p className="text-xs text-gray-500 italic">No Student Outcomes mapped yet. Click "Edit Mappings" to add mappings.</p>
+                       )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
             
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
                 <strong>Note:</strong> ILOs will be saved when you create/update the syllabus. 
                 Click "Edit ILO" or "Map Assessment Tasks" on any ILO to add mappings to Student Outcomes (SO), 
                 Institutional Graduate Attributes (IGA), CDIO Skills, and SDG Skills. 
@@ -1739,22 +1739,22 @@ const SyllabusCreationWizard = ({
         
       case 6:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Books and Other References</h3>
-              <p className="text-xs text-gray-600 mb-3">Add learning resources such as textbooks, websites, and materials</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Books and Other References</h3>
+              <p className="text-xs text-gray-600 mb-2">Add learning resources such as textbooks, websites, and materials</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 References
               </label>
               
               {formData.learning_resources.length > 0 && (
-                <div className="space-y-2 mb-4">
+                <div className="space-y-1.5 mb-2">
                   {formData.learning_resources.map((resource, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-900">{resource}</span>
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                      <span className="text-xs text-gray-900">{resource}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveResource(index)}
@@ -1773,15 +1773,15 @@ const SyllabusCreationWizard = ({
                   value={newResource}
                   onChange={(e) => setNewResource(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddResource())}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Enter reference (e.g., Author, Title. Publisher. Retrieved date, from URL)"
                 />
                 <button
                   type="button"
                   onClick={handleAddResource}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+                  className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-1.5"
                 >
-                  <PlusIcon className="h-5 w-5" />
+                  <PlusIcon className="h-4 w-4" />
                   Add
                 </button>
               </div>
@@ -1795,20 +1795,20 @@ const SyllabusCreationWizard = ({
         
       case 7:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Policies - Grading System</h3>
-              <p className="text-xs text-gray-600 mb-3">Define the grading scale for the course</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Course Policies - Grading System</h3>
+              <p className="text-xs text-gray-600 mb-2">Define the grading scale for the course</p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Grade Scale
               </label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {formData.grading_policy.scale.map((item, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1 grid grid-cols-3 gap-3">
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <div className="flex-1 grid grid-cols-3 gap-2">
                       <input
                         type="text"
                         value={item.grade}
@@ -1817,7 +1817,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].grade = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Grade (e.g., 1.00)"
                       />
                       <input
@@ -1828,7 +1828,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].range = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Range (e.g., 98-100)"
                       />
                       <input
@@ -1839,7 +1839,7 @@ const SyllabusCreationWizard = ({
                           newScale[index].description = e.target.value
                           handleNestedChange('grading_policy.scale', newScale)
                         }}
-                        className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="Description (e.g., Excellent)"
                       />
                     </div>
@@ -1854,47 +1854,47 @@ const SyllabusCreationWizard = ({
                 ))}
               </div>
               
-              <div className="mt-3 flex gap-2">
+              <div className="mt-2 flex gap-2">
                 <input
                   type="text"
                   value={newGradeItem.grade}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, grade: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Grade"
                 />
                 <input
                   type="text"
                   value={newGradeItem.range}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, range: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Range"
                 />
                 <input
                   type="text"
                   value={newGradeItem.description}
                   onChange={(e) => setNewGradeItem(prev => ({ ...prev, description: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="Description"
                 />
                 <button
                   type="button"
                   onClick={handleAddGradeItem}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                  className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700"
                 >
-                  <PlusIcon className="h-5 w-5" />
+                  <PlusIcon className="h-4 w-4" />
                 </button>
               </div>
             </div>
             
-            <div className="border-t pt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="border-t pt-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Remedial Activity Note
               </label>
               <textarea
                 value={formData.grading_policy.remedial_note}
                 onChange={(e) => handleNestedChange('grading_policy.remedial_note', e.target.value)}
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 placeholder="Students who got a computed grade of 70-74 will be given an appropriate remedial activity..."
               />
               <p className="mt-1 text-xs text-gray-500">Note about remedial activities for students with grades 70-74</p>
@@ -1911,9 +1911,9 @@ const SyllabusCreationWizard = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50 overflow-y-auto">
       <div className="bg-white rounded-lg max-w-[98vw] w-full max-h-[98vh] my-4 shadow-xl flex flex-col">
         {/* Header */}
-        <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-sm font-bold text-gray-900">
               {editingSyllabus ? 'Edit Syllabus' : 'Create New Syllabus'}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -1929,7 +1929,7 @@ const SyllabusCreationWizard = ({
         </div>
         
         {/* Progress Steps */}
-        <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="px-3 py-1.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => {
               const Icon = step.icon
@@ -1940,24 +1940,24 @@ const SyllabusCreationWizard = ({
                 <React.Fragment key={step.number}>
                   <div className="flex items-center">
                     <div className={`flex flex-col items-center ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${
                         isActive ? 'border-red-600 bg-red-50' : 
                         isCompleted ? 'border-green-600 bg-green-50' : 
                         'border-gray-300 bg-white'
                       }`}>
                         {isCompleted ? (
-                          <CheckCircleIcon className="h-4 w-4" />
+                          <CheckCircleIcon className="h-3 w-3" />
                         ) : (
-                          <Icon className="h-4 w-4" />
+                          <Icon className="h-3 w-3" />
                         )}
                       </div>
-                      <span className={`mt-1 text-[10px] font-medium ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                      <span className={`mt-0.5 text-[9px] font-medium ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
                         {step.title}
                       </span>
                     </div>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-4 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                    <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
                   )}
                 </React.Fragment>
               )
@@ -1966,21 +1966,21 @@ const SyllabusCreationWizard = ({
         </div>
         
         {/* Content */}
-        <div className="px-6 py-6 max-h-[60vh] overflow-y-auto">
+        <div className="px-4 py-4 max-h-[60vh] overflow-y-auto">
           {renderStepContent()}
         </div>
         
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-          <div className="flex items-center gap-2 text-xs text-gray-600">
+        <div className="px-4 py-2 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+          <div className="flex items-center gap-1.5 text-xs text-gray-600">
             <span>Step {currentStep} of {totalSteps}</span>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
@@ -1989,9 +1989,9 @@ const SyllabusCreationWizard = ({
               <button
                 type="button"
                 onClick={handlePrevious}
-                className="px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-1"
               >
-                <ChevronLeftIcon className="h-4 w-4" />
+                <ChevronLeftIcon className="h-3 w-3" />
                 Previous
               </button>
             )}
@@ -2000,18 +2000,18 @@ const SyllabusCreationWizard = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1.5"
+                className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1"
               >
                 Next
-                <ChevronRightIcon className="h-4 w-4" />
+                <ChevronRightIcon className="h-3 w-3" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-4 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1"
               >
-                <CheckCircleIcon className="h-4 w-4" />
+                <CheckCircleIcon className="h-3 w-3" />
                 {editingSyllabus ? 'Update Syllabus' : 'Create Syllabus'}
               </button>
             )}
@@ -2019,17 +2019,17 @@ const SyllabusCreationWizard = ({
         </div>
       </div>
       
-      {/* ILO Creation/Edit Modal */}
-      {showILOModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {editingILO ? 'Edit ILO' : 'Create New ILO'}
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">
+       {/* ILO Creation/Edit Modal */}
+       {showILOModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 z-[60]">
+           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+             <div className="p-4">
+               <div className="flex items-center justify-between mb-3">
+                 <div>
+                   <h3 className="text-sm font-bold text-gray-900">
+                     {editingILO ? 'Edit ILO' : 'Create New ILO'}
+                   </h3>
+                   <p className="text-xs text-gray-500 mt-0.5">
                     Define what students should be able to do after completing this course
                   </p>
                 </div>
@@ -2044,12 +2044,12 @@ const SyllabusCreationWizard = ({
                 </button>
               </div>
               
-              {/* Instructions Banner */}
-              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AcademicCapIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Quick Guide</h4>
+               {/* Instructions Banner */}
+               <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                 <div className="flex items-start gap-2">
+                   <AcademicCapIcon className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                   <div className="flex-1">
+                     <h4 className="text-xs font-semibold text-blue-900 mb-0.5">Quick Guide</h4>
                     <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                       <li><strong>ILO Code:</strong> Use a unique identifier (e.g., ILO1, ILO2)</li>
                       <li><strong>Description:</strong> Write a clear, measurable learning outcome</li>
@@ -2059,17 +2059,17 @@ const SyllabusCreationWizard = ({
                 </div>
               </div>
               
-              <div className="space-y-4">
-                {/* ILO Code */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    ILO Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={iloFormData.code}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+               <div className="space-y-3">
+                 {/* ILO Code */}
+                 <div>
+                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                     ILO Code <span className="text-red-500">*</span>
+                   </label>
+                   <input
+                     type="text"
+                     value={iloFormData.code}
+                     onChange={(e) => setIloFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                     className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., ILO1, ILO2"
                     required
                   />
@@ -2081,11 +2081,11 @@ const SyllabusCreationWizard = ({
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Description <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    value={iloFormData.description}
-                    onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                   <textarea
+                     value={iloFormData.description}
+                     onChange={(e) => setIloFormData(prev => ({ ...prev, description: e.target.value }))}
+                     rows={4}
+                     className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Example: 'Students will be able to analyze and design database systems using SQL and NoSQL technologies to solve real-world data management problems.'"
                     required
                   />
@@ -2094,39 +2094,39 @@ const SyllabusCreationWizard = ({
                   </p>
                 </div>
                 
-                {/* Mapping Section */}
-                <div className="mt-6 border-t border-gray-200 pt-6">
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Map to Educational Goals (Optional)</h4>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                      <p className="text-xs text-amber-800">
+                 {/* Mapping Section */}
+                 <div className="mt-4 border-t border-gray-200 pt-4">
+                   <div className="mb-3">
+                     <h4 className="text-xs font-semibold text-gray-900 mb-1.5">Map to Educational Goals (Optional)</h4>
+                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
+                       <p className="text-xs text-amber-800">
                         <strong>Why map ILOs?</strong> Mapping connects your course learning outcomes to institutional goals (SO, IGA, CDIO, SDG). 
                         This demonstrates how your course contributes to program objectives. You can add mappings now or later in the ILO Mapping section.
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                      <div className="text-xs">
-                        <p className="font-medium text-gray-700 mb-1">📋 SO (Student Outcomes)</p>
-                        <p className="text-gray-600">Program-specific learning outcomes</p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-medium text-gray-700 mb-1">🎓 IGA (Institutional Graduate Attributes)</p>
-                        <p className="text-gray-600">University-wide graduate attributes</p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-medium text-gray-700 mb-1">🔧 CDIO</p>
-                        <p className="text-gray-600">Conceive, Design, Implement, Operate framework</p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-medium text-gray-700 mb-1">🌍 SDG (Sustainable Development Goals)</p>
-                        <p className="text-gray-600">UN sustainability goals alignment</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* SO Mappings */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                       <div className="text-xs">
+                         <p className="font-medium text-gray-700 mb-0.5">📋 SO (Student Outcomes)</p>
+                         <p className="text-gray-600 text-xs">Program-specific learning outcomes</p>
+                       </div>
+                       <div className="text-xs">
+                         <p className="font-medium text-gray-700 mb-0.5">🎓 IGA (Institutional Graduate Attributes)</p>
+                         <p className="text-gray-600 text-xs">University-wide graduate attributes</p>
+                       </div>
+                       <div className="text-xs">
+                         <p className="font-medium text-gray-700 mb-0.5">🔧 CDIO</p>
+                         <p className="text-gray-600 text-xs">Conceive, Design, Implement, Operate framework</p>
+                       </div>
+                       <div className="text-xs">
+                         <p className="font-medium text-gray-700 mb-0.5">🌍 SDG (Sustainable Development Goals)</p>
+                         <p className="text-gray-600 text-xs">UN sustainability goals alignment</p>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   {/* SO Mappings */}
+                   <div className="mb-3">
+                     <label className="block text-xs font-medium text-gray-700 mb-1.5">
                       Student Outcomes (SO)
                       <span className="ml-2 text-xs font-normal text-gray-500">- Link to program outcomes</span>
                     </label>
