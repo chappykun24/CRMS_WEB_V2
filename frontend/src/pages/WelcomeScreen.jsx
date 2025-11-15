@@ -225,42 +225,50 @@ const WelcomeScreen = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#393939] text-white pt-12 pb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:justify-between md:items-start gap-8">
-          {/* Left: University Info */}
-          <div className="md:w-1/2">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">BATANGAS STATE UNIVERSITY</h2>
-            <h3 className="text-xl font-semibold mb-4">The National Engineering University</h3>
-            <p className="italic text-gray-300 mb-6">A premier national university that develops leaders in the global knowledge economy</p>
-            <div className="mb-4">
-              <Link to="#" className="underline hover:text-gray-200">Contact Us</Link>
+      <footer className="bg-[#393939] text-white pt-8 pb-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+            {/* Left: University Info */}
+            <div className="md:w-1/2">
+              <h2 className="text-xl md:text-2xl font-bold mb-1">BATANGAS STATE UNIVERSITY</h2>
+              <h3 className="text-lg font-semibold mb-2">The National Engineering University</h3>
+              <p className="text-sm italic text-gray-300 mb-3">A premier national university that develops leaders in the global knowledge economy</p>
+              <div className="mb-2">
+                <a 
+                  href="https://www.facebook.com/castillokeysii" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm underline hover:text-gray-200 transition-colors"
+                >
+                  Contact Us
+                </a>
+              </div>
+              <div className="mb-2 text-sm font-semibold">Copyright © 2025</div>
+              <div className="space-y-0.5 text-xs text-gray-200">
+                <div>Online Visitors: <span className="font-bold">12,345</span></div>
+                <div>Today's Visitors: <span className="font-bold">1,234</span></div>
+                <div>Total Page Views: <span className="font-bold">45,678</span></div>
+              </div>
             </div>
-            <div className="mb-4 font-semibold">Copyright © 2025</div>
-            <div className="space-y-1 text-gray-200">
-              <div>Online Visitors: <span className="font-bold">83,497</span></div>
-              <div>Today's Visitors: <span className="font-bold">3,172</span></div>
-              <div>Total Page Views: <span className="font-bold">66,358</span></div>
+            {/* Center: BSU Logo */}
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <img src={bsuLogoFooter} alt="BSU Logo" className="h-20 w-auto object-contain opacity-80" />
+            </div>
+            {/* Right: Main Logo */}
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <img src={logo} alt="Main Logo" className="h-20 w-auto object-contain opacity-80" />
             </div>
           </div>
-          {/* Center: BSU Logo */}
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <img src={bsuLogoFooter} alt="BSU Logo" className="h-32 w-auto object-contain" />
+          {/* Social Media Row */}
+          <div className="mt-6 flex justify-center gap-4">
+            <a href="#" aria-label="Facebook" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-facebook-f"></i></a>
+            <a href="#" aria-label="X" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-x-twitter"></i></a>
+            <a href="#" aria-label="YouTube" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-youtube"></i></a>
+            <a href="#" aria-label="Location" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-solid fa-location-dot"></i></a>
+            <a href="#" aria-label="LinkedIn" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-linkedin-in"></i></a>
+            <a href="#" aria-label="Instagram" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-instagram"></i></a>
+            <a href="#" aria-label="Spotify" className="bg-white text-[#393939] rounded-full w-12 h-12 flex items-center justify-center text-xl hover:bg-gray-200 transition"><i className="fa-brands fa-spotify"></i></a>
           </div>
-          {/* Right: Main Logo */}
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <img src={logo} alt="Main Logo" className="h-32 w-auto object-contain" />
-          </div>
-        </div>
-        {/* Social Media Row */}
-        <div className="mt-10 flex justify-center gap-6">
-          {/* Social media icons (use lucide-react or SVGs) */}
-          <a href="#" aria-label="Facebook" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-facebook-f"></i></a>
-          <a href="#" aria-label="X" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-x-twitter"></i></a>
-          <a href="#" aria-label="YouTube" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-youtube"></i></a>
-          <a href="#" aria-label="Location" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-solid fa-location-dot"></i></a>
-          <a href="#" aria-label="LinkedIn" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-linkedin-in"></i></a>
-          <a href="#" aria-label="Instagram" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-instagram"></i></a>
-          <a href="#" aria-label="Spotify" className="bg-white text-[#393939] rounded-full w-16 h-16 flex items-center justify-center text-3xl hover:bg-gray-200 transition"><i className="fa-brands fa-spotify"></i></a>
         </div>
       </footer>
       </div>
