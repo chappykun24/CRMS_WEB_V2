@@ -1640,37 +1640,10 @@ const SyllabusCreationWizard = ({
 
                       return (
                         <div className="space-y-2 pt-2 border-t border-gray-200">
-                          {/* 1. Map Sub-Assessments */}
+                          {/* 1. Map Student Outcomes (SO) */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              1. Select Sub-Assessments:
-                            </label>
-                            {allSubAssessments.length > 0 ? (
-                              <select
-                                multiple
-                                value={newILO.selectedSubAssessments}
-                                onChange={(e) => {
-                                  const selected = Array.from(e.target.selectedOptions, option => option.value)
-                                  setNewILO(prev => ({ ...prev, selectedSubAssessments: selected }))
-                                }}
-                                className="w-full text-xs px-2.5 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 min-h-[80px]"
-                                size="4"
-                              >
-                                {allSubAssessments.map(task => (
-                                  <option key={task.code} value={task.code}>
-                                    {task.code} - {task.name} {task.weight > 0 ? `(W:${task.weight}%` : ''}{task.weight > 0 && task.score > 0 ? ', ' : ''}{task.score > 0 ? `S:${task.score}` : ''}{task.weight > 0 ? ')' : ''}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <p className="text-xs text-gray-400 italic">No sub-assessments available. Add sub-assessments in Step 3 first.</p>
-                            )}
-                          </div>
-
-                          {/* 2. Map Student Outcomes (SO) */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              2. Select Student Outcome (SO):
+                              1. Select Student Outcome (SO):
                             </label>
                             <select
                               value={newILO.selectedSO}
@@ -1686,10 +1659,10 @@ const SyllabusCreationWizard = ({
                             </select>
                           </div>
 
-                          {/* 3. Map Institutional Graduate Attributes (IGA) */}
+                          {/* 2. Map Institutional Graduate Attributes (IGA) */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              3. Select Institutional Graduate Attribute (IGA):
+                              2. Select Institutional Graduate Attribute (IGA):
                             </label>
                             <select
                               value={newILO.selectedIGA}
@@ -1705,10 +1678,10 @@ const SyllabusCreationWizard = ({
                             </select>
                           </div>
 
-                          {/* 4. Map CDIO Skills */}
+                          {/* 3. Map CDIO Skills */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              4. Select CDIO Skill:
+                              3. Select CDIO Skill:
                             </label>
                             <select
                               value={newILO.selectedCDIO}
@@ -1724,10 +1697,10 @@ const SyllabusCreationWizard = ({
                             </select>
                           </div>
 
-                          {/* 5. Map SDG Skills */}
+                          {/* 4. Map SDG Skills */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">
-                              5. Select SDG Skill:
+                              4. Select SDG Skill:
                             </label>
                             <select
                               value={newILO.selectedSDG}
@@ -1741,6 +1714,57 @@ const SyllabusCreationWizard = ({
                                 </option>
                               ))}
                             </select>
+                          </div>
+
+                          {/* 5. Select Sub-Assessments (Checkboxes) */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              5. Select Sub-Assessments:
+                            </label>
+                            {allSubAssessments.length > 0 ? (
+                              <div className="border border-gray-300 rounded p-2 max-h-48 overflow-y-auto bg-white">
+                                <div className="space-y-1.5">
+                                  {allSubAssessments.map(task => {
+                                    const isChecked = newILO.selectedSubAssessments.includes(task.code)
+                                    return (
+                                      <label
+                                        key={task.code}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setNewILO(prev => ({
+                                                ...prev,
+                                                selectedSubAssessments: [...prev.selectedSubAssessments, task.code]
+                                              }))
+                                            } else {
+                                              setNewILO(prev => ({
+                                                ...prev,
+                                                selectedSubAssessments: prev.selectedSubAssessments.filter(code => code !== task.code)
+                                              }))
+                                            }
+                                          }}
+                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-xs text-gray-700 flex-1">
+                                          {task.code} - {task.name}
+                                          {task.weight > 0 || task.score > 0 ? ' (' : ''}
+                                          {task.weight > 0 ? `W:${task.weight}%` : ''}
+                                          {task.weight > 0 && task.score > 0 ? ', ' : ''}
+                                          {task.score > 0 ? `S:${task.score}` : ''}
+                                          {task.weight > 0 || task.score > 0 ? ')' : ''}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic">No sub-assessments available. Add sub-assessments in Step 3 first.</p>
+                            )}
                           </div>
                         </div>
                       )
