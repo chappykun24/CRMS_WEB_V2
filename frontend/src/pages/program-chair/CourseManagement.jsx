@@ -31,7 +31,6 @@ const CourseManagement = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('')
   const [selectedSpecializationId, setSelectedSpecializationId] = useState('')
   const [selectedTermId, setSelectedTermId] = useState('')
-  const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
   const [selectedSemester, setSelectedSemester] = useState('')
 
   // Data
@@ -39,7 +38,6 @@ const CourseManagement = () => {
   const [specializations, setSpecializations] = useState([])
   const [terms, setTerms] = useState([])
   const [courses, setCourses] = useState([])
-  const [sectionCourses, setSectionCourses] = useState([]) // For grade level filtering
 
   // UI state
   const [selectedCourse, setSelectedCourse] = useState(null)
@@ -711,54 +709,6 @@ const CourseManagement = () => {
     setSelectedCourse(null)
   }, [selectedProgramId, loadSpecializations])
 
-  // Load section courses for grade level filtering
-  const loadSectionCourses = useCallback(async () => {
-    if (!selectedProgramId) {
-      setSectionCourses([])
-      return
-    }
-    
-    try {
-      // First get all sections with year_level
-      const sectionsResponse = await fetch('/api/section-courses/sections', {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      if (!sectionsResponse.ok) return
-      
-      const sections = await sectionsResponse.json()
-      const sectionsMap = new Map(
-        (Array.isArray(sections) ? sections : []).map(s => [String(s.section_id), s.year_level])
-      )
-      
-      // Then get section courses
-      const scResponse = await fetch('/api/section-courses/assigned', {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
-      
-      if (scResponse.ok) {
-        const data = await scResponse.json()
-        const sectionCoursesData = (Array.isArray(data) ? data : [])
-          .map(sc => ({
-            course_id: sc.course_id,
-            section_id: sc.section_id,
-            year_level: sectionsMap.get(String(sc.section_id)) || null
-          }))
-          .filter(sc => sc.year_level !== null)
-        
-        setSectionCourses(sectionCoursesData)
-      }
-    } catch (error) {
-      console.error('Error loading section courses:', error)
-    }
-  }, [selectedProgramId])
 
   // Load courses with caching - lazy load ONLY when program/term is selected
   const loadCourses = useCallback(async () => {
@@ -842,13 +792,11 @@ const CourseManagement = () => {
   useEffect(() => {
     if (selectedProgramId) {
       loadCourses()
-      loadSectionCourses()
     } else {
       setCourses([])
-      setSectionCourses([])
     }
     setSelectedCourse(null)
-  }, [selectedProgramId, selectedTermId, loadCourses, loadSectionCourses]) // Removed selectedSpecializationId dependency
+  }, [selectedProgramId, selectedTermId, loadCourses]) // Removed selectedSpecializationId dependency
 
   // Filtered views for current tab and search
   const filteredPrograms = useMemo(() => {
@@ -893,16 +841,6 @@ const CourseManagement = () => {
       // Apply semester filter if selected
       if (selectedSemester) {
         filtered = filtered.filter(c => String(c.term_id) === String(selectedSemester))
-      }
-      
-      // Apply grade level filter if selected
-      if (selectedGradeLevel) {
-        const courseIdsInGradeLevel = new Set(
-          sectionCourses
-            .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
-            .map(sc => String(sc.course_id))
-        )
-        filtered = filtered.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
       }
     } else {
       // Show all non-general courses when no specialization selected
@@ -955,23 +893,13 @@ const CourseManagement = () => {
           generalCourses = generalCourses.filter(c => String(c.term_id) === String(selectedSemester))
         }
         
-        // Apply grade level filter to general courses if selected
-        if (selectedGradeLevel) {
-          const courseIdsInGradeLevel = new Set(
-            sectionCourses
-              .filter(sc => String(sc.year_level) === String(selectedGradeLevel))
-              .map(sc => String(sc.course_id))
-          )
-          generalCourses = generalCourses.filter(c => courseIdsInGradeLevel.has(String(c.course_id)))
-        }
-        
         // Add general courses to the end (below specialized subjects)
         filtered = [...filtered, ...generalCourses]
       }
     }
     
     return filtered
-  }, [courses, query, selectedProgramId, selectedSpecializationId, selectedTermId, selectedSemester, selectedGradeLevel, showGeneralSubjects, specializations, sectionCourses])
+  }, [courses, query, selectedProgramId, selectedSpecializationId, selectedTermId, selectedSemester, showGeneralSubjects, specializations])
 
   // Filter available students based on search query
   const filteredAvailableStudents = useMemo(() => {
@@ -1156,21 +1084,6 @@ const CourseManagement = () => {
                     {/* Filters - Only show when viewing courses */}
                     {selectedSpecializationId && (
                       <>
-                        {/* Grade Level Filter */}
-                        <div className="relative min-w-[150px]">
-                          <select
-                            value={selectedGradeLevel}
-                            onChange={(e) => setSelectedGradeLevel(e.target.value)}
-                            className="w-full px-3 py-2 pr-10 border rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 border-gray-300 appearance-none bg-white cursor-pointer text-sm"
-                          >
-                            <option value="">All Grade Levels</option>
-                            <option value="1">1st Year</option>
-                            <option value="2">2nd Year</option>
-                            <option value="3">3rd Year</option>
-                            <option value="4">4th Year</option>
-                          </select>
-                        </div>
-                        
                         {/* Semester Filter */}
                         <div className="relative min-w-[150px]">
                           <select
