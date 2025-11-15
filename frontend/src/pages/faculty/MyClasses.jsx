@@ -1902,7 +1902,7 @@ const MyClasses = () => {
       {selectedClass && (
         <div 
           ref={sidebarRef}
-          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right ${
+          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right transition-all duration-300 ease-in-out ${
             isAttendanceMode ? 'w-full' : 'w-80'
           }`}
         >
