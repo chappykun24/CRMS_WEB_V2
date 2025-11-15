@@ -9,6 +9,8 @@ import { API_BASE_URL } from '../../utils/api'
 import deanCacheService from '../../services/deanCacheService'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 import attendanceService from '../../services/attendanceService'
+import { StudentListSkeleton } from '../../components/skeletons'
+import imageLoaderService from '../../services/imageLoaderService'
 
 // Cache helpers
 const getCachedData = createCacheGetter(deanCacheService);
@@ -248,7 +250,91 @@ const MyClasses = () => {
     })
   }, [])
 
-  // Handle class selection - loads students in sidebar
+  // Helper: extract surname (last word) for alphabetical sorting
+  const extractSurname = useCallback((fullName) => {
+    if (!fullName || typeof fullName !== 'string') return ''
+    const tokens = fullName.trim().split(/\s+/)
+    if (tokens.length === 0) return ''
+    return tokens[tokens.length - 1].toLowerCase()
+  }, [])
+
+  // Helper function to format name as "Last name, First name Middle"
+  const formatName = useCallback((fullName) => {
+    if (!fullName || typeof fullName !== 'string') return 'Unknown Student'
+    const tokens = fullName.trim().split(/\s+/).filter(token => token.length > 0)
+    if (tokens.length === 0) return 'Unknown Student'
+    if (tokens.length === 1) return tokens[0] // Single name, return as is
+    
+    // Last name is the last token, first and middle names are the rest
+    const lastName = tokens[tokens.length - 1]
+    const firstAndMiddle = tokens.slice(0, -1).join(' ')
+    
+    return `${lastName}, ${firstAndMiddle}`
+  }, [])
+
+  // Fetch student photos on-demand (asynchronous and lazy)
+  const fetchStudentPhotos = useCallback(async (students) => {
+    if (!students || students.length === 0) return
+    
+    try {
+      console.log('📸 [DEAN MYCLASSES] Fetching photos for', students.length, 'students')
+      
+      // Fetch photos in batches to avoid overwhelming the server
+      const batchSize = 5
+      for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize)
+        
+        const photoPromises = batch.map(async (student) => {
+          try {
+            const response = await fetch(`/api/students/${student.student_id}/photo`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              }
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              // Update students with photo
+              setStudents(prev => {
+                if (!prev) return prev
+                return prev.map(s => 
+                  s.student_id === student.student_id 
+                    ? { ...s, student_photo: data.photo }
+                    : s
+                )
+              })
+              
+              // Queue image for loading
+              if (data.photo) {
+                imageLoaderService.queueImages([{
+                  src: data.photo,
+                  id: `student_${student.student_id}`
+                }], false)
+              }
+              
+              return { student_id: student.student_id, photo: data.photo }
+            }
+          } catch (error) {
+            console.error(`❌ [DEAN MYCLASSES] Error fetching photo for student ${student.student_id}:`, error)
+            return null
+          }
+        })
+        
+        await Promise.all(photoPromises)
+        
+        // Small delay between batches
+        if (i + batchSize < students.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+      
+      console.log('✅ [DEAN MYCLASSES] Photos fetched and updated')
+    } catch (error) {
+      console.error('❌ [DEAN MYCLASSES] Error in fetchStudentPhotos:', error)
+    }
+  }, [])
+
+  // Handle class selection - loads students in sidebar (asynchronous and lazy)
   const handleClassSelect = useCallback(async (classItem) => {
     setSelectedClass(classItem)
     
@@ -290,57 +376,83 @@ const MyClasses = () => {
     // Create new abort controller
     studentsAbortControllerRef.current = new AbortController()
     
-    try {
-      console.log(`🔄 [DEAN MYCLASSES] Fetching students for class ${sectionId}...`)
-      // Include photos for student avatars
-      const response = await fetch(`${API_BASE_URL}/section-courses/${sectionId}/students?includePhotos=true`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        signal: studentsAbortControllerRef.current.signal
-      })
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch students: ${response.status}`)
+    // Use requestIdleCallback or setTimeout for non-blocking fetch
+    const fetchStudents = async () => {
+      try {
+        console.log(`🔄 [DEAN MYCLASSES] Fetching students for class ${sectionId}...`)
+        const response = await fetch(`${API_BASE_URL}/section-courses/${sectionId}/students`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          signal: studentsAbortControllerRef.current.signal
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch students: ${response.status}`)
+        }
+        
+        const studentData = await response.json()
+        console.log(`✅ [DEAN MYCLASSES] Received ${Array.isArray(studentData) ? studentData.length : 0} students`)
+        
+        const studentsData = Array.isArray(studentData) ? studentData : []
+        
+        // Sort students alphabetically by surname
+        const sortedStudents = studentsData.sort((a, b) => {
+          const aLast = extractSurname(a.full_name)
+          const bLast = extractSurname(b.full_name)
+          if (aLast === bLast) {
+            return (a.full_name || '').localeCompare(b.full_name || '')
+          }
+          return aLast.localeCompare(bLast)
+        })
+        
+        setStudents(sortedStudents)
+        
+        // Store minimized data in sessionStorage for instant next load
+        safeSetItem(sessionCacheKey, sortedStudents, minimizeStudentData)
+        
+        // Store full data in enhanced cache
+        setCachedData('students', studentsCacheKey, sortedStudents)
+        
+        // Load images asynchronously after essential data is displayed
+        requestAnimationFrame(() => {
+          setImagesLoaded(true) // Enable image loading in UI immediately
+          // Fetch photos on-demand since API doesn't include them by default
+          fetchStudentPhotos(sortedStudents)
+        })
+        
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('🚫 [DEAN MYCLASSES] Students request was aborted')
+          return
+        }
+        console.error('❌ [DEAN MYCLASSES] Error loading students:', error)
+        const sessionCached = safeGetItem(sessionCacheKey)
+        const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000)
+        if (!sessionCached && !cachedStudents) {
+          setStudents([])
+        } else if (sessionCached && cachedStudents) {
+          // If we have cached data, enrich it with photos
+          const enrichedStudents = enrichStudentsWithPhotos(sessionCached, cachedStudents)
+          setStudents(enrichedStudents)
+        } else if (sessionCached) {
+          setStudents(sessionCached)
+        } else if (cachedStudents) {
+          setStudents(cachedStudents)
+        }
+      } finally {
+        setLoadingStudents(false)
       }
-      
-      const studentData = await response.json()
-      console.log(`✅ [DEAN MYCLASSES] Received ${Array.isArray(studentData) ? studentData.length : 0} students`)
-      
-      const studentsData = Array.isArray(studentData) ? studentData : []
-      setStudents(studentsData)
-      
-      // Store minimized data in sessionStorage for instant next load
-      // Always update sessionStorage with minimized data when we get fresh data
-      safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
-      
-      // Store full data in enhanced cache (includes photos)
-      setCachedData('students', studentsCacheKey, studentsData)
-      
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('🚫 [DEAN MYCLASSES] Students request was aborted')
-        return
-      }
-      console.error('❌ [DEAN MYCLASSES] Error loading students:', error)
-      const sessionCached = safeGetItem(sessionCacheKey)
-      const cachedStudents = getCachedData('students', studentsCacheKey, 10 * 60 * 1000)
-      if (!sessionCached && !cachedStudents) {
-        setStudents([])
-      } else if (sessionCached && cachedStudents) {
-        // If we have cached data, enrich it with photos
-        const enrichedStudents = enrichStudentsWithPhotos(sessionCached, cachedStudents)
-        setStudents(enrichedStudents)
-      } else if (sessionCached) {
-        setStudents(sessionCached)
-      } else if (cachedStudents) {
-        setStudents(cachedStudents)
-      }
-    } finally {
-      setLoadingStudents(false)
     }
-  }, [enrichStudentsWithPhotos])
+    
+    // Defer fetch to avoid blocking UI
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(fetchStudents, { timeout: 2000 })
+    } else {
+      setTimeout(fetchStudents, 0)
+    }
+  }, [enrichStudentsWithPhotos, extractSurname, fetchStudentPhotos])
   
   // Handle student click - opens student modal with detailed grades (like faculty interface)
   const handleStudentClick = useCallback(async (student) => {
@@ -348,61 +460,34 @@ const MyClasses = () => {
     setShowStudentStatsModal(true)
     setLoadingStudentGrades(true)
     setStudentGrades([])
-    setStudentAttendancePercent(null)
-    setStudentAttendanceTotals({ totalSessions: 0, present: 0, absent: 0, late: 0 })
     
-    const sectionId = selectedClass?.id
-    if (!sectionId || !student.enrollment_id) {
+    if (!student.enrollment_id) {
       setLoadingStudentGrades(false)
       return
     }
     
     try {
-      // Fetch detailed student grades and attendance in parallel
-      const [gradesRes, attendanceRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/grading/student/${student.enrollment_id}/grades`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${API_BASE_URL}/attendance/stats/${sectionId}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        })
-      ])
+      // Fetch student grades asynchronously
+      const response = await fetch(`/api/grading/student/${student.enrollment_id}/grades`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
       
-      // Process grades
-      if (gradesRes.ok) {
-        const gradesData = await gradesRes.json()
+      if (response.ok) {
+        const gradesData = await response.json()
         setStudentGrades(Array.isArray(gradesData) ? gradesData : [])
       } else {
         console.error('Failed to fetch student grades')
         setStudentGrades([])
       }
-      
-      // Process attendance
-      if (attendanceRes.ok) {
-        const attendanceJson = await attendanceRes.json().catch(() => null)
-        const list = attendanceJson?.data || attendanceJson || []
-        const found = Array.isArray(list) ? list.find(s => String(s.student_id) === String(student.student_id)) : null
-        setStudentAttendancePercent(found?.attendance_percentage !== undefined ? Number(found.attendance_percentage) : null)
-        setStudentAttendanceTotals({
-          totalSessions: Number(found?.total_sessions || 0),
-          present: Number(found?.present_count || 0),
-          absent: Number(found?.absent_count || 0),
-          late: Number(found?.late_count || 0)
-        })
-      }
     } catch (error) {
-      console.error('❌ [DEAN MYCLASSES] Error fetching student data:', error)
+      console.error('❌ [DEAN MYCLASSES] Error fetching student grades:', error)
       setStudentGrades([])
     } finally {
       setLoadingStudentGrades(false)
     }
-  }, [selectedClass])
+  }, [])
   
   // Load session data - defined before handleOpenAttendanceModal to avoid dependency issues
   const loadSessionData = useCallback(async (session, tabIndex, currentSessionData, currentStudents, currentCachedStudents) => {
@@ -765,13 +850,16 @@ const MyClasses = () => {
             </div>
 
             {/* Right Section - Class Details and Students */}
-            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-auto">
+            <div 
+              ref={sidebarRef}
+              className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col"
+            >
               {selectedClass ? (
-                <div className="h-full flex flex-col">
+                <div className="h-full flex flex-col min-h-0">
                   {/* Class Header */}
-                  <div className="mb-4 pb-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedClass.title}</h3>
-                    <div className="text-sm text-gray-600 space-y-1">
+                  <div className="mb-3 pb-3 border-b border-gray-200 flex-shrink-0">
+                    <h3 className="text-base font-semibold text-gray-900 mb-2 break-words">{selectedClass.title}</h3>
+                    <div className="text-xs text-gray-600 space-y-0.5">
                       <div><span className="font-medium">Code:</span> {selectedClass.code}</div>
                       <div><span className="font-medium">Section:</span> {selectedClass.section}</div>
                       <div><span className="font-medium">Instructor:</span> {selectedClass.instructor}</div>
@@ -779,54 +867,40 @@ const MyClasses = () => {
                   </div>
 
                   {/* Students List */}
-                  <div className="flex-1 min-h-0">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-md font-medium text-gray-900">Enrolled Students</h4>
-                      <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {students.length} student{students.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    
+                  <div className="flex-1 overflow-auto min-h-0">
                     {loadingStudents ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                        <span className="ml-2 text-sm text-gray-600">Loading students...</span>
-                      </div>
+                      <StudentListSkeleton students={5} />
                     ) : students.length > 0 ? (
-                      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                        {students.map((student) => (
+                      <div className="space-y-3">
+                        {students.map((student, index) => (
                           <div 
                             key={student.student_id} 
-                            className="flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors bg-gray-50 hover:bg-gray-100"
+                            className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
                             onClick={() => handleStudentClick(student)}
                           >
+                            <div className="flex-shrink-0 w-6 text-center">
+                              <span className="text-xs font-medium text-gray-500">
+                                {index + 1}
+                              </span>
+                            </div>
                             <div className="flex-shrink-0">
                               <LazyImage
                                 src={student.student_photo}
                                 alt={student.full_name}
                                 size="md"
                                 shape="circle"
+                                className="border border-gray-200"
+                                delayLoad={!imagesLoaded}
                                 priority={false}
                               />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
-                                {student.full_name}
+                                {formatName(student.full_name)}
                               </p>
                               <p className="text-xs text-gray-500 truncate">
                                 {student.student_number}
                               </p>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                student.status === 'enrolled' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : student.status === 'dropped'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {student.status || 'enrolled'}
-                              </span>
                             </div>
                           </div>
                         ))}
@@ -834,12 +908,13 @@ const MyClasses = () => {
                     ) : (
                       <div className="flex items-center justify-center py-8 text-center">
                         <div>
-                          <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                            <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                             </svg>
                           </div>
-                          <p className="text-sm text-gray-500">No students enrolled</p>
+                          <h3 className="text-sm font-medium text-gray-900 mb-1">No students enrolled</h3>
+                          <p className="text-xs text-gray-500">This class has no enrolled students yet.</p>
                         </div>
                       </div>
                     )}
@@ -910,7 +985,7 @@ const MyClasses = () => {
             onClick={() => setShowStudentStatsModal(false)}
           >
             <div 
-              className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header with Final Score */}
@@ -934,11 +1009,6 @@ const MyClasses = () => {
                         <p className="text-sm text-gray-600">SR: {selectedStudent.student_number}</p>
                         {selectedStudent.contact_email && (
                           <p className="text-xs text-gray-500">{selectedStudent.contact_email}</p>
-                        )}
-                        {studentAttendancePercent !== null && (
-                          <p className="text-xs text-gray-500">
-                            Attendance: <span className="font-medium">{studentAttendancePercent.toFixed(1)}%</span>
-                          </p>
                         )}
                       </div>
                     </div>
@@ -965,59 +1035,127 @@ const MyClasses = () => {
 
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
+                
                 {loadingStudentGrades ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  </div>
+                ) : studentGrades.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {studentGrades.map((grade) => {
+                      const adjustedScore = grade.adjusted_score ?? null
+                      const percentage = adjustedScore !== null && grade.total_points > 0 
+                        ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
+                        : null
+                      const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
+                        ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
+                        : null
+                      
+                      return (
+                        <div 
+                          key={grade.assessment_id} 
+                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          {/* Assessment Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-base font-semibold text-gray-900 truncate">
+                                {grade.assessment_title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {grade.assessment_type}
+                                </span>
+                                <span className="text-xs text-gray-600">{grade.total_points} pts</span>
+                                <span className="text-xs text-gray-600">{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
+                                {grade.due_date && (() => {
+                                  try {
+                                    const date = new Date(grade.due_date)
+                                    if (!isNaN(date.getTime())) {
+                                      return <span className="text-xs text-gray-500">Due: {date.toLocaleDateString()}</span>
+                                    }
+                                  } catch (e) {}
+                                  return null
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Scores Grid - More Compact */}
+                          <div className="grid grid-cols-4 gap-3 mb-3">
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Raw</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Penalty</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">Adjusted</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-blue-50 rounded p-2">
+                              <p className="text-xs text-gray-500 mb-0.5">%</p>
+                              <p className="text-sm font-semibold text-blue-700">
+                                {percentage !== null ? `${percentage}%` : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Weighted Score and Status */}
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                grade.submission_status === 'ontime' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : grade.submission_status === 'late'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {grade.submission_status === 'ontime' ? 'On Time' : 
+                                 grade.submission_status === 'late' ? 'Late' : 'Missing'}
+                              </span>
+                              {weightedScore !== null && (
+                                <span className="text-xs text-gray-600">
+                                  Weighted: <span className="font-semibold">{weightedScore}%</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {grade.graded_at && (() => {
+                                try {
+                                  const date = new Date(grade.graded_at)
+                                  if (!isNaN(date.getTime())) {
+                                    return <span>{date.toLocaleDateString()}</span>
+                                  }
+                                } catch (e) {}
+                                return null
+                              })()}
+                            </div>
+                          </div>
+                          
+                          {/* Feedback */}
+                          {grade.feedback && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs font-medium text-gray-500 mb-1">Feedback</p>
+                              <p className="text-xs text-gray-700 leading-relaxed">{grade.feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {/* Total Grade Progress */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-900">Total Grade</span>
-                        <span className="text-lg font-bold text-gray-900">{finalGrade !== null ? finalGrade.toFixed(2) : '—'}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-green-500 h-3 rounded-full transition-all"
-                          style={{ width: `${Math.max(0, Math.min(100, Number(finalGrade || 0)))}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Attendance Progress */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-900">Attendance</span>
-                        <span className="text-lg font-bold text-gray-900">{studentAttendancePercent ?? '—'}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-blue-500 h-3 rounded-full transition-all"
-                          style={{ width: `${Math.max(0, Math.min(100, Number(studentAttendancePercent || 0)))}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Attendance Totals */}
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Total</p>
-                        <p className="text-lg font-semibold text-gray-900">{studentAttendanceTotals.totalSessions}</p>
-                      </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Present</p>
-                        <p className="text-lg font-semibold text-green-700">{studentAttendanceTotals.present}</p>
-                      </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Absent</p>
-                        <p className="text-lg font-semibold text-red-700">{studentAttendanceTotals.absent}</p>
-                      </div>
-                      <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Late</p>
-                        <p className="text-lg font-semibold text-yellow-700">{studentAttendanceTotals.late}</p>
-                      </div>
-                    </div>
+                  <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                    <p className="text-gray-500">No assessment scores available</p>
                   </div>
                 )}
               </div>
