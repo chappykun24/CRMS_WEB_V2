@@ -36,7 +36,6 @@ const SyllabusCreationWizard = ({
       contact_email: '',
       contact_phone: ''
     },
-    period_of_study: '',
     credit_hours: '',
     prerequisites: '',
     id_number: '',
@@ -51,10 +50,10 @@ const SyllabusCreationWizard = ({
     course_rationale: '',
     
     // Step 3: Contact Hours and Assessment Criteria
-    contact_hours: {
-      lecture: 2,
-      laboratory: 3
-    },
+    contact_hours: [
+      { name: 'Lecture', hours: 2 },
+      { name: 'Laboratory', hours: 3 }
+    ],
     assessment_criteria: [],
     
     // Step 4: Teaching, Learning, and Assessment Strategies
@@ -115,6 +114,10 @@ const SyllabusCreationWizard = ({
   const [newAssessmentCriteria, setNewAssessmentCriteria] = useState({ 
     name: '', 
     weight: '' 
+  })
+  const [newContactHour, setNewContactHour] = useState({ 
+    name: '', 
+    hours: '' 
   })
   const [errors, setErrors] = useState({})
   
@@ -249,9 +252,30 @@ const SyllabusCreationWizard = ({
         ? editingSyllabus.teaching_strategies
         : (editingSyllabus.teaching_strategies ? JSON.parse(editingSyllabus.teaching_strategies) : formData.teaching_strategies)
       
-      const contactHours = typeof editingSyllabus.contact_hours === 'object'
-        ? editingSyllabus.contact_hours
-        : (editingSyllabus.contact_hours ? JSON.parse(editingSyllabus.contact_hours) : formData.contact_hours)
+      // Handle contact hours - convert old object format to new array format
+      let contactHours = formData.contact_hours
+      if (editingSyllabus.contact_hours) {
+        if (Array.isArray(editingSyllabus.contact_hours)) {
+          contactHours = editingSyllabus.contact_hours
+        } else if (typeof editingSyllabus.contact_hours === 'string') {
+          try {
+            const parsed = JSON.parse(editingSyllabus.contact_hours)
+            contactHours = Array.isArray(parsed) ? parsed : 
+              (parsed.lecture || parsed.laboratory ? [
+                { name: 'Lecture', hours: parsed.lecture || 0 },
+                { name: 'Laboratory', hours: parsed.laboratory || 0 }
+              ] : formData.contact_hours)
+          } catch {
+            contactHours = formData.contact_hours
+          }
+        } else if (editingSyllabus.contact_hours.lecture || editingSyllabus.contact_hours.laboratory) {
+          // Old object format - convert to array
+          contactHours = [
+            { name: 'Lecture', hours: editingSyllabus.contact_hours.lecture || 0 },
+            { name: 'Laboratory', hours: editingSyllabus.contact_hours.laboratory || 0 }
+          ]
+        }
+      }
       
       const assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria)
         ? editingSyllabus.assessment_criteria
@@ -269,7 +293,6 @@ const SyllabusCreationWizard = ({
         course_category: editingSyllabus.course_category || '',
         semester_year: editingSyllabus.semester_year || '',
         course_instructor: editingSyllabus.course_instructor || prev.course_instructor,
-        period_of_study: editingSyllabus.period_of_study || '',
         credit_hours: editingSyllabus.credit_hours || '',
         prerequisites: editingSyllabus.prerequisites || '',
         id_number: editingSyllabus.id_number || '',
@@ -350,7 +373,7 @@ const SyllabusCreationWizard = ({
       case 1:
         if (!formData.course_title.trim()) newErrors.course_title = 'Course title is required'
         if (!formData.course_code.trim()) newErrors.course_code = 'Course code is required'
-        if (!formData.term_id) newErrors.term_id = 'School term is required'
+        if (!formData.term_id) newErrors.term_id = 'Period of study is required'
         break
       case 2:
         if (!formData.course_rationale.trim()) newErrors.course_rationale = 'Course rationale is required'
@@ -833,21 +856,7 @@ const SyllabusCreationWizard = ({
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Period of Study
-                </label>
-                <input
-                  type="text"
-                  name="period_of_study"
-                  value={formData.period_of_study}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  placeholder="e.g., Second Semester & A.Y 2024-2025"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  School Term <span className="text-red-500">*</span>
+                  Period of Study <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="term_id"
@@ -1001,31 +1010,84 @@ const SyllabusCreationWizard = ({
               <p className="text-sm text-gray-600 mb-6">Define the contact hours and assessment breakdown</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lecture Hours
-                </label>
-                <input
-                  type="number"
-                  value={formData.contact_hours.lecture}
-                  onChange={(e) => handleNestedChange('contact_hours.lecture', parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  min="0"
-                />
-              </div>
+            <div className="border-b pb-6 mb-6">
+              <h4 className="text-md font-semibold text-gray-900 mb-4">Contact Hours</h4>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Laboratory Hours
-                </label>
-                <input
-                  type="number"
-                  value={formData.contact_hours.laboratory}
-                  onChange={(e) => handleNestedChange('contact_hours.laboratory', parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  min="0"
-                />
+              {formData.contact_hours.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {formData.contact_hours.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => {
+                            const updated = [...formData.contact_hours]
+                            updated[index] = { ...updated[index], name: e.target.value }
+                            setFormData(prev => ({ ...prev, contact_hours: updated }))
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Type (e.g., Lecture, Laboratory)"
+                        />
+                        <input
+                          type="number"
+                          value={item.hours}
+                          onChange={(e) => {
+                            const updated = [...formData.contact_hours]
+                            updated[index] = { ...updated[index], hours: parseInt(e.target.value) || 0 }
+                            setFormData(prev => ({ ...prev, contact_hours: updated }))
+                          }}
+                          className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Hours"
+                          min="0"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            contact_hours: prev.contact_hours.filter((_, i) => i !== index)
+                          }))
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Remove"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={newContactHour.name}
+                    onChange={(e) => setNewContactHour(prev => ({ ...prev, name: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Type (e.g., Lecture)"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddContactHour()}
+                  />
+                  <input
+                    type="number"
+                    value={newContactHour.hours}
+                    onChange={(e) => setNewContactHour(prev => ({ ...prev, hours: e.target.value }))}
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Hours"
+                    min="0"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddContactHour()}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddContactHour}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-2"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
             
