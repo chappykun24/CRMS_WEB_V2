@@ -265,7 +265,7 @@ const AssignFaculty = () => {
     // Priority 1: Load critical data immediately (courses and terms - needed for form)
     ;(async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/courses`)
+        const response = await fetch(`${API_BASE_URL}/catalog/courses`)
         if (!response.ok) throw new Error(`Failed to fetch courses: ${response.status}`)
         const data = await response.json()
         if (isMounted) setCourses(Array.isArray(data) ? data : [])
