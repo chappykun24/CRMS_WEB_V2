@@ -247,6 +247,17 @@ const Assessments = () => {
       loadClasses()
   }, [user, location.state])
 
+  // Filter classes by active term
+  const filteredClasses = React.useMemo(() => {
+    if (activeTermId === null) {
+      // Wait for active term to be determined
+      return []
+    }
+    const filtered = classes.filter(cls => cls.term_id === activeTermId)
+    console.log(`🔍 [ASSESSMENTS] Filtered by active term (${activeTermId}): ${filtered.length} of ${classes.length} classes`)
+    return filtered
+  }, [classes, activeTermId])
+
   // Validate selected class is from active term
   useEffect(() => {
     if (selectedClass && activeTermId !== null && selectedClass.term_id !== activeTermId) {
