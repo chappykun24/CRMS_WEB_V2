@@ -449,7 +449,21 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user?.user_id || req.user?.id;
-    const userRole = req.user?.role;
+    
+    // Get user role from database
+    let userRole = null;
+    if (req.user?.role_id) {
+      const roleResult = await db.query(
+        'SELECT name FROM roles WHERE role_id = $1',
+        [req.user.role_id]
+      );
+      if (roleResult.rows.length > 0) {
+        userRole = roleResult.rows[0].name?.toLowerCase();
+        console.log(`🔍 [ATTENDANCE API] User ${userId} role: ${userRole} (from role_id: ${req.user.role_id})`);
+      }
+    } else {
+      console.warn(`⚠️ [ATTENDANCE API] User ${userId} has no role_id`);
+    }
 
     // Validate sessionId
     if (!sessionId || isNaN(parseInt(sessionId))) {
