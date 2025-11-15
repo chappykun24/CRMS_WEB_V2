@@ -115,29 +115,8 @@ const Syllabus = () => {
         setLoading(false)
       }
       
-      // Restore selected class after classes are loaded
-      // Priority: location.state > localStorage > nothing
-      if (classesData.length > 0) {
-        let classToSelect = null
-        
-        // First priority: location state
-        if (location.state?.selectedClassId) {
-          classToSelect = classesData.find(cls => cls.section_course_id === location.state.selectedClassId)
-        }
-        
-        // Second priority: localStorage
-        if (!classToSelect) {
-          const savedClass = getSelectedClass()
-          if (savedClass?.section_course_id) {
-            classToSelect = classesData.find(cls => cls.section_course_id === savedClass.section_course_id)
-          }
-        }
-        
-        // Set the selected class if found
-        if (classToSelect) {
-          setSelectedClass(classToSelect)
-        }
-      }
+      // Note: Class restoration will happen after filteredClasses is computed
+      // to ensure only active term classes are restored
     }
     
     loadClasses()
@@ -153,6 +132,34 @@ const Syllabus = () => {
     console.log(`🔍 [SYLLABUS] Filtered by active term (${activeTermId}): ${filtered.length} of ${classes.length} classes`)
     return filtered
   }, [classes, activeTermId])
+
+  // Restore selected class from filteredClasses (only active term classes)
+  useEffect(() => {
+    // Only restore if we don't already have a selected class and filteredClasses is available
+    if (selectedClass || filteredClasses.length === 0 || activeTermId === null) {
+      return
+    }
+    
+    let classToSelect = null
+    
+    // First priority: location state
+    if (location.state?.selectedClassId) {
+      classToSelect = filteredClasses.find(cls => cls.section_course_id === location.state.selectedClassId)
+    }
+    
+    // Second priority: localStorage (but only if it's from active term)
+    if (!classToSelect) {
+      const savedClass = getSelectedClass()
+      if (savedClass?.section_course_id) {
+        classToSelect = filteredClasses.find(cls => cls.section_course_id === savedClass.section_course_id)
+      }
+    }
+    
+    // Set the selected class if found
+    if (classToSelect) {
+      setSelectedClass(classToSelect)
+    }
+  }, [filteredClasses, location.state?.selectedClassId, activeTermId])
 
   // Notify Header when selected class changes
   useEffect(() => {
@@ -1232,9 +1239,9 @@ const Syllabus = () => {
                               </div>
                             ))}
                           </div>
-                        ) : classes.length > 0 ? (
+                        ) : filteredClasses.length > 0 ? (
                           <div className="p-4 space-y-2">
-                            {classes.map((cls) => (
+                            {filteredClasses.map((cls) => (
                               <div
                                 key={cls.section_course_id}
                                 onClick={() => setSelectedClass(cls)}

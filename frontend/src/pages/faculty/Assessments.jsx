@@ -1478,9 +1478,10 @@ const Assessments = () => {
                               <option key={type} value={type}>{type}</option>
                             ))}
                           </select>
-                          <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
+                          {/* Create Assessment button removed - logic and route kept for future use */}
+                          {/* <button onClick={openCreateModal} className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
                             <PlusIcon className="h-5 w-5" />
-                          </button>
+                          </button> */}
                         </div>
                       </>
                     )}
@@ -1711,12 +1712,13 @@ const Assessments = () => {
                               <p className="text-gray-500">
                                 {searchQuery ? 'No assessments match your search.' : 'Create your first assessment to get started.'}
                               </p>
-                              {!searchQuery && (
+                              {/* Create Assessment button removed - logic and route kept for future use */}
+                              {/* {!searchQuery && (
                                 <button onClick={openCreateModal} className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                                   <PlusIcon className="h-4 w-4" />
                                   Create Assessment
                                 </button>
-                              )}
+                              )} */}
                             </div>
                           </div>
                         )}
