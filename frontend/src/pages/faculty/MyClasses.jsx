@@ -1267,8 +1267,30 @@ const MyClasses = () => {
         console.log('🔍 [FRONTEND DEBUG] Editing existing session:', sessionToEdit.session_id)
         sessionId = sessionToEdit.session_id
         
-        // Update session details (optional - only if changed)
-        // Note: The backend will update attendance records when we call /mark endpoint
+        // Update session details first
+        console.log('🔍 [FRONTEND DEBUG] Updating session details...')
+        const updateSessionResponse = await fetch(`/api/attendance/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({
+            title: sessionDetails.title,
+            session_date: sessionDetails.session_date,
+            session_type: sessionDetails.session_type,
+            meeting_type: sessionDetails.meeting_type
+          })
+        })
+
+        if (!updateSessionResponse.ok) {
+          const errorText = await updateSessionResponse.text()
+          console.log('❌ [FRONTEND DEBUG] Session update failed:', errorText)
+          throw new Error(`Failed to update session: ${updateSessionResponse.status}`)
+        }
+
+        const updateSessionData = await updateSessionResponse.json()
+        console.log('✅ [FRONTEND DEBUG] Session updated successfully:', updateSessionData)
       } else {
         // Creating new session
         console.log('🔍 [FRONTEND DEBUG] Creating new session...')
@@ -1306,14 +1328,36 @@ const MyClasses = () => {
       console.log('🔍 [FRONTEND DEBUG] session_date:', sessionDetails.session_date)
       console.log('🔍 [FRONTEND DEBUG] Object.keys(attendanceRecords):', Object.keys(attendanceRecords))
       
-      const attendanceRecordsList = Object.keys(attendanceRecords).map(enrollmentId => {
-        const student = students.find(s => s.enrollment_id === enrollmentId)
+      // Build attendance records for all students
+      // If editing and date changed, we need to find records under any date key
+      const attendanceRecordsList = students.map(student => {
+        const enrollmentId = student.enrollment_id
+        let status = 'present'
+        let remarks = ''
+        
+        // First try current date
+        const currentDateRecord = attendanceRecords[enrollmentId]?.[sessionDetails.session_date]
+        if (currentDateRecord) {
+          status = currentDateRecord.status || 'present'
+          remarks = currentDateRecord.remarks || ''
+        } else if (attendanceRecords[enrollmentId]) {
+          // If not found under current date, check other dates (in case date was changed during edit)
+          const dateKeys = Object.keys(attendanceRecords[enrollmentId])
+          if (dateKeys.length > 0) {
+            // Use the most recent date's record, or the first one found
+            const latestDate = dateKeys.sort().reverse()[0]
+            const record = attendanceRecords[enrollmentId][latestDate]
+            status = record.status || 'present'
+            remarks = record.remarks || ''
+          }
+        }
+        
         const record = {
           enrollment_id: enrollmentId,
-          status: attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.status || 'present',
-          remarks: attendanceRecords[enrollmentId]?.[sessionDetails.session_date]?.remarks || ''
+          status,
+          remarks
         }
-        console.log('🔍 [FRONTEND DEBUG] Processing student:', { enrollmentId, student, record })
+        console.log('🔍 [FRONTEND DEBUG] Processing student:', { enrollmentId, student: student.full_name, record })
         return record
       }).filter(record => record.enrollment_id) // Only include records with valid enrollment_id
 
@@ -1356,9 +1400,9 @@ const MyClasses = () => {
       
       // Open attendance history modal to show the new/updated data
       if (selectedClass) {
-        // Small delay to ensure modal can open properly
+        // Small delay to ensure modal can open properly and state updates complete
         setTimeout(() => {
-          handleOpenAttendanceModal()
+          loadFullAttendanceList()
         }, 500)
       }
 
@@ -1368,7 +1412,7 @@ const MyClasses = () => {
     } finally {
       setSubmittingAttendance(false)
     }
-  }, [selectedClass, sessionDetails.session_date, attendanceRecords])
+  }, [selectedClass, sessionDetails, attendanceRecords, students, sessionToEdit, loadFullAttendanceList, validateSessionDetails])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
@@ -1895,6 +1939,12 @@ const MyClasses = () => {
                       try {
                         // Set attendance mode FIRST to prevent normal list from showing
                         setIsAttendanceMode(true)
+                        
+                        // Set calendar date to today when entering attendance mode
+                        setSessionDetails(prev => ({
+                          ...prev,
+                          session_date: new Date().toISOString().split('T')[0]
+                        }))
                         
                         // Select the class if it's not already selected (without resetting attendance mode)
                         if (selectedClass?.section_course_id !== cls.section_course_id) {

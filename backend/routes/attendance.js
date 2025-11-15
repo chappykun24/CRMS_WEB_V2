@@ -444,6 +444,75 @@ router.put('/:attendanceId', authenticateToken, async (req, res) => {
   }
 });
 
+// Update session details
+router.put('/sessions/:sessionId', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const {
+      session_date,
+      title,
+      session_type,
+      meeting_type
+    } = req.body;
+
+    console.log('🔍 [ATTENDANCE DEBUG] Updating session:', sessionId);
+    console.log('🔍 [ATTENDANCE DEBUG] Request body:', req.body);
+
+    // Validate required fields
+    if (!session_date || !title) {
+      return res.status(400).json({
+        success: false,
+        error: 'session_date and title are required'
+      });
+    }
+
+    // Check if session exists
+    const sessionCheck = await db.query(
+      'SELECT session_id FROM sessions WHERE session_id = $1',
+      [sessionId]
+    );
+
+    if (sessionCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session not found'
+      });
+    }
+
+    // Update session details
+    const result = await db.query(`
+      UPDATE sessions 
+      SET 
+        session_date = $1,
+        title = $2,
+        session_type = COALESCE($3, session_type),
+        meeting_type = COALESCE($4, meeting_type)
+      WHERE session_id = $5
+      RETURNING *
+    `, [session_date, title, session_type || null, meeting_type || null, sessionId]);
+
+    // Update session_date in attendance_logs if date changed
+    await db.query(`
+      UPDATE attendance_logs 
+      SET session_date = $1
+      WHERE session_id = $2
+    `, [session_date, sessionId]);
+
+    console.log('✅ [ATTENDANCE DEBUG] Session updated successfully:', result.rows[0]);
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ [ATTENDANCE DEBUG] Error updating session:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Delete attendance session
 router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
   try {
