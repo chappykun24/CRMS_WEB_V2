@@ -735,13 +735,13 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Information</h3>
-              <p className="text-sm text-gray-600 mb-6">Provide the course details and instructor information</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Information</h3>
+              <p className="text-xs text-gray-600 mb-4">Provide the course details and instructor information</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Course Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -762,7 +762,7 @@ const SyllabusCreationWizard = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Course Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -783,7 +783,7 @@ const SyllabusCreationWizard = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Course Category
                 </label>
                 <input
@@ -791,13 +791,13 @@ const SyllabusCreationWizard = ({
                   name="course_category"
                   value={formData.course_category}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Professional Elective"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Semester/Year
                 </label>
                 <input
@@ -805,13 +805,13 @@ const SyllabusCreationWizard = ({
                   name="semester_year"
                   value={formData.semester_year}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., Second Semester & A.Y 2024-2025"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Credit Hours
                 </label>
                 <input
@@ -819,13 +819,13 @@ const SyllabusCreationWizard = ({
                   name="credit_hours"
                   value={formData.credit_hours}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 5 hours"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Prerequisite(s)
                 </label>
                 <input
@@ -833,13 +833,13 @@ const SyllabusCreationWizard = ({
                   name="prerequisites"
                   value={formData.prerequisites}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., BAT 402"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   ID No.
                 </label>
                 <input
@@ -847,13 +847,13 @@ const SyllabusCreationWizard = ({
                   name="id_number"
                   value={formData.id_number}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., 55609"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Reference CMO
                 </label>
                 <input
@@ -861,13 +861,13 @@ const SyllabusCreationWizard = ({
                   name="reference_cmo"
                   value={formData.reference_cmo}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="e.g., CMO 25, Series 2015"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Date Prepared
                 </label>
                 <input
@@ -875,12 +875,12 @@ const SyllabusCreationWizard = ({
                   name="date_prepared"
                   value={formData.date_prepared}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Revision No.
                 </label>
                 <input
@@ -888,13 +888,13 @@ const SyllabusCreationWizard = ({
                   name="revision_no"
                   value={formData.revision_no}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   placeholder="0"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Revision Date
                 </label>
                 <input
@@ -902,12 +902,12 @@ const SyllabusCreationWizard = ({
                   name="revision_date"
                   value={formData.revision_date}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
                   Period of Study <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -932,55 +932,55 @@ const SyllabusCreationWizard = ({
             
             <div className="border-t pt-6">
               <h4 className="text-md font-semibold text-gray-900 mb-4">Course Instructor</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Instructor Name
                   </label>
                   <input
                     type="text"
                     value={formData.course_instructor.name}
                     onChange={(e) => handleNestedChange('course_instructor.name', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Daryl Tiquio"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Qualification
                   </label>
                   <input
                     type="text"
                     value={formData.course_instructor.qualification}
                     onChange={(e) => handleNestedChange('course_instructor.qualification', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., Master in Business Analytics (30 units/ ongoing)"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Contact Email
                   </label>
                   <input
                     type="email"
                     value={formData.course_instructor.contact_email}
                     onChange={(e) => handleNestedChange('course_instructor.contact_email', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., daryl.m.tiquio@g.batstate-u.edu.ph"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Contact Phone
                   </label>
                   <input
                     type="text"
                     value={formData.course_instructor.contact_phone}
                     onChange={(e) => handleNestedChange('course_instructor.contact_phone', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="e.g., 0908-877-8671"
                   />
                 </div>
@@ -993,8 +993,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Rationale and Description</h3>
-              <p className="text-sm text-gray-600 mb-6">Provide a comprehensive description of the course rationale and objectives</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Rationale and Description</h3>
+              <p className="text-xs text-gray-600 mb-3">Provide a comprehensive description of the course rationale and objectives</p>
             </div>
             
             <div>
@@ -1059,8 +1059,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Hours and Assessment Criteria</h3>
-              <p className="text-sm text-gray-600 mb-6">Define the contact hours and assessment breakdown</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Contact Hours and Assessment Criteria</h3>
+              <p className="text-xs text-gray-600 mb-3">Define the contact hours and assessment breakdown</p>
             </div>
             
             <div className="border-b pb-6 mb-6">
@@ -1258,7 +1258,7 @@ const SyllabusCreationWizard = ({
                     Create sub-assessments for each assessment criterion. The total weight of sub-assessments must equal the parent criterion weight.
                   </p>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {formData.assessment_criteria.map((criterion, criterionIndex) => {
                       const subAssessments = formData.sub_assessments[criterionIndex] || []
                       const subTotal = subAssessments.reduce((sum, sub) => sum + (parseFloat(sub.weight_percentage) || 0), 0)
@@ -1396,8 +1396,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Teaching, Learning, and Assessment Strategies</h3>
-              <p className="text-sm text-gray-600 mb-6">Describe the teaching approach and assessment components</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Teaching, Learning, and Assessment Strategies</h3>
+              <p className="text-xs text-gray-600 mb-3">Describe the teaching approach and assessment components</p>
             </div>
             
             <div>
@@ -1423,8 +1423,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Intended Learning Outcomes (ILOs) and Assessment Distribution</h3>
+              <p className="text-xs text-gray-600 mb-3">
                 Define the learning outcomes for this course and optionally map them to educational goals (SO, IGA, CDIO, SDG).
               </p>
             </div>
@@ -1741,8 +1741,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Books and Other References</h3>
-              <p className="text-sm text-gray-600 mb-6">Add learning resources such as textbooks, websites, and materials</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Books and Other References</h3>
+              <p className="text-xs text-gray-600 mb-3">Add learning resources such as textbooks, websites, and materials</p>
             </div>
             
             <div>
@@ -1797,8 +1797,8 @@ const SyllabusCreationWizard = ({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Policies - Grading System</h3>
-              <p className="text-sm text-gray-600 mb-6">Define the grading scale for the course</p>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Course Policies - Grading System</h3>
+              <p className="text-xs text-gray-600 mb-3">Define the grading scale for the course</p>
             </div>
             
             <div>
@@ -1908,15 +1908,15 @@ const SyllabusCreationWizard = ({
   }
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-5xl w-full my-8 shadow-xl">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-[98vw] w-full max-h-[98vh] my-4 shadow-xl flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-gray-900">
               {editingSyllabus ? 'Edit Syllabus' : 'Create New Syllabus'}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-0.5">
               {selectedClass && `${selectedClass.course_code} - ${selectedClass.course_title}`}
             </p>
           </div>
@@ -1929,7 +1929,7 @@ const SyllabusCreationWizard = ({
         </div>
         
         {/* Progress Steps */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => {
               const Icon = step.icon
@@ -1940,18 +1940,18 @@ const SyllabusCreationWizard = ({
                 <React.Fragment key={step.number}>
                   <div className="flex items-center">
                     <div className={`flex flex-col items-center ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
                         isActive ? 'border-red-600 bg-red-50' : 
                         isCompleted ? 'border-green-600 bg-green-50' : 
                         'border-gray-300 bg-white'
                       }`}>
                         {isCompleted ? (
-                          <CheckCircleIcon className="h-6 w-6" />
+                          <CheckCircleIcon className="h-4 w-4" />
                         ) : (
-                          <Icon className="h-5 w-5" />
+                          <Icon className="h-4 w-4" />
                         )}
                       </div>
-                      <span className={`mt-2 text-xs font-medium ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                      <span className={`mt-1 text-[10px] font-medium ${isActive ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
                         {step.title}
                       </span>
                     </div>
@@ -1972,15 +1972,15 @@ const SyllabusCreationWizard = ({
         
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
             <span>Step {currentStep} of {totalSteps}</span>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
@@ -1989,9 +1989,9 @@ const SyllabusCreationWizard = ({
               <button
                 type="button"
                 onClick={handlePrevious}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                className="px-3 py-1.5 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
               >
-                <ChevronLeftIcon className="h-5 w-5" />
+                <ChevronLeftIcon className="h-4 w-4" />
                 Previous
               </button>
             )}
@@ -2000,18 +2000,18 @@ const SyllabusCreationWizard = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                className="px-3 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1.5"
               >
                 Next
-                <ChevronRightIcon className="h-5 w-5" />
+                <ChevronRightIcon className="h-4 w-4" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                className="px-4 py-1.5 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-1.5"
               >
-                <CheckCircleIcon className="h-5 w-5" />
+                <CheckCircleIcon className="h-4 w-4" />
                 {editingSyllabus ? 'Update Syllabus' : 'Create Syllabus'}
               </button>
             )}
@@ -2062,7 +2062,7 @@ const SyllabusCreationWizard = ({
               <div className="space-y-4">
                 {/* ILO Code */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     ILO Code <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -2078,7 +2078,7 @@ const SyllabusCreationWizard = ({
                 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
