@@ -10,7 +10,6 @@ import {
   ArrowRight,
   CheckCircle
 } from 'lucide-react'
-import bsuLogo from '../images/bsu-logo.png'
 import bagongPilipinasLogo from '../images/Hi-Res-BAGONG-PILIPINAS-LOGO-1474x1536.png'
 import alangilanImage from '../images/Alangilan-entrance-facade.jpg'
 import image204107 from '../images/204107.jpg'
@@ -104,16 +103,9 @@ const WelcomeScreen = () => {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Left side - BSU Logo and Title */}
-            <div className="flex items-center space-x-6">
-              <img 
-                src={bsuLogo} 
-                alt="BSU Logo" 
-                className="h-12 w-auto object-contain"
-              />
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold text-primary-600">Class Record Management System</h1>
-              </div>
+            {/* Left side - Title */}
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-primary-600">Class Record Management System</h1>
             </div>
             
             {/* Right side - Navigation and Bagong Pilipinas Logo */}
@@ -163,19 +155,6 @@ const WelcomeScreen = () => {
                 </div>
               ))}
                          </div>
-             
-             {/* Slide Indicators */}
-             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-               {slideshowImages.map((_, index) => (
-                 <button
-                   key={index}
-                   onClick={() => setCurrentSlide(index)}
-                   className={`w-3 h-3 rounded-full transition-colors ${
-                     index === currentSlide ? 'bg-white' : 'bg-white bg-opacity-50'
-                   }`}
-                 />
-               ))}
-             </div>
              
              {/* Text Overlay */}
              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
