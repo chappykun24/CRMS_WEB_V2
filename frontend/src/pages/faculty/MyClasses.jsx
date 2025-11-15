@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react'
 // Removed prefetchFacultyData - data is now fetched per section
 import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
-import { XMarkIcon, TrashIcon } from '@heroicons/react/24/solid'
+import { XMarkIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/solid'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -108,6 +108,34 @@ const MyClasses = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState(null)
   const [deletingSession, setDeletingSession] = useState(false)
+  
+  // Edit session state
+  const [sessionToEdit, setSessionToEdit] = useState(null)
+  
+  // Month filter state
+  const [selectedMonth, setSelectedMonth] = useState('')
+  
+  // Filtered sessions based on month filter
+  const filteredSessions = useMemo(() => {
+    if (!selectedMonth) return sessionList
+    return sessionList.filter(session => {
+      if (!session.session_date) return false
+      try {
+        const date = new Date(session.session_date)
+        const monthYear = `${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        return monthYear === selectedMonth
+      } catch {
+        return false
+      }
+    })
+  }, [sessionList, selectedMonth])
+  
+  // Reset active tab when filter changes
+  useEffect(() => {
+    if (filteredSessions.length > 0 && activeSessionTab >= filteredSessions.length) {
+      setActiveSessionTab(0)
+    }
+  }, [filteredSessions.length, activeSessionTab])
 
   // Keep breadcrumb tab state in sync (Attendance vs default)
   useEffect(() => {
@@ -919,7 +947,9 @@ const MyClasses = () => {
     setActiveSessionTab(sessionIndex)
     setImagesLoaded(false) // Reset image loading state
     
-    const session = sessionList[sessionIndex]
+    // Use filtered sessions if month filter is active, otherwise use full sessionList
+    const sessionsToUse = selectedMonth ? filteredSessions : sessionList
+    const session = sessionsToUse[sessionIndex]
     if (!session) return
     
     // Use ref to get current selectedClass (avoids closure issues)
@@ -1007,7 +1037,7 @@ const MyClasses = () => {
     ).catch(error => {
       console.error('❌ [MYCLASSES] Error loading session:', error)
     })
-  }, [sessionList, loadSessionData, cachedStudentsList, students, selectedClass])
+  }, [sessionList, loadSessionData, cachedStudentsList, students, selectedClass, filteredSessions, selectedMonth])
 
   // Handle delete session with validation
   const handleDeleteSession = useCallback((session) => {
@@ -1083,6 +1113,73 @@ const MyClasses = () => {
     setSessionToDelete(null)
   }, [])
 
+  // Handle edit session - redirect to attendance interface with preselected data
+  const handleEditSession = useCallback(async (session) => {
+    if (!session || !session.session_id || !selectedClass) {
+      alert('Invalid session. Cannot edit.')
+      return
+    }
+
+    try {
+      // Close attendance history modal
+      setShowFullAttendanceModal(false)
+      
+      // Fetch attendance records for this session
+      const response = await fetch(`/api/attendance/session/${session.session_id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance records')
+      }
+      
+      const result = await response.json()
+      const attendanceRecordsData = result.data || []
+      
+      // Set session details for editing
+      setSessionDetails({
+        title: session.title || 'Untitled Session',
+        session_date: session.session_date || new Date().toISOString().split('T')[0],
+        session_type: session.session_type || 'Lecture',
+        meeting_type: session.meeting_type || 'Face-to-Face'
+      })
+      
+      // Convert attendance records to the format expected by attendance mode
+      const newAttendanceRecords = {}
+      attendanceRecordsData.forEach(record => {
+        if (record.enrollment_id) {
+          if (!newAttendanceRecords[record.enrollment_id]) {
+            newAttendanceRecords[record.enrollment_id] = {}
+          }
+          newAttendanceRecords[record.enrollment_id][session.session_date] = {
+            status: record.status || 'present',
+            remarks: record.remarks || ''
+          }
+        }
+      })
+      
+      // Set attendance records
+      setAttendanceRecords(newAttendanceRecords)
+      
+      // Set session to edit (for tracking)
+      setSessionToEdit(session)
+      
+      // Enable attendance mode
+      setIsAttendanceMode(true)
+      
+      // Ensure students are loaded
+      if (!students || students.length === 0) {
+        await loadStudents(selectedClass.section_course_id)
+      }
+      
+    } catch (error) {
+      console.error('❌ [MYCLASSES] Error loading session for editing:', error)
+      alert(`Failed to load session data: ${error.message}. Please try again.`)
+    }
+  }, [selectedClass, students])
+
   // Submit attendance data
   const submitAttendance = useCallback(async () => {
     if (!selectedClass) return
@@ -1104,34 +1201,45 @@ const MyClasses = () => {
       console.log('🔍 [FRONTEND DEBUG] Attendance records:', attendanceRecords)
       console.log('🔍 [FRONTEND DEBUG] Session date:', sessionDetails.session_date)
       
-      // First create a session
-      console.log('🔍 [FRONTEND DEBUG] Creating session...')
-      const sessionResponse = await fetch('/api/attendance/sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({
-          section_course_id: selectedClass.section_course_id,
-          title: sessionDetails.title,
-          session_date: sessionDetails.session_date,
-          session_type: sessionDetails.session_type,
-          meeting_type: sessionDetails.meeting_type
+      // Check if editing existing session or creating new one
+      let sessionId
+      if (sessionToEdit && sessionToEdit.session_id) {
+        // Editing existing session - use existing session ID
+        console.log('🔍 [FRONTEND DEBUG] Editing existing session:', sessionToEdit.session_id)
+        sessionId = sessionToEdit.session_id
+        
+        // Update session details (optional - only if changed)
+        // Note: The backend will update attendance records when we call /mark endpoint
+      } else {
+        // Creating new session
+        console.log('🔍 [FRONTEND DEBUG] Creating new session...')
+        const sessionResponse = await fetch('/api/attendance/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({
+            section_course_id: selectedClass.section_course_id,
+            title: sessionDetails.title,
+            session_date: sessionDetails.session_date,
+            session_type: sessionDetails.session_type,
+            meeting_type: sessionDetails.meeting_type
+          })
         })
-      })
 
-      console.log('🔍 [FRONTEND DEBUG] Session response status:', sessionResponse.status)
-      
-      if (!sessionResponse.ok) {
-        const errorText = await sessionResponse.text()
-        console.log('❌ [FRONTEND DEBUG] Session creation failed:', errorText)
-        throw new Error(`Failed to create session: ${sessionResponse.status}`)
+        console.log('🔍 [FRONTEND DEBUG] Session response status:', sessionResponse.status)
+        
+        if (!sessionResponse.ok) {
+          const errorText = await sessionResponse.text()
+          console.log('❌ [FRONTEND DEBUG] Session creation failed:', errorText)
+          throw new Error(`Failed to create session: ${sessionResponse.status}`)
+        }
+
+        const sessionData = await sessionResponse.json()
+        console.log('✅ [FRONTEND DEBUG] Session created successfully:', sessionData)
+        sessionId = sessionData.data.session_id
       }
-
-      const sessionData = await sessionResponse.json()
-      console.log('✅ [FRONTEND DEBUG] Session created successfully:', sessionData)
-      const sessionId = sessionData.data.session_id
 
       // Then mark attendance for the session
       console.log('🔍 [FRONTEND DEBUG] Building attendance records list...')
@@ -1181,8 +1289,19 @@ const MyClasses = () => {
       setSuccessMessage('Attendance submitted successfully!')
       setShowSuccessModal(true)
 
+      // Clear session to edit if it was set
+      setSessionToEdit(null)
+      
       // Exit attendance mode
       setIsAttendanceMode(false)
+      
+      // Open attendance history modal to show the new/updated data
+      if (selectedClass) {
+        // Small delay to ensure modal can open properly
+        setTimeout(() => {
+          handleOpenAttendanceModal()
+        }, 500)
+      }
 
     } catch (error) {
       console.error('❌ [ATTENDANCE] Error submitting attendance:', error)
@@ -2196,18 +2315,52 @@ const MyClasses = () => {
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
+              <div className="flex-1">
                 <h2 className="text-lg font-semibold text-gray-900">Attendance Records</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  {selectedClass?.course_title} • {
-                    loadingFullAttendance ? (
-                      <span className="inline-block h-4 bg-gray-200 rounded w-20 animate-pulse align-middle"></span>
-                    ) : (
-                      `${sessionList.reduce((sum, session) => sum + session.student_count, 0)} total records`
-                    )
-                  }
-                </p>
-    </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-sm text-gray-500">
+                    {selectedClass?.course_title} • {
+                      loadingFullAttendance ? (
+                        <span className="inline-block h-4 bg-gray-200 rounded w-20 animate-pulse align-middle"></span>
+                      ) : (
+                        `${sessionList.reduce((sum, session) => sum + session.student_count, 0)} total records`
+                      )
+                    }
+                  </p>
+                  
+                  {/* Month Filter Dropdown */}
+                  {!loadingFullAttendance && sessionList.length > 0 && (
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value="">All Months</option>
+                      {(() => {
+                        const months = new Set()
+                        sessionList.forEach(session => {
+                          if (session.session_date) {
+                            try {
+                              const date = new Date(session.session_date)
+                              const monthYear = `${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                              months.add(monthYear)
+                            } catch (e) {
+                              // Ignore invalid dates
+                            }
+                          }
+                        })
+                        return Array.from(months).sort((a, b) => {
+                          const dateA = new Date(a)
+                          const dateB = new Date(b)
+                          return dateB - dateA // Sort descending (newest first)
+                        })
+                      })().map(month => (
+                        <option key={month} value={month}>{month}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => setShowFullAttendanceModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
@@ -2294,12 +2447,16 @@ const MyClasses = () => {
                 <div className="flex-1 flex items-center justify-center text-gray-500">
                   <p>No attendance records found.</p>
                 </div>
+              ) : filteredSessions.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  <p>No sessions found for the selected month.</p>
+                </div>
               ) : (
                 <>
                   {/* Session Tabs */}
                   <div className="border-b border-gray-200 px-4 pt-2">
                     <div className="flex space-x-1 overflow-x-auto">
-                      {sessionList.map((session, sessionIndex) => {
+                      {filteredSessions.map((session, sessionIndex) => {
                         const formatDate = (dateString) => {
                           if (!dateString) return 'N/A'
                           try {
@@ -2348,8 +2505,8 @@ const MyClasses = () => {
                   
                   {/* Active Session Content */}
                   <div className="flex-1 overflow-auto p-4">
-                    {sessionList[activeSessionTab] && (() => {
-                      const session = sessionList[activeSessionTab]
+                    {filteredSessions[activeSessionTab] && (() => {
+                      const session = filteredSessions[activeSessionTab]
                       // CRITICAL: Always get session data using the current active session's key
                       const sessionDataItem = sessionData[session.session_key]
                       const isLoadingSession = loadingSession[session.session_key]
@@ -2517,6 +2674,16 @@ const MyClasses = () => {
                                     </>
                                   )}
                                 </div>
+                                
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => handleEditSession(session)}
+                                  disabled={isAttendanceLoading}
+                                  className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Edit this attendance session"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
                                 
                                 {/* Delete Button */}
                                 <button
