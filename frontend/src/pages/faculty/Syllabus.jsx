@@ -30,6 +30,7 @@ const Syllabus = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
+  const [activeTermId, setActiveTermId] = useState(null)
   const [schoolTerms, setSchoolTerms] = useState([])
   
   // Modal states
@@ -59,6 +60,28 @@ const Syllabus = () => {
     version: '1.0',
     term_id: ''
   })
+
+  // Fetch active term
+  useEffect(() => {
+    const fetchActiveTerm = async () => {
+      try {
+        const response = await fetch('/api/school-terms')
+        if (response.ok) {
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [SYLLABUS] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          } else {
+            console.warn('⚠️ [SYLLABUS] No active term found')
+          }
+        }
+      } catch (error) {
+        console.error('❌ [SYLLABUS] Error fetching active term:', error)
+      }
+    }
+    fetchActiveTerm()
+  }, [])
 
   // Load faculty classes
   useEffect(() => {
@@ -119,6 +142,17 @@ const Syllabus = () => {
     
     loadClasses()
   }, [user, location.state])
+
+  // Filter classes by active term
+  const filteredClasses = React.useMemo(() => {
+    if (activeTermId === null) {
+      // Wait for active term to be determined
+      return []
+    }
+    const filtered = classes.filter(cls => cls.term_id === activeTermId)
+    console.log(`🔍 [SYLLABUS] Filtered by active term (${activeTermId}): ${filtered.length} of ${classes.length} classes`)
+    return filtered
+  }, [classes, activeTermId])
 
   // Notify Header when selected class changes
   useEffect(() => {
@@ -181,10 +215,10 @@ const Syllabus = () => {
       setSelectedSyllabusForILO(null)
     } else {
       // When switching to ILO tab, ensure selected class is restored from localStorage
-      if (!selectedClass && classes.length > 0) {
+      if (!selectedClass && filteredClasses.length > 0) {
         const savedClass = getSelectedClass()
         if (savedClass?.section_course_id) {
-          const classToSelect = classes.find(cls => cls.section_course_id === savedClass.section_course_id)
+          const classToSelect = filteredClasses.find(cls => cls.section_course_id === savedClass.section_course_id)
           if (classToSelect) {
             setSelectedClass(classToSelect)
           }
@@ -982,9 +1016,9 @@ const Syllabus = () => {
                           </div>
                         ))}
                       </div>
-                    ) : classes.length > 0 ? (
+                    ) : filteredClasses.length > 0 ? (
                       <div className="p-4 space-y-2">
-                        {classes.map((cls) => (
+                        {filteredClasses.map((cls) => (
                           <div
                             key={cls.section_course_id}
                             onClick={() => setSelectedClass(cls)}

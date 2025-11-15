@@ -33,6 +33,7 @@ const Assessments = () => {
   const [typeFilter, setTypeFilter] = useState('all') // Filter by assessment type
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
+  const [activeTermId, setActiveTermId] = useState(null)
   
   // Tab navigation - check location state for default tab
   const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'assessments')
@@ -170,6 +171,28 @@ const Assessments = () => {
   const [assessmentComponents, setAssessmentComponents] = useState([])
   // Assessment criteria from selected syllabus
   const [assessmentCriteria, setAssessmentCriteria] = useState([])
+
+  // Fetch active term
+  useEffect(() => {
+    const fetchActiveTerm = async () => {
+      try {
+        const response = await fetch('/api/school-terms')
+        if (response.ok) {
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [ASSESSMENTS] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          } else {
+            console.warn('⚠️ [ASSESSMENTS] No active term found')
+          }
+        }
+      } catch (error) {
+        console.error('❌ [ASSESSMENTS] Error fetching active term:', error)
+      }
+    }
+    fetchActiveTerm()
+  }, [])
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -1697,9 +1720,9 @@ const Assessments = () => {
                               </div>
                             ))}
                           </div>
-                        ) : classes.length > 0 ? (
+                        ) : filteredClasses.length > 0 ? (
                           <div className="p-4 space-y-2">
-                            {classes.map((cls) => (
+                            {filteredClasses.map((cls) => (
                               <div
                                 key={cls.section_course_id}
                                 onClick={() => setSelectedClass(cls)}

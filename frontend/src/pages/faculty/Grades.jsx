@@ -14,12 +14,35 @@ const Grades = () => {
   const [assessments, setAssessments] = useState([]) // List of all assessments for the class
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState(null)
+  const [activeTermId, setActiveTermId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadingGrades, setLoadingGrades] = useState(false)
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
   const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
+
+  // Fetch active term
+  useEffect(() => {
+    const fetchActiveTerm = async () => {
+      try {
+        const response = await fetch('/api/school-terms')
+        if (response.ok) {
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [GRADES] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          } else {
+            console.warn('⚠️ [GRADES] No active term found')
+          }
+        }
+      } catch (error) {
+        console.error('❌ [GRADES] Error fetching active term:', error)
+      }
+    }
+    fetchActiveTerm()
+  }, [])
 
   // Load faculty classes - FAST initial load, show immediately
   useEffect(() => {
@@ -56,6 +79,17 @@ const Grades = () => {
     
       loadClasses()
   }, [user])
+
+  // Filter classes by active term
+  const filteredClasses = React.useMemo(() => {
+    if (activeTermId === null) {
+      // Wait for active term to be determined
+      return []
+    }
+    const filtered = classes.filter(cls => cls.term_id === activeTermId)
+    console.log(`🔍 [GRADES] Filtered by active term (${activeTermId}): ${filtered.length} of ${classes.length} classes`)
+    return filtered
+  }, [classes, activeTermId])
 
   // Fetch student photos on-demand
   const fetchStudentPhotos = async (students) => {
@@ -626,9 +660,9 @@ const Grades = () => {
                           </div>
                         ))}
                       </div>
-                    ) : classes.length > 0 ? (
+                    ) : filteredClasses.length > 0 ? (
                       <div className="p-4 space-y-2">
-                        {classes.map((cls) => (
+                        {filteredClasses.map((cls) => (
                           <div
                             key={cls.section_course_id}
                             onClick={() => setSelectedClass(cls)}
