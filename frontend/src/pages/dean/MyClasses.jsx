@@ -38,6 +38,8 @@ const MyClasses = () => {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [studentGrades, setStudentGrades] = useState([])
   const [loadingStudentGrades, setLoadingStudentGrades] = useState(false)
+  const [studentAttendanceStats, setStudentAttendanceStats] = useState(null)
+  const [submissionStats, setSubmissionStats] = useState({ onTime: 0, late: 0, missing: 0, total: 0 })
   
   // Attendance modal state
   const [sessionList, setSessionList] = useState([])
@@ -453,40 +455,84 @@ const MyClasses = () => {
     }
   }, [enrichStudentsWithPhotos, extractSurname, fetchStudentPhotos])
   
-  // Handle student click - opens student modal with detailed grades (like faculty interface)
+  // Handle student click - opens student modal with aggregate data
   const handleStudentClick = useCallback(async (student) => {
     setSelectedStudent(student)
     setShowStudentStatsModal(true)
     setLoadingStudentGrades(true)
     setStudentGrades([])
+    setStudentAttendanceStats(null)
+    setSubmissionStats({ onTime: 0, late: 0, missing: 0, total: 0 })
     
-    if (!student.enrollment_id) {
+    if (!student.enrollment_id || !selectedClass?.id) {
       setLoadingStudentGrades(false)
       return
     }
     
+    const sectionCourseId = selectedClass.id || selectedClass.section_course_id
+    
     try {
-      // Fetch student grades asynchronously
-      const response = await fetch(`/api/grading/student/${student.enrollment_id}/grades`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
+      // Fetch student grades and attendance stats in parallel
+      const [gradesResponse, attendanceResponse] = await Promise.all([
+        fetch(`/api/grading/student/${student.enrollment_id}/grades`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        }),
+        fetch(`/api/attendance/stats/${sectionCourseId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        })
+      ])
       
-      if (response.ok) {
-        const gradesData = await response.json()
-        setStudentGrades(Array.isArray(gradesData) ? gradesData : [])
+      // Process grades
+      if (gradesResponse.ok) {
+        const gradesData = await gradesResponse.json()
+        const gradesArray = Array.isArray(gradesData) ? gradesData : []
+        setStudentGrades(gradesArray)
+        
+        // Calculate submission statistics
+        const submissionCounts = gradesArray.reduce((acc, grade) => {
+          acc.total++
+          if (grade.submission_status === 'ontime') {
+            acc.onTime++
+          } else if (grade.submission_status === 'late') {
+            acc.late++
+          } else {
+            acc.missing++
+          }
+          return acc
+        }, { onTime: 0, late: 0, missing: 0, total: 0 })
+        setSubmissionStats(submissionCounts)
       } else {
         console.error('Failed to fetch student grades')
         setStudentGrades([])
       }
+      
+      // Process attendance
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json()
+        const attendanceList = Array.isArray(attendanceData.data) ? attendanceData.data : Array.isArray(attendanceData) ? attendanceData : []
+        const studentAttendance = attendanceList.find(s => String(s.student_id) === String(student.student_id))
+        
+        if (studentAttendance) {
+          setStudentAttendanceStats({
+            attendance_percentage: Number(studentAttendance.attendance_percentage) || 0,
+            total_sessions: Number(studentAttendance.total_sessions) || 0,
+            present_count: Number(studentAttendance.present_count) || 0,
+            absent_count: Number(studentAttendance.absent_count) || 0,
+            late_count: Number(studentAttendance.late_count) || 0
+          })
+        }
+      }
     } catch (error) {
-      console.error('❌ [DEAN MYCLASSES] Error fetching student grades:', error)
+      console.error('❌ [DEAN MYCLASSES] Error fetching student data:', error)
       setStudentGrades([])
     } finally {
       setLoadingStudentGrades(false)
     }
-  }, [])
+  }, [selectedClass])
   
   // Load session data - defined before handleOpenAttendanceModal to avoid dependency issues
   const loadSessionData = useCallback(async (session, tabIndex, currentSessionData, currentStudents, currentCachedStudents) => {
@@ -984,7 +1030,7 @@ const MyClasses = () => {
             onClick={() => setShowStudentStatsModal(false)}
           >
             <div 
-              className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
+              className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[95vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header with Final Score */}
@@ -1032,129 +1078,151 @@ const MyClasses = () => {
                 </div>
               </div>
 
-              {/* Modal Content */}
+              {/* Modal Content - Aggregate Data */}
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Assessment Scores</h3>
-                
                 {loadingStudentGrades ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                   </div>
-                ) : studentGrades.length > 0 ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {studentGrades.map((grade) => {
-                      const adjustedScore = grade.adjusted_score ?? null
-                      const percentage = adjustedScore !== null && grade.total_points > 0 
-                        ? ((adjustedScore / grade.total_points) * 100).toFixed(1)
-                        : null
-                      const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
-                        ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
-                        : null
-                      
-                      return (
-                        <div 
-                          key={grade.assessment_id} 
-                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                        >
-                          {/* Assessment Header */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-base font-semibold text-gray-900 truncate">
-                                {grade.assessment_title}
-                              </h4>
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  {grade.assessment_type}
-                                </span>
-                                <span className="text-xs text-gray-600">{grade.total_points} pts</span>
-                                <span className="text-xs text-gray-600">{parseFloat(grade.weight_percentage || 0).toFixed(2)}%</span>
-                                {grade.due_date && (() => {
-                                  try {
-                                    const date = new Date(grade.due_date)
-                                    if (!isNaN(date.getTime())) {
-                                      return <span className="text-xs text-gray-500">Due: {date.toLocaleDateString()}</span>
-                                    }
-                                  } catch (e) {}
-                                  return null
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Scores Grid - More Compact */}
-                          <div className="grid grid-cols-4 gap-3 mb-3">
-                            <div className="bg-gray-50 rounded p-2">
-                              <p className="text-xs text-gray-500 mb-0.5">Raw</p>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
-                              </p>
-                            </div>
-                            <div className="bg-gray-50 rounded p-2">
-                              <p className="text-xs text-gray-500 mb-0.5">Penalty</p>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
-                              </p>
-                            </div>
-                            <div className="bg-gray-50 rounded p-2">
-                              <p className="text-xs text-gray-500 mb-0.5">Adjusted</p>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
-                              </p>
-                            </div>
-                            <div className="bg-blue-50 rounded p-2">
-                              <p className="text-xs text-gray-500 mb-0.5">%</p>
-                              <p className="text-sm font-semibold text-blue-700">
-                                {percentage !== null ? `${percentage}%` : '—'}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {/* Weighted Score and Status */}
-                          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                            <div className="flex items-center gap-3">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                                grade.submission_status === 'ontime' 
-                                  ? 'bg-green-100 text-green-800'
-                                  : grade.submission_status === 'late'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {grade.submission_status === 'ontime' ? 'On Time' : 
-                                 grade.submission_status === 'late' ? 'Late' : 'Missing'}
-                              </span>
-                              {weightedScore !== null && (
-                                <span className="text-xs text-gray-600">
-                                  Weighted: <span className="font-semibold">{weightedScore}%</span>
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {grade.graded_at && (() => {
-                                try {
-                                  const date = new Date(grade.graded_at)
-                                  if (!isNaN(date.getTime())) {
-                                    return <span>{date.toLocaleDateString()}</span>
-                                  }
-                                } catch (e) {}
-                                return null
-                              })()}
-                            </div>
-                          </div>
-                          
-                          {/* Feedback */}
-                          {grade.feedback && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-xs font-medium text-gray-500 mb-1">Feedback</p>
-                              <p className="text-xs text-gray-700 leading-relaxed">{grade.feedback}</p>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
                 ) : (
-                  <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <p className="text-gray-500">No assessment scores available</p>
+                  <div className="space-y-6">
+                    {/* Overall Grade Card */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Overall Grade</h3>
+                          <p className="text-sm text-gray-500 mt-1">Performance in this class</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-3xl font-bold ${finalGradeColor}`}>
+                            {finalGradeDisplay}%
+                          </p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div
+                          className={`h-4 rounded-full transition-all ${
+                            finalGrade !== null && finalGrade >= 90 ? 'bg-green-500' :
+                            finalGrade !== null && finalGrade >= 75 ? 'bg-blue-500' :
+                            finalGrade !== null && finalGrade >= 60 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.max(0, Math.min(100, Number(finalGrade || 0)))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Attendance Card */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Attendance</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {studentAttendanceStats ? (
+                              <>
+                                {studentAttendanceStats.present_count} present • {studentAttendanceStats.absent_count} absent • {studentAttendanceStats.late_count} late
+                                {studentAttendanceStats.total_sessions > 0 && (
+                                  <> • {studentAttendanceStats.total_sessions} total sessions</>
+                                )}
+                              </>
+                            ) : (
+                              'No attendance data available'
+                            )}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold text-blue-600">
+                            {studentAttendanceStats?.attendance_percentage !== undefined 
+                              ? `${studentAttendanceStats.attendance_percentage.toFixed(1)}%`
+                              : '—%'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div
+                          className="bg-blue-500 h-4 rounded-full transition-all"
+                          style={{ 
+                            width: `${Math.max(0, Math.min(100, Number(studentAttendanceStats?.attendance_percentage || 0)))}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Submission Behavior Card */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">Submission Behavior</h3>
+                        <p className="text-sm text-gray-500">
+                          {submissionStats.total > 0 ? (
+                            <>Based on {submissionStats.total} assessment{submissionStats.total !== 1 ? 's' : ''}</>
+                          ) : (
+                            'No submission data available'
+                          )}
+                        </p>
+                      </div>
+                      
+                      {submissionStats.total > 0 ? (
+                        <div className="space-y-4">
+                          {/* On Time Submissions */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">On Time</span>
+                              <span className="text-sm font-semibold text-green-700">
+                                {submissionStats.onTime} ({submissionStats.total > 0 ? ((submissionStats.onTime / submissionStats.total) * 100).toFixed(1) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                              <div
+                                className="bg-green-500 h-3 rounded-full transition-all"
+                                style={{ 
+                                  width: `${submissionStats.total > 0 ? (submissionStats.onTime / submissionStats.total) * 100 : 0}%` 
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Late Submissions */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Late</span>
+                              <span className="text-sm font-semibold text-yellow-700">
+                                {submissionStats.late} ({submissionStats.total > 0 ? ((submissionStats.late / submissionStats.total) * 100).toFixed(1) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                              <div
+                                className="bg-yellow-500 h-3 rounded-full transition-all"
+                                style={{ 
+                                  width: `${submissionStats.total > 0 ? (submissionStats.late / submissionStats.total) * 100 : 0}%` 
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Missing Submissions */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Missing</span>
+                              <span className="text-sm font-semibold text-red-700">
+                                {submissionStats.missing} ({submissionStats.total > 0 ? ((submissionStats.missing / submissionStats.total) * 100).toFixed(1) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                              <div
+                                className="bg-red-500 h-3 rounded-full transition-all"
+                                style={{ 
+                                  width: `${submissionStats.total > 0 ? (submissionStats.missing / submissionStats.total) * 100 : 0}%` 
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No submission data available</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
