@@ -1867,24 +1867,24 @@ const MyClasses = () => {
                     onAttendance={async () => {
                       setTogglingAttendance(true)
                       try {
-                        // Select the class first if it's not already selected
+                        // Set attendance mode FIRST to prevent normal list from showing
+                        setIsAttendanceMode(true)
+                        
+                        // Select the class if it's not already selected (without resetting attendance mode)
                         if (selectedClass?.section_course_id !== cls.section_course_id) {
-                          await handleClassSelect(cls)
+                          // Directly set selected class without going through handleClassSelect
+                          // to avoid resetting attendance mode
+                          saveSelectedClass(cls)
+                          dispatchSelectedClassChange(cls)
+                          setSelectedClass(cls)
+                          // Load students for the selected class
+                          // Students will be loaded automatically by useEffect
                         }
-                        // Then toggle attendance mode
-                        const newAttendanceMode = !isAttendanceMode
-                        setIsAttendanceMode(newAttendanceMode)
                         
                         // Close student modal when entering attendance mode
-                        if (newAttendanceMode) {
-                          setShowStudentModal(false)
-                        }
+                        setShowStudentModal(false)
                         
-                        // Cache students list when entering attendance mode
-                        if (newAttendanceMode && students && students.length > 0) {
-                          console.log('💾 [MYCLASSES] Caching students list for full view:', students.length, 'students')
-                          setCachedStudentsList(students)
-                        }
+                        // Cache students list when entering attendance mode (will be done after students load)
                       } finally {
                         setTogglingAttendance(false)
                       }
@@ -2025,7 +2025,10 @@ const MyClasses = () => {
                 <button
                   onClick={() => {
                     setIsAttendanceMode(false)
+                    setSelectedClass(null) // Clear selected class so normal list doesn't appear
                     setShowStudentModal(false) // Close student modal when exiting attendance
+                    removeLocalStorageItem('selectedClass')
+                    dispatchSelectedClassChange(null)
                   }}
                   className="ml-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
                 >
