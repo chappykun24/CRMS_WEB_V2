@@ -474,13 +474,17 @@ const MyClasses = () => {
     try {
       // Fetch student grades and attendance stats in parallel
       const [gradesResponse, attendanceResponse] = await Promise.all([
-        fetch(`/api/grading/student/${student.enrollment_id}/grades`, {
+        fetch(`${API_BASE_URL}/grading/student/${student.enrollment_id}/grades`, {
           headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           }
         }),
-        fetch(`/api/attendance/stats/${sectionCourseId}`, {
+        fetch(`${API_BASE_URL}/attendance/stats/${sectionCourseId}`, {
           headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
           }
         })
@@ -513,18 +517,70 @@ const MyClasses = () => {
       // Process attendance
       if (attendanceResponse.ok) {
         const attendanceData = await attendanceResponse.json()
-        const attendanceList = Array.isArray(attendanceData.data) ? attendanceData.data : Array.isArray(attendanceData) ? attendanceData : []
-        const studentAttendance = attendanceList.find(s => String(s.student_id) === String(student.student_id))
+        console.log('📊 [DEAN MYCLASSES] Attendance response:', attendanceData)
+        
+        // Handle different response formats
+        let attendanceList = []
+        if (attendanceData.success && Array.isArray(attendanceData.data)) {
+          attendanceList = attendanceData.data
+        } else if (Array.isArray(attendanceData.data)) {
+          attendanceList = attendanceData.data
+        } else if (Array.isArray(attendanceData)) {
+          attendanceList = attendanceData
+        }
+        
+        console.log('📊 [DEAN MYCLASSES] Attendance list:', attendanceList.length, 'students')
+        console.log('📊 [DEAN MYCLASSES] Student object:', { 
+          student_id: student.student_id, 
+          enrollment_id: student.enrollment_id,
+          student_number: student.student_number 
+        })
+        
+        // Try multiple matching strategies
+        let studentAttendance = attendanceList.find(s => 
+          String(s.student_id) === String(student.student_id)
+        )
+        
+        // Fallback: try matching by student_number if student_id doesn't match
+        if (!studentAttendance && student.student_number) {
+          studentAttendance = attendanceList.find(s => 
+            String(s.student_number) === String(student.student_number)
+          )
+        }
+        
+        console.log('📊 [DEAN MYCLASSES] Found attendance:', studentAttendance)
+        if (!studentAttendance && attendanceList.length > 0) {
+          console.warn('⚠️ [DEAN MYCLASSES] Student attendance not found. Sample attendance data:', attendanceList[0])
+        }
         
         if (studentAttendance) {
+          // Handle NULL attendance_percentage (when no sessions exist)
+          const attendancePercent = studentAttendance.attendance_percentage !== null && studentAttendance.attendance_percentage !== undefined
+            ? Number(studentAttendance.attendance_percentage)
+            : null
+          
           setStudentAttendanceStats({
-            attendance_percentage: Number(studentAttendance.attendance_percentage) || 0,
+            attendance_percentage: attendancePercent,
             total_sessions: Number(studentAttendance.total_sessions) || 0,
             present_count: Number(studentAttendance.present_count) || 0,
             absent_count: Number(studentAttendance.absent_count) || 0,
             late_count: Number(studentAttendance.late_count) || 0
           })
+        } else {
+          console.warn('⚠️ [DEAN MYCLASSES] Student attendance not found in list.')
+          if (attendanceList.length > 0) {
+            console.warn('Available student_ids:', attendanceList.map(s => ({ 
+              student_id: s.student_id, 
+              student_number: s.student_number,
+              full_name: s.full_name 
+            })))
+          } else {
+            console.warn('No attendance data returned from API for this class.')
+          }
         }
+      } else {
+        const errorText = await attendanceResponse.text()
+        console.error('❌ [DEAN MYCLASSES] Attendance API error:', attendanceResponse.status, errorText)
       }
     } catch (error) {
       console.error('❌ [DEAN MYCLASSES] Error fetching student data:', error)
@@ -1132,20 +1188,28 @@ const MyClasses = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-3xl font-bold text-blue-600">
-                            {studentAttendanceStats?.attendance_percentage !== undefined 
+                            {studentAttendanceStats?.attendance_percentage !== null && 
+                             studentAttendanceStats?.attendance_percentage !== undefined 
                               ? `${studentAttendanceStats.attendance_percentage.toFixed(1)}%`
                               : '—%'}
                           </p>
                         </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                        <div
-                          className="bg-blue-500 h-4 rounded-full transition-all"
-                          style={{ 
-                            width: `${Math.max(0, Math.min(100, Number(studentAttendanceStats?.attendance_percentage || 0)))}%` 
-                          }}
-                        />
-                      </div>
+                      {studentAttendanceStats?.attendance_percentage !== null && 
+                       studentAttendanceStats?.attendance_percentage !== undefined ? (
+                        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                          <div
+                            className="bg-blue-500 h-4 rounded-full transition-all"
+                            style={{ 
+                              width: `${Math.max(0, Math.min(100, Number(studentAttendanceStats.attendance_percentage || 0)))}%` 
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                          <div className="bg-gray-300 h-4 rounded-full" style={{ width: '0%' }} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Submission Behavior Card */}
