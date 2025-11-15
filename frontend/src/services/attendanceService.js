@@ -105,7 +105,18 @@ class AttendanceService {
       return response.data;
     } catch (error) {
       console.error('Error deleting session:', error);
-      throw error;
+      
+      // Extract proper error message from axios error response
+      if (error.response?.data?.error) {
+        const errorMessage = error.response.data.error;
+        throw new Error(errorMessage);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Failed to delete session. Please try again.');
+      }
     }
   }
 

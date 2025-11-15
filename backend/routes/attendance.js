@@ -451,6 +451,14 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
     const userId = req.user?.user_id || req.user?.id;
     const userRole = req.user?.role;
 
+    // Validate sessionId
+    if (!sessionId || isNaN(parseInt(sessionId))) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid session ID'
+      });
+    }
+
     // Validation: Check if session exists and get session details
     const sessionCheck = await db.query(
       `SELECT s.session_id, s.faculty_id, sc.faculty_id as section_faculty_id
@@ -522,9 +530,27 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [ATTENDANCE API] Error deleting session:', error);
+    console.error('❌ [ATTENDANCE API] Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      stack: error.stack
+    });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to delete session';
+    if (error.code === '23503') {
+      errorMessage = 'Cannot delete session: It is referenced by other records';
+    } else if (error.code === '23505') {
+      errorMessage = 'Cannot delete session: Duplicate entry detected';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to delete session'
+      error: errorMessage
     });
   }
 });
