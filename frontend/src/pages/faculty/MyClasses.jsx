@@ -144,6 +144,11 @@ const MyClasses = () => {
     }))
   }, [isAttendanceMode])
 
+  // Close student modal when entering or exiting attendance mode
+  useEffect(() => {
+    setShowStudentModal(false)
+  }, [isAttendanceMode])
+
   // Reset breadcrumb tab on unmount
   useEffect(() => {
     return () => {
@@ -1201,6 +1206,7 @@ const MyClasses = () => {
       
       // Enable attendance mode
       setIsAttendanceMode(true)
+      setShowStudentModal(false) // Close student modal when entering attendance mode
       
       // Students should already be loaded when class is selected
       // If not, they will be loaded automatically by handleClassSelect
@@ -1487,6 +1493,7 @@ const MyClasses = () => {
         if (!isClassCard && !isModal) {
           setSelectedClass(null)
           setIsAttendanceMode(false)
+          setShowStudentModal(false) // Close student modal when closing class
           removeLocalStorageItem('selectedClass')
           dispatchSelectedClassChange(null)
         }
@@ -1860,6 +1867,11 @@ const MyClasses = () => {
                         const newAttendanceMode = !isAttendanceMode
                         setIsAttendanceMode(newAttendanceMode)
                         
+                        // Close student modal when entering attendance mode
+                        if (newAttendanceMode) {
+                          setShowStudentModal(false)
+                        }
+                        
                         // Cache students list when entering attendance mode
                         if (newAttendanceMode && students && students.length > 0) {
                           console.log('💾 [MYCLASSES] Caching students list for full view:', students.length, 'students')
@@ -1921,7 +1933,10 @@ const MyClasses = () => {
                 </div>
                 {isAttendanceMode && (
                   <button
-                    onClick={() => setIsAttendanceMode(false)}
+                    onClick={() => {
+                      setIsAttendanceMode(false)
+                      setShowStudentModal(false) // Close student modal when exiting attendance
+                    }}
                     className="ml-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
