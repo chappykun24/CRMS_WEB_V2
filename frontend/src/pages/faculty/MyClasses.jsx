@@ -1432,6 +1432,14 @@ const MyClasses = () => {
             setAttendanceSuccessMessage('')
           }, 5000)
         }, 500)
+        
+        // Clear selected class to prevent normal list from showing in background
+        // Do this after a short delay to ensure modal opens first
+        setTimeout(() => {
+          setSelectedClass(null)
+          removeLocalStorageItem('selectedClass')
+          dispatchSelectedClassChange(null)
+        }, 600)
       }
 
     } catch (error) {
@@ -1440,7 +1448,7 @@ const MyClasses = () => {
     } finally {
       setSubmittingAttendance(false)
     }
-  }, [selectedClass, sessionDetails, attendanceRecords, students, sessionToEdit, loadFullAttendanceList, validateSessionDetails])
+  }, [selectedClass, sessionDetails, attendanceRecords, students, sessionToEdit, loadFullAttendanceList, validateSessionDetails, removeLocalStorageItem, dispatchSelectedClassChange])
 
   // Edit modal handlers
   const handleEditClass = (classItem) => {
