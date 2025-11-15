@@ -1919,7 +1919,7 @@ const MyClasses = () => {
       </div>
 
       {/* Expanded Student List - Only show when class is selected and NOT in attendance mode (attendance shows its own list) */}
-      {selectedClass && !isAttendanceMode && (
+      {selectedClass && !isAttendanceMode ? (
         <div 
           key="normal-student-list"
           ref={sidebarRef}
@@ -2004,10 +2004,10 @@ const MyClasses = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Attendance Mode Container - Separate from normal student list */}
-      {selectedClass && isAttendanceMode && (
+      {selectedClass && isAttendanceMode ? (
         <div 
           key="attendance-container"
           ref={attendanceContainerRef}
@@ -2244,7 +2244,7 @@ const MyClasses = () => {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Edit Modal */}
       {showEditModal && editingClass && (
