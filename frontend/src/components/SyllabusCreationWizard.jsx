@@ -113,7 +113,8 @@ const SyllabusCreationWizard = ({
   const [newSubAssessment, setNewSubAssessment] = useState({ 
     abbreviation: '',
     name: '', 
-    weight_percentage: '' 
+    weight_percentage: '',
+    score: '' 
   })
   const [editingSubAssessmentFor, setEditingSubAssessmentFor] = useState(null) // criterion index
   const [newContactHour, setNewContactHour] = useState({ 
@@ -713,7 +714,8 @@ const SyllabusCreationWizard = ({
       formattedSubAssessments[criterionIndex] = formData.sub_assessments[criterionIndex].map(sub => ({
         abbreviation: (sub.abbreviation || '').trim(),
         name: sub.name.trim(),
-        weight_percentage: parseFloat(sub.weight_percentage) || 0
+        weight_percentage: parseFloat(sub.weight_percentage) || 0,
+        score: parseFloat(sub.score) || 0
       }))
     })
     
@@ -1155,18 +1157,18 @@ const SyllabusCreationWizard = ({
                       <div className="flex-1 grid grid-cols-3 gap-2">
                         <input
                           type="text"
+                          value={item.name}
+                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
+                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
+                        />
+                        <input
+                          type="text"
                           value={item.abbreviation || ''}
                           onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
                           className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                           placeholder="Abbreviation (e.g., QZ, ME)"
                           maxLength="10"
-                        />
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
-                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                         />
                         <input
                           type="number"
@@ -1195,19 +1197,19 @@ const SyllabusCreationWizard = ({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <input
                     type="text"
+                    value={newAssessmentCriteria.name}
+                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                  />
+                  <input
+                    type="text"
                     value={newAssessmentCriteria.abbreviation}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, abbreviation: e.target.value }))}
                     className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Abbreviation (e.g., QZ, ME)"
                     maxLength="10"
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
-                  />
-                  <input
-                    type="text"
-                    value={newAssessmentCriteria.name}
-                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, name: e.target.value }))}
-                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
                   <input
@@ -1253,7 +1255,21 @@ const SyllabusCreationWizard = ({
               {/* Sub-Assessments Section */}
               {formData.assessment_criteria.length > 0 && (
                 <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Sub-Assessments</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-900">Sub-Assessments</h4>
+                    {(() => {
+                      const allSubAssessments = Object.values(formData.sub_assessments || {}).flat()
+                      const totalAllScores = allSubAssessments.reduce((sum, sub) => sum + (parseFloat(sub.score) || 0), 0)
+                      if (allSubAssessments.length > 0) {
+                        return (
+                          <p className="text-xs font-medium text-gray-700">
+                            Total Scores (All): {totalAllScores.toFixed(2)}
+                          </p>
+                        )
+                      }
+                      return null
+                    })()}
+                  </div>
                   <p className="text-xs text-gray-600 mb-2">
                     Create sub-assessments for each assessment criterion. The total weight of sub-assessments must equal the parent criterion weight.
                   </p>
@@ -1291,11 +1307,12 @@ const SyllabusCreationWizard = ({
                             <div className="mb-2 space-y-1.5">
                               {subAssessments.map((sub, subIndex) => (
                                 <div key={subIndex} className="flex items-center gap-1.5 p-1.5 bg-gray-50 rounded">
-                                  <div className="flex-1 grid grid-cols-3 gap-1.5 text-xs">
+                                  <div className="flex-1 grid grid-cols-4 gap-1.5 text-xs">
                                     <span className="font-medium text-gray-700">
                                       {sub.abbreviation && `${sub.abbreviation} - `}{sub.name}
                                     </span>
                                     <span className="text-gray-600">Weight: {sub.weight_percentage}%</span>
+                                    <span className="text-gray-600">Score: {parseFloat(sub.score) || 0}</span>
                                   </div>
                                   <button
                                     type="button"
@@ -1330,7 +1347,7 @@ const SyllabusCreationWizard = ({
                           
                           {isExpanded && (
                             <div className="mt-2 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                              <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                                 <input
                                   type="text"
                                   value={newSubAssessment.abbreviation}
@@ -1356,6 +1373,15 @@ const SyllabusCreationWizard = ({
                                   max={criterion.weight}
                                   step="0.1"
                                 />
+                                <input
+                                  type="number"
+                                  value={newSubAssessment.score}
+                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, score: e.target.value }))}
+                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                  placeholder="Score"
+                                  min="0"
+                                  step="0.01"
+                                />
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1365,10 +1391,11 @@ const SyllabusCreationWizard = ({
                                       updated[criterionIndex] = [...updated[criterionIndex], {
                                         abbreviation: newSubAssessment.abbreviation.trim(),
                                         name: newSubAssessment.name.trim(),
-                                        weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0
+                                        weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0,
+                                        score: parseFloat(newSubAssessment.score) || 0
                                       }]
                                       setFormData(prev => ({ ...prev, sub_assessments: updated }))
-                                      setNewSubAssessment({ abbreviation: '', name: '', weight_percentage: '' })
+                                      setNewSubAssessment({ abbreviation: '', name: '', weight_percentage: '', score: '' })
                                     }
                                   }}
                                   className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
@@ -1377,9 +1404,19 @@ const SyllabusCreationWizard = ({
                                   Add
                                 </button>
                               </div>
-                              <p className="mt-2 text-xs text-gray-500">
-                                Remaining weight: {Math.max(0, parseFloat(criterion.weight) - subTotal).toFixed(1)}%
-                              </p>
+                              <div className="mt-2 flex items-center justify-between">
+                                <p className="text-xs text-gray-500">
+                                  Remaining weight: {Math.max(0, parseFloat(criterion.weight) - subTotal).toFixed(1)}%
+                                </p>
+                                {subAssessments.length > 0 && (() => {
+                                  const totalScores = subAssessments.reduce((sum, sub) => sum + (parseFloat(sub.score) || 0), 0)
+                                  return (
+                                    <p className="text-xs font-medium text-gray-700">
+                                      Total Scores: {totalScores.toFixed(2)}
+                                    </p>
+                                  )
+                                })()}
+                              </div>
                             </div>
                           )}
                         </div>
