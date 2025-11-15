@@ -461,7 +461,7 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
 
     // Validation: Check if session exists and get session details
     const sessionCheck = await db.query(
-      `SELECT s.session_id, s.faculty_id, sc.faculty_id as section_faculty_id
+      `SELECT s.session_id, sc.instructor_id
        FROM sessions s
        LEFT JOIN section_courses sc ON s.section_course_id = sc.section_course_id
        WHERE s.session_id = $1`,
@@ -485,9 +485,9 @@ router.delete('/sessions/:sessionId', authenticateToken, async (req, res) => {
     const isAdmin = userRole === 'admin';
 
     if (isFaculty) {
-      // Faculty must own the session (check both session.faculty_id and section_courses.faculty_id)
-      const sessionFacultyId = session.faculty_id || session.section_faculty_id;
-      if (sessionFacultyId !== userId) {
+      // Faculty must own the session (check instructor_id from section_courses)
+      const sessionInstructorId = session.instructor_id;
+      if (sessionInstructorId !== userId) {
         return res.status(403).json({
           success: false,
           error: 'Permission denied. You can only delete your own attendance sessions.'
