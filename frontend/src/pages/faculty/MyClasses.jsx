@@ -1807,7 +1807,7 @@ const MyClasses = () => {
   return (
     <div className="h-full flex overflow-auto">
       {/* Main Content - Classes List */}
-      <div className={`flex flex-col transition-all duration-300 ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
+      <div className={`flex flex-col ${isAttendanceMode ? 'w-0 overflow-hidden' : selectedClass ? 'flex-1' : 'w-full'}`}>
 
 
         {/* Classes Grid */}
@@ -1902,9 +1902,14 @@ const MyClasses = () => {
       {selectedClass && (
         <div 
           ref={sidebarRef}
-          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 transition-[width] duration-300 ${
+          className={`bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 ${
             isAttendanceMode ? 'w-full' : 'w-80'
           }`}
+          style={{ 
+            animation: 'none',
+            transform: 'none',
+            transition: 'none'
+          }}
         >
           <div className="h-full flex flex-col">
             {/* Class Header */}
