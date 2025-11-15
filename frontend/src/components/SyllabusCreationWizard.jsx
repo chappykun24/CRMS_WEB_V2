@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   ChevronRightIcon,
   ChevronLeftIcon,
+  ChevronDownIcon,
   CheckCircleIcon,
   XCircleIcon,
   XMarkIcon,
@@ -142,13 +143,25 @@ const SyllabusCreationWizard = ({
   const [showILOForm, setShowILOForm] = useState(false)
   const [newILO, setNewILO] = useState({
     code: '',
-    description: '',
-    selectedSO: '',
-    selectedIGA: '',
-    selectedCDIO: '',
-    selectedSDG: '',
-    selectedSubAssessments: []
+    description: ''
   })
+  // Track open dropdowns for each ILO (for preview section)
+  const [openDropdowns, setOpenDropdowns] = useState({})
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside any dropdown
+      if (!event.target.closest('.dropdown-container')) {
+        setOpenDropdowns({})
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
   const [iloFormData, setIloFormData] = useState({
     code: '',
     description: '',
@@ -1619,159 +1632,9 @@ const SyllabusCreationWizard = ({
                         rows="2"
                       />
                     </div>
-
-                    {/* Mapping Dropdowns - Sequential Order: Sub-Assessments, SO, IGA, CDIO, SDG */}
-                    {(() => {
-                      // Get all sub-assessments for dropdown
-                      const allSubAssessments = []
-                      formData.assessment_criteria.forEach((criterion, idx) => {
-                        const subAssessments = formData.sub_assessments[idx] || []
-                        subAssessments.forEach(sub => {
-                          if (sub.abbreviation || sub.name) {
-                            allSubAssessments.push({
-                              code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
-                              name: sub.name,
-                              weight: parseFloat(sub.weight_percentage) || 0,
-                              score: parseFloat(sub.score) || 0
-                            })
-                          }
-                        })
-                      })
-
-                      return (
-                        <div className="space-y-2 pt-2 border-t border-gray-200">
-                          {/* 1. Map Student Outcomes (SO) */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              1. Select Student Outcome (SO):
-                            </label>
-                            <select
-                              value={newILO.selectedSO}
-                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedSO: e.target.value }))}
-                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                            >
-                              <option value="">Select Student Outcome...</option>
-                              {soReferences.map(so => (
-                                <option key={so.so_id} value={so.so_id}>
-                                  {so.so_code} - {so.description?.substring(0, 60)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* 2. Map Institutional Graduate Attributes (IGA) */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              2. Select Institutional Graduate Attribute (IGA):
-                            </label>
-                            <select
-                              value={newILO.selectedIGA}
-                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedIGA: e.target.value }))}
-                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                            >
-                              <option value="">Select IGA...</option>
-                              {igaReferences.map(iga => (
-                                <option key={iga.iga_id} value={iga.iga_id}>
-                                  {iga.iga_code} - {iga.description?.substring(0, 60)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* 3. Map CDIO Skills */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              3. Select CDIO Skill:
-                            </label>
-                            <select
-                              value={newILO.selectedCDIO}
-                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedCDIO: e.target.value }))}
-                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                            >
-                              <option value="">Select CDIO...</option>
-                              {cdioReferences.map(cdio => (
-                                <option key={cdio.cdio_id} value={cdio.cdio_id}>
-                                  {cdio.cdio_code} - {cdio.description?.substring(0, 60)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* 4. Map SDG Skills */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              4. Select SDG Skill:
-                            </label>
-                            <select
-                              value={newILO.selectedSDG}
-                              onChange={(e) => setNewILO(prev => ({ ...prev, selectedSDG: e.target.value }))}
-                              className="w-full text-xs px-2.5 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                            >
-                              <option value="">Select SDG...</option>
-                              {sdgReferences.map(sdg => (
-                                <option key={sdg.sdg_id} value={sdg.sdg_id}>
-                                  {sdg.sdg_code} - {sdg.description?.substring(0, 60)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* 5. Select Sub-Assessments (Checkboxes) */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              5. Select Sub-Assessments:
-                            </label>
-                            {allSubAssessments.length > 0 ? (
-                              <div className="border border-gray-300 rounded p-2 max-h-48 overflow-y-auto bg-white">
-                                <div className="space-y-1.5">
-                                  {allSubAssessments.map(task => {
-                                    const isChecked = newILO.selectedSubAssessments.includes(task.code)
-                                    return (
-                                      <label
-                                        key={task.code}
-                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isChecked}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setNewILO(prev => ({
-                                                ...prev,
-                                                selectedSubAssessments: [...prev.selectedSubAssessments, task.code]
-                                              }))
-                                            } else {
-                                              setNewILO(prev => ({
-                                                ...prev,
-                                                selectedSubAssessments: prev.selectedSubAssessments.filter(code => code !== task.code)
-                                              }))
-                                            }
-                                          }}
-                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                                        />
-                                        <span className="text-xs text-gray-700 flex-1">
-                                          {task.code} - {task.name}
-                                          {task.weight > 0 || task.score > 0 ? ' (' : ''}
-                                          {task.weight > 0 ? `W:${task.weight}%` : ''}
-                                          {task.weight > 0 && task.score > 0 ? ', ' : ''}
-                                          {task.score > 0 ? `S:${task.score}` : ''}
-                                          {task.weight > 0 || task.score > 0 ? ')' : ''}
-                                        </span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-400 italic">No sub-assessments available. Add sub-assessments in Step 3 first.</p>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })()}
                     
                     {/* Add ILO Button */}
-                    <div className="pt-2 border-t border-gray-200">
+                    <div className="pt-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -1779,33 +1642,17 @@ const SyllabusCreationWizard = ({
                             const newILOData = {
                               code: newILO.code.trim(),
                               description: newILO.description.trim(),
-                              so_mappings: newILO.selectedSO ? [{
-                                so_id: parseInt(newILO.selectedSO),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              iga_mappings: newILO.selectedIGA ? [{
-                                iga_id: parseInt(newILO.selectedIGA),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              cdio_mappings: newILO.selectedCDIO ? [{
-                                cdio_id: parseInt(newILO.selectedCDIO),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : [],
-                              sdg_mappings: newILO.selectedSDG ? [{
-                                sdg_id: parseInt(newILO.selectedSDG),
-                                assessment_tasks: newILO.selectedSubAssessments
-                              }] : []
+                              so_mappings: [],
+                              iga_mappings: [],
+                              cdio_mappings: [],
+                              sdg_mappings: [],
+                              selectedSubAssessments: []
                             }
                             setIlos(prev => [...prev, { ...newILOData, ilo_id: `temp_${Date.now()}` }])
                             // Reset form but keep it open for adding more ILOs
                             setNewILO({
                               code: '',
-                              description: '',
-                              selectedSO: '',
-                              selectedIGA: '',
-                              selectedCDIO: '',
-                              selectedSDG: '',
-                              selectedSubAssessments: []
+                              description: ''
                             })
                             // Don't close the form - keep it open for adding multiple ILOs
                           }
@@ -1820,63 +1667,368 @@ const SyllabusCreationWizard = ({
                 </div>
               ) : null}
 
-              {/* List of Created ILOs */}
+              {/* List of Created ILOs with Dropdown Checkboxes */}
               {ilos.length > 0 && (
-                <div className="space-y-2 mt-3">
-                  {ilos.map((ilo, index) => (
-                    <div key={ilo.ilo_id || index} className="border border-gray-300 rounded-lg p-2 bg-gray-50">
-                      <div className="flex items-start justify-between mb-1.5">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-semibold text-gray-900">{ilo.code}</span>
-                          </div>
-                          <p className="text-xs text-gray-700 mb-1.5">{ilo.description}</p>
-                          {/* Show mappings */}
-                          {(ilo.so_mappings?.length > 0 || ilo.iga_mappings?.length > 0 || 
-                            ilo.cdio_mappings?.length > 0 || ilo.sdg_mappings?.length > 0) && (
-                            <div className="mt-1 pt-1 border-t border-gray-200">
-                              <div className="flex flex-wrap gap-1 text-xs">
-                                {ilo.so_mappings?.map((m, i) => {
-                                  const so = soReferences.find(r => r.so_id === m.so_id)
-                                  return so ? (
-                                    <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">SO: {so.so_code}</span>
-                                  ) : null
-                                })}
-                                {ilo.iga_mappings?.map((m, i) => {
-                                  const iga = igaReferences.find(r => r.iga_id === m.iga_id)
-                                  return iga ? (
-                                    <span key={i} className="px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded">IGA: {iga.iga_code}</span>
-                                  ) : null
-                                })}
-                                {ilo.cdio_mappings?.map((m, i) => {
-                                  const cdio = cdioReferences.find(r => r.cdio_id === m.cdio_id)
-                                  return cdio ? (
-                                    <span key={i} className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded">CDIO: {cdio.cdio_code}</span>
-                                  ) : null
-                                })}
-                                {ilo.sdg_mappings?.map((m, i) => {
-                                  const sdg = sdgReferences.find(r => r.sdg_id === m.sdg_id)
-                                  return sdg ? (
-                                    <span key={i} className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded">SDG: {sdg.sdg_code}</span>
-                                  ) : null
-                                })}
-                              </div>
+                <div className="space-y-3 mt-3">
+                  <div className="text-xs font-medium text-gray-700 mb-2">Configure mappings for each ILO:</div>
+                  {ilos.map((ilo, index) => {
+                    const iloId = ilo.ilo_id || `ilo_${index}`
+                    const isSOOpen = openDropdowns[`${iloId}_so`] || false
+                    const isIGAOpen = openDropdowns[`${iloId}_iga`] || false
+                    const isCDIOOpen = openDropdowns[`${iloId}_cdio`] || false
+                    const isSDGOpen = openDropdowns[`${iloId}_sdg`] || false
+                    const isSubAssessmentsOpen = openDropdowns[`${iloId}_subassessments`] || false
+
+                    // Get selected IDs for each mapping type
+                    const selectedSOIds = ilo.so_mappings?.map(m => m.so_id) || []
+                    const selectedIGAIds = ilo.iga_mappings?.map(m => m.iga_id) || []
+                    const selectedCDIOIds = ilo.cdio_mappings?.map(m => m.cdio_id) || []
+                    const selectedSDGIds = ilo.sdg_mappings?.map(m => m.sdg_id) || []
+                    const selectedSubAssessments = ilo.selectedSubAssessments || []
+
+                    // Get all sub-assessments
+                    const allSubAssessments = []
+                    formData.assessment_criteria.forEach((criterion, idx) => {
+                      const subAssessments = formData.sub_assessments[idx] || []
+                      subAssessments.forEach(sub => {
+                        if (sub.abbreviation || sub.name) {
+                          allSubAssessments.push({
+                            code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
+                            name: sub.name,
+                            weight: parseFloat(sub.weight_percentage) || 0,
+                            score: parseFloat(sub.score) || 0
+                          })
+                        }
+                      })
+                    })
+
+                    // Helper function to toggle dropdown
+                    const toggleDropdown = (type) => {
+                      setOpenDropdowns(prev => ({
+                        ...prev,
+                        [`${iloId}_${type}`]: !prev[`${iloId}_${type}`]
+                      }))
+                    }
+
+                    // Helper function to update ILO mappings
+                    const updateILOMappings = (type, selectedIds) => {
+                      setIlos(prev => prev.map(item => {
+                        if (item.ilo_id === ilo.ilo_id) {
+                          if (type === 'so') {
+                            return {
+                              ...item,
+                              so_mappings: selectedIds.map(id => ({
+                                so_id: parseInt(id),
+                                assessment_tasks: item.selectedSubAssessments || []
+                              }))
+                            }
+                          } else if (type === 'iga') {
+                            return {
+                              ...item,
+                              iga_mappings: selectedIds.map(id => ({
+                                iga_id: parseInt(id),
+                                assessment_tasks: item.selectedSubAssessments || []
+                              }))
+                            }
+                          } else if (type === 'cdio') {
+                            return {
+                              ...item,
+                              cdio_mappings: selectedIds.map(id => ({
+                                cdio_id: parseInt(id),
+                                assessment_tasks: item.selectedSubAssessments || []
+                              }))
+                            }
+                          } else if (type === 'sdg') {
+                            return {
+                              ...item,
+                              sdg_mappings: selectedIds.map(id => ({
+                                sdg_id: parseInt(id),
+                                assessment_tasks: item.selectedSubAssessments || []
+                              }))
+                            }
+                          } else if (type === 'subassessments') {
+                            return {
+                              ...item,
+                              selectedSubAssessments: selectedIds,
+                              // Update all mappings with new sub-assessments
+                              so_mappings: item.so_mappings?.map(m => ({
+                                ...m,
+                                assessment_tasks: selectedIds
+                              })) || [],
+                              iga_mappings: item.iga_mappings?.map(m => ({
+                                ...m,
+                                assessment_tasks: selectedIds
+                              })) || [],
+                              cdio_mappings: item.cdio_mappings?.map(m => ({
+                                ...m,
+                                assessment_tasks: selectedIds
+                              })) || [],
+                              sdg_mappings: item.sdg_mappings?.map(m => ({
+                                ...m,
+                                assessment_tasks: selectedIds
+                              })) || []
+                            }
+                          }
+                        }
+                        return item
+                      }))
+                    }
+
+                    return (
+                      <div key={iloId} className="border border-gray-300 rounded-lg p-3 bg-white">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1">
+                              <span className="font-semibold text-sm text-gray-900">{ilo.code}</span>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
+                            <p className="text-xs text-gray-700">{ilo.description}</p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleDeleteILO(ilo.ilo_id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
                             title="Delete ILO"
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
+
+                        {/* Dropdown Checkboxes for Mappings */}
+                        <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
+                          {/* Student Outcomes (SO) */}
+                          <div className="relative dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => toggleDropdown('so')}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded hover:bg-gray-100"
+                            >
+                              <span className="text-gray-700">
+                                1. Student Outcomes (SO) {selectedSOIds.length > 0 && `(${selectedSOIds.length} selected)`}
+                              </span>
+                              <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isSOOpen ? 'transform rotate-180' : ''}`} />
+                            </button>
+                            {isSOOpen && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                <div className="p-2 space-y-1">
+                                  {soReferences.map(so => {
+                                    const isChecked = selectedSOIds.includes(so.so_id)
+                                    return (
+                                      <label
+                                        key={so.so_id}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const newSelected = e.target.checked
+                                              ? [...selectedSOIds, so.so_id]
+                                              : selectedSOIds.filter(id => id !== so.so_id)
+                                            updateILOMappings('so', newSelected)
+                                          }}
+                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-xs text-gray-700 flex-1">
+                                          {so.so_code} - {so.description?.substring(0, 50)}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Institutional Graduate Attributes (IGA) */}
+                          <div className="relative dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => toggleDropdown('iga')}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded hover:bg-gray-100"
+                            >
+                              <span className="text-gray-700">
+                                2. Institutional Graduate Attributes (IGA) {selectedIGAIds.length > 0 && `(${selectedIGAIds.length} selected)`}
+                              </span>
+                              <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isIGAOpen ? 'transform rotate-180' : ''}`} />
+                            </button>
+                            {isIGAOpen && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                <div className="p-2 space-y-1">
+                                  {igaReferences.map(iga => {
+                                    const isChecked = selectedIGAIds.includes(iga.iga_id)
+                                    return (
+                                      <label
+                                        key={iga.iga_id}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const newSelected = e.target.checked
+                                              ? [...selectedIGAIds, iga.iga_id]
+                                              : selectedIGAIds.filter(id => id !== iga.iga_id)
+                                            updateILOMappings('iga', newSelected)
+                                          }}
+                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-xs text-gray-700 flex-1">
+                                          {iga.iga_code} - {iga.description?.substring(0, 50)}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* CDIO Skills */}
+                          <div className="relative dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => toggleDropdown('cdio')}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded hover:bg-gray-100"
+                            >
+                              <span className="text-gray-700">
+                                3. CDIO Skills {selectedCDIOIds.length > 0 && `(${selectedCDIOIds.length} selected)`}
+                              </span>
+                              <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isCDIOOpen ? 'transform rotate-180' : ''}`} />
+                            </button>
+                            {isCDIOOpen && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                <div className="p-2 space-y-1">
+                                  {cdioReferences.map(cdio => {
+                                    const isChecked = selectedCDIOIds.includes(cdio.cdio_id)
+                                    return (
+                                      <label
+                                        key={cdio.cdio_id}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const newSelected = e.target.checked
+                                              ? [...selectedCDIOIds, cdio.cdio_id]
+                                              : selectedCDIOIds.filter(id => id !== cdio.cdio_id)
+                                            updateILOMappings('cdio', newSelected)
+                                          }}
+                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-xs text-gray-700 flex-1">
+                                          {cdio.cdio_code} - {cdio.description?.substring(0, 50)}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* SDG Skills */}
+                          <div className="relative dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => toggleDropdown('sdg')}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded hover:bg-gray-100"
+                            >
+                              <span className="text-gray-700">
+                                4. SDG Skills {selectedSDGIds.length > 0 && `(${selectedSDGIds.length} selected)`}
+                              </span>
+                              <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isSDGOpen ? 'transform rotate-180' : ''}`} />
+                            </button>
+                            {isSDGOpen && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                <div className="p-2 space-y-1">
+                                  {sdgReferences.map(sdg => {
+                                    const isChecked = selectedSDGIds.includes(sdg.sdg_id)
+                                    return (
+                                      <label
+                                        key={sdg.sdg_id}
+                                        className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const newSelected = e.target.checked
+                                              ? [...selectedSDGIds, sdg.sdg_id]
+                                              : selectedSDGIds.filter(id => id !== sdg.sdg_id)
+                                            updateILOMappings('sdg', newSelected)
+                                          }}
+                                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                        />
+                                        <span className="text-xs text-gray-700 flex-1">
+                                          {sdg.sdg_code} - {sdg.description?.substring(0, 50)}
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Sub-Assessments */}
+                          <div className="relative dropdown-container">
+                            <button
+                              type="button"
+                              onClick={() => toggleDropdown('subassessments')}
+                              className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded hover:bg-gray-100"
+                            >
+                              <span className="text-gray-700">
+                                5. Sub-Assessments {selectedSubAssessments.length > 0 && `(${selectedSubAssessments.length} selected)`}
+                              </span>
+                              <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isSubAssessmentsOpen ? 'transform rotate-180' : ''}`} />
+                            </button>
+                            {isSubAssessmentsOpen && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                {allSubAssessments.length > 0 ? (
+                                  <div className="p-2 space-y-1">
+                                    {allSubAssessments.map(task => {
+                                      const isChecked = selectedSubAssessments.includes(task.code)
+                                      return (
+                                        <label
+                                          key={task.code}
+                                          className="flex items-center gap-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              const newSelected = e.target.checked
+                                                ? [...selectedSubAssessments, task.code]
+                                                : selectedSubAssessments.filter(code => code !== task.code)
+                                              updateILOMappings('subassessments', newSelected)
+                                            }}
+                                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                          />
+                                          <span className="text-xs text-gray-700 flex-1">
+                                            {task.code} - {task.name}
+                                            {task.weight > 0 || task.score > 0 ? ' (' : ''}
+                                            {task.weight > 0 ? `W:${task.weight}%` : ''}
+                                            {task.weight > 0 && task.score > 0 ? ', ' : ''}
+                                            {task.score > 0 ? `S:${task.score}` : ''}
+                                            {task.weight > 0 || task.score > 0 ? ')' : ''}
+                                          </span>
+                                        </label>
+                                      )
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="p-2 text-xs text-gray-400 italic">
+                                    No sub-assessments available. Add sub-assessments in Step 3 first.
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
