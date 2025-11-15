@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { UserGroupIcon as AttendanceIcon, ClipboardDocumentListIcon as AssessmentsIcon, EllipsisVerticalIcon, BookOpenIcon } from '@heroicons/react/24/solid'
 
 const ClassCard = ({
+  id,
   title,
   code,
   section,

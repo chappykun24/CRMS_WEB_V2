@@ -356,6 +356,12 @@ const MyClasses = () => {
   const loadExistingAttendanceForDate = useCallback(async (date) => {
     if (!selectedClass || !date) return
     
+    // Validate that the class has a valid class ID for attendance fetching
+    if (!selectedClass.section_course_id) {
+      console.error('❌ [MYCLASSES] Cannot load attendance: class missing section_course_id', selectedClass)
+      return
+    }
+    
     try {
       setLoadingAttendanceData(true)
       console.log('🔍 [MYCLASSES] Loading attendance for date:', date)
@@ -453,6 +459,12 @@ const MyClasses = () => {
   // Get list of sessions (dates/titles only) - fast initial load using sessions endpoint
   const loadSessionList = useCallback(async () => {
     if (!selectedClass) return []
+    
+    // Validate that the class has a valid class ID for attendance fetching
+    if (!selectedClass.section_course_id) {
+      console.error('❌ [MYCLASSES] Cannot load sessions: class missing section_course_id', selectedClass)
+      return []
+    }
     
     try {
       console.log('🔍 [MYCLASSES] Loading session list for class:', selectedClass.section_course_id)
@@ -1650,9 +1662,16 @@ const MyClasses = () => {
 
   // Handle class selection - lazy load students ONLY when class is clicked
   const handleClassSelect = useCallback(async (classItem) => {
+    // Validate that the class has a valid class ID
+    if (!classItem?.section_course_id) {
+      console.error('❌ [MYCLASSES] Cannot select class: missing section_course_id', classItem)
+      alert('Error: Class ID is missing. Cannot select this class.')
+      return
+    }
+    
     // Check if this is a different class than the currently selected one
     const previousClassId = selectedClass?.section_course_id
-    const newClassId = classItem?.section_course_id
+    const newClassId = classItem.section_course_id
     const isDifferentClass = previousClassId !== newClassId
     
     // If switching to a different class, reset all attendance-related cached data
@@ -1865,6 +1884,13 @@ const MyClasses = () => {
                   isSelected={selectedClass?.section_course_id === cls.section_course_id}
                   onClick={() => handleClassSelect(cls)}
                     onAttendance={async () => {
+                      // Validate that the class has a valid class ID for attendance fetching
+                      if (!cls.section_course_id) {
+                        console.error('❌ [MYCLASSES] Class missing section_course_id:', cls)
+                        alert('Error: Class ID is missing. Cannot open attendance.')
+                        return
+                      }
+                      
                       setTogglingAttendance(true)
                       try {
                         // Set attendance mode FIRST to prevent normal list from showing
@@ -1872,19 +1898,139 @@ const MyClasses = () => {
                         
                         // Select the class if it's not already selected (without resetting attendance mode)
                         if (selectedClass?.section_course_id !== cls.section_course_id) {
+                          // Ensure the class object has the required ID before setting it
+                          if (!cls.section_course_id) {
+                            throw new Error('Class ID (section_course_id) is required for attendance')
+                          }
+                          
                           // Directly set selected class without going through handleClassSelect
                           // to avoid resetting attendance mode
                           saveSelectedClass(cls)
                           dispatchSelectedClassChange(cls)
                           setSelectedClass(cls)
+                          
                           // Load students for the selected class
-                          // Students will be loaded automatically by useEffect
+                          const sectionId = cls.section_course_id
+                          const sessionCacheKey = `students_${sectionId}`
+                          const sessionCached = safeGetItem(sessionCacheKey)
+                          
+                          if (sessionCached) {
+                            console.log('📦 [MYCLASSES] Using session cached students data for attendance')
+                            setStudents(sessionCached)
+                          }
+                          
+                          // Check enhanced cache
+                          const studentsCacheKey = `students_${sectionId}`
+                          const cachedStudents = getCachedData('students', studentsCacheKey, 600000) // 10 minute cache
+                          
+                          if (cachedStudents && !sessionCached) {
+                            console.log('📦 [MYCLASSES] Using enhanced cached students data for attendance')
+                            setStudents(cachedStudents)
+                            safeSetItem(sessionCacheKey, cachedStudents, minimizeStudentData)
+                          }
+                          
+                          // Only show loading if no cache available
+                          if (!sessionCached && !cachedStudents) {
+                            setLoadingStudents(true)
+                          }
+                          
+                          // Fetch students from API
+                          try {
+                            const response = await fetch(`/api/section-courses/${sectionId}/students`)
+                            if (!response.ok) throw new Error('Failed to fetch students')
+                            const data = await response.json()
+                            const list = Array.isArray(data) ? data : []
+                            
+                            // Sort students alphabetically by surname
+                            const sortedStudents = list.sort((a, b) => {
+                              const aLast = extractSurname(a.full_name)
+                              const bLast = extractSurname(b.full_name)
+                              if (aLast === bLast) {
+                                return (a.full_name || '').localeCompare(b.full_name || '')
+                              }
+                              return aLast.localeCompare(bLast)
+                            })
+                            
+                            setStudents(sortedStudents)
+                            
+                            // Store minimized data in sessionStorage for instant next load (excludes photos)
+                            safeSetItem(sessionCacheKey, sortedStudents, minimizeStudentData)
+                            
+                            // Store full data in enhanced cache
+                            setCachedData('students', studentsCacheKey, sortedStudents)
+                            
+                            // Also store in legacy cache for compatibility
+                            classesCacheRef.current.set(studentsCacheKey, {
+                              data: sortedStudents,
+                              timestamp: Date.now()
+                            })
+                            
+                            // Load images immediately after essential data is displayed
+                            requestAnimationFrame(() => {
+                              setImagesLoaded(true) // Enable image loading in UI immediately
+                              // Fetch photos on-demand since API doesn't include them by default
+                              fetchStudentPhotos(sortedStudents)
+                            })
+                          } catch (error) {
+                            console.error('❌ [MYCLASSES] Error fetching students for attendance:', error)
+                            if (!sessionCached && !cachedStudents) {
+                              setStudents([])
+                            }
+                          } finally {
+                            setLoadingStudents(false)
+                          }
+                        } else {
+                          // Class is already selected - ensure students are loaded
+                          if (!students || students.length === 0) {
+                            console.log('📦 [MYCLASSES] Class already selected but no students, loading...')
+                            const sectionId = cls.section_course_id
+                            const sessionCacheKey = `students_${sectionId}`
+                            const sessionCached = safeGetItem(sessionCacheKey)
+                            
+                            if (sessionCached) {
+                              setStudents(sessionCached)
+                            } else {
+                              const studentsCacheKey = `students_${sectionId}`
+                              const cachedStudents = getCachedData('students', studentsCacheKey, 600000)
+                              if (cachedStudents) {
+                                setStudents(cachedStudents)
+                              } else {
+                                setLoadingStudents(true)
+                                try {
+                                  const response = await fetch(`/api/section-courses/${sectionId}/students`)
+                                  if (response.ok) {
+                                    const data = await response.json()
+                                    const list = Array.isArray(data) ? data : []
+                                    const sortedStudents = list.sort((a, b) => {
+                                      const aLast = extractSurname(a.full_name)
+                                      const bLast = extractSurname(b.full_name)
+                                      if (aLast === bLast) {
+                                        return (a.full_name || '').localeCompare(b.full_name || '')
+                                      }
+                                      return aLast.localeCompare(bLast)
+                                    })
+                                    setStudents(sortedStudents)
+                                    safeSetItem(sessionCacheKey, sortedStudents, minimizeStudentData)
+                                    setCachedData('students', studentsCacheKey, sortedStudents)
+                                  }
+                                } catch (error) {
+                                  console.error('❌ [MYCLASSES] Error fetching students:', error)
+                                } finally {
+                                  setLoadingStudents(false)
+                                }
+                              }
+                            }
+                          }
                         }
                         
                         // Close student modal when entering attendance mode
                         setShowStudentModal(false)
                         
                         // Cache students list when entering attendance mode (will be done after students load)
+                      } catch (error) {
+                        console.error('❌ [MYCLASSES] Error opening attendance:', error)
+                        alert(`Failed to open attendance: ${error.message}`)
+                        setIsAttendanceMode(false)
                       } finally {
                         setTogglingAttendance(false)
                       }
