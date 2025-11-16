@@ -121,6 +121,7 @@ const SyllabusCreationWizard = ({
     affective: ''
   })
   const [editingSubAssessmentFor, setEditingSubAssessmentFor] = useState(null) // criterion index
+  const [editingSubAssessment, setEditingSubAssessment] = useState(null) // { criterionIndex: number, subIndex: number }
   const [newContactHour, setNewContactHour] = useState({ 
     name: '', 
     hours: '' 
@@ -1435,20 +1436,45 @@ const SyllabusCreationWizard = ({
                                     </span>
                                     <span className="text-gray-600">Weight: {sub.weight_percentage}%</span>
                                     <span className="text-gray-600">Score: {parseFloat(sub.score) || 0}</span>
+                                    <span className="text-gray-600">
+                                      C:{parseFloat(sub.cognitive) || 0} P:{parseFloat(sub.psychomotor) || 0} A:{parseFloat(sub.affective) || 0}
+                                    </span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const updated = { ...formData.sub_assessments }
-                                      updated[criterionIndex] = updated[criterionIndex].filter((_, i) => i !== subIndex)
-                                      if (updated[criterionIndex].length === 0) delete updated[criterionIndex]
-                                      setFormData(prev => ({ ...prev, sub_assessments: updated }))
-                                    }}
-                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                    title="Remove"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
+                                  <div className="flex gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingSubAssessment({ criterionIndex, subIndex })
+                                        setNewSubAssessment({
+                                          abbreviation: sub.abbreviation || '',
+                                          name: sub.name || '',
+                                          weight_percentage: sub.weight_percentage || '',
+                                          score: sub.score || '',
+                                          cognitive: sub.cognitive || '',
+                                          psychomotor: sub.psychomotor || '',
+                                          affective: sub.affective || ''
+                                        })
+                                        setEditingSubAssessmentFor(criterionIndex)
+                                      }}
+                                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                      title="Edit"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = { ...formData.sub_assessments }
+                                        updated[criterionIndex] = updated[criterionIndex].filter((_, i) => i !== subIndex)
+                                        if (updated[criterionIndex].length === 0) delete updated[criterionIndex]
+                                        setFormData(prev => ({ ...prev, sub_assessments: updated }))
+                                      }}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                      title="Remove"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                               <div className="flex items-center justify-between pt-1.5 border-t">
@@ -1469,6 +1495,13 @@ const SyllabusCreationWizard = ({
                           
                           {isExpanded && (
                             <div className="mt-2 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                              {editingSubAssessment && editingSubAssessment.criterionIndex === criterionIndex && (
+                                <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                                  <p className="text-xs font-medium text-blue-800">
+                                    Editing: {formData.sub_assessments[criterionIndex]?.[editingSubAssessment.subIndex]?.name || 'Sub-Assessment'}
+                                  </p>
+                                </div>
+                              )}
                               <div className="space-y-2">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                                   <input
@@ -1548,38 +1581,84 @@ const SyllabusCreationWizard = ({
                                     </div>
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (newSubAssessment.name && newSubAssessment.weight_percentage) {
-                                      const updated = { ...formData.sub_assessments }
-                                      if (!updated[criterionIndex]) updated[criterionIndex] = []
-                                      updated[criterionIndex] = [...updated[criterionIndex], {
-                                        abbreviation: newSubAssessment.abbreviation.trim(),
-                                        name: newSubAssessment.name.trim(),
-                                        weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0,
-                                        score: parseFloat(newSubAssessment.score) || 0,
-                                        cognitive: parseFloat(newSubAssessment.cognitive) || 0,
-                                        psychomotor: parseFloat(newSubAssessment.psychomotor) || 0,
-                                        affective: parseFloat(newSubAssessment.affective) || 0
-                                      }]
-                                      setFormData(prev => ({ ...prev, sub_assessments: updated }))
-                                      setNewSubAssessment({ 
-                                        abbreviation: '', 
-                                        name: '', 
-                                        weight_percentage: '', 
-                                        score: '',
-                                        cognitive: '',
-                                        psychomotor: '',
-                                        affective: ''
-                                      })
-                                    }
-                                  }}
-                                  className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
-                                >
-                                  <PlusIcon className="h-5 w-5" />
-                                  Add
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (newSubAssessment.name && newSubAssessment.weight_percentage) {
+                                        const updated = { ...formData.sub_assessments }
+                                        if (!updated[criterionIndex]) updated[criterionIndex] = []
+                                        
+                                        const subAssessmentData = {
+                                          abbreviation: newSubAssessment.abbreviation.trim(),
+                                          name: newSubAssessment.name.trim(),
+                                          weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0,
+                                          score: parseFloat(newSubAssessment.score) || 0,
+                                          cognitive: parseFloat(newSubAssessment.cognitive) || 0,
+                                          psychomotor: parseFloat(newSubAssessment.psychomotor) || 0,
+                                          affective: parseFloat(newSubAssessment.affective) || 0
+                                        }
+                                        
+                                        // Check if we're editing an existing sub-assessment
+                                        if (editingSubAssessment && 
+                                            editingSubAssessment.criterionIndex === criterionIndex && 
+                                            editingSubAssessment.subIndex !== undefined) {
+                                          // Update existing sub-assessment
+                                          updated[criterionIndex] = [...updated[criterionIndex]]
+                                          updated[criterionIndex][editingSubAssessment.subIndex] = subAssessmentData
+                                          setEditingSubAssessment(null)
+                                        } else {
+                                          // Add new sub-assessment
+                                          updated[criterionIndex] = [...updated[criterionIndex], subAssessmentData]
+                                        }
+                                        
+                                        setFormData(prev => ({ ...prev, sub_assessments: updated }))
+                                        setNewSubAssessment({ 
+                                          abbreviation: '', 
+                                          name: '', 
+                                          weight_percentage: '', 
+                                          score: '',
+                                          cognitive: '',
+                                          psychomotor: '',
+                                          affective: ''
+                                        })
+                                      }
+                                    }}
+                                    className="flex-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
+                                  >
+                                    {editingSubAssessment && editingSubAssessment.criterionIndex === criterionIndex ? (
+                                      <>
+                                        <PencilIcon className="h-4 w-4" />
+                                        Update
+                                      </>
+                                    ) : (
+                                      <>
+                                        <PlusIcon className="h-4 w-4" />
+                                        Add
+                                      </>
+                                    )}
+                                  </button>
+                                  {editingSubAssessment && editingSubAssessment.criterionIndex === criterionIndex && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingSubAssessment(null)
+                                        setNewSubAssessment({ 
+                                          abbreviation: '', 
+                                          name: '', 
+                                          weight_percentage: '', 
+                                          score: '',
+                                          cognitive: '',
+                                          psychomotor: '',
+                                          affective: ''
+                                        })
+                                      }}
+                                      className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                                    >
+                                      Cancel
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <div className="mt-2 flex items-center justify-between">
                                 <p className="text-xs text-gray-500">
