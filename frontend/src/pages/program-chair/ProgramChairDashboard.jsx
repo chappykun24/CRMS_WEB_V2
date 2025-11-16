@@ -180,7 +180,9 @@ const Home = () => {
       } catch (e) {
         console.error('Error parsing terms data:', e)
       }
-      const activeTerm = Array.isArray(termsData) ? termsData.find(t => t.is_active) : null
+      // Get active term or latest term (sorted by term_id descending)
+      const sortedTerms = Array.isArray(termsData) ? [...termsData].sort((a, b) => (b.term_id || 0) - (a.term_id || 0)) : []
+      const activeTerm = sortedTerms.find(t => t.is_active) || (sortedTerms.length > 0 ? sortedTerms[0] : null)
 
       const newStats = {
         totalCourses,
@@ -199,7 +201,13 @@ const Home = () => {
       // Use requestIdleCallback or setTimeout to defer loading
       const loadScatterData = async () => {
         try {
-          const analyticsRes = await fetch(`${API_BASE_URL}/assessments/dean-analytics/sample`, {
+          // Use current/latest term for analytics
+          const termId = activeTerm?.term_id
+          const url = termId 
+            ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${termId}`
+            : `${API_BASE_URL}/assessments/dean-analytics/sample`
+          
+          const analyticsRes = await fetch(url, {
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json'
