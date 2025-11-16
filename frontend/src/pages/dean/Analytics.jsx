@@ -1492,7 +1492,6 @@ const Analytics = () => {
                             className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                             title="Select standard type to filter by"
                           >
-                            <option value="">Overall (All Assessments)</option>
                             {availableStandards.so?.length > 0 && <option value="SO">SO (Student Outcomes)</option>}
                             {availableStandards.iga?.length > 0 && <option value="IGA">IGA (Institutional Graduate Attributes)</option>}
                             {availableStandards.cdio?.length > 0 && <option value="CDIO">CDIO</option>}
