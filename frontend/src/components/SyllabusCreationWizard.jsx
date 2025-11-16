@@ -1440,7 +1440,7 @@ const SyllabusCreationWizard = ({
                                       C:{parseFloat(sub.cognitive) || 0} P:{parseFloat(sub.psychomotor) || 0} A:{parseFloat(sub.affective) || 0}
                                     </span>
                                   </div>
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-1.5">
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -1456,7 +1456,7 @@ const SyllabusCreationWizard = ({
                                         })
                                         setEditingSubAssessmentFor(criterionIndex)
                                       }}
-                                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors duration-150 border border-transparent hover:border-blue-200"
                                       title="Edit"
                                     >
                                       <PencilIcon className="h-4 w-4" />
@@ -1469,7 +1469,7 @@ const SyllabusCreationWizard = ({
                                         if (updated[criterionIndex].length === 0) delete updated[criterionIndex]
                                         setFormData(prev => ({ ...prev, sub_assessments: updated }))
                                       }}
-                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors duration-150 border border-transparent hover:border-red-200"
                                       title="Remove"
                                     >
                                       <TrashIcon className="h-4 w-4" />
