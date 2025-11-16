@@ -3234,15 +3234,15 @@ app.get('/api/section-courses/:id/students', async (req, res) => {
   }
 });
 
-// Available students for a section (not enrolled in the same course_id)
+// Available students for a section (not enrolled in the same course_id AND term_id)
 app.get('/api/students/available-for-section/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const search = (req.query.search || '').toString().toLowerCase();
     
-    // Get the course_id from the section_course
+    // Get the course_id and term_id from the section_course
     const sectionCourseResult = await pool.query(
-      `SELECT sc.course_id, sc.section_id, sec.year_level
+      `SELECT sc.course_id, sc.term_id, sc.section_id, sec.year_level
        FROM section_courses sc
        JOIN sections sec ON sc.section_id = sec.section_id
        WHERE sc.section_course_id = $1`,
@@ -3254,6 +3254,7 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
     }
     
     const courseId = sectionCourseResult.rows[0].course_id;
+    const termId = sectionCourseResult.rows[0].term_id;
     const sectionYearLevel = sectionCourseResult.rows[0]?.year_level || null;
     
     const result = await pool.query(
@@ -3276,16 +3277,17 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
         ) as year_level
        FROM students s
        WHERE NOT EXISTS (
-         -- Check if student is enrolled in ANY section_course with the same course_id
+         -- Check if student is enrolled in ANY section_course with the same course_id AND term_id
          SELECT 1 
          FROM course_enrollments ce
          JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
          WHERE sc.course_id = $1 
+           AND sc.term_id = $2
            AND ce.student_id = s.student_id
            AND ce.status = 'enrolled'
        )
        AND (
-         $2 = '' OR LOWER(s.full_name) LIKE '%'||$2||'%' OR LOWER(s.student_number) LIKE '%'||$2||'%'
+         $3 = '' OR LOWER(s.full_name) LIKE '%'||$3||'%' OR LOWER(s.student_number) LIKE '%'||$3||'%'
        )
        ORDER BY 
          -- Extract last name (last word) for sorting
@@ -3298,7 +3300,7 @@ app.get('/api/students/available-for-section/:id', async (req, res) => {
          -- Then sort by full name for consistent ordering
          s.full_name ASC
       `,
-      [courseId, search]
+      [courseId, termId, search]
     );
     res.json({ students: result.rows, sectionYearLevel });
   } catch (error) {
