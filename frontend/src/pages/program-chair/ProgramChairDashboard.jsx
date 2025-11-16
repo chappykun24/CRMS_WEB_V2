@@ -201,7 +201,7 @@ const Home = () => {
       // Use requestIdleCallback or setTimeout to defer loading
       const loadScatterData = async () => {
         try {
-          // Use current/latest term for analytics
+          // Aggregate from all classes in the active term
           const termId = activeTerm?.term_id
           const url = termId 
             ? `${API_BASE_URL}/assessments/dean-analytics/sample?term_id=${termId}`

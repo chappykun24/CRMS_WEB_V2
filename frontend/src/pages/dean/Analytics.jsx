@@ -170,7 +170,7 @@ const Analytics = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
   const [schoolTerms, setSchoolTerms] = useState([]);
-  const [selectedTermId, setSelectedTermId] = useState('');
+  const [selectedTermId, setSelectedTermId] = useState(''); // Will be set to latest term, but won't filter backend
   const [sections, setSections] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -217,10 +217,11 @@ const Analytics = () => {
         return (b.term_id || 0) - (a.term_id || 0);
       }) : [];
       setSchoolTerms(sortedCached);
+      // Set active term as default (or latest if no active term)
       const activeTerm = sortedCached.find(t => t.is_active);
       const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
       const defaultTerm = activeTerm || latestTerm;
-      if (defaultTerm) {
+      if (defaultTerm && !selectedTermId) {
         setSelectedTermId(defaultTerm.term_id.toString());
       }
       // Continue to fetch fresh data in background
@@ -231,10 +232,11 @@ const Analytics = () => {
         return (b.term_id || 0) - (a.term_id || 0);
       }) : [];
       setSchoolTerms(sortedCached);
+      // Set active term as default (or latest if no active term)
       const activeTerm = sortedCached.find(t => t.is_active);
       const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
       const defaultTerm = activeTerm || latestTerm;
-      if (defaultTerm) {
+      if (defaultTerm && !selectedTermId) {
         setSelectedTermId(defaultTerm.term_id.toString());
       }
       // Cache in sessionStorage for next time
@@ -279,11 +281,11 @@ const Analytics = () => {
       }) : [];
       setSchoolTerms(termsData);
       
-      // Set the latest term as default (first in sorted array, or active term if available)
+      // Set active term as default (or latest if no active term)
       const activeTerm = termsData.find(t => t.is_active);
       const latestTerm = termsData.length > 0 ? termsData[0] : null;
       const defaultTerm = activeTerm || latestTerm;
-      if (defaultTerm) {
+      if (defaultTerm && !selectedTermId) {
         setSelectedTermId(defaultTerm.term_id.toString());
       }
       
@@ -727,8 +729,14 @@ const Analytics = () => {
     if (setErrorRef.current) setErrorRef.current(null);
 
     // Build URL with filters
+    // Filter by active term to aggregate from all classes in the active term
     const params = new URLSearchParams();
-    if (selectedTermId) params.append('term_id', selectedTermId);
+    // Get active term ID or use selected term
+    const activeTerm = schoolTerms.find(t => t.is_active);
+    const termToUse = activeTerm ? activeTerm.term_id.toString() : (selectedTermId || '');
+    if (termToUse) {
+      params.append('term_id', termToUse);
+    }
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
     // Add Standard filter if selected (SO, IGA, CDIO, or SDG)
