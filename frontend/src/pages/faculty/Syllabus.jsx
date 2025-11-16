@@ -17,7 +17,8 @@ import {
   ClockIcon,
   BookOpenIcon,
   ArrowPathIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  XMarkIcon
 } from '@heroicons/react/24/solid'
 
 const Syllabus = () => {
@@ -45,6 +46,10 @@ const Syllabus = () => {
   const [showEditRequestForm, setShowEditRequestForm] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isPublished, setIsPublished] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareableClasses, setShareableClasses] = useState([])
+  const [loadingShareableClasses, setLoadingShareableClasses] = useState(false)
+  const [sharingSyllabus, setSharingSyllabus] = useState(false)
   
   // Reference data for ILO mappings
   const [soReferences, setSoReferences] = useState([])
@@ -637,6 +642,81 @@ const Syllabus = () => {
       alert('Failed to publish syllabus')
     } finally {
       setIsPublishing(false)
+    }
+  }
+
+  // Load shareable classes (classes with same course_id)
+  const loadShareableClasses = async () => {
+    if (!viewingSyllabus) return
+    
+    setLoadingShareableClasses(true)
+    try {
+      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}/shareable-classes`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setShareableClasses(Array.isArray(data) ? data : [])
+      } else {
+        console.error('Failed to load shareable classes')
+        setShareableClasses([])
+      }
+    } catch (error) {
+      console.error('Error loading shareable classes:', error)
+      setShareableClasses([])
+    } finally {
+      setLoadingShareableClasses(false)
+    }
+  }
+
+  // Open share modal
+  const handleOpenShareModal = async () => {
+    setShowShareModal(true)
+    await loadShareableClasses()
+  }
+
+  // Share syllabus to a class
+  const handleShareSyllabus = async (targetSectionCourseId) => {
+    if (!viewingSyllabus || !targetSectionCourseId) return
+
+    if (!confirm('Are you sure you want to share this syllabus to the selected class? This will create a copy of the syllabus.')) {
+      return
+    }
+
+    setSharingSyllabus(true)
+    try {
+      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}/share`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          target_section_course_id: targetSectionCourseId,
+          created_by: user?.user_id
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert(result.message || 'Syllabus shared successfully!')
+        setShowShareModal(false)
+        // Reload syllabi if we have a selected class
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to share syllabus')
+      }
+    } catch (error) {
+      console.error('Error sharing syllabus:', error)
+      alert('Failed to share syllabus')
+    } finally {
+      setSharingSyllabus(false)
     }
   }
 
@@ -2831,6 +2911,17 @@ const Syllabus = () => {
                   </div>
                 )}
 
+                {/* Share to Class Section - Show for all syllabi */}
+                <div className="pt-4 border-t border-gray-300">
+                  <button
+                    onClick={handleOpenShareModal}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    Share to Class
+                  </button>
+                </div>
+
                 {/* Edit Request Section - Only show for approved syllabi */}
                 {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
                   <div className="pt-4 border-t border-gray-300">
@@ -2881,6 +2972,112 @@ const Syllabus = () => {
         </div>
       </div>
     </div>
+      )}
+
+      {/* Share Syllabus Modal */}
+      {showShareModal && viewingSyllabus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Share Syllabus to Class</h2>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">
+                Select a class with the same course (<strong>{viewingSyllabus.course_code || 'N/A'}</strong>) to share this syllabus.
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {loadingShareableClasses ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-sm text-gray-600">Loading classes...</span>
+                </div>
+              ) : shareableClasses.length > 0 ? (
+                <div className="space-y-2">
+                  {shareableClasses.map((classItem) => (
+                    <div
+                      key={classItem.section_course_id}
+                      className={`p-4 border rounded-lg transition-colors ${
+                        classItem.has_syllabus
+                          ? 'bg-gray-100 border-gray-300 opacity-60'
+                          : 'bg-white border-gray-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer'
+                      }`}
+                      onClick={() => !classItem.has_syllabus && handleShareSyllabus(classItem.section_course_id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900">{classItem.course_title}</h3>
+                            {classItem.has_syllabus && (
+                              <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                Has Syllabus
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div><span className="font-medium">Code:</span> {classItem.course_code}</div>
+                            <div><span className="font-medium">Section:</span> {classItem.section_code}</div>
+                            <div><span className="font-medium">Instructor:</span> {classItem.instructor_name || 'N/A'}</div>
+                            <div><span className="font-medium">Term:</span> {classItem.school_year} - {classItem.semester}</div>
+                          </div>
+                        </div>
+                        {!classItem.has_syllabus && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleShareSyllabus(classItem.section_course_id)
+                            }}
+                            disabled={sharingSyllabus}
+                            className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {sharingSyllabus ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Sharing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUpTrayIcon className="h-4 w-4" />
+                                <span>Share</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-center">
+                  <div>
+                    <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <BookOpenIcon className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">No classes available</h3>
+                    <p className="text-xs text-gray-500">No other classes with the same course found.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

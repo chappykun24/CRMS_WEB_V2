@@ -787,6 +787,201 @@ router.post('/:id/edit-request', async (req, res) => {
   }
 });
 
+// POST /api/syllabi/:id/share - Share/copy syllabus to another class with the same course
+router.post('/:id/share', async (req, res) => {
+  const { id } = req.params;
+  const { target_section_course_id, created_by } = req.body;
+
+  if (!target_section_course_id || !created_by) {
+    return res.status(400).json({ error: 'target_section_course_id and created_by are required' });
+  }
+
+  try {
+    // Get the source syllabus
+    const sourceSyllabus = await db.query(
+      `SELECT 
+        syllabus_id,
+        course_id,
+        term_id,
+        title,
+        description,
+        assessment_framework,
+        grading_policy,
+        course_outline,
+        learning_resources,
+        prerequisites,
+        course_objectives,
+        version,
+        is_template,
+        template_name,
+        section_course_id
+      FROM syllabi 
+      WHERE syllabus_id = $1`,
+      [id]
+    );
+
+    if (sourceSyllabus.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+
+    const source = sourceSyllabus.rows[0];
+
+    // Verify target section_course exists and has the same course_id
+    const targetCheck = await db.query(
+      `SELECT sc.section_course_id, sc.course_id, sc.term_id, c.course_code, c.title as course_title, s.section_code
+       FROM section_courses sc
+       JOIN courses c ON sc.course_id = c.course_id
+       JOIN sections s ON sc.section_id = s.section_id
+       WHERE sc.section_course_id = $1`,
+      [target_section_course_id]
+    );
+
+    if (targetCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Target class not found' });
+    }
+
+    const target = targetCheck.rows[0];
+
+    if (target.course_id !== source.course_id) {
+      return res.status(400).json({ error: 'Target class must have the same course as the source syllabus' });
+    }
+
+    // Check if syllabus already exists for target class
+    const existingCheck = await db.query(
+      `SELECT syllabus_id FROM syllabi WHERE section_course_id = $1`,
+      [target_section_course_id]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.status(409).json({ error: 'A syllabus already exists for this class' });
+    }
+
+    // Copy the syllabus to the target class
+    const result = await db.query(
+      `INSERT INTO syllabi (
+        course_id, term_id, title, description, assessment_framework, 
+        grading_policy, course_outline, learning_resources, prerequisites, 
+        course_objectives, version, is_template, template_name, 
+        section_course_id, created_by, review_status, approval_status, 
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING syllabus_id, course_id, term_id, title, section_course_id, created_at`,
+      [
+        source.course_id,
+        target.term_id || source.term_id, // Use target's term_id if available
+        source.title,
+        source.description,
+        source.assessment_framework,
+        source.grading_policy,
+        source.course_outline,
+        source.learning_resources,
+        source.prerequisites,
+        source.course_objectives,
+        source.version,
+        source.is_template,
+        source.template_name,
+        target_section_course_id,
+        created_by
+      ]
+    );
+
+    const newSyllabus = result.rows[0];
+
+    // Copy ILOs from source syllabus
+    const sourceILOs = await db.query(
+      `SELECT ilo_id, code, description, so_mappings, iga_mappings, cdio_mappings, sdg_mappings
+       FROM ilos 
+       WHERE syllabus_id = $1`,
+      [id]
+    );
+
+    if (sourceILOs.rows.length > 0) {
+      for (const ilo of sourceILOs.rows) {
+        await db.query(
+          `INSERT INTO ilos (syllabus_id, code, description, so_mappings, iga_mappings, cdio_mappings, sdg_mappings, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [
+            newSyllabus.syllabus_id,
+            ilo.code,
+            ilo.description,
+            ilo.so_mappings,
+            ilo.iga_mappings,
+            ilo.cdio_mappings,
+            ilo.sdg_mappings
+          ]
+        );
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Syllabus shared successfully',
+      data: {
+        syllabus_id: newSyllabus.syllabus_id,
+        section_course_id: target_section_course_id,
+        course_code: target.course_code,
+        course_title: target.course_title,
+        section_code: target.section_code
+      }
+    });
+  } catch (error) {
+    console.error('Error sharing syllabus:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
+// GET /api/syllabi/:id/shareable-classes - Get classes with same course that can receive this syllabus
+router.get('/:id/shareable-classes', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Get the source syllabus's course_id
+    const sourceSyllabus = await db.query(
+      `SELECT course_id, section_course_id FROM syllabi WHERE syllabus_id = $1`,
+      [id]
+    );
+
+    if (sourceSyllabus.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+
+    const courseId = sourceSyllabus.rows[0].course_id;
+    const sourceSectionCourseId = sourceSyllabus.rows[0].section_course_id;
+
+    // Get all section_courses with the same course_id, excluding the source one
+    const result = await db.query(
+      `SELECT 
+        sc.section_course_id,
+        sc.section_id,
+        s.section_code,
+        sc.course_id,
+        c.course_code,
+        c.title as course_title,
+        sc.instructor_id,
+        u.name as instructor_name,
+        st.term_id,
+        st.semester,
+        st.school_year,
+        CASE WHEN s2.syllabus_id IS NOT NULL THEN true ELSE false END as has_syllabus
+      FROM section_courses sc
+      JOIN sections s ON sc.section_id = s.section_id
+      JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN users u ON sc.instructor_id = u.user_id
+      JOIN school_terms st ON sc.term_id = st.term_id
+      LEFT JOIN syllabi s2 ON sc.section_course_id = s2.section_course_id
+      WHERE sc.course_id = $1 
+        AND sc.section_course_id != $2
+      ORDER BY st.term_id DESC, s.section_code`,
+      [courseId, sourceSectionCourseId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching shareable classes:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // POST /api/syllabi/:id/publish - Publish a syllabus and create assessments from sub-assessments
 router.post('/:id/publish', async (req, res) => {
   const { id } = req.params;
