@@ -503,12 +503,7 @@ const SyllabusCreationWizard = ({
         title: editingSyllabus.title || '',
         description: editingSyllabus.description || '',
         course_objectives: editingSyllabus.course_objectives || '',
-        course_outline: editingSyllabus.course_outline || '',
-        assessment_framework: typeof editingSyllabus.assessment_framework === 'object'
-          ? editingSyllabus.assessment_framework
-          : (editingSyllabus.assessment_framework ? JSON.parse(editingSyllabus.assessment_framework) : {
-              components: []
-            })
+        course_outline: editingSyllabus.course_outline || ''
       }))
       
       // Load ILOs if editing
