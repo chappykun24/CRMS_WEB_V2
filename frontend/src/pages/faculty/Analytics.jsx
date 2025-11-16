@@ -1434,20 +1434,46 @@ const Analytics = () => {
       students: value
     }));
 
-    // Scatter plot data: Attendance vs Score, colored by cluster (only include rows with valid clusters)
+    // Scatter plot data: Attendance vs Score, colored by cluster
+    // Include all rows, but mark 0/blank attendance or score as "At Risk"
     const scatterData = filteredData
-      .filter(row => row.cluster_label && 
-        row.cluster_label !== null && 
-        row.cluster_label !== undefined &&
-        !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
-        !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === '')))
-      .map(row => ({
-      attendance: parseFloat(row.attendance_percentage) || 0,
-      score: parseFloat(row.average_score) || 0,
-      submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
-        cluster: row.cluster_label,
-      name: row.full_name
-    }));
+      .filter(row => {
+        // Include rows with valid clusters OR rows with 0/blank attendance or score
+        const hasValidCluster = row.cluster_label && 
+          row.cluster_label !== null && 
+          row.cluster_label !== undefined &&
+          !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
+          !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === ''));
+        
+        const attendance = parseFloat(row.attendance_percentage) || 0;
+        const score = parseFloat(row.average_score) || 0;
+        const hasZeroOrBlank = attendance === 0 || score === 0 || 
+          row.attendance_percentage === null || row.attendance_percentage === undefined ||
+          row.average_score === null || row.average_score === undefined;
+        
+        return hasValidCluster || hasZeroOrBlank;
+      })
+      .map(row => {
+        const attendance = parseFloat(row.attendance_percentage) || 0;
+        const score = parseFloat(row.average_score) || 0;
+        const hasZeroOrBlank = attendance === 0 || score === 0 || 
+          row.attendance_percentage === null || row.attendance_percentage === undefined ||
+          row.average_score === null || row.average_score === undefined;
+        
+        // If attendance or score is 0/blank, force cluster to "At Risk"
+        let cluster = row.cluster_label;
+        if (hasZeroOrBlank) {
+          cluster = 'At Risk';
+        }
+        
+        return {
+          attendance: attendance,
+          score: score,
+          submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+          cluster: cluster,
+          name: row.full_name
+        };
+      });
 
     return {
       clusterData,
