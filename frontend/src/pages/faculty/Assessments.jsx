@@ -1728,7 +1728,7 @@ const Assessments = () => {
                                                     ? 'bg-green-100 text-green-700 border border-green-200' 
                                                     : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                                                 }`}>
-                                                  v{assessment.syllabus_version}
+                                                  Revision no. {assessment.syllabus_version}
                                                 </span>
                                               )}
                                             </div>
@@ -1737,7 +1737,7 @@ const Assessments = () => {
                                       </td>
                                       <td className="px-4 py-3">
                                         <div className="flex justify-center">
-                                          <span className="text-xs text-gray-700 font-medium">
+                                          <span className="text-xs text-gray-700">
                                             {assessment.type}
                                           </span>
                                         </div>
