@@ -98,6 +98,12 @@ const SyllabusApproval = () => {
   }
 
   const handleApprove = async (syllabus, approvalStatus) => {
+    // Validate that program chair has reviewed and approved the syllabus
+    if (syllabus.review_status !== 'approved') {
+      alert('This syllabus must be reviewed and approved by the program chair before it can be approved by the dean.')
+      return
+    }
+
     const statusText = approvalStatus === 'approved' ? 'approve' : 'reject'
     if (!confirm(`Are you sure you want to ${statusText} this syllabus?`)) {
       return
@@ -1784,8 +1790,8 @@ const SyllabusApproval = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons - Only show if syllabus is pending approval */}
-                  {selectedSyllabus.approval_status === 'pending' && (
+                  {/* Action Buttons - Only show if syllabus is pending approval and has been reviewed by program chair */}
+                  {selectedSyllabus.approval_status === 'pending' && selectedSyllabus.review_status === 'approved' && (
                     <div className="flex gap-3 pt-4 border-t">
                       <button
                         onClick={() => handleApprove(selectedSyllabus, 'approved')}
@@ -1803,6 +1809,14 @@ const SyllabusApproval = () => {
                         <XCircleIcon className="h-5 w-5" />
                         Reject
                       </button>
+                    </div>
+                  )}
+                  {/* Show message if syllabus is pending but not reviewed by program chair */}
+                  {selectedSyllabus.approval_status === 'pending' && selectedSyllabus.review_status !== 'approved' && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">
+                        This syllabus must be reviewed and approved by the program chair before it can be approved by the dean.
+                      </p>
                     </div>
                   )}
                 </div>

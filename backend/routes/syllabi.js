@@ -670,12 +670,21 @@ router.put('/:id/approve', async (req, res) => {
       return res.status(400).json({ error: 'Invalid approval status' });
     }
     
-    // Check if syllabus exists
+    // Check if syllabus exists and validate review status
     const checkQuery = 'SELECT review_status, approval_status FROM syllabi WHERE syllabus_id = $1';
     const checkResult = await db.query(checkQuery, [id]);
     
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    
+    const syllabus = checkResult.rows[0];
+    
+    // Validate that program chair has reviewed and approved the syllabus
+    if (syllabus.review_status !== 'approved') {
+      return res.status(400).json({ 
+        error: 'Syllabus must be reviewed and approved by program chair before dean can approve' 
+      });
     }
     
     const query = `
