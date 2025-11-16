@@ -991,39 +991,39 @@ const Syllabus = () => {
                               }
                               
                               return (
-                                <tr
-                                  key={syllabus.syllabus_id}
-                                  className="hover:bg-gray-50"
+                              <tr
+                                key={syllabus.syllabus_id}
+                                className="hover:bg-gray-50"
+                              >
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
                                 >
-                                  <td 
-                                    className="px-6 py-4 cursor-pointer"
-                                    onClick={() => openViewModal(syllabus)}
-                                  >
                                     <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
-                                  </td>
-                                  <td 
-                                    className="px-6 py-4 cursor-pointer"
-                                    onClick={() => openViewModal(syllabus)}
-                                  >
+                                </td>
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
                                     <div className="text-sm text-gray-900">{revisionNo}</div>
-                                  </td>
-                                  <td 
-                                    className="px-6 py-4 cursor-pointer"
-                                    onClick={() => openViewModal(syllabus)}
-                                  >
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
-                                      {syllabus.review_status || 'pending'}
-                                    </span>
-                                  </td>
-                                  <td 
-                                    className="px-6 py-4 cursor-pointer"
-                                    onClick={() => openViewModal(syllabus)}
-                                  >
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
-                                      {syllabus.approval_status || 'pending'}
-                                    </span>
-                                  </td>
-                                </tr>
+                                </td>
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
+                                    {syllabus.review_status || 'pending'}
+                                  </span>
+                                </td>
+                                <td 
+                                  className="px-6 py-4 cursor-pointer"
+                                  onClick={() => openViewModal(syllabus)}
+                                >
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
+                                    {syllabus.approval_status || 'pending'}
+                                  </span>
+                                </td>
+                              </tr>
                               )
                             })}
                           </tbody>
@@ -1718,8 +1718,8 @@ const Syllabus = () => {
                   if (courseInfoFields.length === 0 && !hasInstructor) return null
                   
                   return (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Course Information</h3>
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-indigo-900 mb-3 pb-2 border-b border-indigo-300">Course Information</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs border border-gray-300">
                           <thead className="bg-gray-50">
@@ -1816,7 +1816,7 @@ const Syllabus = () => {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                  </div>
                     </div>
                   )
                 })()}
@@ -1836,8 +1836,8 @@ const Syllabus = () => {
                   if (contactHours.length === 0) return null
                   
                   return (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Contact Hours</h3>
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-teal-900 mb-3 pb-2 border-b border-teal-300">Contact Hours</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs border border-gray-300">
                           <thead className="bg-gray-50">
@@ -1859,7 +1859,7 @@ const Syllabus = () => {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                  </div>
                     </div>
                   )
                 })()}
@@ -1881,8 +1881,8 @@ const Syllabus = () => {
                   }
                   
                   return (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Teaching & Learning Strategies</h3>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-green-900 mb-3 pb-2 border-b border-green-300">Teaching & Learning Strategies</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs border border-gray-300">
                           <thead className="bg-gray-50">
@@ -1970,15 +1970,15 @@ const Syllabus = () => {
                                   className={`cursor-help ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}
                                   title="Total weight percentage: Should equal 100%"
                                 >
-                                  {totalWeight}%
-                                </span>
+                                {totalWeight}%
+                              </span>
                               </td>
                               <td className="px-3 py-2 border border-gray-300"></td>
                               <td className="px-3 py-2 border border-gray-300"></td>
                             </tr>
                           </tbody>
                         </table>
-                      </div>
+                            </div>
                     </div>
                   )
                 })()}
@@ -1997,8 +1997,8 @@ const Syllabus = () => {
                   }
                   
                   return (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Grading Policy</h3>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold text-amber-900 mb-3 pb-2 border-b border-amber-300">Grading Policy</h3>
                       <div className="space-y-4">
                         {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
                           <div>
@@ -2013,7 +2013,7 @@ const Syllabus = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white">
-                                  {policy.scale.map((item, index) => (
+                              {policy.scale.map((item, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
                                       <td className="px-3 py-2 border border-gray-300 text-gray-900 font-medium">{item.grade || 'N/A'}</td>
                                       <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">{item.range || 'N/A'}</td>
@@ -2037,11 +2037,11 @@ const Syllabus = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white">
-                                  {Object.entries(policy.scale).map(([grade, range]) => {
-                                    const rangeValue = typeof range === 'object' && range !== null 
-                                      ? range.range || range.value || JSON.stringify(range)
-                                      : String(range)
-                                    return (
+                              {Object.entries(policy.scale).map(([grade, range]) => {
+                                const rangeValue = typeof range === 'object' && range !== null 
+                                  ? range.range || range.value || JSON.stringify(range)
+                                  : String(range)
+                                return (
                                       <tr key={grade} className="hover:bg-gray-50">
                                         <td className="px-3 py-2 border border-gray-300 text-gray-900 font-medium">{grade}</td>
                                         <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">{rangeValue}</td>
@@ -2065,7 +2065,7 @@ const Syllabus = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white">
-                                  {policy.components.map((comp, index) => (
+                              {policy.components.map((comp, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
                                       <td className="px-3 py-2 border border-gray-300 text-gray-900">{comp.type || comp.name || 'Component'}</td>
                                       <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
@@ -2092,13 +2092,13 @@ const Syllabus = () => {
                           <div>
                             <h4 className="text-sm font-semibold text-gray-800 mb-2">Description</h4>
                             <div className="bg-white p-3 rounded border border-gray-300">
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{policy.description}</p>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{policy.description}</p>
                             </div>
                           </div>
                         )}
                         {!policy?.scale && !policy?.components && !policy?.description && !policy?.remedial_note && (
                           <div className="bg-white p-3 rounded border border-gray-300">
-                            <p className="text-sm text-gray-500 italic">No grading policy details available</p>
+                          <p className="text-sm text-gray-500 italic">No grading policy details available</p>
                           </div>
                         )}
                       </div>
@@ -2170,8 +2170,8 @@ const Syllabus = () => {
                             ))}
                           </tbody>
                         </table>
-                      </div>
                     </div>
+                            </div>
                   )
                 })()}
 
@@ -2258,7 +2258,7 @@ const Syllabus = () => {
                           
                           <div className="space-y-4">
                             {/* ILO Assessment Mapping */}
-                            <div>
+                                    <div>
                               <h4 className="text-sm font-semibold text-gray-900 mb-3">ILO Assessment Mapping</h4>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs border border-gray-300">
@@ -2352,7 +2352,7 @@ const Syllabus = () => {
                                               {group.totalWeight > 0 ? (
                                                 <span title="Total weight percentage of this assessment group across all mapped ILOs" className="cursor-help">
                                                   {group.totalWeight.toFixed(2)}%
-                                                </span>
+                                        </span>
                                               ) : '—'}
                                             </td>
                                             <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
@@ -2488,8 +2488,8 @@ const Syllabus = () => {
                                                             title={`Total score contribution: Sum of all weighted scores from sub-assessments for ${ilo.code}`}
                                                           >
                                                             ({totalStats.score.toFixed(1)})
-                                                          </div>
-                                                        )}
+                                    </div>
+                                  )}
                                                       </div>
                                                     ) : '—'}
                                                   </td>
@@ -2538,7 +2538,7 @@ const Syllabus = () => {
                                                     return (
                                                       <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
                                                         {contribution > 0 ? (
-                                                          <div>
+                                    <div>
                                                             <div 
                                                               className="cursor-help" 
                                                               title={`Weight contribution: Percentage of this sub-assessment's weight allocated to ${ilo.code}`}
@@ -2573,7 +2573,7 @@ const Syllabus = () => {
                                               title="Total weight: Sum of all sub-assessment weights for this assessment criterion"
                                             >
                                               {criteriaWithSubAssessments.reduce((sum, c) => sum + (c.criterion.weight || 0), 0)}%
-                                            </span>
+                                        </span>
                                           </td>
                                           {viewingSyllabusILOs.map((ilo, iloIdx) => {
                                             const totalStats = criteriaWithSubAssessments.reduce((acc, c) => {
@@ -2696,8 +2696,8 @@ const Syllabus = () => {
                                                           title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and SO"
                                                         >
                                                           {taskScores.totalScore.toFixed(1)}
-                                                        </div>
-                                                      )}
+                                    </div>
+                                  )}
                                                     </div>
                                                   ) : '—'}
                                                 </td>
@@ -2714,7 +2714,7 @@ const Syllabus = () => {
 
                             {/* ILO-IGA Mapping */}
                             {igaReferences.length > 0 && (
-                              <div>
+                                    <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-IGA Mapping</h4>
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-xs border border-gray-300">
@@ -2766,12 +2766,12 @@ const Syllabus = () => {
                                     </tbody>
                                   </table>
                                 </div>
-                              </div>
-                            )}
+                                    </div>
+                                  )}
 
                             {/* ILO-CDIO and ILO-SDG Mapping */}
                             {(cdioReferences.length > 0 || sdgReferences.length > 0) && (
-                              <div>
+                                    <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-CDIO and ILO-SDG Mapping</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {cdioReferences.length > 0 && (
@@ -2812,9 +2812,9 @@ const Syllabus = () => {
                                                             title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and CDIO"
                                                           >
                                                             {taskScores.totalScore.toFixed(1)}
-                                                          </div>
-                                                        )}
-                                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                                                     ) : '—'}
                                                   </td>
                                                 )
@@ -2823,8 +2823,8 @@ const Syllabus = () => {
                                           ))}
                                         </tbody>
                                       </table>
-                                    </div>
-                                  )}
+                              </div>
+                            )}
 
                                   {sdgReferences.length > 0 && (
                                     <div className="overflow-x-auto">
@@ -2864,7 +2864,7 @@ const Syllabus = () => {
                                                             title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and SDG"
                                                           >
                                                             {taskScores.totalScore.toFixed(1)}
-                                                          </div>
+                          </div>
                                                         )}
                                                       </div>
                                                     ) : '—'}
@@ -2875,12 +2875,12 @@ const Syllabus = () => {
                                           ))}
                                         </tbody>
                                       </table>
-                                    </div>
+                      </div>
                                   )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                    </div>
+                    </div>
+                  )}
+                </div>
                         </div>
                       )}
                     </div>
