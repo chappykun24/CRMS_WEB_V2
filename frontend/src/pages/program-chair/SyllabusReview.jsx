@@ -435,8 +435,6 @@ const SyllabusReview = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revision Number</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -462,12 +460,6 @@ const SyllabusReview = () => {
                       >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{revisionNo}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
-                            {syllabus.review_status || 'pending'}
-                          </span>
                         </td>
                       </tr>
                     )
@@ -496,9 +488,6 @@ const SyllabusReview = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revision Number</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approval Status</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -524,17 +513,6 @@ const SyllabusReview = () => {
                         >
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">{revisionNo}</td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.review_status)}`}>
-                              {syllabus.review_status || 'pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(syllabus.approval_status)}`}>
-                              {syllabus.approval_status || 'pending'}
-                            </span>
                           </td>
                         </tr>
                       )
