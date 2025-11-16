@@ -1689,6 +1689,109 @@ const Syllabus = () => {
               </div>
               
               <div className="space-y-4">
+                {/* Course Information Section */}
+                {(() => {
+                  // Extract metadata from grading_policy
+                  let metadata = {}
+                  try {
+                    const gradingPolicy = typeof viewingSyllabus.grading_policy === 'string'
+                      ? JSON.parse(viewingSyllabus.grading_policy)
+                      : viewingSyllabus.grading_policy
+                    metadata = gradingPolicy?.metadata || {}
+                  } catch (e) {
+                    metadata = {}
+                  }
+                  
+                  return (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-3">Course Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {metadata.course_category && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Course Category</h4>
+                            <p className="text-sm text-gray-900">{metadata.course_category}</p>
+                          </div>
+                        )}
+                        {metadata.semester_year && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Semester/Year</h4>
+                            <p className="text-sm text-gray-900">{metadata.semester_year}</p>
+                          </div>
+                        )}
+                        {metadata.credit_hours && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Credit Hours</h4>
+                            <p className="text-sm text-gray-900">{metadata.credit_hours}</p>
+                          </div>
+                        )}
+                        {metadata.id_number && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">ID Number</h4>
+                            <p className="text-sm text-gray-900">{metadata.id_number}</p>
+                          </div>
+                        )}
+                        {metadata.reference_cmo && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Reference CMO</h4>
+                            <p className="text-sm text-gray-900">{metadata.reference_cmo}</p>
+                          </div>
+                        )}
+                        {metadata.date_prepared && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Date Prepared</h4>
+                            <p className="text-sm text-gray-900">{metadata.date_prepared}</p>
+                          </div>
+                        )}
+                        {metadata.revision_no && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Revision Number</h4>
+                            <p className="text-sm text-gray-900">{metadata.revision_no}</p>
+                          </div>
+                        )}
+                        {metadata.revision_date && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">Revision Date</h4>
+                            <p className="text-sm text-gray-900">{metadata.revision_date}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Course Instructor */}
+                      {metadata.course_instructor && (metadata.course_instructor.name || metadata.course_instructor.qualification || metadata.course_instructor.contact_email || metadata.course_instructor.contact_phone) && (
+                        <div className="mt-4 pt-4 border-t border-gray-300">
+                          <h4 className="text-xs font-semibold text-gray-600 mb-2">Course Instructor</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {metadata.course_instructor.name && (
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-500 mb-1">Name</h5>
+                                <p className="text-sm text-gray-900">{metadata.course_instructor.name}</p>
+                              </div>
+                            )}
+                            {metadata.course_instructor.qualification && (
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-500 mb-1">Qualification</h5>
+                                <p className="text-sm text-gray-900">{metadata.course_instructor.qualification}</p>
+                              </div>
+                            )}
+                            {metadata.course_instructor.contact_email && (
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-500 mb-1">Contact Email</h5>
+                                <p className="text-sm text-gray-900">{metadata.course_instructor.contact_email}</p>
+                              </div>
+                            )}
+                            {metadata.course_instructor.contact_phone && (
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-500 mb-1">Contact Phone</h5>
+                                <p className="text-sm text-gray-900">{metadata.course_instructor.contact_phone}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 <div>
                   <h3 className="text-sm font-bold italic text-gray-700 mb-1">Version</h3>
                   <p className="text-sm text-gray-900">v{viewingSyllabus.version || '1.0'}</p>
@@ -1729,6 +1832,80 @@ const Syllabus = () => {
                   </div>
                 )}
 
+                {/* Contact Hours */}
+                {(() => {
+                  let contactHours = []
+                  try {
+                    const framework = typeof viewingSyllabus.assessment_framework === 'string'
+                      ? JSON.parse(viewingSyllabus.assessment_framework)
+                      : viewingSyllabus.assessment_framework
+                    contactHours = framework?.contact_hours || []
+                  } catch (e) {
+                    contactHours = []
+                  }
+                  
+                  if (contactHours.length === 0) return null
+                  
+                  return (
+                    <div>
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Contact Hours</h3>
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="grid grid-cols-2 gap-2">
+                          {contactHours.map((ch, index) => (
+                            <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-gray-900 text-sm">{ch.name || 'Contact Hour'}</span>
+                                <span className="text-xs font-medium text-blue-600">{ch.hours || 0} hours</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Teaching Strategies */}
+                {(() => {
+                  let teachingStrategies = null
+                  try {
+                    const framework = typeof viewingSyllabus.assessment_framework === 'string'
+                      ? JSON.parse(viewingSyllabus.assessment_framework)
+                      : viewingSyllabus.assessment_framework
+                    teachingStrategies = framework?.teaching_strategies
+                  } catch (e) {
+                    teachingStrategies = null
+                  }
+                  
+                  if (!teachingStrategies || (!teachingStrategies.general_description && (!teachingStrategies.assessment_components || teachingStrategies.assessment_components.length === 0))) {
+                    return null
+                  }
+                  
+                  return (
+                    <div>
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Teaching & Learning Strategies</h3>
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        {teachingStrategies.general_description && (
+                          <div className="mb-3">
+                            <h4 className="text-xs font-semibold text-gray-600 mb-1">General Description</h4>
+                            <p className="text-sm text-gray-900 whitespace-pre-wrap">{teachingStrategies.general_description}</p>
+                          </div>
+                        )}
+                        {teachingStrategies.assessment_components && teachingStrategies.assessment_components.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-gray-600 mb-2">Assessment Components</h4>
+                            <div className="space-y-1">
+                              {teachingStrategies.assessment_components.map((comp, index) => (
+                                <div key={index} className="text-sm text-gray-700">• {comp}</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 {viewingSyllabus.assessment_framework && (() => {
                   // Parse assessment framework
                   let framework = null
@@ -1745,47 +1922,43 @@ const Syllabus = () => {
                   const components = framework?.components || []
                   const totalWeight = components.reduce((sum, comp) => sum + (parseFloat(comp.weight) || 0), 0)
                   
+                  if (components.length === 0) return null
+                  
                   return (
                     <div>
-                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Assessment Framework</h3>
-                      {components.length > 0 ? (
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            {components.map((comp, index) => (
-                              <div key={index} className="p-2 bg-white rounded border border-gray-200">
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <span className="font-semibold text-gray-900 text-sm">{comp.type}</span>
-                                  <span className="text-xs font-medium text-blue-600">{comp.weight}%</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {comp.count && (
-                                    <span className="text-xs text-gray-500">
-                                      {comp.count} {comp.count === 1 ? 'item' : 'items'}
-                                    </span>
-                                  )}
-                                  {comp.description && (
-                                    <span className="text-xs text-gray-500 truncate" title={comp.description}>
-                                      {comp.description}
-                                    </span>
-                                  )}
-                                </div>
+                      <h3 className="text-sm font-bold italic text-gray-700 mb-2">Assessment Framework Components</h3>
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {components.map((comp, index) => (
+                            <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="font-semibold text-gray-900 text-sm">{comp.type}</span>
+                                <span className="text-xs font-medium text-blue-600">{comp.weight}%</span>
                               </div>
-                            ))}
-                          </div>
-                          <div className="pt-2 border-t border-gray-300">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-gray-700">Total Weight:</span>
-                              <span className={`text-xs font-bold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                                {totalWeight}%
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {comp.count && (
+                                  <span className="text-xs text-gray-500">
+                                    {comp.count} {comp.count === 1 ? 'item' : 'items'}
+                                  </span>
+                                )}
+                                {comp.description && (
+                                  <span className="text-xs text-gray-500 truncate" title={comp.description}>
+                                    {comp.description}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+                          ))}
+                        </div>
+                        <div className="pt-2 border-t border-gray-300">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-700">Total Weight:</span>
+                            <span className={`text-xs font-bold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                              {totalWeight}%
+                            </span>
                           </div>
                         </div>
-                      ) : (
-                        <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                          <p className="text-sm text-gray-500 italic">No assessment components defined</p>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   )
                 })()}
