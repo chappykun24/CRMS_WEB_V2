@@ -929,13 +929,44 @@ const SyllabusCreationWizard = ({
     
     return {
       ...formData,
+      // Core fields
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
       description: formData.course_rationale || formData.description,
+      course_outline: formData.course_outline || '',
+      course_objectives: formData.course_objectives || '',
+      prerequisites: formData.prerequisites || '',
+      learning_resources: formData.learning_resources || [],
+      version: formData.version || '1.0',
+      term_id: formData.term_id || '',
+      
+      // Course Information metadata (stored in grading_policy.metadata)
+      course_category: formData.course_category || '',
+      semester_year: formData.semester_year || '',
+      course_instructor: formData.course_instructor || {},
+      credit_hours: formData.credit_hours || '',
+      id_number: formData.id_number || '',
+      reference_cmo: formData.reference_cmo || '',
+      date_prepared: formData.date_prepared || '',
+      revision_no: formData.revision_no || '0',
+      revision_date: formData.revision_date || '',
+      
+      // Contact hours and teaching strategies (stored in assessment_framework)
+      contact_hours: formData.contact_hours || [],
+      teaching_strategies: formData.teaching_strategies || {
+        general_description: '',
+        assessment_components: []
+      },
+      
+      // Assessment data (stored in grading_policy)
       assessment_framework: assessmentFramework, // Include contact_hours and teaching_strategies
       grading_policy: gradingPolicy, // Include assessment_criteria, sub_assessments, and metadata
       assessment_criteria: formattedAssessmentCriteria, // Explicitly include for backward compatibility
       sub_assessments: formattedSubAssessments, // Include sub-assessments
+      
+      // ILOs
       ilos: ilos, // Include ILOs to be saved
+      
+      // Status
       status: isDraft ? 'draft' : 'published' // Add status field
     }
   }
