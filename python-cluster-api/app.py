@@ -133,19 +133,21 @@ def calculate_submission_features(row):
 
 def calculate_score_features(row):
     """
-    Calculate score features based on syllabus weights and ILO coverage.
-    Prioritizes ILO-weighted score which combines:
-    1. Syllabus assessment weights (weight_percentage from assessments)
-    2. ILO coverage (assessment_ilo_weights)
-    3. Submission scores (adjusted_score or total_score)
-    """
-    # Syllabus-weighted score: based on assessment weights from syllabus
-    # Formula: SUM((submission_score / total_points) * weight_percentage)
-    syllabus_weighted_score = float(row.get('average_score', 50.0))
+    Calculate score features using new grading computation system.
+    Uses pre-calculated transmuted scores from database which follow:
+    1. Raw Score → Adjusted Score (raw - penalty)
+    2. Adjusted Score → Actual Score: (adjusted / max) × 62.5 + 37.5 (non-zero based, min 37.5)
+    3. Actual Score → Transmuted Score: actual × (weight_percentage / 100)
+    4. Final Grade = SUM(transmuted_score) per course, then averaged across courses
     
-    # ILO-weighted score: combines syllabus weights with ILO coverage boost
-    # Formula: SUM((submission_score / total_points) * weight_percentage * ILO_boost)
-    # This is the primary score as it respects both syllabus structure and ILO alignment
+    The database already calculates these values, so we use them directly.
+    """
+    # Use pre-calculated average_score from database (sum of transmuted scores per course, averaged)
+    # This follows the new grading computation: Raw → Adjusted → Actual → Transmuted
+    syllabus_weighted_score = float(row.get('average_score', 50.0)) if pd.notna(row.get('average_score')) else 50.0
+    
+    # Use pre-calculated ilo_weighted_score from database (same as average_score but with ILO boost)
+    # ILO boost is applied to transmuted scores: transmuted_score × ilo_boost_factor
     ilo_score = float(row.get('ilo_weighted_score', syllabus_weighted_score)) if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
     
     # Use ILO-weighted score as final_score (includes syllabus weights + ILO boost)
@@ -153,8 +155,8 @@ def calculate_score_features(row):
     final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
     
     return {
-        'average_score': syllabus_weighted_score,  # Syllabus-weighted (without ILO boost)
-        'ilo_weighted_score': ilo_score,  # Syllabus-weighted + ILO boost
+        'average_score': syllabus_weighted_score,  # Final grade using new computation (transmuted scores)
+        'ilo_weighted_score': ilo_score,  # Final grade with ILO boost applied
         'final_score': final_score  # Primary score for clustering (syllabus + ILO)
     }
 

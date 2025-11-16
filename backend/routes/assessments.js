@@ -491,9 +491,9 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh } = req.query;
+  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh, ilo_id, so_id } = req.query;
   const forceRefresh = force_refresh === 'true' || force_refresh === '1';
-  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'force_refresh:', forceRefresh);
+  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'ilo_id:', ilo_id, 'so_id:', so_id, 'force_refresh:', forceRefresh);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -515,6 +515,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const departmentIdValue = department_id && !isNaN(parseInt(department_id)) ? parseInt(department_id) : null;
     const studentIdValue = student_id && !isNaN(parseInt(student_id)) ? parseInt(student_id) : null;
     const sectionCourseIdValue = section_course_id && !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
+    const iloIdValue = ilo_id && !isNaN(parseInt(ilo_id)) ? parseInt(ilo_id) : null;
+    const soIdValue = so_id && !isNaN(parseInt(so_id)) ? parseInt(so_id) : null;
     
     if (termIdValue) console.log('🔍 [Backend] Applying term filter:', termIdValue);
     if (sectionIdValue) console.log('🔍 [Backend] Applying section filter:', sectionIdValue);
@@ -522,6 +524,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
     if (departmentIdValue) console.log('🔍 [Backend] Applying department filter:', departmentIdValue);
     if (studentIdValue) console.log('🔍 [Backend] Applying student filter:', studentIdValue);
     if (sectionCourseIdValue) console.log('🔍 [Backend] Applying section_course filter:', sectionCourseIdValue);
+    if (iloIdValue) console.log('🔍 [Backend] Applying ILO filter:', iloIdValue);
+    if (soIdValue) console.log('🔍 [Backend] Applying SO filter:', soIdValue);
     
     // Build additional WHERE conditions for filtering
     // NOTE: When filtering by section_course_id, we need ALL students in that class for clustering
@@ -583,6 +587,27 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const sectionCourseFilterFallback = sectionCourseIdValue 
       ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
       : '';
+    
+    // Build ILO/SO filter for assessment alignment
+    // When filtering by ILO: only include assessments mapped to that ILO
+    // When filtering by SO: only include assessments mapped to ILOs that map to that SO
+    let iloSoAssessmentFilter = '';
+    if (iloIdValue) {
+      // Filter to assessments mapped to this ILO via assessment_ilo_weights
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter 
+        WHERE aiw_filter.assessment_id = a.assessment_id 
+        AND aiw_filter.ilo_id = ${iloIdValue}
+      )`;
+    } else if (soIdValue) {
+      // Filter to assessments mapped to ILOs that map to this SO via ilo_so_mappings
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter
+        INNER JOIN ilo_so_mappings ism ON aiw_filter.ilo_id = ism.ilo_id
+        WHERE aiw_filter.assessment_id = a.assessment_id
+        AND ism.so_id = ${soIdValue}
+      )`;
+    }
     
     // Fetch student analytics: attendance, average score, and submission rate
     // Enhanced with detailed attendance counts and submission behavior
@@ -678,32 +703,39 @@ router.get('/dean-analytics/sample', async (req, res) => {
             ${termIdValue ? `AND sc_att.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilter}
         )::INTEGER AS attendance_total_sessions,
-        -- Syllabus-weighted score: average grade across all courses based on assessment weights
-        -- Formula per course: SUM((submission_score / total_points) * weight_percentage)
+        -- Final grade using new grading computation: Raw → Adjusted → Actual (×62.5+37.5) → Transmuted (×weight/100)
+        -- Formula per course: SUM(transmuted_score) where transmuted_score = actual_score × (weight_percentage / 100)
+        -- actual_score = (adjusted_score / total_points) × 62.5 + 37.5 (non-zero based, min 37.5)
+        -- When filtering by ILO/SO: only include assessments aligned with selected ILO/SO
         -- Then average across all courses to get overall score (0-100 scale)
-        -- This reflects the actual course grade structure defined in each syllabus
         COALESCE(
           (
-            WITH course_weighted_scores AS (
+            WITH course_transmuted_scores AS (
               SELECT 
                 sc_weighted.section_course_id,
-                -- Calculate weighted score per course (should sum to 0-100 per course)
+                -- Use pre-calculated transmuted_score if available, otherwise calculate it
                 SUM(
                   CASE 
+                    -- Use stored transmuted_score if available (already calculated)
+                    WHEN sub.transmuted_score IS NOT NULL
+                    THEN sub.transmuted_score
+                    -- Calculate transmuted_score: actual_score × (weight_percentage / 100)
+                    -- where actual_score = (adjusted_score / total_points) × 62.5 + 37.5
                     WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.adjusted_score / a.total_points) * a.weight_percentage
+                    THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                    -- Fallback: use total_score if adjusted_score not available
                     WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.total_score / a.total_points) * a.weight_percentage
+                    THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
                     ELSE 0
                   END
-                ) as course_weighted_score
+                ) as course_final_grade
               FROM course_enrollments ce_weighted
               INNER JOIN section_courses sc_weighted ON ce_weighted.section_course_id = sc_weighted.section_course_id
               INNER JOIN assessments a ON sc_weighted.section_course_id = a.section_course_id
               LEFT JOIN submissions sub ON (
                 ce_weighted.enrollment_id = sub.enrollment_id 
                 AND sub.assessment_id = a.assessment_id
-                AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+                AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
               )
               WHERE ce_weighted.student_id = s.student_id
                 AND ce_weighted.status = 'enrolled'
@@ -711,31 +743,52 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_weighted.term_id = ${termIdValue}` : ''}
                 ${sectionCourseFilterWeighted}
+                ${iloSoAssessmentFilter}
               GROUP BY sc_weighted.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale)
             -- When filtering by section_course_id, just return the single course score
-            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_weighted_score)::NUMERIC, 2)
-            FROM course_weighted_scores
-            WHERE course_weighted_score > 0
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
+            FROM course_transmuted_scores
+            WHERE course_final_grade > 0
           ),
-          -- Fallback: simple average if no syllabus weights available
+          -- Fallback: calculate from actual_score if available
           (
-            SELECT ROUND(AVG(sub.total_score)::NUMERIC, 2)
-            FROM course_enrollments ce_sub
-            INNER JOIN section_courses sc_sub ON ce_sub.section_course_id = sc_sub.section_course_id
-            INNER JOIN submissions sub ON ce_sub.enrollment_id = sub.enrollment_id
-            WHERE ce_sub.student_id = s.student_id
-              AND ce_sub.status = 'enrolled'
-              AND sub.total_score IS NOT NULL
-              ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
-              ${sectionCourseFilterSub}
+            WITH course_from_actual AS (
+              SELECT 
+                sc_actual.section_course_id,
+                SUM(
+                  CASE 
+                    WHEN sub.actual_score IS NOT NULL AND a.weight_percentage IS NOT NULL
+                    THEN sub.actual_score * (a.weight_percentage / 100)
+                    ELSE 0
+                  END
+                ) as course_final_grade
+              FROM course_enrollments ce_actual
+              INNER JOIN section_courses sc_actual ON ce_actual.section_course_id = sc_actual.section_course_id
+              INNER JOIN assessments a ON sc_actual.section_course_id = a.section_course_id
+              LEFT JOIN submissions sub ON (
+                ce_actual.enrollment_id = sub.enrollment_id 
+                AND sub.assessment_id = a.assessment_id
+                AND sub.actual_score IS NOT NULL
+              )
+              WHERE ce_actual.student_id = s.student_id
+                AND ce_actual.status = 'enrolled'
+                AND a.weight_percentage IS NOT NULL
+                AND a.weight_percentage > 0
+                ${termIdValue ? `AND sc_actual.term_id = ${termIdValue}` : ''}
+                ${sectionCourseFilterWeighted}
+                ${iloSoAssessmentFilter}
+              GROUP BY sc_actual.section_course_id
+            )
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
+            FROM course_from_actual
+            WHERE course_final_grade > 0
           )
         )::NUMERIC AS average_score,
-        -- ILO-weighted score: combines syllabus assessment weights with ILO coverage
-        -- Calculates weighted score per course, then averages across courses (0-100 scale)
+        -- ILO-weighted score: same as average_score but with ILO boost factor applied to transmuted scores
+        -- Uses new grading computation with ILO boost: transmuted_score × ilo_boost_factor
         -- ILO boost factor: assessments with ILOs get slight boost (1.0 to 1.5x)
-        -- This prioritizes performance on assessments that cover important ILOs while respecting syllabus weights
         COALESCE(
           (
             WITH assessment_ilo_boosts AS (
@@ -754,13 +807,19 @@ router.get('/dean-analytics/sample', async (req, res) => {
             course_ilo_weighted_scores AS (
               SELECT 
                 sc_ilo.section_course_id,
-                -- Calculate ILO-boosted weighted score per course
+                -- Use pre-calculated transmuted_score with ILO boost, or calculate with boost
                 SUM(
                   CASE 
+                    -- Use stored transmuted_score with ILO boost
+                    WHEN sub.transmuted_score IS NOT NULL
+                    THEN sub.transmuted_score * COALESCE(aib.ilo_boost_factor, 1.0)
+                    -- Calculate transmuted_score with ILO boost: actual_score × (weight_percentage / 100) × ilo_boost
+                    -- where actual_score = (adjusted_score / total_points) × 62.5 + 37.5
                     WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.adjusted_score / a.total_points) * a.weight_percentage * COALESCE(aib.ilo_boost_factor, 1.0)
+                    THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100) * COALESCE(aib.ilo_boost_factor, 1.0)
+                    -- Fallback: use total_score
                     WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.total_score / a.total_points) * a.weight_percentage * COALESCE(aib.ilo_boost_factor, 1.0)
+                    THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100) * COALESCE(aib.ilo_boost_factor, 1.0)
                     ELSE 0
                   END
                 ) as course_ilo_weighted_score
@@ -771,7 +830,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               LEFT JOIN submissions sub ON (
                 ce_ilo.enrollment_id = sub.enrollment_id 
                 AND sub.assessment_id = a.assessment_id
-                AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+                AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
               )
               WHERE ce_ilo.student_id = s.student_id
                 AND ce_ilo.status = 'enrolled'
@@ -779,6 +838,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
                 ${sectionCourseFilterIlo}
+                ${iloSoAssessmentFilter}
               GROUP BY sc_ilo.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale, but may exceed 100 due to ILO boost)
@@ -787,27 +847,29 @@ router.get('/dean-analytics/sample', async (req, res) => {
             FROM course_ilo_weighted_scores
             WHERE course_ilo_weighted_score > 0
           ),
-          -- Fallback: use syllabus-weighted score without ILO boost
+          -- Fallback: use average_score (without ILO boost)
           (
-            WITH course_weighted_scores AS (
+            WITH course_transmuted_scores AS (
               SELECT 
                 sc_fallback.section_course_id,
                 SUM(
                   CASE 
+                    WHEN sub.transmuted_score IS NOT NULL
+                    THEN sub.transmuted_score
                     WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.adjusted_score / a.total_points) * a.weight_percentage
+                    THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
                     WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN (sub.total_score / a.total_points) * a.weight_percentage
+                    THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
                     ELSE 0
                   END
-                ) as course_weighted_score
+                ) as course_final_grade
               FROM course_enrollments ce_fallback
               INNER JOIN section_courses sc_fallback ON ce_fallback.section_course_id = sc_fallback.section_course_id
               INNER JOIN assessments a ON sc_fallback.section_course_id = a.section_course_id
               LEFT JOIN submissions sub ON (
                 ce_fallback.enrollment_id = sub.enrollment_id 
                 AND sub.assessment_id = a.assessment_id
-                AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+                AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
               )
               WHERE ce_fallback.student_id = s.student_id
                 AND ce_fallback.status = 'enrolled'
@@ -815,11 +877,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterFallback}
+              ${iloSoAssessmentFilter}
               GROUP BY sc_fallback.section_course_id
             )
-            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_weighted_score)::NUMERIC, 2)
-            FROM course_weighted_scores
-            WHERE course_weighted_score > 0
+            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
+            FROM course_transmuted_scores
+            WHERE course_final_grade > 0
           )
         )::NUMERIC AS ilo_weighted_score,
         -- Average submission status score: converts ontime=0, late=1, missing=2 to numerical average
