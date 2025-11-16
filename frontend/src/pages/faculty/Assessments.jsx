@@ -2208,33 +2208,36 @@ const Assessments = () => {
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none whitespace-nowrap ${
                                                 gradeData.submission_status === 'ontime'
-                                                  ? 'bg-green-100 text-green-800'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-green-50'
+                                                  ? 'bg-green-200 text-green-900'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-800'
                                               }`}
+                                              style={{ border: 'none', outline: 'none' }}
                                               title="On Time"
                                             >
                                               On Time
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none whitespace-nowrap ${
                                                 gradeData.submission_status === 'late'
-                                                  ? 'bg-yellow-100 text-yellow-800'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-yellow-50'
+                                                  ? 'bg-yellow-200 text-yellow-900'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-800'
                                               }`}
+                                              style={{ border: 'none', outline: 'none' }}
                                               title="Late"
                                             >
                                               Late
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-1 text-xs rounded transition-colors border-none outline-none focus:outline-none focus:ring-0 focus:border-none active:border-none whitespace-nowrap ${
                                                 gradeData.submission_status === 'missing'
-                                                  ? 'bg-red-100 text-red-800'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-red-50'
+                                                  ? 'bg-red-200 text-red-900'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-800'
                                               }`}
+                                              style={{ border: 'none', outline: 'none' }}
                                               title="Missing"
                                             >
                                               Missing
