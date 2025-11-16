@@ -2068,12 +2068,16 @@ const Assessments = () => {
                                         />
                                       </div>
                                       <div className="w-[80px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
-                                        {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
+                                        {gradeData.submission_status === 'missing' ? '—' : (() => {
+                                          const score = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points);
+                                          return isNaN(score) ? '—' : parseFloat(score).toFixed(1);
+                                        })()}
                                       </div>
                                       <div className="w-[80px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
-                                          return calculateActualScore(adjusted, selectedAssessment.total_points).toFixed(2)
+                                          const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
+                                          return isNaN(actual) ? '—' : parseFloat(actual).toFixed(2)
                                         })()}
                                       </div>
                                       <div className="w-[100px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
@@ -2082,7 +2086,7 @@ const Assessments = () => {
                                           const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
                                           const transmuted = calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0)
                                           const rawScore = parseFloat(gradeData.raw_score) || 0
-                                          return `${transmuted.toFixed(2)} (${rawScore})`
+                                          return isNaN(transmuted) ? '—' : `${parseFloat(transmuted).toFixed(2)} (${rawScore})`
                                         })()}
                                       </div>
                                       <div className="w-[120px] flex-shrink-0 px-0.5">
