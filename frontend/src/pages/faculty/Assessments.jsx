@@ -20,7 +20,9 @@ import {
   UserGroupIcon,
   ClipboardDocumentCheckIcon,
   ArrowPathIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/solid'
 
 const Assessments = () => {
@@ -118,6 +120,7 @@ const Assessments = () => {
   // Assessment menu state
   const [openMenuId, setOpenMenuId] = useState(null)
   const menuRefs = useRef({})
+  const [expandedGroups, setExpandedGroups] = useState(new Set())
   
   // Close menu when clicking outside
   useEffect(() => {
@@ -988,6 +991,43 @@ const Assessments = () => {
   // Get unique assessment types for filter dropdown
   const assessmentTypes = ['all', ...new Set(assessments.map(a => a.type).filter(Boolean))]
 
+  // Group assessments by parent criterion
+  const groupAssessmentsByCriterion = (assessmentsList) => {
+    const groups = {}
+    const ungrouped = []
+    
+    assessmentsList.forEach(assessment => {
+      // Extract parent criterion from description
+      const description = assessment.description || ''
+      const match = description.match(/Sub-assessment from (.+)/)
+      
+      if (match && match[1]) {
+        const parentCriterion = match[1].trim()
+        if (!groups[parentCriterion]) {
+          groups[parentCriterion] = []
+        }
+        groups[parentCriterion].push(assessment)
+      } else {
+        // If no parent criterion found, add to ungrouped
+        ungrouped.push(assessment)
+      }
+    })
+    
+    return { groups, ungrouped }
+  }
+
+  const toggleGroup = (criterionName) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(criterionName)) {
+        newSet.delete(criterionName)
+      } else {
+        newSet.add(criterionName)
+      }
+      return newSet
+    })
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800'
@@ -1572,134 +1612,317 @@ const Assessments = () => {
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
-                                  {filteredAssessments.map((assessment, index) => (
-                                    <tr 
-                                      key={assessment.assessment_id} 
-                                      onClick={() => handleAssessmentSelect(assessment)}
-                                      className="hover:bg-red-50/30 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0"
-                                    >
-                                      <td className="px-6 py-5">
-                                        <div className="flex items-start">
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <h3 className="text-sm font-semibold text-gray-900 truncate">{assessment.title}</h3>
-                                              {assessment.syllabus_version && (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
-                                                  assessment.syllabus_approval_status === 'approved' 
-                                                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                                                    : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                                }`}>
-                                                  v{assessment.syllabus_version}
-                                                </span>
+                                  {(() => {
+                                    const { groups, ungrouped } = groupAssessmentsByCriterion(filteredAssessments)
+                                    const result = []
+                                    
+                                    // Render grouped assessments
+                                    Object.entries(groups).forEach(([criterionName, groupAssessments]) => {
+                                      const isExpanded = expandedGroups.has(criterionName)
+                                      const groupTotalPoints = groupAssessments.reduce((sum, a) => sum + (parseFloat(a.total_points) || 0), 0)
+                                      const groupTotalWeight = groupAssessments.reduce((sum, a) => sum + (parseFloat(a.weight_percentage) || 0), 0)
+                                      
+                                      // Group header row
+                                      result.push(
+                                        <tr 
+                                          key={`group-${criterionName}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            toggleGroup(criterionName)
+                                          }}
+                                          className="bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors border-b-2 border-gray-300"
+                                        >
+                                          <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                              {isExpanded ? (
+                                                <ChevronUpIcon className="h-5 w-5 text-gray-600" />
+                                              ) : (
+                                                <ChevronDownIcon className="h-5 w-5 text-gray-600" />
                                               )}
+                                              <h3 className="text-sm font-bold text-gray-900">{criterionName}</h3>
+                                              <span className="text-xs text-gray-500">({groupAssessments.length} {groupAssessments.length === 1 ? 'assessment' : 'assessments'})</span>
                                             </div>
-                                            <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{assessment.description || 'No description'}</p>
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="flex justify-center">
-                                          <span className="text-xs text-gray-700 font-medium">
-                                            {assessment.type}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="text-center">
-                                          <span className="text-sm font-semibold text-gray-900">{assessment.total_points}</span>
-                                          <span className="text-xs text-gray-500 ml-1">pts</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="text-center">
-                                          <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
-                                          <span className="text-xs text-gray-500 ml-1">%</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="text-center">
-                                          <span className="text-sm text-gray-700">
-                                            {assessment.due_date ? (() => {
-                                              try {
-                                                const date = new Date(assessment.due_date)
-                                                if (!isNaN(date.getTime())) {
-                                                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                                }
-                                              } catch (e) {}
-                                              return '—'
-                                            })() : '—'}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="flex justify-center">
-                                          <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
-                                            {assessment.status}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5">
-                                        <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                                          <div className="relative" ref={el => menuRefs.current[assessment.assessment_id] = el}>
-                                            <button
-                                              onClick={() => setOpenMenuId(openMenuId === assessment.assessment_id ? null : assessment.assessment_id)}
-                                              className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                                              title="More options"
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                            <span className="text-xs text-gray-500">—</span>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                            <span className="text-sm font-semibold text-gray-900">{groupTotalPoints}</span>
+                                            <span className="text-xs text-gray-500 ml-1">pts</span>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                            <span className="text-sm font-semibold text-gray-900">{groupTotalWeight.toFixed(2)}</span>
+                                            <span className="text-xs text-gray-500 ml-1">%</span>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                            <span className="text-sm text-gray-500">—</span>
+                                          </td>
+                                          <td className="px-4 py-4 text-center">
+                                            <span className="text-sm text-gray-500">—</span>
+                                          </td>
+                                          <td className="px-6 py-4 text-center">
+                                            <span className="text-sm text-gray-500">—</span>
+                                          </td>
+                                        </tr>
+                                      )
+                                      
+                                      // Sub-assessments (shown when expanded)
+                                      if (isExpanded) {
+                                        groupAssessments.forEach((assessment) => {
+                                          result.push(
+                                            <tr 
+                                              key={assessment.assessment_id} 
+                                              onClick={() => handleAssessmentSelect(assessment)}
+                                              className="hover:bg-red-50/30 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0 bg-gray-50/50"
                                             >
-                                              <EllipsisVerticalIcon className="h-5 w-5" />
-                                            </button>
-                                            {openMenuId === assessment.assessment_id && (
-                                              <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
-                                                <button
-                                                  onClick={() => {
-                                                    setOpenMenuId(null)
-                                                    openEditModal(assessment)
-                                                  }}
-                                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                >
-                                                  <PencilIcon className="h-4 w-4" />
-                                                  Edit
-                                                </button>
-                                                {assessment.is_published ? (
-                                                  <button
-                                                    onClick={() => {
-                                                      setOpenMenuId(null)
-                                                      handleUnpublishAssessment(assessment.assessment_id)
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                  >
-                                                    <XMarkIcon className="h-4 w-4" />
-                                                    Unpublish
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={() => {
-                                                      setOpenMenuId(null)
-                                                      handlePublishAssessment(assessment.assessment_id)
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                  >
-                                                    <CheckIcon className="h-4 w-4" />
-                                                    Publish
-                                                  </button>
-                                                )}
-                                                <button
-                                                  onClick={() => {
-                                                    setOpenMenuId(null)
-                                                    handleDeleteAssessment(assessment.assessment_id)
-                                                  }}
-                                                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                                >
-                                                  <TrashIcon className="h-4 w-4" />
-                                                  Delete
-                                                </button>
+                                              <td className="px-6 py-4 pl-12">
+                                                <div className="flex items-start">
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <h3 className="text-sm font-semibold text-gray-900 truncate">{assessment.title}</h3>
+                                                      {assessment.syllabus_version && (
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
+                                                          assessment.syllabus_approval_status === 'approved' 
+                                                            ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                        }`}>
+                                                          v{assessment.syllabus_version}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="flex justify-center">
+                                                  <span className="text-xs text-gray-700 font-medium">
+                                                    {assessment.type}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="text-center">
+                                                  <span className="text-sm font-semibold text-gray-900">{assessment.total_points}</span>
+                                                  <span className="text-xs text-gray-500 ml-1">pts</span>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="text-center">
+                                                  <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
+                                                  <span className="text-xs text-gray-500 ml-1">%</span>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="text-center">
+                                                  <span className="text-sm text-gray-700">
+                                                    {assessment.due_date ? (() => {
+                                                      try {
+                                                        const date = new Date(assessment.due_date)
+                                                        if (!isNaN(date.getTime())) {
+                                                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                        }
+                                                      } catch (e) {}
+                                                      return '—'
+                                                    })() : '—'}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="flex justify-center">
+                                                  <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
+                                                    {assessment.status}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                              <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                                                  <div className="relative" ref={el => menuRefs.current[assessment.assessment_id] = el}>
+                                                    <button
+                                                      onClick={() => setOpenMenuId(openMenuId === assessment.assessment_id ? null : assessment.assessment_id)}
+                                                      className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                                                      title="More options"
+                                                    >
+                                                      <EllipsisVerticalIcon className="h-5 w-5" />
+                                                    </button>
+                                                    {openMenuId === assessment.assessment_id && (
+                                                      <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
+                                                        <button
+                                                          onClick={() => {
+                                                            setOpenMenuId(null)
+                                                            openEditModal(assessment)
+                                                          }}
+                                                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                        >
+                                                          <PencilIcon className="h-4 w-4" />
+                                                          Edit
+                                                        </button>
+                                                        {assessment.is_published ? (
+                                                          <button
+                                                            onClick={() => {
+                                                              setOpenMenuId(null)
+                                                              handleUnpublishAssessment(assessment.assessment_id)
+                                                            }}
+                                                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                          >
+                                                            <XMarkIcon className="h-4 w-4" />
+                                                            Unpublish
+                                                          </button>
+                                                        ) : (
+                                                          <button
+                                                            onClick={() => {
+                                                              setOpenMenuId(null)
+                                                              handlePublishAssessment(assessment.assessment_id)
+                                                            }}
+                                                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                          >
+                                                            <CheckIcon className="h-4 w-4" />
+                                                            Publish
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )
+                                        })
+                                      }
+                                    })
+                                    
+                                    // Render ungrouped assessments
+                                    ungrouped.forEach((assessment) => {
+                                      result.push(
+                                        <tr 
+                                          key={assessment.assessment_id} 
+                                          onClick={() => handleAssessmentSelect(assessment)}
+                                          className="hover:bg-red-50/30 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                                        >
+                                          <td className="px-6 py-5">
+                                            <div className="flex items-start">
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <h3 className="text-sm font-semibold text-gray-900 truncate">{assessment.title}</h3>
+                                                  {assessment.syllabus_version && (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
+                                                      assessment.syllabus_approval_status === 'approved' 
+                                                        ? 'bg-green-100 text-green-700 border border-green-200' 
+                                                        : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                    }`}>
+                                                      v{assessment.syllabus_version}
+                                                    </span>
+                                                  )}
+                                                </div>
                                               </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="flex justify-center">
+                                              <span className="text-xs text-gray-700 font-medium">
+                                                {assessment.type}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="text-center">
+                                              <span className="text-sm font-semibold text-gray-900">{assessment.total_points}</span>
+                                              <span className="text-xs text-gray-500 ml-1">pts</span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="text-center">
+                                              <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
+                                              <span className="text-xs text-gray-500 ml-1">%</span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="text-center">
+                                              <span className="text-sm text-gray-700">
+                                                {assessment.due_date ? (() => {
+                                                  try {
+                                                    const date = new Date(assessment.due_date)
+                                                    if (!isNaN(date.getTime())) {
+                                                      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                    }
+                                                  } catch (e) {}
+                                                  return '—'
+                                                })() : '—'}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="flex justify-center">
+                                              <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
+                                                {assessment.status}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-5">
+                                            <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                                              <div className="relative" ref={el => menuRefs.current[assessment.assessment_id] = el}>
+                                                <button
+                                                  onClick={() => setOpenMenuId(openMenuId === assessment.assessment_id ? null : assessment.assessment_id)}
+                                                  className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                                                  title="More options"
+                                                >
+                                                  <EllipsisVerticalIcon className="h-5 w-5" />
+                                                </button>
+                                                {openMenuId === assessment.assessment_id && (
+                                                  <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
+                                                    <button
+                                                      onClick={() => {
+                                                        setOpenMenuId(null)
+                                                        openEditModal(assessment)
+                                                      }}
+                                                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                    >
+                                                      <PencilIcon className="h-4 w-4" />
+                                                      Edit
+                                                    </button>
+                                                    {assessment.is_published ? (
+                                                      <button
+                                                        onClick={() => {
+                                                          setOpenMenuId(null)
+                                                          handleUnpublishAssessment(assessment.assessment_id)
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                      >
+                                                        <XMarkIcon className="h-4 w-4" />
+                                                        Unpublish
+                                                      </button>
+                                                    ) : (
+                                                      <button
+                                                        onClick={() => {
+                                                          setOpenMenuId(null)
+                                                          handlePublishAssessment(assessment.assessment_id)
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                      >
+                                                        <CheckIcon className="h-4 w-4" />
+                                                        Publish
+                                                      </button>
+                                                    )}
+                                                    <button
+                                                      onClick={() => {
+                                                        setOpenMenuId(null)
+                                                        handleDeleteAssessment(assessment.assessment_id)
+                                                      }}
+                                                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                    >
+                                                      <TrashIcon className="h-4 w-4" />
+                                                      Delete
+                                                    </button>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )
+                                    })
+                                    
+                                    return result
+                                  })()}
                                 </tbody>
                               </table>
                             </div>
