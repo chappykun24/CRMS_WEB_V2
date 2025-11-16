@@ -44,9 +44,11 @@ const SyllabusApproval = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Show all syllabi regardless of status
-        const allSyllabi = Array.isArray(data) ? data : []
-        setSyllabi(allSyllabi)
+        // Filter for syllabi approved by program chair but pending dean approval
+        const pendingApproval = Array.isArray(data) 
+          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'pending')
+          : []
+        setSyllabi(pendingApproval)
       }
     } catch (error) {
       console.error('Error loading syllabi:', error)
@@ -64,9 +66,11 @@ const SyllabusApproval = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Show all syllabi regardless of status
-        const allSyllabi = Array.isArray(data) ? data : []
-        setApprovedSyllabi(allSyllabi)
+        // Filter for approved syllabi
+        const approved = Array.isArray(data) 
+          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'approved')
+          : []
+        setApprovedSyllabi(approved)
       }
     } catch (error) {
       console.error('Error loading syllabi:', error)
@@ -346,24 +350,47 @@ const SyllabusApproval = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revision Number</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredSyllabi.map((syllabus) => {
-                    // Determine overall status
-                    const overallStatus = syllabus.approval_status === 'approved' 
-                      ? 'approved' 
-                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
-                      ? 'pending_approval'
-                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
-                      ? 'rejected'
-                      : syllabus.review_status === 'rejected'
-                      ? 'rejected'
-                      : syllabus.review_status === 'needs_revision'
-                      ? 'needs_revision'
-                      : 'pending_review'
+                    // Get review and approval statuses
+                    const reviewStatus = syllabus.review_status || 'pending'
+                    const approvalStatus = syllabus.approval_status || 'pending'
+                    
+                    // Format review status text
+                    const reviewStatusText = reviewStatus === 'approved' ? 'Approved (Review)' :
+                                           reviewStatus === 'rejected' ? 'Rejected (Review)' :
+                                           reviewStatus === 'needs_revision' ? 'Needs Revision' :
+                                           'Pending Review'
+                    
+                    // Format approval status text
+                    const approvalStatusText = approvalStatus === 'approved' ? 'Approved' :
+                                             approvalStatus === 'rejected' ? 'Rejected' :
+                                             'Pending Approval'
+                    
+                    // Determine color based on both statuses
+                    const statusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                      approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      reviewStatus === 'approved' && approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-blue-100 text-blue-800'
+                    
+                    // Extract revision number from grading_policy.metadata
+                    let revisionNo = '0'
+                    try {
+                      const gradingPolicy = typeof syllabus.grading_policy === 'string' 
+                        ? JSON.parse(syllabus.grading_policy) 
+                        : syllabus.grading_policy
+                      if (gradingPolicy && gradingPolicy.metadata && gradingPolicy.metadata.revision_no) {
+                        revisionNo = gradingPolicy.metadata.revision_no
+                      }
+                    } catch (e) {
+                      // If parsing fails, use default
+                    }
                     
                     return (
                       <tr 
@@ -375,15 +402,17 @@ const SyllabusApproval = () => {
                           <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
-                            {overallStatus === 'pending_approval' ? 'Pending Approval' : 
-                             overallStatus === 'pending_review' ? 'Pending Review' :
-                             overallStatus === 'needs_revision' ? 'Needs Revision' :
-                             overallStatus}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                              {reviewStatusText}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                              {approvalStatusText}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
-                          {syllabus.version || '1.0'}
+                          {revisionNo}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {formatDate(syllabus.created_at)}
@@ -414,26 +443,49 @@ const SyllabusApproval = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
-                    </tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revision Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
+                  </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredApprovedSyllabi.map((syllabus) => {
-                      // Determine overall status
-                      const overallStatus = syllabus.approval_status === 'approved' 
-                        ? 'approved' 
-                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
-                        ? 'pending_approval'
-                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
-                        ? 'rejected'
-                        : syllabus.review_status === 'rejected'
-                        ? 'rejected'
-                        : syllabus.review_status === 'needs_revision'
-                        ? 'needs_revision'
-                        : 'pending_review'
+                      // Get review and approval statuses
+                      const reviewStatus = syllabus.review_status || 'pending'
+                      const approvalStatus = syllabus.approval_status || 'pending'
+                      
+                      // Format review status text
+                      const reviewStatusText = reviewStatus === 'approved' ? 'Approved (Review)' :
+                                             reviewStatus === 'rejected' ? 'Rejected (Review)' :
+                                             reviewStatus === 'needs_revision' ? 'Needs Revision' :
+                                             'Pending Review'
+                      
+                      // Format approval status text
+                      const approvalStatusText = approvalStatus === 'approved' ? 'Approved' :
+                                                approvalStatus === 'rejected' ? 'Rejected' :
+                                                'Pending Approval'
+                      
+                      // Determine color based on both statuses
+                      const statusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                        approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                        reviewStatus === 'approved' && approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                        reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-blue-100 text-blue-800'
+                      
+                      // Extract revision number from grading_policy.metadata
+                      let revisionNo = '0'
+                      try {
+                        const gradingPolicy = typeof syllabus.grading_policy === 'string' 
+                          ? JSON.parse(syllabus.grading_policy) 
+                          : syllabus.grading_policy
+                        if (gradingPolicy && gradingPolicy.metadata && gradingPolicy.metadata.revision_no) {
+                          revisionNo = gradingPolicy.metadata.revision_no
+                        }
+                      } catch (e) {
+                        // If parsing fails, use default
+                      }
                       
                       return (
                         <tr 
@@ -445,15 +497,17 @@ const SyllabusApproval = () => {
                             <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
-                              {overallStatus === 'pending_approval' ? 'Pending Approval' : 
-                               overallStatus === 'pending_review' ? 'Pending Review' :
-                               overallStatus === 'needs_revision' ? 'Needs Revision' :
-                               overallStatus}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                {reviewStatusText}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                                {approvalStatusText}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900">
-                            {syllabus.version || '1.0'}
+                            {revisionNo}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
                             {formatDate(syllabus.created_at)}
