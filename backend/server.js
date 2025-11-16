@@ -3330,6 +3330,31 @@ app.post('/api/students/enroll', async (req, res) => {
   }
 });
 
+// Unenroll student from a section
+app.delete('/api/students/unenroll/:enrollmentId', async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    if (!enrollmentId) return res.status(400).json({ error: 'enrollment_id is required' });
+    
+    console.log(`🔍 [STUDENTS] Unenrolling student with enrollment_id: ${enrollmentId}`);
+    
+    const result = await pool.query(
+      'DELETE FROM course_enrollments WHERE enrollment_id = $1',
+      [enrollmentId]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+    
+    console.log(`✅ [STUDENTS] Student unenrolled successfully`);
+    res.json({ success: true, message: 'Student unenrolled successfully' });
+  } catch (error) {
+    console.error('❌ [STUDENTS] Error unenrolling student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Global error handler - CORS middleware should handle headers
 app.use((err, req, res, next) => {
   console.error('❌ [ERROR]', err.message);

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
+import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
 import LazyStudentImage from '../../components/LazyStudentImage'
@@ -37,6 +37,8 @@ const AssignFaculty = () => {
   const [showEnrolledView, setShowEnrolledView] = useState(false) // Toggle between available and enrolled
   const [courseSections, setCourseSections] = useState([]) // Sections for the current course
   const [selectedSectionFilter, setSelectedSectionFilter] = useState('') // Selected section for filtering enrolled students
+  const [selectedSidebarStudents, setSelectedSidebarStudents] = useState(new Set()) // Selected students in sidebar for unenroll
+  const [unenrollingStudents, setUnenrollingStudents] = useState(new Set()) // Students being unenrolled
 
   // Success message state
   const [successMessage, setSuccessMessage] = useState('')
@@ -66,6 +68,7 @@ const AssignFaculty = () => {
   const handleClassSelect = async (classItem) => {
     setSelectedClass(classItem)
     setLoadingStudents(true)
+    setSelectedSidebarStudents(new Set()) // Reset selection when class changes
     
     try {
       // Priority 1: Fetch student data WITHOUT photos for fast initial load
@@ -87,6 +90,88 @@ const AssignFaculty = () => {
     }
   }
 
+  // Handle toggling student selection in sidebar
+  const handleToggleSidebarStudent = (enrollmentId) => {
+    setSelectedSidebarStudents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(enrollmentId)) {
+        newSet.delete(enrollmentId)
+      } else {
+        newSet.add(enrollmentId)
+      }
+      return newSet
+    })
+  }
+
+  // Handle selecting/deselecting all students in sidebar
+  const handleSelectAllSidebar = () => {
+    if (selectedSidebarStudents.size === students.length) {
+      setSelectedSidebarStudents(new Set())
+    } else {
+      setSelectedSidebarStudents(new Set(students.map(s => s.enrollment_id)))
+    }
+  }
+
+  // Handle bulk unenroll
+  const handleBulkUnenroll = async () => {
+    if (!selectedClass || selectedSidebarStudents.size === 0) return
+    
+    if (!confirm(`Are you sure you want to unenroll ${selectedSidebarStudents.size} student(s)?`)) {
+      return
+    }
+    
+    const enrollmentIds = Array.from(selectedSidebarStudents)
+    setUnenrollingStudents(new Set(enrollmentIds))
+    
+    try {
+      // Unenroll students one by one
+      const unenrollPromises = enrollmentIds.map(async (enrollmentId) => {
+        const response = await fetch(`/api/students/unenroll/${enrollmentId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          throw new Error(data.error || `Failed to unenroll student: ${response.status}`)
+        }
+        
+        return { success: true, enrollmentId }
+      })
+      
+      const results = await Promise.allSettled(unenrollPromises)
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+      const failed = results.length - successful
+      
+      // Clear selected students
+      setSelectedSidebarStudents(new Set())
+      
+      // Refresh the enrolled students list
+      await handleClassSelect(selectedClass)
+      
+      // Show success message
+      if (successful > 0) {
+        setSuccessMessage(
+          failed > 0 
+            ? `${successful} student(s) unenrolled successfully. ${failed} student(s) failed to unenroll.`
+            : `${successful} student(s) unenrolled successfully!`
+        )
+        setShowSuccessModal(true)
+      } else {
+        alert('No students were unenrolled. Please try again.')
+      }
+      
+    } catch (error) {
+      console.error('Error unenrolling students:', error)
+      alert(`Failed to unenroll students: ${error.message}`)
+    } finally {
+      setUnenrollingStudents(new Set())
+    }
+  }
+
   // Handle opening students modal - fetch available students
   const handleOpenStudentsModal = async () => {
     if (!selectedClass) return
@@ -95,6 +180,7 @@ const AssignFaculty = () => {
     setShowEnrolledView(false)
     setStudentSearchQuery('')
     setSelectedStudents(new Set()) // Reset selected students when opening modal
+    setSelectedSectionFilter('') // Reset section filter when opening modal
     
     // Load available students by default
     await loadAvailableStudents()
@@ -118,20 +204,13 @@ const AssignFaculty = () => {
     }
   }
 
-  // Load enrolled students and sections for the course
+  // Load enrolled students and sections for the course (all sections)
   const loadEnrolledStudents = async () => {
     if (!selectedClass) return
     
     setLoadingEnrolledStudents(true)
     try {
-      // Fetch enrolled students
-      const response = await fetch(`/api/section-courses/${selectedClass.id}/students`)
-      if (!response.ok) throw new Error(`Failed to fetch enrolled students: ${response.status}`)
-      const data = await response.json()
-      setEnrolledStudents(Array.isArray(data) ? data : [])
-      
-      // Fetch all sections for this course (across all terms/sections)
-      // Get course_id from classes array (which has course_id from /api/section-courses/assigned)
+      // Get course_id from classes array
       const matchingClass = classes.find(cls => String(cls.id) === String(selectedClass.id))
       let courseId = matchingClass?.course_id
       
@@ -173,6 +252,38 @@ const AssignFaculty = () => {
           setCourseSections(uniqueSections.sort((a, b) => 
             (a.section_code || '').localeCompare(b.section_code || '')
           ))
+          
+          // Fetch all enrolled students from ALL sections of this course
+          const allEnrolledStudents = []
+          for (const sectionCourse of courseSectionCourses) {
+            try {
+              const studentsResponse = await fetch(`/api/section-courses/${sectionCourse.section_course_id}/students`)
+              if (studentsResponse.ok) {
+                const studentsData = await studentsResponse.json()
+                if (Array.isArray(studentsData)) {
+                  // Add section info to each student
+                  const studentsWithSection = studentsData.map(student => ({
+                    ...student,
+                    section_id: sectionCourse.section_id,
+                    section_code: sectionCourse.section_code,
+                    section_course_id: sectionCourse.section_course_id
+                  }))
+                  allEnrolledStudents.push(...studentsWithSection)
+                }
+              }
+            } catch (err) {
+              console.error(`Error fetching students for section ${sectionCourse.section_code}:`, err)
+            }
+          }
+          
+          setEnrolledStudents(allEnrolledStudents)
+        }
+      } else {
+        // Fallback: fetch only current section if course_id not found
+        const response = await fetch(`/api/section-courses/${selectedClass.id}/students`)
+        if (response.ok) {
+          const data = await response.json()
+          setEnrolledStudents(Array.isArray(data) ? data : [])
         }
       }
     } catch (error) {
@@ -189,7 +300,7 @@ const AssignFaculty = () => {
     setShowEnrolledView(showEnrolled)
     setSelectedStudents(new Set())
     setStudentSearchQuery('')
-    setSelectedSectionFilter('') // Reset section filter when switching views
+    setSelectedSectionFilter('') // Reset section filter to "All Sections" when switching views
     
     if (showEnrolled) {
       await loadEnrolledStudents()
@@ -764,9 +875,9 @@ const AssignFaculty = () => {
           </div>
 
           {/* Content Shell with search to mirror StudentManagement */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-150px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-150px)]">
             {/* Left Section */}
-            <div className="lg:col-span-3 flex flex-col h-full min-h-0">
+            <div className="lg:col-span-2 flex flex-col h-full min-h-0">
               {/* Search Bar */}
               <div className="mb-6 shrink-0">
                 <div className="flex items-center gap-3">
@@ -809,8 +920,8 @@ const AssignFaculty = () => {
               </div>
             </div>
 
-            {/* Right Section - Class Details and Students */}
-            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-auto">
+            {/* Right Section - Class Details and Students (Expanded) */}
+            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col">
               {loadingStudents && !selectedClass ? (
                 <ClassDetailsSkeleton />
               ) : selectedClass ? (
@@ -826,8 +937,8 @@ const AssignFaculty = () => {
                   </div>
 
                   {/* Students List */}
-                  <div className="flex-1 min-h-0">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="flex items-center justify-between mb-3 shrink-0">
                       <h4 className="text-md font-medium text-gray-900">Enrolled Students</h4>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
@@ -842,49 +953,105 @@ const AssignFaculty = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Select All and Unenroll Button */}
+                    {students.length > 0 && (
+                      <div className="mb-3 shrink-0 flex items-center justify-between">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedSidebarStudents.size === students.length && students.length > 0}
+                            onChange={handleSelectAllSidebar}
+                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            Select All ({students.length} students)
+                          </span>
+                        </label>
+                        {selectedSidebarStudents.size > 0 && (
+                          <button
+                            onClick={handleBulkUnenroll}
+                            disabled={unenrollingStudents.size > 0}
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {unenrollingStudents.size > 0 ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                <span>Unenrolling...</span>
+                              </>
+                            ) : (
+                              <>
+                                <TrashIcon className="h-4 w-4" />
+                                <span>Unenroll ({selectedSidebarStudents.size})</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     
                     {loadingStudents ? (
-                      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                        <StudentListItemSkeleton count={6} />
+                      <div className="flex-1 overflow-y-auto">
+                        <div className="space-y-3">
+                          <StudentListItemSkeleton count={6} />
+                        </div>
                       </div>
                     ) : students.length > 0 ? (
-                      <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
-                        {students.map((student) => (
-                          <div key={student.student_id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div className="flex-shrink-0">
-                              <LazyStudentImage
-                                studentId={student.student_id}
-                                alt={student.full_name}
-                                size="md"
-                                shape="circle"
-                                className="border-2 border-gray-200"
-                                priority={false}
-                              />
+                      <div className="flex-1 overflow-y-auto">
+                        <div className="space-y-2">
+                          {students.map((student) => (
+                            <div 
+                              key={student.enrollment_id || student.student_id} 
+                              className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                                selectedSidebarStudents.has(student.enrollment_id)
+                                  ? 'bg-red-50 border-2 border-red-300'
+                                  : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                              }`}
+                            >
+                              <div className="flex-shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSidebarStudents.has(student.enrollment_id)}
+                                  onChange={() => handleToggleSidebarStudent(student.enrollment_id)}
+                                  disabled={unenrollingStudents.has(student.enrollment_id)}
+                                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 disabled:opacity-50"
+                                />
+                              </div>
+                              <div className="flex-shrink-0">
+                                <LazyStudentImage
+                                  studentId={student.student_id}
+                                  alt={student.full_name}
+                                  size="md"
+                                  shape="circle"
+                                  className="border-2 border-gray-200"
+                                  priority={false}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {formatStudentName(student.full_name)}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {student.student_number}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  student.status === 'enrolled' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : student.status === 'dropped'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {student.status || 'enrolled'}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {formatStudentName(student.full_name)}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {student.student_number}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                student.status === 'enrolled' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : student.status === 'dropped'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {student.status || 'enrolled'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center py-8 text-center">
+                      <div className="flex-1 flex items-center justify-center text-center">
                         <div>
                           <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1185,7 +1352,7 @@ const AssignFaculty = () => {
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {showEnrolledView ? 'Enrolled Students' : 'Add Students'} - {selectedClass.title}
+                  {showEnrolledView ? 'Existing Class List' : 'Add Students'} - {selectedClass.title}
                 </h3>
                 <p className="text-sm text-gray-600">
                   {selectedClass.code} • {selectedClass.section} • {selectedClass.instructor}
@@ -1212,7 +1379,7 @@ const AssignFaculty = () => {
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Enrolled
+                    Existing Class List
                   </button>
                 </div>
                 <button
@@ -1264,7 +1431,7 @@ const AssignFaculty = () => {
                   )}
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-gray-900">
-                      {showEnrolledView ? 'Enrolled Students' : 'Available Students'}
+                      {showEnrolledView ? 'Existing Class List' : 'Available Students'}
                     </h4>
                     <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
                       {showEnrolledView 
@@ -1368,7 +1535,7 @@ const AssignFaculty = () => {
                         {studentSearchQuery 
                           ? 'No students found matching your search' 
                           : showEnrolledView 
-                            ? 'No students enrolled in this class' 
+                            ? 'No students in existing classes' 
                             : 'No available students to enroll'
                         }
                       </p>
