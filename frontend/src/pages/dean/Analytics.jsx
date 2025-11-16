@@ -179,6 +179,8 @@ const Analytics = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [selectedYearLevel, setSelectedYearLevel] = useState('');
+  const [availableILOs, setAvailableILOs] = useState([]);
+  const [selectedILOId, setSelectedILOId] = useState('all');
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
@@ -576,7 +578,8 @@ const Analytics = () => {
       selectedSectionId || 'all',
       selectedProgramId || 'all',
       selectedYearLevel || 'all',
-      selectedSpecializationId || 'all'
+      selectedSpecializationId || 'all',
+      selectedILOId || 'all'
     ].join('_');
     
     // If force refresh, clear all caches first
@@ -678,6 +681,11 @@ const Analytics = () => {
     if (selectedTermId) params.append('term_id', selectedTermId);
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
+    // Add ILO filter if selected (not 'all')
+    if (selectedILOId && selectedILOId !== 'all') {
+      params.append('ilo_id', selectedILOId);
+      console.log('🎯 [DEAN ANALYTICS] Adding ILO filter:', selectedILOId);
+    }
     // Note: year_level filtering is done client-side since backend doesn't support it directly
     // Add force_refresh parameter to bypass backend cache and recompute clusters
     if (forceRefresh) {
@@ -823,7 +831,8 @@ const Analytics = () => {
             selectedSectionId || 'all',
             selectedProgramId || 'all',
             selectedYearLevel || 'all',
-            selectedSpecializationId || 'all'
+            selectedSpecializationId || 'all',
+            selectedILOId || 'all'
           ].join('_');
           
           // Store in sessionStorage for instant next load
@@ -1074,10 +1083,48 @@ const Analytics = () => {
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
+  // Fetch ILOs when term changes
+  useEffect(() => {
+    const fetchILOs = async () => {
+      if (!selectedTermId) {
+        setAvailableILOs([]);
+        setSelectedILOId('all');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/ilos/term/${selectedTermId}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const ilos = await response.json();
+          setAvailableILOs(ilos);
+          console.log(`✅ [DEAN ANALYTICS] Loaded ${ilos.length} ILOs for term ${selectedTermId}`);
+          // Reset ILO filter when term changes
+          setSelectedILOId('all');
+        } else {
+          console.warn('⚠️ [DEAN ANALYTICS] Failed to fetch ILOs');
+          setAvailableILOs([]);
+          setSelectedILOId('all');
+        }
+      } catch (error) {
+        console.error('❌ [DEAN ANALYTICS] Error fetching ILOs:', error);
+        setAvailableILOs([]);
+        setSelectedILOId('all');
+      }
+    };
+    
+    fetchILOs();
+  }, [selectedTermId]);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId]);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId, selectedILOId]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -1396,6 +1443,28 @@ const Analytics = () => {
                       </select>
                     </div>
                   </div>
+
+                  {/* ILO Filter - Clustering Based on Mapping */}
+                  {selectedTermId && availableILOs.length > 0 && (
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <select
+                          value={selectedILOId}
+                          onChange={(e) => setSelectedILOId(e.target.value)}
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                          title="Filter clustering by ILO mapping. 'Overall' uses all assessments, specific ILOs use only assessments mapped to that ILO."
+                        >
+                          <option value="all">Overall (All Assessments)</option>
+                          {availableILOs.map(ilo => (
+                            <option key={ilo.ilo_id} value={ilo.ilo_id.toString()}>
+                              {ilo.ilo_code} {ilo.description ? `- ${ilo.description.substring(0, 40)}${ilo.description.length > 40 ? '...' : ''}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Program Filter (Major) */}
                   <div className="flex-1 min-w-[200px]">

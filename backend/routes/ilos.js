@@ -779,5 +779,39 @@ function determineAssessmentTasks(iloDescription, iloCode) {
   return tasks;
 }
 
+// GET /api/ilos/term/:termId - Get all ILOs for a specific term
+router.get('/term/:termId', async (req, res) => {
+  const { termId } = req.params;
+  
+  try {
+    // Get ILOs that exist in syllabi for this term
+    const query = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code as ilo_code,
+        i.description,
+        COUNT(DISTINCT aiw.assessment_id) as assessment_count,
+        SUM(aiw.weight_percentage) as total_weight
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN section_courses sc ON sy.section_course_id = sc.section_course_id
+      LEFT JOIN assessment_ilo_weights aiw ON i.ilo_id = aiw.ilo_id
+      LEFT JOIN assessments a ON aiw.assessment_id = a.assessment_id
+      LEFT JOIN section_courses sc2 ON a.section_course_id = sc2.section_course_id
+      WHERE sc.term_id = $1
+        AND (sc2.term_id = $1 OR sc2.term_id IS NULL)
+        AND i.is_active = TRUE
+      GROUP BY i.ilo_id, i.code, i.description
+      ORDER BY i.code
+    `;
+    
+    const result = await db.query(query, [termId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching ILOs for term:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 export default router;
 
