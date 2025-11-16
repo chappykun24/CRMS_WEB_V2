@@ -2113,14 +2113,14 @@ const Assessments = () => {
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
                                 <div className="px-2 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
-                                  <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-1 text-left">Student</div>
-                                  <div className="w-[55px] flex-shrink-0 px-0.5 text-center">Raw</div>
-                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Penalty</div>
-                                  <div className="w-[65px] flex-shrink-0 px-0.5 text-center">Adjusted</div>
-                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Actual</div>
-                                  <div className="w-[70px] flex-shrink-0 px-0.5 text-center">Transmuted</div>
-                                  <div className="w-[90px] flex-shrink-0 px-0.5 text-center">Feedback</div>
-                                  <div className="w-[200px] flex-shrink-0 px-1 text-center whitespace-nowrap">Status / %</div>
+                                  <div className="w-[160px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-1 text-left">Student</div>
+                                  <div className="w-[70px] flex-shrink-0 px-0.5 text-center">Raw</div>
+                                  <div className="w-[70px] flex-shrink-0 px-0.5 text-center">Penalty</div>
+                                  <div className="w-[80px] flex-shrink-0 px-0.5 text-center">Adjusted</div>
+                                  <div className="w-[80px] flex-shrink-0 px-0.5 text-center">Actual</div>
+                                  <div className="w-[100px] flex-shrink-0 px-0.5 text-center">Transmuted</div>
+                                  <div className="w-[120px] flex-shrink-0 px-0.5 text-center">Feedback</div>
+                                  <div className="w-[220px] flex-shrink-0 px-1 text-center whitespace-nowrap">Status / Percentage</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -2135,7 +2135,7 @@ const Assessments = () => {
                                     })
                                     .map(([enrollmentId, gradeData]) => (
                                     <li key={enrollmentId} className="flex items-center px-2 py-2 hover:bg-gray-50 bg-white transition-colors">
-                                      <div className="w-[140px] flex-shrink-0 flex items-center gap-1.5 sticky left-0 bg-white z-20 pr-1 border-r border-gray-200">
+                                      <div className="w-[160px] flex-shrink-0 flex items-center gap-1.5 sticky left-0 bg-white z-20 pr-1 border-r border-gray-200">
                                         {!imagesReady ? (
                                           <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
                                         ) : (
@@ -2156,7 +2156,7 @@ const Assessments = () => {
                                           <div className="text-[10px] text-gray-500 truncate leading-tight mt-0.5">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-0.5">
+                                      <div className="w-[70px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
@@ -2167,7 +2167,7 @@ const Assessments = () => {
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[60px] flex-shrink-0 px-0.5">
+                                      <div className="w-[70px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
@@ -2177,23 +2177,25 @@ const Assessments = () => {
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
+                                      <div className="w-[80px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="w-[60px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
+                                      <div className="w-[80px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           return calculateActualScore(adjusted, selectedAssessment.total_points).toFixed(2)
                                         })()}
                                       </div>
-                                      <div className="w-[70px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
+                                      <div className="w-[100px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
-                                          return calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0).toFixed(2)
+                                          const transmuted = calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0)
+                                          const rawScore = parseFloat(gradeData.raw_score) || 0
+                                          return `${transmuted.toFixed(2)} (${rawScore})`
                                         })()}
                                       </div>
-                                      <div className="w-[90px] flex-shrink-0 px-0.5">
+                                      <div className="w-[120px] flex-shrink-0 px-0.5">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
@@ -2203,7 +2205,7 @@ const Assessments = () => {
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="w-[200px] flex-shrink-0 px-1">
+                                      <div className="w-[220px] flex-shrink-0 px-1">
                                         <div className="flex items-center gap-1.5 justify-start">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
