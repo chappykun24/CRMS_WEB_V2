@@ -266,9 +266,21 @@ const Syllabus = () => {
       if (response.ok) {
         const data = await response.json()
         const syllabiData = Array.isArray(data) ? data : []
-        setSyllabi(syllabiData)
+        
+        // Ensure all syllabi have syllabus_id
+        const normalizedSyllabi = syllabiData.map(syllabus => ({
+          ...syllabus,
+          syllabus_id: syllabus.syllabus_id || syllabus.id
+        }))
+        
+        console.log('🔍 [LOAD SYLLABI] Loaded syllabi:', {
+          count: normalizedSyllabi.length,
+          ids: normalizedSyllabi.map(s => s.syllabus_id)
+        })
+        
+        setSyllabi(normalizedSyllabi)
         setError('')
-        safeSetItem(cacheKey, syllabiData)
+        safeSetItem(cacheKey, normalizedSyllabi)
       } else {
         setError('Failed to load syllabus')
         if (showLoading) setSyllabi([])
@@ -492,15 +504,22 @@ const Syllabus = () => {
 
   const handleDeleteSyllabus = async (syllabusId) => {
     // If syllabusId is provided, use it; otherwise use viewingSyllabus
-    let targetSyllabusId = syllabusId || viewingSyllabus?.syllabus_id
-    const targetSyllabus = syllabusId ? null : viewingSyllabus
+    let targetSyllabusId = syllabusId
+    const targetSyllabus = viewingSyllabus
+
+    // If no syllabusId provided, extract from viewingSyllabus
+    if (!targetSyllabusId && targetSyllabus) {
+      targetSyllabusId = targetSyllabus.syllabus_id || targetSyllabus.id
+    }
 
     // Debug logging
     console.log('🔍 [DELETE] handleDeleteSyllabus called:', { 
       syllabusId, 
       viewingSyllabus: viewingSyllabus ? { 
         syllabus_id: viewingSyllabus.syllabus_id,
-        title: viewingSyllabus.title 
+        id: viewingSyllabus.id,
+        title: viewingSyllabus.title,
+        keys: Object.keys(viewingSyllabus)
       } : null,
       targetSyllabusId,
       targetSyllabusIdType: typeof targetSyllabusId
@@ -514,27 +533,29 @@ const Syllabus = () => {
     }
     
     // Convert to string and ensure it's valid
-    if (targetSyllabusId != null) {
+    if (targetSyllabusId != null && targetSyllabusId !== undefined) {
       targetSyllabusId = String(targetSyllabusId).trim()
       // Check if it's a valid number string
-      if (targetSyllabusId === '' || targetSyllabusId === 'null' || targetSyllabusId === 'undefined') {
+      if (targetSyllabusId === '' || targetSyllabusId === 'null' || targetSyllabusId === 'undefined' || targetSyllabusId === 'NaN') {
         targetSyllabusId = null
       }
     } else {
       targetSyllabusId = null
     }
 
-    if (!targetSyllabusId || targetSyllabusId === 'null' || targetSyllabusId === 'undefined') {
+    if (!targetSyllabusId || targetSyllabusId === 'null' || targetSyllabusId === 'undefined' || targetSyllabusId === 'NaN') {
       console.error('❌ [DELETE] Invalid syllabus ID for deletion:', { 
         syllabusId, 
         viewingSyllabus: viewingSyllabus ? {
           syllabus_id: viewingSyllabus.syllabus_id,
+          id: viewingSyllabus.id,
           title: viewingSyllabus.title,
-          keys: Object.keys(viewingSyllabus)
+          keys: Object.keys(viewingSyllabus),
+          allProps: viewingSyllabus
         } : null,
         targetSyllabusId 
       })
-      alert('Error: Invalid syllabus ID. Cannot delete. Please refresh the page and try again.')
+      alert('Error: Invalid syllabus ID. Cannot delete. The syllabus may not have been loaded correctly. Please close and reopen the syllabus view, then try again.')
       return
     }
 
@@ -659,14 +680,34 @@ const Syllabus = () => {
   }
 
   const openViewModal = async (syllabus) => {
-    setViewingSyllabus(syllabus)
+    // Ensure syllabus has syllabus_id
+    if (!syllabus || (!syllabus.syllabus_id && !syllabus.id)) {
+      console.error('❌ [VIEW MODAL] Invalid syllabus object:', syllabus)
+      alert('Error: Invalid syllabus data. Cannot open view modal.')
+      return
+    }
+    
+    // Normalize the syllabus object to ensure syllabus_id exists
+    const normalizedSyllabus = {
+      ...syllabus,
+      syllabus_id: syllabus.syllabus_id || syllabus.id
+    }
+    
+    console.log('🔍 [VIEW MODAL] Opening syllabus:', {
+      original: { syllabus_id: syllabus.syllabus_id, id: syllabus.id },
+      normalized: { syllabus_id: normalizedSyllabus.syllabus_id }
+    })
+    
+    setViewingSyllabus(normalizedSyllabus)
     setShowViewModal(true)
     setShowEditRequestForm(false)
     setEditRequestReason('')
     
+    const syllabusId = normalizedSyllabus.syllabus_id
+    
     // Check if syllabus is published
     try {
-      const response = await fetch(`/api/assessments/syllabus/${syllabus.syllabus_id}`)
+      const response = await fetch(`/api/assessments/syllabus/${syllabusId}`)
       if (response.ok) {
         const assessments = await response.json()
         setIsPublished(Array.isArray(assessments) && assessments.length > 0 && assessments.some(a => a.is_published))
@@ -679,7 +720,7 @@ const Syllabus = () => {
     }
     
     await Promise.all([
-      loadSyllabusILOs(syllabus.syllabus_id),
+      loadSyllabusILOs(syllabusId),
       loadReferenceData()
     ])
   }
