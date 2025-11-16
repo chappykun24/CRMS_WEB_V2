@@ -44,6 +44,9 @@ const AssignFaculty = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
+  // Ref for sidebar to detect clicks outside
+  const sidebarRef = useRef(null)
+
   const [formData, setFormData] = useState({
     title: '',
     code: '',
@@ -856,6 +859,32 @@ const AssignFaculty = () => {
     )
   }, [query, classes])
 
+  // Handle click outside sidebar to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Only close if sidebar is open and click is outside the sidebar
+      if (selectedClass && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        // Don't close if clicking on a modal or its backdrop
+        const target = event.target
+        const isModal = target.closest('.fixed.inset-0')
+        if (!isModal) {
+          setSelectedClass(null)
+          setSelectedSidebarStudents(new Set())
+        }
+      }
+    }
+
+    // Add event listener when sidebar is open
+    if (selectedClass) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [selectedClass])
+
   return (
     <>
       <div className="pt-0 pb-4 overflow-hidden">
@@ -931,6 +960,7 @@ const AssignFaculty = () => {
             {/* Right Section - Class Details and Students (Expanded) - Only show when class is selected */}
             {selectedClass && (
               <div 
+                ref={sidebarRef}
                 key="student-list-sidebar"
                 className="bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full">
               {loadingStudents ? (
