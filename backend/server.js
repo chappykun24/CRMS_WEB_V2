@@ -2893,14 +2893,32 @@ app.get('/api/section-courses/school-terms', async (req, res) => {
 
 app.get('/api/section-courses/faculty', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT u.user_id, u.name, u.profile_pic
+    const { term_id } = req.query;
+    
+    let query = `
+      SELECT DISTINCT u.user_id, u.name, u.profile_pic
       FROM users u
       JOIN roles r ON u.role_id = r.role_id
-      WHERE LOWER(r.name) = 'faculty' AND u.is_approved = true
-      ORDER BY u.name
-    `);
-    res.json(result.rows);
+    `;
+    
+    // If term_id is provided, only show faculty teaching in that term
+    if (term_id && !isNaN(parseInt(term_id))) {
+      query += `
+        INNER JOIN section_courses sc ON u.user_id = sc.instructor_id
+        WHERE LOWER(r.name) = 'faculty' 
+          AND u.is_approved = true
+          AND sc.term_id = $1
+      `;
+      const result = await pool.query(query + ` ORDER BY u.name`, [term_id]);
+      res.json(result.rows);
+    } else {
+      // If no term_id, return all approved faculty
+      query += `
+        WHERE LOWER(r.name) = 'faculty' AND u.is_approved = true
+      `;
+      const result = await pool.query(query + ` ORDER BY u.name`);
+      res.json(result.rows);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -13,7 +13,8 @@
     "migrate:dry-run": "node scripts/run_migration.js --dry-run",
     "show-clusters": "node scripts/show_clusters.js",
     "debug-clustering": "node scripts/debug_clustering.js",
-    "insert-assessment-grades": "node ../archive/scripts/insertAssessmentGrades.js"
+    "insert-assessment-grades": "node ../archive/scripts/insertAssessmentGrades.js",
+    "identify-clusters": "node ../archive/scripts/identifyClusters.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

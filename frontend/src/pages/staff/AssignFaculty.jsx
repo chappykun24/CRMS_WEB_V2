@@ -16,6 +16,7 @@ const AssignFaculty = () => {
   const [courses, setCourses] = useState([])
   const [showCourseSuggestions, setShowCourseSuggestions] = useState(false)
   const [terms, setTerms] = useState([])
+  const [activeTermId, setActiveTermId] = useState(null)
   const [sections, setSections] = useState([])
   const [faculty, setFaculty] = useState([])
   
@@ -279,7 +280,16 @@ const AssignFaculty = () => {
         const response = await fetch(`${API_BASE_URL}/school-terms`)
         if (!response.ok) throw new Error(`Failed to fetch school terms: ${response.status}`)
         const data = await response.json()
-        if (isMounted) setTerms(Array.isArray(data) ? data : [])
+        if (isMounted) {
+          const termsData = Array.isArray(data) ? data : []
+          setTerms(termsData)
+          // Find and set active term
+          const activeTerm = termsData.find(t => t.is_active)
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [ASSIGN FACULTY] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          }
+        }
       } catch (error) {
         console.error('Error loading school terms:', error)
       }
@@ -301,10 +311,19 @@ const AssignFaculty = () => {
       
       ;(async () => {
         try {
-          const response = await fetch(`${API_BASE_URL}/section-courses/faculty`)
+          // Fetch faculty filtered by active term if available
+          const url = activeTermId 
+            ? `${API_BASE_URL}/section-courses/faculty?term_id=${activeTermId}`
+            : `${API_BASE_URL}/section-courses/faculty`
+          const response = await fetch(url)
           if (!response.ok) throw new Error(`Failed to fetch faculty: ${response.status}`)
           const data = await response.json()
-          if (isMounted) setFaculty(Array.isArray(data) ? data : [])
+          if (isMounted) {
+            setFaculty(Array.isArray(data) ? data : [])
+            if (activeTermId) {
+              console.log(`✅ [ASSIGN FACULTY] Loaded ${data.length} faculty teaching in active term`)
+            }
+          }
         } catch (error) {
           console.error('Error loading faculty:', error)
         }
@@ -321,7 +340,27 @@ const AssignFaculty = () => {
     return () => {
       isMounted = false
     }
-  }, [showCreateModal])
+  }, [showCreateModal, activeTermId])
+
+  // Fetch active term on component mount
+  useEffect(() => {
+    const fetchActiveTerm = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/school-terms`)
+        if (response.ok) {
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [ASSIGN FACULTY] Active term found on mount:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          }
+        }
+      } catch (error) {
+        console.error('❌ [ASSIGN FACULTY] Error fetching active term:', error')
+      }
+    }
+    fetchActiveTerm()
+  }, [])
 
   // Load existing section courses when component mounts - with caching
   useEffect(() => {
