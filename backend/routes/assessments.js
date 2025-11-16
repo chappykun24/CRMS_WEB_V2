@@ -1012,31 +1012,44 @@ router.get('/dean-analytics/sample', async (req, res) => {
           )
           FROM (
             SELECT
+              assessment_scores.ilo_id,
+              assessment_scores.ilo_code,
+              assessment_scores.ilo_description,
+              assessment_scores.total_weight,
+              json_agg(
+                json_build_object(
+                  'assessment_id', assessment_scores.assessment_id,
+                  'assessment_title', assessment_scores.assessment_title,
+                  'transmuted_score', assessment_scores.transmuted_score,
+                  'raw_score', assessment_scores.raw_score,
+                  'adjusted_score', assessment_scores.adjusted_score,
+                  'weight_percentage', assessment_scores.weight_percentage,
+                  'ilo_weight_percentage', assessment_scores.ilo_weight_percentage
+                )
+                ORDER BY assessment_scores.assessment_id
+              ) as assessments
+            FROM (
+              SELECT
               i.ilo_id,
               i.code as ilo_code,
               i.description as ilo_description,
               SUM(aiw.weight_percentage) OVER (PARTITION BY i.ilo_id) as total_weight,
-              json_agg(
-                json_build_object(
-                  'assessment_id', a.assessment_id,
-                  'assessment_title', a.title,
-                  'transmuted_score', 
-                    CASE 
-                      WHEN MAX(sub.transmuted_score) IS NOT NULL
-                      THEN MAX(sub.transmuted_score)
-                      WHEN MAX(sub.adjusted_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                      THEN ((MAX(sub.adjusted_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-                      WHEN MAX(sub.total_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                      THEN ((MAX(sub.total_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-                      ELSE NULL
-                    END,
-                  'raw_score', MAX(sub.total_score),
-                  'adjusted_score', MAX(sub.adjusted_score),
-                  'weight_percentage', a.weight_percentage,
-                  'ilo_weight_percentage', aiw.weight_percentage
-                )
-                ORDER BY a.assessment_id
-              ) as assessments
+              a.assessment_id,
+              a.title as assessment_title,
+              a.total_points,
+              a.weight_percentage,
+              aiw.weight_percentage as ilo_weight_percentage,
+              CASE 
+                WHEN MAX(sub.transmuted_score) IS NOT NULL
+                THEN MAX(sub.transmuted_score)
+                WHEN MAX(sub.adjusted_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                THEN ((MAX(sub.adjusted_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                WHEN MAX(sub.total_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                THEN ((MAX(sub.total_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                ELSE NULL
+              END as transmuted_score,
+              MAX(sub.total_score) as raw_score,
+              MAX(sub.adjusted_score) as adjusted_score
             FROM course_enrollments ce_ilo_detail
             INNER JOIN section_courses sc_ilo_detail ON ce_ilo_detail.section_course_id = sc_ilo_detail.section_course_id
             INNER JOIN assessments a ON sc_ilo_detail.section_course_id = a.section_course_id
@@ -1056,6 +1069,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
               ${iloSoAssessmentFilter || ''}
             GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage, a.assessment_id, a.title, a.total_points, a.weight_percentage
             HAVING COUNT(sub.submission_id) > 0 OR COUNT(CASE WHEN sub.transmuted_score IS NOT NULL THEN 1 END) > 0
+            ) assessment_scores
+            GROUP BY assessment_scores.ilo_id, assessment_scores.ilo_code, assessment_scores.ilo_description, assessment_scores.total_weight
           ) ilo_data
         )::JSONB AS assessment_scores_by_ilo,
         -- Specializations: array of specialization_ids from courses the student is enrolled in
