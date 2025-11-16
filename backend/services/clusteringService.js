@@ -410,8 +410,35 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
   const sanitizedPayload = normalizeStudentData(students);
   console.log(`📤 [Clustering] Sending ${sanitizedPayload.length} students to clustering API`);
   console.log(`🔍 [Clustering] API Endpoint: ${config.endpoint}`);
-  console.log(`🔍 [Clustering] Payload sample (first student):`, sanitizedPayload.length > 0 ? sanitizedPayload[0] : 'No students');
   
+  // Log detailed sample payload
+  if (sanitizedPayload.length > 0) {
+    const sample = sanitizedPayload[0];
+    console.log(`🔍 [Clustering] Payload sample (first student):`, {
+      student_id: sample.student_id,
+      attendance_percentage: sample.attendance_percentage,
+      attendance_present_count: sample.attendance_present_count,
+      attendance_absent_count: sample.attendance_absent_count,
+      attendance_late_count: sample.attendance_late_count,
+      attendance_total_sessions: sample.attendance_total_sessions,
+      average_score: sample.average_score,
+      ilo_weighted_score: sample.ilo_weighted_score,
+      submission_rate: sample.submission_rate,
+      submission_ontime_count: sample.submission_ontime_count,
+      submission_late_count: sample.submission_late_count,
+      submission_missing_count: sample.submission_missing_count,
+      submission_total_assessments: sample.submission_total_assessments,
+      allKeys: Object.keys(sample)
+    });
+    
+    // Check for missing critical fields
+    const criticalFields = ['student_id', 'attendance_percentage', 'average_score', 'submission_rate'];
+    const missingFields = criticalFields.filter(field => sample[field] === null || sample[field] === undefined);
+    if (missingFields.length > 0) {
+      console.warn(`⚠️ [Clustering] Sample student missing critical fields:`, missingFields);
+    }
+  }
+
   // Create AbortController for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -467,13 +494,25 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       }
     }
     
-    const clusterResults = await response.json();
+    // Get raw response text first for debugging
+    const responseText = await response.text();
+    console.log(`🔍 [Clustering] Raw API response (first 1000 chars):`, responseText.substring(0, 1000));
+    
+    let clusterResults;
+    try {
+      clusterResults = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`❌ [Clustering] Failed to parse JSON response:`, parseError);
+      console.error(`❌ [Clustering] Response text:`, responseText.substring(0, 500));
+      throw new Error(`Clustering API returned invalid JSON: ${parseError.message}`);
+    }
     
     console.log(`🔍 [Clustering] Parsed API response:`, {
       isArray: Array.isArray(clusterResults),
       type: typeof clusterResults,
       length: Array.isArray(clusterResults) ? clusterResults.length : 'N/A',
-      sampleResult: Array.isArray(clusterResults) && clusterResults.length > 0 ? clusterResults[0] : null
+      sampleResult: Array.isArray(clusterResults) && clusterResults.length > 0 ? clusterResults[0] : null,
+      sampleResultKeys: Array.isArray(clusterResults) && clusterResults.length > 0 ? Object.keys(clusterResults[0]) : []
     });
     
     if (!Array.isArray(clusterResults)) {
@@ -506,12 +545,22 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
     if (clusterResults.length > 0) {
       const labelCounts = {};
       const nullLabels = [];
+      const sampleFullResult = clusterResults[0];
+      console.log(`🔍 [Clustering] Full sample result from API:`, JSON.stringify(sampleFullResult, null, 2));
+      
       clusterResults.forEach((r, idx) => {
         const label = r.cluster_label || 'null';
         labelCounts[label] = (labelCounts[label] || 0) + 1;
         if (!r.cluster_label || r.cluster_label === null || r.cluster_label === undefined) {
           if (nullLabels.length < 5) {
-            nullLabels.push({ index: idx, student_id: r.student_id, cluster: r.cluster });
+            nullLabels.push({ 
+              index: idx, 
+              student_id: r.student_id, 
+              cluster: r.cluster,
+              cluster_label: r.cluster_label,
+              clustering_explanation: r.clustering_explanation,
+              allKeys: Object.keys(r)
+            });
           }
         }
       });
@@ -519,12 +568,13 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       if (nullLabels.length > 0 || labelCounts['null'] > 0) {
         const nullCount = labelCounts['null'] || 0;
         console.error(`❌ [Clustering] CRITICAL: Found ${nullCount} results with null cluster_label!`);
-        console.error(`❌ [Clustering] Sample null label entries:`, nullLabels);
+        console.error(`❌ [Clustering] Sample null label entries:`, JSON.stringify(nullLabels, null, 2));
         console.error(`❌ [Clustering] Python API failed to assign cluster labels. Check Python API logs.`);
         console.error(`❌ [Clustering] This could mean:`);
         console.error(`   - Python API encountered an error during clustering`);
         console.error(`   - Python API returned results but cluster_label field is missing/null`);
         console.error(`   - Data sent to Python API is invalid or missing required fields`);
+        console.error(`   - Check clustering_explanation field for error messages`);
       }
     }
     
