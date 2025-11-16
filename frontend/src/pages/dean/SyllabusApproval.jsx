@@ -20,7 +20,7 @@ const SyllabusApproval = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [approving, setApproving] = useState(false)
   const [activeTab, setActiveTab] = useState('pending') // 'pending', 'approved', 'edit-requests'
-  
+
   // ILOs and reference data for mapping tables
   const [selectedSyllabusILOs, setSelectedSyllabusILOs] = useState([])
   const [soReferences, setSoReferences] = useState([])
@@ -542,7 +542,7 @@ const SyllabusApproval = () => {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedSyllabus.title}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedSyllabus.title}</h2>
                     {selectedSyllabus.course_code && (
                       <p className="text-sm text-gray-600 mt-1">Course Code: {selectedSyllabus.course_code}</p>
                     )}
@@ -686,7 +686,7 @@ const SyllabusApproval = () => {
                               ))}
                             </tbody>
                           </table>
-                        </div>
+                    </div>
                       </div>
                     )
                   })()}
@@ -729,7 +729,7 @@ const SyllabusApproval = () => {
                               ))}
                             </tbody>
                           </table>
-                        </div>
+                    </div>
                       </div>
                     )
                   })()}
@@ -840,15 +840,15 @@ const SyllabusApproval = () => {
                                     title="Total weight percentage: Should equal 100%"
                                   >
                                     {totalWeight}%
-                                  </span>
+                                      </span>
                                 </td>
                                 <td className="px-3 py-2 border border-gray-300"></td>
                                 <td className="px-3 py-2 border border-gray-300"></td>
                               </tr>
                             </tbody>
                           </table>
-                        </div>
-                      </div>
+                                  </div>
+                                </div>
                     )
                   })()}
 
@@ -917,7 +917,7 @@ const SyllabusApproval = () => {
                                 </tbody>
                               </table>
                             </div>
-                          </div>
+                              </div>
                         )}
                         
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -945,8 +945,8 @@ const SyllabusApproval = () => {
                                       ))}
                                     </tbody>
                                   </table>
-                                </div>
-                              </div>
+                            </div>
+                          </div>
                             )}
                             {policy?.components && policy.components.length > 0 && (
                               <div>
@@ -973,8 +973,8 @@ const SyllabusApproval = () => {
                                     </tbody>
                                   </table>
                                 </div>
-                              </div>
-                            )}
+                          </div>
+                        )}
                             {!policy?.scale && !policy?.components && assessmentCriteria.length === 0 && (
                               <div className="bg-white p-3 rounded border border-gray-300">
                                 <p className="text-sm text-gray-500 italic">No grading policy details available</p>
@@ -989,18 +989,18 @@ const SyllabusApproval = () => {
                 {/* Assessment and ILO Mapping Tables */}
                 {selectedSyllabusILOs.length > 0 && (() => {
                   // Extract assessment data from grading_policy
-                  let policy = null
-                  try {
+                    let policy = null
+                    try {
                     if (selectedSyllabus.grading_policy) {
                       if (typeof selectedSyllabus.grading_policy === 'string') {
                         policy = JSON.parse(selectedSyllabus.grading_policy)
                       } else {
                         policy = selectedSyllabus.grading_policy
                       }
+                      }
+                    } catch (e) {
+                      policy = null
                     }
-                  } catch (e) {
-                    policy = null
-                  }
                   
                   const assessmentCriteria = policy?.assessment_criteria || []
                   const subAssessments = policy?.sub_assessments || {}
@@ -1058,9 +1058,9 @@ const SyllabusApproval = () => {
                       })
                     }
                     return Array.from(tasks)
-                  }
-                  
-                  return (
+                    }
+                    
+                    return (
                     <div className="mt-4 space-y-4">
                       {/* Assessment Tables Section */}
                       {allAssessmentTasks.length > 0 && (
@@ -1069,7 +1069,7 @@ const SyllabusApproval = () => {
                           
                           <div className="space-y-4">
                             {/* ILO Assessment Mapping */}
-                            <div>
+                      <div>
                               <h4 className="text-sm font-semibold text-gray-900 mb-3">ILO Assessment Mapping</h4>
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs border border-gray-300">
@@ -1179,7 +1179,7 @@ const SyllabusApproval = () => {
                                     })}
                                   </tbody>
                                 </table>
-                              </div>
+                                    </div>
                             </div>
                             
                             {/* Assessment Method and Distribution Map */}
@@ -1330,8 +1330,8 @@ const SyllabusApproval = () => {
                                                               <div className="text-xs text-red-600 font-semibold" title="Score contribution to this ILO" className="cursor-help">
                                                                 {mapping.score.toFixed(1)}
                                                               </div>
-                                                            )}
-                                                          </div>
+                                    )}
+                                  </div>
                                                         ) : '—'}
                                                       </td>
                                                     )
@@ -1391,9 +1391,9 @@ const SyllabusApproval = () => {
                                 </div>
                               )
                             })()}
-                          </div>
-                        </div>
-                      )}
+                              </div>
+                            </div>
+                          )}
 
                       {/* ILO Mapping Tables Section */}
                       {(soReferences.length > 0 || igaReferences.length > 0 || cdioReferences.length > 0 || sdgReferences.length > 0) && (
@@ -1403,7 +1403,7 @@ const SyllabusApproval = () => {
                           <div className="mt-4 space-y-4">
                             {/* ILO-SO Mapping */}
                             {soReferences.length > 0 && (
-                              <div>
+                            <div>
                                 <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-SO Mapping</h4>
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-xs border border-gray-300">
@@ -1447,7 +1447,7 @@ const SyllabusApproval = () => {
                                                           title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and SO"
                                                         >
                                                           {taskScores.totalScore.toFixed(1)}
-                                                        </div>
+                                  </div>
                                                       )}
                                                     </div>
                                                   ) : '—'}
@@ -1516,9 +1516,9 @@ const SyllabusApproval = () => {
                                       ))}
                                     </tbody>
                                   </table>
-                                </div>
                               </div>
-                            )}
+                            </div>
+                          )}
 
                             {/* ILO-CDIO and ILO-SDG Mapping */}
                             {(cdioReferences.length > 0 || sdgReferences.length > 0) && (
@@ -1564,8 +1564,8 @@ const SyllabusApproval = () => {
                                                           >
                                                             {taskScores.totalScore.toFixed(1)}
                                                           </div>
-                                                        )}
-                                                      </div>
+                          )}
+                        </div>
                                                     ) : '—'}
                                                   </td>
                                                 )
@@ -1634,9 +1634,9 @@ const SyllabusApproval = () => {
                           </div>
                         </div>
                       )}
-                    </div>
-                  )
-                })()}
+                      </div>
+                    )
+                  })()}
 
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                     <div>

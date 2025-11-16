@@ -763,6 +763,166 @@ router.post('/:id/edit-request', async (req, res) => {
   }
 });
 
+// POST /api/syllabi/:id/publish - Publish a syllabus and create assessments from sub-assessments
+router.post('/:id/publish', async (req, res) => {
+  const { id } = req.params;
+  const { published_by } = req.body;
+
+  try {
+    // Check if syllabus exists and is approved
+    const syllabusCheck = await db.query(
+      `SELECT 
+        syllabus_id, 
+        approval_status, 
+        review_status, 
+        section_course_id,
+        grading_policy,
+        created_by
+      FROM syllabi 
+      WHERE syllabus_id = $1`,
+      [id]
+    );
+
+    if (syllabusCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+
+    const syllabus = syllabusCheck.rows[0];
+    
+    if (syllabus.approval_status !== 'approved' || syllabus.review_status !== 'approved') {
+      return res.status(400).json({ error: 'Only approved syllabuses can be published' });
+    }
+
+    if (!syllabus.section_course_id) {
+      return res.status(400).json({ error: 'Syllabus must be linked to a section course to be published' });
+    }
+
+    // Parse grading_policy to get sub_assessments
+    let gradingPolicy = syllabus.grading_policy;
+    if (typeof gradingPolicy === 'string') {
+      try {
+        gradingPolicy = JSON.parse(gradingPolicy);
+      } catch (e) {
+        gradingPolicy = {};
+      }
+    }
+
+    const subAssessments = gradingPolicy?.sub_assessments || {};
+    
+    if (Object.keys(subAssessments).length === 0) {
+      return res.status(400).json({ error: 'No sub-assessments found in syllabus to publish' });
+    }
+
+    // Check if already published
+    const publishedCheck = await db.query(
+      `SELECT assessment_id FROM assessments 
+       WHERE syllabus_id = $1 AND is_published = TRUE 
+       LIMIT 1`,
+      [id]
+    );
+
+    if (publishedCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Syllabus has already been published' });
+    }
+
+    await db.query('BEGIN');
+
+    // Get assessment_criteria to map sub-assessments to criteria
+    const assessmentCriteria = gradingPolicy?.assessment_criteria || [];
+    
+    // Create assessments from sub-assessments
+    const createdAssessments = [];
+    
+    for (const [criterionIndex, subAssessmentsList] of Object.entries(subAssessments)) {
+      if (!Array.isArray(subAssessmentsList) || subAssessmentsList.length === 0) continue;
+      
+      const criterion = assessmentCriteria[parseInt(criterionIndex)];
+      const criterionName = criterion?.name || `Assessment ${criterionIndex}`;
+      
+      for (const subAssessment of subAssessmentsList) {
+        const assessmentTitle = subAssessment.name || subAssessment.abbreviation || 'Untitled Assessment';
+        const weightPercentage = parseFloat(subAssessment.weight_percentage) || 0;
+        const totalPoints = parseFloat(subAssessment.score) || 100;
+        
+        // Determine assessment type based on criterion or default
+        const assessmentType = criterion?.abbreviation?.toLowerCase().includes('quiz') ? 'Quiz' :
+                              criterion?.abbreviation?.toLowerCase().includes('exam') ? 'Exam' :
+                              criterion?.abbreviation?.toLowerCase().includes('project') ? 'Project' :
+                              criterion?.abbreviation?.toLowerCase().includes('lab') ? 'Lab' :
+                              'Assignment';
+        
+        const insertQuery = `
+          INSERT INTO assessments (
+            syllabus_id,
+            section_course_id,
+            title,
+            description,
+            type,
+            category,
+            total_points,
+            weight_percentage,
+            is_published,
+            is_graded,
+            status,
+            created_by,
+            created_at,
+            updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          RETURNING assessment_id, title, type, total_points, weight_percentage
+        `;
+        
+        const result = await db.query(insertQuery, [
+          id,
+          syllabus.section_course_id,
+          assessmentTitle,
+          `Sub-assessment from ${criterionName}`,
+          assessmentType,
+          'Summative',
+          totalPoints,
+          weightPercentage,
+          true, // is_published
+          false, // is_graded
+          'active', // status
+          published_by || syllabus.created_by
+        ]);
+        
+        createdAssessments.push(result.rows[0]);
+      }
+    }
+
+    // Update grading_policy metadata to mark as published
+    const updatedGradingPolicy = {
+      ...gradingPolicy,
+      metadata: {
+        ...(gradingPolicy.metadata || {}),
+        published: true,
+        published_at: new Date().toISOString(),
+        published_by: published_by || syllabus.created_by
+      }
+    };
+
+    await db.query(
+      `UPDATE syllabi 
+       SET grading_policy = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE syllabus_id = $2`,
+      [JSON.stringify(updatedGradingPolicy), id]
+    );
+
+    await db.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Syllabus published successfully. Created ${createdAssessments.length} assessment(s).`,
+      assessments: createdAssessments,
+      syllabus_id: id
+    });
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('Error publishing syllabus:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // GET /api/syllabi/edit-requests - Get all edit requests (for dean/program chair)
 router.get('/edit-requests', async (req, res) => {
   try {

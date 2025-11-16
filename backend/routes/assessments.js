@@ -177,6 +177,44 @@ router.get('/class/:sectionCourseId', async (req, res) => {
   }
 });
 
+// GET /api/assessments/syllabus/:syllabusId - Get all assessments for a specific syllabus
+router.get('/syllabus/:syllabusId', async (req, res) => {
+  const { syllabusId } = req.params;
+  
+  try {
+    const query = `
+      SELECT 
+        a.assessment_id,
+        a.syllabus_id,
+        a.section_course_id,
+        a.title,
+        a.description,
+        a.type,
+        a.category,
+        a.total_points,
+        a.weight_percentage,
+        a.due_date,
+        a.submission_deadline,
+        a.is_published,
+        a.is_graded,
+        a.grading_method,
+        a.instructions,
+        a.status,
+        a.created_at,
+        a.updated_at
+      FROM assessments a
+      WHERE a.syllabus_id = $1
+      ORDER BY a.created_at DESC
+    `;
+    
+    const result = await db.query(query, [syllabusId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching syllabus assessments:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
+});
+
 // GET /api/assessments/:id - Get a specific assessment with details
 router.get('/:id', async (req, res) => {
   const { id } = req.params;

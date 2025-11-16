@@ -18,7 +18,8 @@ import {
   ClockIcon,
   BookOpenIcon,
   ArrowPathIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/solid'
 
 const Syllabus = () => {
@@ -46,6 +47,8 @@ const Syllabus = () => {
   const [loadingILOs, setLoadingILOs] = useState(false)
   const [editRequestReason, setEditRequestReason] = useState('')
   const [showEditRequestForm, setShowEditRequestForm] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [isPublished, setIsPublished] = useState(false)
   
   // Reference data for ILO mappings
   const [soReferences, setSoReferences] = useState([])
@@ -587,10 +590,64 @@ const Syllabus = () => {
     setShowViewModal(true)
     setShowEditRequestForm(false)
     setEditRequestReason('')
+    
+    // Check if syllabus is published
+    try {
+      const response = await fetch(`/api/assessments/syllabus/${syllabus.syllabus_id}`)
+      if (response.ok) {
+        const assessments = await response.json()
+        setIsPublished(Array.isArray(assessments) && assessments.length > 0 && assessments.some(a => a.is_published))
+      } else {
+        setIsPublished(false)
+      }
+    } catch (error) {
+      console.error('Error checking published status:', error)
+      setIsPublished(false)
+    }
+    
     await Promise.all([
       loadSyllabusILOs(syllabus.syllabus_id),
       loadReferenceData()
     ])
+  }
+  
+  const handlePublish = async () => {
+    if (!viewingSyllabus) return
+    
+    if (!confirm('Are you sure you want to publish this syllabus? This will create assessments from the sub-assessments and make them visible to students.')) {
+      return
+    }
+    
+    setIsPublishing(true)
+    try {
+      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          published_by: user?.user_id
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        alert(result.message || 'Syllabus published successfully!')
+        setIsPublished(true)
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to publish syllabus')
+      }
+    } catch (error) {
+      console.error('Error publishing syllabus:', error)
+      alert('Failed to publish syllabus')
+    } finally {
+      setIsPublishing(false)
+    }
   }
 
   const handleSubmitEditRequest = async () => {
@@ -2963,6 +3020,29 @@ const Syllabus = () => {
                         Resubmit for Review
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Publish Section - Only show for approved syllabi */}
+                {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
+                  <div className="pt-4 border-t border-gray-300">
+                    {isPublished ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-green-800 flex items-center gap-2">
+                          <CheckCircleIcon className="h-5 w-5" />
+                          <strong>Published:</strong> This syllabus has been published. Assessments are now visible in the assessment tab.
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handlePublish}
+                        disabled={isPublishing}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                        {isPublishing ? 'Publishing...' : 'Publish Syllabus'}
+                      </button>
+                    )}
                   </div>
                 )}
 
