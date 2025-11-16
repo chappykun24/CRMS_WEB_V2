@@ -109,6 +109,7 @@ const getCachedClusters = async (termId, sectionCourseId = null, iloId = null, m
             AND generated_at > $2 
             AND student_id IS NOT NULL
             AND (based_on->>'ilo_id')::int = $3
+            AND cluster_label IS NOT NULL
           ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
         `;
         params = [termId, maxAge, iloId];
@@ -121,7 +122,8 @@ const getCachedClusters = async (termId, sectionCourseId = null, iloId = null, m
             AND section_course_id IS NULL
             AND generated_at > $2 
             AND student_id IS NOT NULL
-            AND (based_on->>'ilo_id') IS NULL
+            AND ((based_on->>'ilo_id') IS NULL OR (based_on->>'ilo_id')::text = 'null')
+            AND cluster_label IS NOT NULL
           ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
         `;
         params = [termId, maxAge];

@@ -670,17 +670,62 @@ def cluster_records(records):
     result = output.to_dict(orient='records')
     for record in result:
         for key, value in record.items():
-            # Check if value is array/list first (pd.isna can't handle arrays)
-            if isinstance(value, (list, np.ndarray)):
-                # Arrays are valid, skip NaN check
+            # Check if value is array-like first (pd.isna can't handle arrays)
+            # This must be done BEFORE calling pd.isna() to avoid ValueError
+            is_array_like = False
+            
+            # Check for common array types
+            if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+                is_array_like = True
+            # Check for array-like objects (has length and is iterable, but not string/bytes)
+            elif hasattr(value, '__len__') and hasattr(value, '__iter__'):
+                if not isinstance(value, (str, bytes)):
+                    # Additional check: try to get size/length to confirm it's array-like
+                    try:
+                        # Check if it's a numpy array or array-like
+                        if hasattr(value, 'size') or hasattr(value, '__array__') or isinstance(value, np.ndarray):
+                            is_array_like = True
+                        # Check if it's a list/array of complex types
+                        elif len(value) > 0:
+                            # If first element is array-like, the whole thing is array-like
+                            if isinstance(value[0], (list, dict, np.ndarray, tuple)):
+                                is_array_like = True
+                        # Empty arrays are also array-like
+                        elif len(value) == 0:
+                            is_array_like = True
+                    except (TypeError, IndexError, AttributeError):
+                        # Not array-like, continue with scalar check
+                        pass
+            
+            if is_array_like:
+                # Arrays are valid data, skip NaN check
+                # Convert to list for JSON serialization if needed
+                if isinstance(value, (np.ndarray, pd.Series)):
+                    try:
+                        record[key] = value.tolist() if hasattr(value, 'tolist') else list(value)
+                    except (ValueError, TypeError):
+                        # If conversion fails, keep original (might be complex array)
+                        pass
+                elif isinstance(value, tuple):
+                    record[key] = list(value)
+                # If it's already a list, keep it as-is
                 continue
+            
             # For scalar values, check if NaN
+            # Only call pd.isna() on non-array values
             try:
                 if pd.isna(value):
                     record[key] = None
-            except (ValueError, TypeError):
-                # If pd.isna fails (e.g., on arrays), skip
-                pass
+            except (ValueError, TypeError) as e:
+                # If pd.isna fails, it might be an array-like object that slipped through
+                # In this case, treat it as valid data (don't convert to None)
+                error_msg = str(e).lower()
+                if 'array' in error_msg or 'ambiguous' in error_msg:
+                    # This is an array-like object, keep it as-is
+                    pass
+                else:
+                    # Some other error, log it but don't fail
+                    print(f'⚠️ [Python API] Warning: Could not check NaN for key "{key}": {e}')
         if record.get('cluster_label') is not None:
             record['cluster_label'] = str(record['cluster_label'])
         if record.get('silhouette_score') is not None:
