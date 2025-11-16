@@ -1017,26 +1017,26 @@ router.get('/dean-analytics/sample', async (req, res) => {
               i.description as ilo_description,
               SUM(aiw.weight_percentage) OVER (PARTITION BY i.ilo_id) as total_weight,
               json_agg(
-                DISTINCT json_build_object(
+                json_build_object(
                   'assessment_id', a.assessment_id,
                   'assessment_title', a.title,
                   'transmuted_score', 
                     CASE 
-                      WHEN sub.transmuted_score IS NOT NULL
-                      THEN sub.transmuted_score
-                      WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                      THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-                      WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                      THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                      WHEN MAX(sub.transmuted_score) IS NOT NULL
+                      THEN MAX(sub.transmuted_score)
+                      WHEN MAX(sub.adjusted_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                      THEN ((MAX(sub.adjusted_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                      WHEN MAX(sub.total_score) IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                      THEN ((MAX(sub.total_score) / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
                       ELSE NULL
                     END,
-                  'raw_score', sub.total_score,
-                  'adjusted_score', sub.adjusted_score,
+                  'raw_score', MAX(sub.total_score),
+                  'adjusted_score', MAX(sub.adjusted_score),
                   'weight_percentage', a.weight_percentage,
                   'ilo_weight_percentage', aiw.weight_percentage
                 )
                 ORDER BY a.assessment_id
-              ) FILTER (WHERE sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL) as assessments
+              ) FILTER (WHERE MAX(sub.transmuted_score) IS NOT NULL OR MAX(sub.adjusted_score) IS NOT NULL OR MAX(sub.total_score) IS NOT NULL) as assessments
             FROM course_enrollments ce_ilo_detail
             INNER JOIN section_courses sc_ilo_detail ON ce_ilo_detail.section_course_id = sc_ilo_detail.section_course_id
             INNER JOIN assessments a ON sc_ilo_detail.section_course_id = a.section_course_id
@@ -1054,7 +1054,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               ${termIdValue ? `AND sc_ilo_detail.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterSub || ''}
               ${iloSoAssessmentFilter || ''}
-            GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage
+            GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage, a.assessment_id, a.title, a.total_points, a.weight_percentage
             HAVING COUNT(sub.submission_id) > 0 OR COUNT(CASE WHEN sub.transmuted_score IS NOT NULL THEN 1 END) > 0
           ) ilo_data
         )::JSONB AS assessment_scores_by_ilo,
