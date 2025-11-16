@@ -1468,14 +1468,31 @@ const Analytics = () => {
                           value={selectedILOId}
                           onChange={(e) => setSelectedILOId(e.target.value)}
                           className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                          title="Filter clustering by ILO mapping. 'Overall' uses all assessments, specific ILOs use only assessments mapped to that ILO."
+                          title="Filter clustering by ILO (Intended Learning Outcome) mapping. Only ILOs aligned with SO (Student Outcomes), SDG (Sustainable Development Goals), IGA (Institutional Graduate Attributes), or CDIO are shown. 'Overall' uses all assessments, specific ILOs use only assessments mapped to that ILO."
                         >
-                          <option value="all">Overall (All Assessments)</option>
-                          {availableILOs.map(ilo => (
-                            <option key={ilo.ilo_id} value={ilo.ilo_id.toString()}>
-                              {ilo.ilo_code} {ilo.description ? `- ${ilo.description.substring(0, 40)}${ilo.description.length > 40 ? '...' : ''}` : ''}
-                            </option>
-                          ))}
+               <option value="all">Overall (All Assessments)</option>
+               {availableILOs.map(ilo => {
+                 // Build alignment indicators for all mapping types
+                 const alignments = [];
+                 if (ilo.aligned_so_codes && ilo.aligned_so_codes.length > 0) {
+                   alignments.push(`SO: ${ilo.aligned_so_codes.join(', ')}`);
+                 }
+                 if (ilo.aligned_sdg_codes && ilo.aligned_sdg_codes.length > 0) {
+                   alignments.push(`SDG: ${ilo.aligned_sdg_codes.join(', ')}`);
+                 }
+                 if (ilo.aligned_iga_codes && ilo.aligned_iga_codes.length > 0) {
+                   alignments.push(`IGA: ${ilo.aligned_iga_codes.join(', ')}`);
+                 }
+                 if (ilo.aligned_cdio_codes && ilo.aligned_cdio_codes.length > 0) {
+                   alignments.push(`CDIO: ${ilo.aligned_cdio_codes.join(', ')}`);
+                 }
+                 const alignmentText = alignments.length > 0 ? ` [${alignments.join(' | ')}]` : '';
+                 return (
+                   <option key={ilo.ilo_id} value={ilo.ilo_id.toString()}>
+                     {ilo.ilo_code}{alignmentText} {ilo.description ? `: ${ilo.description.substring(0, 30)}${ilo.description.length > 30 ? '...' : ''}` : ''}
+                   </option>
+                 );
+               })}
                         </select>
                         <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
                       </div>

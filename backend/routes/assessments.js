@@ -594,9 +594,14 @@ router.get('/dean-analytics/sample', async (req, res) => {
     let iloSoAssessmentFilter = '';
     if (iloIdValue) {
       // Filter to assessments mapped to this ILO via assessment_ilo_weights
+      // Note: This filter works with both 'a' and 'ass' aliases used in different queries
+      // The correlated subquery will reference the assessment table from the outer query
       iloSoAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter 
-        WHERE aiw_filter.assessment_id = a.assessment_id 
+        WHERE aiw_filter.assessment_id = COALESCE(
+          (SELECT assessment_id FROM assessments WHERE assessment_id = a.assessment_id LIMIT 1),
+          (SELECT assessment_id FROM assessments WHERE assessment_id = ass.assessment_id LIMIT 1)
+        )
         AND aiw_filter.ilo_id = ${iloIdValue}
       )`;
     } else if (soIdValue) {
@@ -604,7 +609,10 @@ router.get('/dean-analytics/sample', async (req, res) => {
       iloSoAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_so_mappings ism ON aiw_filter.ilo_id = ism.ilo_id
-        WHERE aiw_filter.assessment_id = a.assessment_id
+        WHERE aiw_filter.assessment_id = COALESCE(
+          (SELECT assessment_id FROM assessments WHERE assessment_id = a.assessment_id LIMIT 1),
+          (SELECT assessment_id FROM assessments WHERE assessment_id = ass.assessment_id LIMIT 1)
+        )
         AND ism.so_id = ${soIdValue}
       )`;
     }
@@ -907,6 +915,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_status.status = 'enrolled'
               ${termIdValue ? `AND sc_status.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterStatus}
+              ${iloSoAssessmentFilter}
           ),
           2
         )::NUMERIC AS average_submission_status_score,
@@ -937,6 +946,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_rate.status = 'enrolled'
               ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterRate}
+              ${iloSoAssessmentFilter}
           ),
           0
         )::NUMERIC AS submission_rate,
@@ -955,6 +965,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
+            ${iloSoAssessmentFilter}
         )::INTEGER AS submission_ontime_count,
         (
           SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN sub.submission_id END)::INTEGER
@@ -969,6 +980,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
+            ${iloSoAssessmentFilter}
         )::INTEGER AS submission_late_count,
         (
           SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
@@ -983,6 +995,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
+            ${iloSoAssessmentFilter}
             AND COALESCE(sub.submission_status, 'missing') = 'missing'
         )::INTEGER AS submission_missing_count,
         (
@@ -994,6 +1007,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
+            ${iloSoAssessmentFilter}
         )::INTEGER AS submission_total_assessments,
         -- Assessment-level transmuted scores grouped by ILO (NEW)
         -- Returns JSON array of {ilo_id, ilo_code, assessments: [{assessment_id, transmuted_score, weight_percentage}]}

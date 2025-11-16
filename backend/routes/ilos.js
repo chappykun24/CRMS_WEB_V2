@@ -779,28 +779,57 @@ function determineAssessmentTasks(iloDescription, iloCode) {
   return tasks;
 }
 
-// GET /api/ilos/term/:termId - Get all ILOs for a specific term
+// GET /api/ilos/term/:termId - Get all ILOs for a specific term (only ILOs aligned with SO, SDG, IGA, CDIO)
 router.get('/term/:termId', async (req, res) => {
   const { termId } = req.params;
   
   try {
-    // Get ILOs that exist in syllabi for this term
+    // Get ILOs that exist in syllabi for this term AND are aligned with at least one mapping
+    // (SO, SDG, IGA, or CDIO). Only return ILOs that have at least one mapping.
     const query = `
       SELECT DISTINCT
         i.ilo_id,
         i.code as ilo_code,
         i.description,
         COUNT(DISTINCT aiw.assessment_id) as assessment_count,
-        SUM(aiw.weight_percentage) as total_weight
+        SUM(aiw.weight_percentage) as total_weight,
+        -- Get SO codes that this ILO is aligned with
+        ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) as aligned_so_codes,
+        ARRAY_AGG(DISTINCT so.so_id ORDER BY so.so_id) FILTER (WHERE so.so_id IS NOT NULL) as aligned_so_ids,
+        -- Get SDG codes that this ILO is aligned with
+        ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) as aligned_sdg_codes,
+        ARRAY_AGG(DISTINCT sdg.sdg_id ORDER BY sdg.sdg_id) FILTER (WHERE sdg.sdg_id IS NOT NULL) as aligned_sdg_ids,
+        -- Get IGA codes that this ILO is aligned with
+        ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) as aligned_iga_codes,
+        ARRAY_AGG(DISTINCT iga.iga_id ORDER BY iga.iga_id) FILTER (WHERE iga.iga_id IS NOT NULL) as aligned_iga_ids,
+        -- Get CDIO codes that this ILO is aligned with
+        ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) as aligned_cdio_codes,
+        ARRAY_AGG(DISTINCT cdio.cdio_id ORDER BY cdio.cdio_id) FILTER (WHERE cdio.cdio_id IS NOT NULL) as aligned_cdio_ids
       FROM ilos i
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       INNER JOIN section_courses sc ON sy.section_course_id = sc.section_course_id
+      -- Include all mapping types (SO, SDG, IGA, CDIO)
+      LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+      LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+      LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+      LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+      LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+      LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+      LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+      LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
       LEFT JOIN assessment_ilo_weights aiw ON i.ilo_id = aiw.ilo_id
       LEFT JOIN assessments a ON aiw.assessment_id = a.assessment_id
       LEFT JOIN section_courses sc2 ON a.section_course_id = sc2.section_course_id
       WHERE sc.term_id = $1
         AND (sc2.term_id = $1 OR sc2.term_id IS NULL)
         AND i.is_active = TRUE
+        -- Ensure ILO has at least one mapping (SO, SDG, IGA, or CDIO)
+        AND (
+          ism.ilo_id IS NOT NULL OR 
+          isdg.ilo_id IS NOT NULL OR 
+          iiga.ilo_id IS NOT NULL OR 
+          icdio.ilo_id IS NOT NULL
+        )
       GROUP BY i.ilo_id, i.code, i.description
       ORDER BY i.code
     `;
