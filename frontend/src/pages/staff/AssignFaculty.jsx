@@ -797,8 +797,16 @@ const AssignFaculty = () => {
   }, [availableStudents, studentSearchQuery])
 
   // Filter and sort enrolled students based on search query and section filter
+  // Exclude students already enrolled in the current class
   const filteredEnrolledStudents = useMemo(() => {
     let filtered = enrolledStudents
+    
+    // Filter out students who are already enrolled in the current class
+    if (selectedClass) {
+      filtered = filtered.filter(student => 
+        String(student.section_course_id) !== String(selectedClass.id)
+      )
+    }
     
     // Filter by section if selected
     if (selectedSectionFilter) {
@@ -831,7 +839,7 @@ const AssignFaculty = () => {
     })
     
     return filtered
-  }, [enrolledStudents, studentSearchQuery, selectedSectionFilter])
+  }, [enrolledStudents, studentSearchQuery, selectedSectionFilter, selectedClass])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -1518,6 +1526,11 @@ const AssignFaculty = () => {
                             <p className="text-xs text-gray-500 truncate">
                               {student.student_number}
                             </p>
+                            {showEnrolledView && student.section_code && (
+                              <p className="text-xs text-blue-600 font-medium truncate">
+                                Section: {student.section_code}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
