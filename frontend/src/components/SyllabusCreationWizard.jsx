@@ -2282,9 +2282,15 @@ const SyllabusCreationWizard = ({
                   }
                   
                   return (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">ILO Assessment Mapping</h4>
-                      <div className="overflow-x-auto">
+                    <div className="mt-4 space-y-4">
+                      {/* Assessment Tables Section */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Assessment Tables</h3>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3">ILO Assessment Mapping</h4>
+                            <div className="overflow-x-auto">
                         <table className="w-full text-xs border border-gray-300">
                           <thead className="bg-gray-50">
                             <tr>
@@ -2402,6 +2408,9 @@ const SyllabusCreationWizard = ({
                             })}
                           </tbody>
                         </table>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
@@ -2517,9 +2526,12 @@ const SyllabusCreationWizard = ({
               if (allSubAssessments.length === 0) return null
 
               return (
-                <div className="mt-4 border-t pt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Assessment Method and Distribution Map</h4>
-                  <div className="overflow-x-auto">
+                <div className="mt-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Assessment Method and Distribution Map</h4>
+                        <div className="overflow-x-auto">
                     <table className="w-full text-xs border border-gray-300">
                       <thead className="bg-gray-50">
                         <tr>
@@ -2712,6 +2724,9 @@ const SyllabusCreationWizard = ({
                         </tr>
                       </tbody>
                     </table>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
@@ -2782,9 +2797,14 @@ const SyllabusCreationWizard = ({
               }
 
               return (
-                <div className="mt-4 border-t pt-4 space-y-4">
-                  {/* ILO-SO Mapping */}
-                  {soReferences.length > 0 && (
+                <div className="mt-4">
+                  {/* ILO Mapping Tables Section */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="text-sm font-bold text-green-900 mb-3 pb-2 border-b border-green-300">ILO Mapping Tables</h3>
+                    
+                    <div className="mt-4 space-y-4">
+                      {/* ILO-SO Mapping */}
+                      {soReferences.length > 0 && (
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-SO Mapping</h4>
                       <div className="overflow-x-auto">
@@ -2843,10 +2863,10 @@ const SyllabusCreationWizard = ({
                         </table>
                       </div>
                     </div>
-                  )}
+                      )}
 
-                  {/* ILO-IGA Mapping */}
-                  {igaReferences.length > 0 && (
+                      {/* ILO-IGA Mapping */}
+                      {igaReferences.length > 0 && (
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-IGA Mapping</h4>
                       <div className="overflow-x-auto">
@@ -2900,12 +2920,12 @@ const SyllabusCreationWizard = ({
                         </table>
                       </div>
                     </div>
-                  )}
+                      )}
 
-                  {/* ILO-CDIO and ILO-SDG Mapping */}
-                  {(cdioReferences.length > 0 || sdgReferences.length > 0) && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-CDIO and ILO-SDG Mapping</h4>
+                      {/* ILO-CDIO and ILO-SDG Mapping */}
+                      {(cdioReferences.length > 0 || sdgReferences.length > 0) && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-CDIO and ILO-SDG Mapping</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {cdioReferences.length > 0 && (
                           <div className="overflow-x-auto">
@@ -3012,7 +3032,8 @@ const SyllabusCreationWizard = ({
                         )}
                       </div>
                     </div>
-                  )}
+                    </div>
+                  </div>
                 </div>
               )
             })()}
