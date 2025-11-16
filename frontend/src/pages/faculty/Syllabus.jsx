@@ -50,6 +50,7 @@ const Syllabus = () => {
   const [shareableClasses, setShareableClasses] = useState([])
   const [loadingShareableClasses, setLoadingShareableClasses] = useState(false)
   const [sharingSyllabus, setSharingSyllabus] = useState(false)
+  const [deletingSyllabus, setDeletingSyllabus] = useState(false)
   
   // Reference data for ILO mappings
   const [soReferences, setSoReferences] = useState([])
@@ -717,6 +718,53 @@ const Syllabus = () => {
       alert('Failed to share syllabus')
     } finally {
       setSharingSyllabus(false)
+    }
+  }
+
+  // Delete syllabus (only for draft mode)
+  const handleDeleteSyllabus = async () => {
+    if (!viewingSyllabus) return
+
+    // Check if it's a draft
+    const isDraft = viewingSyllabus.review_status === 'pending' && 
+                    viewingSyllabus.approval_status === 'pending'
+
+    if (!isDraft) {
+      alert('Only draft syllabi can be deleted. This syllabus has already been submitted for review.')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to delete "${viewingSyllabus.title}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeletingSyllabus(true)
+    try {
+      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert(result.message || 'Syllabus deleted successfully!')
+        setShowViewModal(false)
+        setViewingSyllabus(null)
+        // Reload syllabi if we have a selected class
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to delete syllabus')
+      }
+    } catch (error) {
+      console.error('Error deleting syllabus:', error)
+      alert('Failed to delete syllabus')
+    } finally {
+      setDeletingSyllabus(false)
     }
   }
 
@@ -2824,7 +2872,7 @@ const Syllabus = () => {
                   </div>
                 </div>
 
-                {/* Draft Section - Show Edit button for draft syllabi 
+                {/* Draft Section - Show Edit, Submit, and Delete buttons for draft syllabi 
                     Drafts are identified by status='draft' or both review_status and approval_status being 'pending' */}
                 {(viewingSyllabus.status === 'draft' || 
                   (viewingSyllabus.review_status === 'pending' && 
@@ -2832,7 +2880,7 @@ const Syllabus = () => {
                   <div className="pt-4 border-t border-gray-300">
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                       <p className="text-sm text-yellow-800">
-                        <strong>Draft Syllabus:</strong> This syllabus is saved as a draft. You can continue editing it or submit it for review when ready.
+                        <strong>Draft Syllabus:</strong> This syllabus is saved as a draft. You can continue editing it, submit it for review, or delete it.
                       </p>
                     </div>
                     <div className="flex gap-3">
@@ -2841,17 +2889,34 @@ const Syllabus = () => {
                           openEditModal(viewingSyllabus)
                           setShowViewModal(false)
                         }}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <PencilIcon className="h-4 w-4" />
                         Edit Syllabus
                       </button>
                       <button
                         onClick={() => handleSubmitForReview(viewingSyllabus)}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <ArrowPathIcon className="h-4 w-4" />
                         Submit for Review
+                      </button>
+                      <button
+                        onClick={handleDeleteSyllabus}
+                        disabled={deletingSyllabus}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingSyllabus ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Deleting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <TrashIcon className="h-4 w-4" />
+                            <span>Delete</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -2872,14 +2937,14 @@ const Syllabus = () => {
                           openEditModal(viewingSyllabus)
                           setShowViewModal(false)
                         }}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <PencilIcon className="h-4 w-4" />
                         Edit Syllabus
                       </button>
                       <button
                         onClick={() => handleSubmitForReview(viewingSyllabus)}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <ArrowPathIcon className="h-4 w-4" />
                         Resubmit for Review
@@ -2902,7 +2967,7 @@ const Syllabus = () => {
                       <button
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ArrowUpTrayIcon className="h-5 w-5" />
                         {isPublishing ? 'Publishing...' : 'Publish Syllabus'}
@@ -2915,7 +2980,7 @@ const Syllabus = () => {
                 <div className="pt-4 border-t border-gray-300">
                   <button
                     onClick={handleOpenShareModal}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
                   >
                     <ArrowUpTrayIcon className="h-5 w-5" />
                     Share to Class
@@ -3036,7 +3101,7 @@ const Syllabus = () => {
                               handleShareSyllabus(classItem.section_course_id)
                             }}
                             disabled={sharingSyllabus}
-                            className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                           >
                             {sharingSyllabus ? (
                               <>
@@ -3071,7 +3136,7 @@ const Syllabus = () => {
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowShareModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Close
               </button>
