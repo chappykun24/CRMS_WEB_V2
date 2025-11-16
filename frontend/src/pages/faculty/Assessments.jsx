@@ -1390,7 +1390,7 @@ const Assessments = () => {
     try {
       const gradesArray = Object.entries(grades).map(([enrollmentId, gradeData]) => {
         const rawScore = gradeData.submission_status === 'missing' ? 0 : (parseFloat(gradeData.raw_score) || 0)
-        const latePenalty = gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime' ? 0 : (parseFloat(gradeData.late_penalty) || 0)
+        const latePenalty = gradeData.submission_status === 'missing' ? 0 : (parseFloat(gradeData.late_penalty) || 0)
         const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, selectedAssessment.total_points)
         const actualScore = gradeData.submission_status === 'missing' ? 0 : calculateActualScore(adjustedScore, selectedAssessment.total_points)
         const transmutedScore = gradeData.submission_status === 'missing' ? 0 : calculateTransmutedScore(actualScore, selectedAssessment.weight_percentage || 0)
@@ -2262,13 +2262,13 @@ const Assessments = () => {
                               <div className="w-full">
                                 <div className="px-2 py-2 bg-gray-50 sticky top-0 z-50 border-b border-gray-200 flex items-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                   <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-50 pr-1">Student</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Raw</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Penalty</div>
-                                  <div className="w-[60px] flex-shrink-0 px-1">Adj</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Actual</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1">Trans</div>
-                                  <div className="w-[85px] flex-shrink-0 px-1">Feedback</div>
-                                  <div className="flex-1 min-w-[200px] px-1">Status / %</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Raw</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Penalty</div>
+                                  <div className="w-[55px] flex-shrink-0 px-0.5">Adj</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
+                                  <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
+                                  <div className="flex-1 min-w-0 px-1">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
@@ -2280,25 +2280,25 @@ const Assessments = () => {
                                           <div className="h-2 bg-gray-100 rounded w-16 animate-pulse"></div>
                                         </div>
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[50px] flex-shrink-0 px-0.5">
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[50px] flex-shrink-0 px-0.5">
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[60px] flex-shrink-0 px-1">
+                                      <div className="w-[55px] flex-shrink-0 px-0.5">
                                         <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1">
+                                      <div className="w-[50px] flex-shrink-0 px-0.5">
                                         <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1">
+                                      <div className="w-[60px] flex-shrink-0 px-0.5">
                                         <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[85px] flex-shrink-0 px-1">
-                                        <div className="h-7 bg-gray-200 rounded animate-pulse"></div>
+                                      <div className="w-[80px] flex-shrink-0 px-0.5">
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="flex-1 min-w-[200px] px-1">
+                                      <div className="flex-1 min-w-0 px-1">
                                         <div className="flex items-center gap-3">
                                           <div className="flex gap-2 flex-shrink-0">
                                             <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
@@ -2320,13 +2320,13 @@ const Assessments = () => {
                               <div className="w-full">
                                 <div className="px-2 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                   <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-1">Student</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Raw</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Penalty</div>
-                                  <div className="w-[60px] flex-shrink-0 px-1">Adj</div>
-                                  <div className="w-[55px] flex-shrink-0 px-1">Actual</div>
-                                  <div className="w-[65px] flex-shrink-0 px-1">Trans</div>
-                                  <div className="w-[85px] flex-shrink-0 px-1">Feedback</div>
-                                  <div className="flex-1 min-w-[200px] px-1 whitespace-nowrap">Status / %</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Raw</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Penalty</div>
+                                  <div className="w-[55px] flex-shrink-0 px-0.5">Adj</div>
+                                  <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
+                                  <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
+                                  <div className="flex-1 min-w-0 px-1 whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -2362,54 +2362,54 @@ const Assessments = () => {
                                           <div className="text-[10px] text-gray-500 truncate leading-tight mt-0.5">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1">
+                                      <div className="w-[50px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                          className="w-full px-1.5 py-1 text-[11px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
                                           max={selectedAssessment.total_points}
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1">
+                                      <div className="w-[50px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                          className="w-full px-1.5 py-1 text-[11px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
                                           min="0"
-                                          disabled={gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime'}
+                                          disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[60px] flex-shrink-0 px-1 text-[11px] font-semibold text-gray-900 text-center">
+                                      <div className="w-[55px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-1 text-[11px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
+                                      <div className="w-[50px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           return calculateActualScore(adjusted, selectedAssessment.total_points).toFixed(2)
                                         })()}
                                       </div>
-                                      <div className="w-[65px] flex-shrink-0 px-1 text-[11px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
+                                      <div className="w-[60px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
                                           return calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0).toFixed(2)
                                         })()}
                                       </div>
-                                      <div className="w-[85px] flex-shrink-0 px-1">
+                                      <div className="w-[80px] flex-shrink-0 px-0.5">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
-                                          className="w-full px-1.5 py-1 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none transition-colors"
+                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none transition-colors"
                                           rows="1"
                                           placeholder="Feedback..."
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="flex-1 min-w-[200px] px-1 flex-shrink-0">
+                                      <div className="flex-1 min-w-0 px-1 flex-shrink-0">
                                         <div className="flex items-center gap-1.5 justify-start">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
