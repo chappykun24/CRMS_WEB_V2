@@ -82,8 +82,21 @@ export const getClusterColor = (label) => {
     return '#9ca3af'; // gray-400
   }
   
-  // Normalize the label (same logic as getClusterStyle)
+  // Try exact match first (most reliable)
+  const trimmed = String(label).trim();
+  if (clusterColors[trimmed]) {
+    return clusterColors[trimmed];
+  }
+  
+  // Normalize the label for keyword matching
   const normalized = String(label).toLowerCase().trim();
+  
+  // Case-insensitive exact match
+  for (const [key, color] of Object.entries(clusterColors)) {
+    if (key.toLowerCase() === normalized) {
+      return color;
+    }
+  }
   
   // At Risk - Red (check first to avoid matching "risk" in other contexts)
   if (normalized.includes('risk') || normalized.includes('at risk') || normalized.includes('needs support')) {
@@ -108,19 +121,6 @@ export const getClusterColor = (label) => {
   // Excellent Performance - Green (check after Average to avoid conflicts)
   if (normalized.includes('excellent') || normalized.includes('high')) {
     return '#10b981'; // emerald-500 (green)
-  }
-  
-  // Try exact match as fallback
-  const trimmed = String(label).trim();
-  if (clusterColors[trimmed]) {
-    return clusterColors[trimmed];
-  }
-  
-  // Case-insensitive exact match as final fallback
-  for (const [key, color] of Object.entries(clusterColors)) {
-    if (key.toLowerCase() === normalized) {
-      return color;
-    }
   }
   
   // Default - Gray

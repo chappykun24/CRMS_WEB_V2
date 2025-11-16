@@ -1901,7 +1901,8 @@ const Analytics = () => {
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            const color = getClusterColor(payload.cluster);
+                            const clusterLabel = payload.cluster;
+                            const color = getClusterColor(clusterLabel);
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
@@ -1987,7 +1988,8 @@ const Analytics = () => {
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            const color = getClusterColor(payload.cluster);
+                            const clusterLabel = payload.cluster;
+                            const color = getClusterColor(clusterLabel);
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
