@@ -210,18 +210,30 @@ const Analytics = () => {
     
     if (sessionCached) {
       console.log('📦 [DEAN ANALYTICS] Using session cached school terms');
-      setSchoolTerms(sessionCached);
-      const activeTerm = sessionCached.find(t => t.is_active);
-      if (activeTerm) {
-        setSelectedTermId(activeTerm.term_id.toString());
+      // Sort terms to prioritize latest term
+      const sortedCached = Array.isArray(sessionCached) ? [...sessionCached].sort((a, b) => {
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
+      setSchoolTerms(sortedCached);
+      const activeTerm = sortedCached.find(t => t.is_active);
+      const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm) {
+        setSelectedTermId(defaultTerm.term_id.toString());
       }
       // Continue to fetch fresh data in background
     } else if (cachedData) {
       console.log('📦 [DEAN ANALYTICS] Using enhanced cached school terms');
-      setSchoolTerms(cachedData);
-      const activeTerm = cachedData.find(t => t.is_active);
-      if (activeTerm) {
-        setSelectedTermId(activeTerm.term_id.toString());
+      // Sort terms to prioritize latest term
+      const sortedCached = Array.isArray(cachedData) ? [...cachedData].sort((a, b) => {
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
+      setSchoolTerms(sortedCached);
+      const activeTerm = sortedCached.find(t => t.is_active);
+      const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm) {
+        setSelectedTermId(defaultTerm.term_id.toString());
       }
       // Cache in sessionStorage for next time
       safeSetItem(sessionCacheKey, cachedData);
@@ -258,13 +270,19 @@ const Analytics = () => {
       const terms = await response.json();
       console.log(`✅ [DEAN ANALYTICS] Received ${Array.isArray(terms) ? terms.length : 0} school terms`);
       
-      const termsData = Array.isArray(terms) ? terms : [];
+      // Sort terms to prioritize latest term (by term_id descending, highest ID = latest)
+      const termsData = Array.isArray(terms) ? terms.sort((a, b) => {
+        // Sort by term_id descending (latest first)
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
       setSchoolTerms(termsData);
       
-      // Set the active term as default if available
+      // Set the latest term as default (first in sorted array, or active term if available)
       const activeTerm = termsData.find(t => t.is_active);
-      if (activeTerm) {
-        setSelectedTermId(activeTerm.term_id.toString());
+      const latestTerm = termsData.length > 0 ? termsData[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm) {
+        setSelectedTermId(defaultTerm.term_id.toString());
       }
       
       // Store in sessionStorage for instant next load
@@ -1467,7 +1485,6 @@ const Analytics = () => {
                         onChange={(e) => setSelectedTermId(e.target.value)}
                         className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
                       >
-                        <option value="">All Terms</option>
                         {schoolTerms.map(term => (
                           <option key={term.term_id} value={term.term_id.toString()}>
                             {term.school_year} - {term.semester}
@@ -1477,87 +1494,7 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* Program Filter (Major) */}
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="relative">
-                      <select
-                        value={selectedProgramId}
-                        onChange={(e) => {
-                          setSelectedProgramId(e.target.value);
-                          setSelectedSpecializationId(''); // Reset specialization when program changes
-                        }}
-                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Programs</option>
-                        {programs.map(program => (
-                          <option key={program.program_id} value={program.program_id.toString()}>
-                            {program.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
 
-                  {/* Specialization/Major Filter */}
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="relative">
-                      <select
-                        value={selectedSpecializationId}
-                        onChange={(e) => setSelectedSpecializationId(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Specializations</option>
-                        {specializations.length > 0 ? (
-                          specializations.map(spec => (
-                            <option key={spec.specialization_id} value={spec.specialization_id.toString()}>
-                              {spec.name}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="" disabled>Loading specializations...</option>
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Section Filter */}
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="relative">
-                      <select
-                        value={selectedSectionId}
-                        onChange={(e) => setSelectedSectionId(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Sections</option>
-                        {sections
-                          .filter(s => !selectedProgramId || s.program_id?.toString() === selectedProgramId)
-                          .map(section => (
-                            <option key={section.section_id} value={section.section_id.toString()}>
-                              {section.section_code}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Year Level Filter */}
-                  <div className="flex-1 min-w-[200px]">
-                    <div className="relative">
-                      <select
-                        value={selectedYearLevel}
-                        onChange={(e) => setSelectedYearLevel(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                      >
-                        <option value="">All Year Levels</option>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
-                        <option value="4">4th Year</option>
-                      </select>
-                    </div>
-                  </div>
 
                 </div>
               </div>
@@ -2021,11 +1958,18 @@ const Analytics = () => {
                         className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="all">All Classes</option>
-                        {studentEnrollments.map((enrollment) => (
-                          <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
-                            {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
-                          </option>
-                        ))}
+                        {studentEnrollments
+                          .filter((enrollment) => {
+                            // Filter by selected term - only show classes from the selected school term
+                            if (!selectedTermId) return true;
+                            // Check if enrollment has term_id and matches selected term
+                            return enrollment.term_id?.toString() === selectedTermId;
+                          })
+                          .map((enrollment) => (
+                            <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
+                              {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
+                            </option>
+                          ))}
                       </select>
                       <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
                     </div>

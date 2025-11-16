@@ -1304,6 +1304,7 @@ app.get('/api/students/:id/enrollments', async (req, res) => {
         ce.enrollment_date,
         ce.status as enrollment_status,
         sc.section_id,
+        sc.term_id,
         s.section_code,
         c.course_id,
         c.course_code,
