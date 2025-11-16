@@ -1285,6 +1285,19 @@ const Assessments = () => {
     }))
   }
 
+  const handleMarkAllOnTime = () => {
+    setGrades(prev => {
+      const updated = { ...prev }
+      Object.keys(updated).forEach(enrollmentId => {
+        updated[enrollmentId] = {
+          ...updated[enrollmentId],
+          submission_status: 'ontime'
+        }
+      })
+      return updated
+    })
+  }
+
   const calculateAdjustedScore = (rawScore, latePenalty, totalPoints) => {
     const raw = parseFloat(rawScore) || 0
     const penalty = parseFloat(latePenalty) || 0
@@ -1997,27 +2010,44 @@ const Assessments = () => {
                             Grades for: {selectedAssessment.title} <span className="text-xs text-gray-600 font-normal">({selectedAssessment.total_points} pts)</span>
                           </h2>
                           {Object.keys(grades).length > 0 && (
-                            <button
-                              onClick={handleSubmitGrades}
-                              disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0 || !hasChanges()}
-                              className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors duration-300 ${
-                                isSubmittingGrades || !hasChanges()
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-red-600 hover:bg-red-700'
-                              } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
-                            >
-                              {isSubmittingGrades ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleMarkAllOnTime}
+                                disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-300 ${
+                                  isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                                } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-white`}
+                                title="Mark all students as On Time"
+                              >
                                 <span className="flex items-center justify-center">
-                                  <ArrowPathIcon className="h-3 w-3 mr-1.5 animate-spin" />
-                                  <span>Saving...</span>
+                                  <ClockIcon className="h-3 w-3 mr-1.5" />
+                                  <span>Mark All On Time</span>
                                 </span>
-                              ) : (
-                                <span className="flex items-center justify-center">
-                                  <CheckIcon className="h-3 w-3 mr-1.5" />
-                                  <span>Save Grades</span>
-                                </span>
-                              )}
-                            </button>
+                              </button>
+                              <button
+                                onClick={handleSubmitGrades}
+                                disabled={isSubmittingGrades || !selectedAssessment || Object.keys(grades).length === 0 || !hasChanges()}
+                                className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors duration-300 ${
+                                  isSubmittingGrades || !hasChanges()
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-red-600 hover:bg-red-700'
+                                } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-white`}
+                              >
+                                {isSubmittingGrades ? (
+                                  <span className="flex items-center justify-center">
+                                    <ArrowPathIcon className="h-3 w-3 mr-1.5 animate-spin" />
+                                    <span>Saving...</span>
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center justify-center">
+                                    <CheckIcon className="h-3 w-3 mr-1.5" />
+                                    <span>Save Grades</span>
+                                  </span>
+                                )}
+                              </button>
+                            </div>
                           )}
                         </div>
                         {(gradingLoading && Object.keys(grades).length === 0) ? (
@@ -2025,14 +2055,14 @@ const Assessments = () => {
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
                                 <div className="px-2 py-2 bg-gray-50 sticky top-0 z-50 border-b border-gray-200 flex items-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
-                                  <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-50 pr-1">Student</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Raw</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Penalty</div>
-                                  <div className="w-[55px] flex-shrink-0 px-0.5">Adj</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
-                                  <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
-                                  <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
-                                  <div className="w-[200px] flex-shrink-0 px-1">Status / %</div>
+                                  <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-50 pr-1 text-left">Student</div>
+                                  <div className="w-[55px] flex-shrink-0 px-0.5 text-center">Raw</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Penalty</div>
+                                  <div className="w-[65px] flex-shrink-0 px-0.5 text-center">Adjusted</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Actual</div>
+                                  <div className="w-[70px] flex-shrink-0 px-0.5 text-center">Transmuted</div>
+                                  <div className="w-[90px] flex-shrink-0 px-0.5 text-center">Feedback</div>
+                                  <div className="w-[200px] flex-shrink-0 px-1 text-center whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
@@ -2044,22 +2074,22 @@ const Assessments = () => {
                                           <div className="h-2 bg-gray-100 rounded w-16 animate-pulse"></div>
                                         </div>
                                       </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5">
-                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                                      </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5">
-                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                                      </div>
                                       <div className="w-[55px] flex-shrink-0 px-0.5">
-                                        <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5">
+                                      <div className="w-[60px] flex-shrink-0 px-0.5">
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                                      </div>
+                                      <div className="w-[65px] flex-shrink-0 px-0.5">
                                         <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
                                       </div>
                                       <div className="w-[60px] flex-shrink-0 px-0.5">
                                         <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
                                       </div>
-                                      <div className="w-[80px] flex-shrink-0 px-0.5">
+                                      <div className="w-[70px] flex-shrink-0 px-0.5">
+                                        <div className="h-3 bg-gray-200 rounded w-10 animate-pulse mx-auto"></div>
+                                      </div>
+                                      <div className="w-[90px] flex-shrink-0 px-0.5">
                                         <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
                                       <div className="w-[200px] flex-shrink-0 px-1">
@@ -2083,14 +2113,14 @@ const Assessments = () => {
                             <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                               <div className="w-full">
                                 <div className="px-2 py-2 bg-gray-50 sticky top-0 z-30 border-b border-gray-200 flex items-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
-                                  <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-1">Student</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Raw</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Penalty</div>
-                                  <div className="w-[55px] flex-shrink-0 px-0.5">Adj</div>
-                                  <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
-                                  <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
-                                  <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
-                                  <div className="w-[200px] flex-shrink-0 px-1 whitespace-nowrap">Status / %</div>
+                                  <div className="w-[140px] flex-shrink-0 sticky left-0 bg-gray-50 z-40 pr-1 text-left">Student</div>
+                                  <div className="w-[55px] flex-shrink-0 px-0.5 text-center">Raw</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Penalty</div>
+                                  <div className="w-[65px] flex-shrink-0 px-0.5 text-center">Adjusted</div>
+                                  <div className="w-[60px] flex-shrink-0 px-0.5 text-center">Actual</div>
+                                  <div className="w-[70px] flex-shrink-0 px-0.5 text-center">Transmuted</div>
+                                  <div className="w-[90px] flex-shrink-0 px-0.5 text-center">Feedback</div>
+                                  <div className="w-[200px] flex-shrink-0 px-1 text-center whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -2126,44 +2156,44 @@ const Assessments = () => {
                                           <div className="text-[10px] text-gray-500 truncate leading-tight mt-0.5">SR: {gradeData.student_number || 'N/A'}</div>
                                         </div>
                                       </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5">
+                                      <div className="w-[55px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.raw_score || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'raw_score', e.target.value)}
-                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors text-center"
                                           min="0"
                                           max={selectedAssessment.total_points}
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5">
+                                      <div className="w-[60px] flex-shrink-0 px-0.5">
                                         <input
                                           type="number"
                                           value={gradeData.late_penalty || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'late_penalty', e.target.value)}
-                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors"
+                                          className="w-full px-1 py-0.5 text-[10px] rounded border border-gray-300 focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-colors text-center"
                                           min="0"
                                           disabled={gradeData.submission_status === 'missing'}
                                         />
                                       </div>
-                                      <div className="w-[55px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
+                                      <div className="w-[65px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
                                       </div>
-                                      <div className="w-[50px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
+                                      <div className="w-[60px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           return calculateActualScore(adjusted, selectedAssessment.total_points).toFixed(2)
                                         })()}
                                       </div>
-                                      <div className="w-[60px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
+                                      <div className="w-[70px] flex-shrink-0 px-0.5 text-[10px] font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
                                         {gradeData.submission_status === 'missing' ? '—' : (() => {
                                           const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
                                           const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
                                           return calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0).toFixed(2)
                                         })()}
                                       </div>
-                                      <div className="w-[80px] flex-shrink-0 px-0.5">
+                                      <div className="w-[90px] flex-shrink-0 px-0.5">
                                         <textarea
                                           value={gradeData.feedback || ''}
                                           onChange={(e) => handleGradeChange(enrollmentId, 'feedback', e.target.value)}
