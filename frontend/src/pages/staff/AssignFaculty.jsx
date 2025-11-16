@@ -885,25 +885,25 @@ const AssignFaculty = () => {
           {/* Content Shell with search to mirror StudentManagement */}
           <div className="flex gap-6 h-[calc(100vh-150px)]">
             {/* Left Section - Classes Grid */}
-            <div className={`flex flex-col h-full min-h-0 transition-all duration-300 ${selectedClass ? 'flex-1' : 'w-full'}`}>
-              {/* Search Bar */}
-              <div className="mb-6 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search classes or faculty..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    />
+            <div className={`flex flex-col transition-[width] duration-300 ease-in-out ${selectedClass ? 'w-0 overflow-hidden' : 'w-full'}`}>
+              {/* Classes Grid */}
+              <div className="flex-1 p-6">
+                {/* Search Bar */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search classes or faculty..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Classes Grid */}
-              <div className="flex-1 min-h-0 overflow-auto">
                 {loadingClasses ? (
                   <CardGridSkeleton cards={6} />
                 ) : (
@@ -932,7 +932,7 @@ const AssignFaculty = () => {
             {selectedClass && (
               <div 
                 key="student-list-sidebar"
-                className="w-96 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col flex-shrink-0 slide-in-from-right expand-from-right transition-all duration-500 ease-in-out">
+                className="bg-white flex flex-col p-4 rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-0 slide-in-from-right expand-from-right transition-[width] duration-300 ease-in-out w-full">
               {loadingStudents ? (
                 <ClassDetailsSkeleton />
               ) : (
@@ -941,29 +941,24 @@ const AssignFaculty = () => {
                   <div className="mb-3 pb-3 border-b border-gray-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
-                          {selectedClass.title}
-                        </h2>
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
+                            {selectedClass.title}
+                          </h2>
+                          <button
+                            onClick={handleOpenStudentsModal}
+                            className="ml-2 inline-flex items-center justify-center w-6 h-6 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors flex-shrink-0"
+                            title="Add students to class"
+                          >
+                            <PlusIcon className="h-3 w-3 stroke-[3]" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Enrolled Students Section */}
                   <div className="flex-1 flex flex-col min-h-0">
-                    {/* Header with Add Button */}
-                    <div className="flex items-center justify-between mb-3 shrink-0">
-                      <h4 className="text-sm font-medium text-gray-900">Enrolled Students</h4>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleOpenStudentsModal}
-                          className="inline-flex items-center justify-center w-6 h-6 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                          title="Add students to class"
-                        >
-                          <PlusIcon className="h-3 w-3 stroke-[3]" />
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Select All and Unenroll Button */}
                     {students.length > 0 && (
                       <div className="mb-3 shrink-0 flex items-center justify-between">

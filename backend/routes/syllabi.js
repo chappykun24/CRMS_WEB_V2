@@ -889,7 +889,7 @@ router.post('/:id/share', async (req, res) => {
 
     // Copy ILOs from source syllabus
     const sourceILOs = await db.query(
-      `SELECT ilo_id, code, description, so_mappings, iga_mappings, cdio_mappings, sdg_mappings
+      `SELECT ilo_id, code, description, category, level, weight_percentage, assessment_methods, learning_activities, is_active
        FROM ilos 
        WHERE syllabus_id = $1`,
       [id]
@@ -897,19 +897,81 @@ router.post('/:id/share', async (req, res) => {
 
     if (sourceILOs.rows.length > 0) {
       for (const ilo of sourceILOs.rows) {
-        await db.query(
-          `INSERT INTO ilos (syllabus_id, code, description, so_mappings, iga_mappings, cdio_mappings, sdg_mappings, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        // Insert the ILO
+        const newILOResult = await db.query(
+          `INSERT INTO ilos (syllabus_id, code, description, category, level, weight_percentage, assessment_methods, learning_activities, is_active, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           RETURNING ilo_id`,
           [
             newSyllabus.syllabus_id,
             ilo.code,
             ilo.description,
-            ilo.so_mappings,
-            ilo.iga_mappings,
-            ilo.cdio_mappings,
-            ilo.sdg_mappings
+            ilo.category,
+            ilo.level,
+            ilo.weight_percentage,
+            ilo.assessment_methods,
+            ilo.learning_activities,
+            ilo.is_active
           ]
         );
+
+        const newILOId = newILOResult.rows[0].ilo_id;
+
+        // Copy SO mappings
+        const soMappings = await db.query(
+          `SELECT so_id, assessment_tasks FROM ilo_so_mappings WHERE ilo_id = $1`,
+          [ilo.ilo_id]
+        );
+        for (const mapping of soMappings.rows) {
+          await db.query(
+            `INSERT INTO ilo_so_mappings (ilo_id, so_id, assessment_tasks, created_at, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (ilo_id, so_id) DO NOTHING`,
+            [newILOId, mapping.so_id, mapping.assessment_tasks]
+          );
+        }
+
+        // Copy IGA mappings
+        const igaMappings = await db.query(
+          `SELECT iga_id, assessment_tasks FROM ilo_iga_mappings WHERE ilo_id = $1`,
+          [ilo.ilo_id]
+        );
+        for (const mapping of igaMappings.rows) {
+          await db.query(
+            `INSERT INTO ilo_iga_mappings (ilo_id, iga_id, assessment_tasks, created_at, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (ilo_id, iga_id) DO NOTHING`,
+            [newILOId, mapping.iga_id, mapping.assessment_tasks]
+          );
+        }
+
+        // Copy CDIO mappings
+        const cdioMappings = await db.query(
+          `SELECT cdio_id, assessment_tasks FROM ilo_cdio_mappings WHERE ilo_id = $1`,
+          [ilo.ilo_id]
+        );
+        for (const mapping of cdioMappings.rows) {
+          await db.query(
+            `INSERT INTO ilo_cdio_mappings (ilo_id, cdio_id, assessment_tasks, created_at, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (ilo_id, cdio_id) DO NOTHING`,
+            [newILOId, mapping.cdio_id, mapping.assessment_tasks]
+          );
+        }
+
+        // Copy SDG mappings
+        const sdgMappings = await db.query(
+          `SELECT sdg_id, assessment_tasks FROM ilo_sdg_mappings WHERE ilo_id = $1`,
+          [ilo.ilo_id]
+        );
+        for (const mapping of sdgMappings.rows) {
+          await db.query(
+            `INSERT INTO ilo_sdg_mappings (ilo_id, sdg_id, assessment_tasks, created_at, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (ilo_id, sdg_id) DO NOTHING`,
+            [newILOId, mapping.sdg_id, mapping.assessment_tasks]
+          );
+        }
       }
     }
 
