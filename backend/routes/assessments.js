@@ -1036,7 +1036,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                   'ilo_weight_percentage', aiw.weight_percentage
                 )
                 ORDER BY a.assessment_id
-              ) FILTER (WHERE MAX(sub.transmuted_score) IS NOT NULL OR MAX(sub.adjusted_score) IS NOT NULL OR MAX(sub.total_score) IS NOT NULL) as assessments
+              ) as assessments
             FROM course_enrollments ce_ilo_detail
             INNER JOIN section_courses sc_ilo_detail ON ce_ilo_detail.section_course_id = sc_ilo_detail.section_course_id
             INNER JOIN assessments a ON sc_ilo_detail.section_course_id = a.section_course_id
