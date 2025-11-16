@@ -355,6 +355,16 @@ const LoginPage = () => {
                   
                   <button
                     type="button"
+                    onClick={() => setFormData({ email: 'jose.torres148@university.edu', password: 'password123' })}
+                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
+                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
+                  >
+                    <span className="font-mono text-gray-700">jose.torres148@university.edu</span>
+                    <span className="text-gray-400 ml-2">(Faculty 2)</span>
+                  </button>
+                  
+                  <button
+                    type="button"
                     onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
                     className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
                     style={{ border: '1px solid #e5e7eb', outline: 'none' }}
