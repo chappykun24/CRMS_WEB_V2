@@ -28,10 +28,13 @@ const AssignFaculty = () => {
   // Students modal - for available students
   const [showStudentsModal, setShowStudentsModal] = useState(false)
   const [availableStudents, setAvailableStudents] = useState([])
+  const [enrolledStudents, setEnrolledStudents] = useState([])
   const [loadingAvailableStudents, setLoadingAvailableStudents] = useState(false)
+  const [loadingEnrolledStudents, setLoadingEnrolledStudents] = useState(false)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
   const [selectedStudents, setSelectedStudents] = useState(new Set())
   const [enrollingStudents, setEnrollingStudents] = useState(new Set())
+  const [showEnrolledView, setShowEnrolledView] = useState(false) // Toggle between available and enrolled
 
   // Success message state
   const [successMessage, setSuccessMessage] = useState('')
@@ -87,10 +90,19 @@ const AssignFaculty = () => {
     if (!selectedClass) return
     
     setShowStudentsModal(true)
-    setLoadingAvailableStudents(true)
+    setShowEnrolledView(false)
     setStudentSearchQuery('')
     setSelectedStudents(new Set()) // Reset selected students when opening modal
     
+    // Load available students by default
+    await loadAvailableStudents()
+  }
+
+  // Load available students (not enrolled)
+  const loadAvailableStudents = async () => {
+    if (!selectedClass) return
+    
+    setLoadingAvailableStudents(true)
     try {
       const response = await fetch(`/api/students/available-for-section/${selectedClass.id}`)
       if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
@@ -101,6 +113,37 @@ const AssignFaculty = () => {
       setAvailableStudents([])
     } finally {
       setLoadingAvailableStudents(false)
+    }
+  }
+
+  // Load enrolled students
+  const loadEnrolledStudents = async () => {
+    if (!selectedClass) return
+    
+    setLoadingEnrolledStudents(true)
+    try {
+      const response = await fetch(`/api/section-courses/${selectedClass.id}/students`)
+      if (!response.ok) throw new Error(`Failed to fetch enrolled students: ${response.status}`)
+      const data = await response.json()
+      setEnrolledStudents(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error loading enrolled students:', error)
+      setEnrolledStudents([])
+    } finally {
+      setLoadingEnrolledStudents(false)
+    }
+  }
+
+  // Toggle between available and enrolled students view
+  const handleToggleView = async (showEnrolled) => {
+    setShowEnrolledView(showEnrolled)
+    setSelectedStudents(new Set())
+    setStudentSearchQuery('')
+    
+    if (showEnrolled) {
+      await loadEnrolledStudents()
+    } else {
+      await loadAvailableStudents()
     }
   }
 
@@ -119,10 +162,11 @@ const AssignFaculty = () => {
 
   // Handle selecting/deselecting all students
   const handleSelectAll = () => {
-    if (selectedStudents.size === filteredAvailableStudents.length) {
+    const studentsToSelect = showEnrolledView ? filteredEnrolledStudents : filteredAvailableStudents
+    if (selectedStudents.size === studentsToSelect.length) {
       setSelectedStudents(new Set())
     } else {
-      setSelectedStudents(new Set(filteredAvailableStudents.map(s => s.student_id)))
+      setSelectedStudents(new Set(studentsToSelect.map(s => s.student_id)))
     }
   }
 
@@ -560,7 +604,7 @@ const AssignFaculty = () => {
     return `${lastName}, ${firstAndMiddle}`
   }
 
-  // Filter and sort available students based on search query and year level
+  // Filter and sort available students based on search query
   const filteredAvailableStudents = useMemo(() => {
     let filtered = availableStudents
     
@@ -588,6 +632,35 @@ const AssignFaculty = () => {
     
     return filtered
   }, [availableStudents, studentSearchQuery])
+
+  // Filter and sort enrolled students based on search query
+  const filteredEnrolledStudents = useMemo(() => {
+    let filtered = enrolledStudents
+    
+    // Filter by search query
+    if (studentSearchQuery.trim()) {
+      const query = studentSearchQuery.toLowerCase()
+      filtered = filtered.filter(student =>
+        (student.full_name || '').toLowerCase().includes(query) ||
+        (student.student_number || '').toLowerCase().includes(query)
+      )
+    }
+    
+    // Sort by last name (last word), then by full name
+    filtered.sort((a, b) => {
+      const aLastName = extractLastName(a.full_name || '')
+      const bLastName = extractLastName(b.full_name || '')
+      
+      if (aLastName !== bLastName) {
+        return aLastName.localeCompare(bLastName)
+      }
+      
+      // If last names are the same, sort by full name
+      return (a.full_name || '').localeCompare(b.full_name || '')
+    })
+    
+    return filtered
+  }, [enrolledStudents, studentSearchQuery])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -1050,20 +1123,51 @@ const AssignFaculty = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Add Students to {selectedClass.title}</h3>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {showEnrolledView ? 'Enrolled Students' : 'Add Students'} - {selectedClass.title}
+                </h3>
                 <p className="text-sm text-gray-600">
                   {selectedClass.code} • {selectedClass.section} • {selectedClass.instructor}
                 </p>
               </div>
-              <button
-                onClick={() => setShowStudentsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center space-x-2">
+                {/* Toggle Buttons */}
+                <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => handleToggleView(false)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                      !showEnrolledView
+                        ? 'bg-white text-red-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Available
+                  </button>
+                  <button
+                    onClick={() => handleToggleView(true)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                      showEnrolledView
+                        ? 'bg-white text-red-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Enrolled
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowStudentsModal(false)
+                    setSelectedStudents(new Set())
+                    setShowEnrolledView(false)
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -1082,9 +1186,14 @@ const AssignFaculty = () => {
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <h4 className="text-sm font-medium text-gray-900">Available Students</h4>
+                    <h4 className="text-sm font-medium text-gray-900">
+                      {showEnrolledView ? 'Enrolled Students' : 'Available Students'}
+                    </h4>
                     <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
-                      {filteredAvailableStudents.length} student{filteredAvailableStudents.length !== 1 ? 's' : ''}
+                      {showEnrolledView 
+                        ? `${filteredEnrolledStudents.length} student${filteredEnrolledStudents.length !== 1 ? 's' : ''}`
+                        : `${filteredAvailableStudents.length} student${filteredAvailableStudents.length !== 1 ? 's' : ''}`
+                      }
                     </span>
                     {selectedStudents.size > 0 && (
                       <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full border border-red-200 font-medium">
@@ -1097,31 +1206,35 @@ const AssignFaculty = () => {
 
               {/* Students List */}
               <div className="flex-1 overflow-y-auto p-3">
-                {loadingAvailableStudents ? (
+                {(showEnrolledView ? loadingEnrolledStudents : loadingAvailableStudents) ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600"></div>
                     <span className="ml-2 text-sm text-gray-600">Loading...</span>
                   </div>
-                ) : filteredAvailableStudents.length > 0 ? (
+                ) : (showEnrolledView ? filteredEnrolledStudents : filteredAvailableStudents).length > 0 ? (
                   <div>
                     {/* Select All Checkbox */}
                     <div className="mb-3 px-2">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={selectedStudents.size === filteredAvailableStudents.length && filteredAvailableStudents.length > 0}
+                          checked={
+                            showEnrolledView
+                              ? selectedStudents.size === filteredEnrolledStudents.length && filteredEnrolledStudents.length > 0
+                              : selectedStudents.size === filteredAvailableStudents.length && filteredAvailableStudents.length > 0
+                          }
                           onChange={handleSelectAll}
                           className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                         />
                         <span className="text-sm font-medium text-gray-700">
-                          Select All ({filteredAvailableStudents.length} students)
+                          Select All ({showEnrolledView ? filteredEnrolledStudents.length : filteredAvailableStudents.length} students)
                         </span>
                       </label>
                     </div>
                     
                     {/* Students Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {filteredAvailableStudents.map((student, index) => (
+                      {(showEnrolledView ? filteredEnrolledStudents : filteredAvailableStudents).map((student, index) => (
                         <div 
                           key={student.student_id} 
                           className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
@@ -1175,7 +1288,12 @@ const AssignFaculty = () => {
                         </svg>
                       </div>
                       <p className="text-sm text-gray-500">
-                        {studentSearchQuery ? 'No students found matching your search' : 'No available students to enroll'}
+                        {studentSearchQuery 
+                          ? 'No students found matching your search' 
+                          : showEnrolledView 
+                            ? 'No students enrolled in this class' 
+                            : 'No available students to enroll'
+                        }
                       </p>
                     </div>
                   </div>
@@ -1196,28 +1314,31 @@ const AssignFaculty = () => {
                     onClick={() => {
                       setShowStudentsModal(false)
                       setSelectedStudents(new Set())
+                      setShowEnrolledView(false)
                     }}
                     className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                   >
                     Close
                   </button>
-                  <button
-                    onClick={handleBulkEnroll}
-                    disabled={selectedStudents.size === 0 || enrollingStudents.size > 0}
-                    className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    {enrollingStudents.size > 0 ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Enrolling...</span>
-                      </>
-                    ) : (
-                      <>
-                        <PlusIcon className="h-4 w-4" />
-                        <span>Enroll Selected ({selectedStudents.size})</span>
-                      </>
-                    )}
-                  </button>
+                  {!showEnrolledView && (
+                    <button
+                      onClick={handleBulkEnroll}
+                      disabled={selectedStudents.size === 0 || enrollingStudents.size > 0}
+                      className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      {enrollingStudents.size > 0 ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Enrolling...</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlusIcon className="h-4 w-4" />
+                          <span>Enroll Selected ({selectedStudents.size})</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
