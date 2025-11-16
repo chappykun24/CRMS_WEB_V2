@@ -311,18 +311,13 @@ const AssignFaculty = () => {
       
       ;(async () => {
         try {
-          // Fetch faculty filtered by active term if available
-          const url = activeTermId 
-            ? `${API_BASE_URL}/section-courses/faculty?term_id=${activeTermId}`
-            : `${API_BASE_URL}/section-courses/faculty`
-          const response = await fetch(url)
+          // Fetch all approved faculty (not filtered by term) so staff can assign any faculty to new classes
+          const response = await fetch(`${API_BASE_URL}/section-courses/faculty`)
           if (!response.ok) throw new Error(`Failed to fetch faculty: ${response.status}`)
           const data = await response.json()
           if (isMounted) {
             setFaculty(Array.isArray(data) ? data : [])
-            if (activeTermId) {
-              console.log(`✅ [ASSIGN FACULTY] Loaded ${data.length} faculty teaching in active term`)
-            }
+            console.log(`✅ [ASSIGN FACULTY] Loaded ${data.length} approved faculty`)
           }
         } catch (error) {
           console.error('Error loading faculty:', error)
@@ -340,7 +335,7 @@ const AssignFaculty = () => {
     return () => {
       isMounted = false
     }
-  }, [showCreateModal, activeTermId])
+  }, [showCreateModal])
 
   // Fetch active term on component mount
   useEffect(() => {
