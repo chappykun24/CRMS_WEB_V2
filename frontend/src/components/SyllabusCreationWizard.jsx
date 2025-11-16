@@ -3032,6 +3032,7 @@ const SyllabusCreationWizard = ({
                         )}
                       </div>
                     </div>
+                      )}
                     </div>
                   </div>
                 </div>
