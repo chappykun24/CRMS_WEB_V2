@@ -160,6 +160,7 @@ const SyllabusApproval = () => {
       if (response.ok) {
         alert(`Edit request ${approved ? 'approved' : 'rejected'} successfully!`)
         loadEditRequests()
+        loadApprovedSyllabi() // Refresh approved syllabi list in case the edit was approved
       } else {
         const error = await response.json()
         alert(error.error || `Failed to ${action} edit request`)
@@ -167,6 +168,28 @@ const SyllabusApproval = () => {
     } catch (error) {
       console.error('Error approving edit request:', error)
       alert(`Failed to ${action} edit request`)
+    }
+  }
+
+  // View syllabus from edit request
+  const handleViewSyllabusFromRequest = async (editRequest) => {
+    try {
+      // Fetch the full syllabus data using syllabus_id from the edit request
+      const response = await fetch(`/api/syllabi/${editRequest.syllabus_id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      })
+      
+      if (response.ok) {
+        const syllabus = await response.json()
+        await openViewModal(syllabus)
+      } else {
+        alert('Failed to load syllabus details')
+      }
+    } catch (error) {
+      console.error('Error loading syllabus:', error)
+      alert('Failed to load syllabus details')
     }
   }
 
@@ -554,8 +577,13 @@ const SyllabusApproval = () => {
                     {filteredEditRequests.map((request) => (
                       <tr key={request.edit_request_id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{request.syllabus_title}</div>
-                          <div className="text-sm text-gray-500">v{request.syllabus_version}</div>
+                          <button
+                            onClick={() => handleViewSyllabusFromRequest(request)}
+                            className="text-left hover:text-blue-600 transition-colors"
+                          >
+                            <div className="text-sm font-medium text-gray-900 hover:underline">{request.syllabus_title}</div>
+                            <div className="text-sm text-gray-500">v{request.syllabus_version}</div>
+                          </button>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">{request.requested_by_name || 'N/A'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={request.reason}>
@@ -571,6 +599,13 @@ const SyllabusApproval = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleViewSyllabusFromRequest(request)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="View Syllabus"
+                            >
+                              <EyeIcon className="h-5 w-5" />
+                            </button>
                             {!request.dean_approved && request.status === 'pending' && (
                               <>
                                 <button
