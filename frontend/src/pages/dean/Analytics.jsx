@@ -526,24 +526,51 @@ const Analytics = () => {
       } else {
         // Try to get error details
         let errorMessage = `HTTP ${response.status}`;
+        let errorDetails = null;
+        let errorCode = null;
+        
+        // Read response body once - try as text first, then parse as JSON
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (e) {
-          // Ignore JSON parse errors
+          const textResponse = await response.text();
+          // Try to parse as JSON
+          try {
+            const errorData = JSON.parse(textResponse);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+            errorDetails = errorData.details;
+            errorCode = errorData.errorCode;
+          } catch (jsonError) {
+            // Not JSON, use text as error message
+            errorMessage = textResponse || errorMessage;
+            console.error('❌ [DEAN ANALYTICS] Non-JSON error response:', textResponse);
+          }
+        } catch (textError) {
+          // Failed to read response body
+          console.error('❌ [DEAN ANALYTICS] Failed to read error response:', textError);
         }
         
         console.error('❌ [DEAN ANALYTICS] Failed to fetch class analytics:', {
           status: response.status,
           statusText: response.statusText,
           error: errorMessage,
+          errorCode: errorCode,
+          errorDetails: errorDetails,
           student_id: studentId,
-          section_course_id: sectionCourseId
+          section_course_id: sectionCourseId,
+          url: url
         });
         
         // If 500 error, the backend query might be failing
-        // Fall back to showing overall data with a warning
+        // Log additional details for debugging
         if (response.status === 500) {
+          console.error('❌ [DEAN ANALYTICS] Backend 500 error details:', {
+            error: errorMessage,
+            errorCode: errorCode,
+            errorDetails: errorDetails,
+            queryParams: {
+              student_id: studentId,
+              section_course_id: sectionCourseId
+            }
+          });
           console.warn('⚠️ [DEAN ANALYTICS] Backend error (500) - using overall data as fallback');
           setClassFilteredData(null); // This will trigger using overall data
         } else {
