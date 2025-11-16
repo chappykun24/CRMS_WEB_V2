@@ -883,9 +883,9 @@ const AssignFaculty = () => {
           </div>
 
           {/* Content Shell with search to mirror StudentManagement */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-150px)]">
-            {/* Left Section */}
-            <div className="lg:col-span-2 flex flex-col h-full min-h-0">
+          <div className="flex gap-6 h-[calc(100vh-150px)]">
+            {/* Left Section - Classes Grid */}
+            <div className={`flex flex-col h-full min-h-0 transition-all duration-300 ${selectedClass ? 'flex-1' : 'w-full'}`}>
               {/* Search Bar */}
               <div className="mb-6 shrink-0">
                 <div className="flex items-center gap-3">
@@ -928,11 +928,12 @@ const AssignFaculty = () => {
               </div>
             </div>
 
-            {/* Right Section - Class Details and Students (Expanded) */}
-            <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col">
-              {loadingStudents && !selectedClass ? (
+            {/* Right Section - Class Details and Students (Expanded) - Only show when class is selected */}
+            {selectedClass && (
+              <div className="w-96 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col flex-shrink-0">
+              {loadingStudents ? (
                 <ClassDetailsSkeleton />
-              ) : selectedClass ? (
+              ) : (
                 <div className="h-full flex flex-col">
                   {/* Class Header */}
                   <div className="mb-4 pb-4 border-b border-gray-200">
@@ -1072,19 +1073,9 @@ const AssignFaculty = () => {
                     )}
                   </div>
                 </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-center text-gray-500 py-10">
-                  <div>
-                    <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                      <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm">Select a class to view students here.</p>
-                  </div>
-                </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
