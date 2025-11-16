@@ -490,6 +490,7 @@ const Analytics = () => {
 
   // Auto-refetch when filters change (only after initial load)
   useEffect(() => {
+    // Also refetch when faculty classes change
     if (hasFetched && !isInitialTermLoadRef.current) {
       handleFetch();
     }
@@ -498,7 +499,7 @@ const Analytics = () => {
       isInitialTermLoadRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, facultyClasses.length]);
 
   // Load student photo when modal opens (with caching to prevent duplicate loads)
   const loadStudentPhoto = useCallback(async (studentId) => {
@@ -709,6 +710,17 @@ const Analytics = () => {
 
   const handleFetch = useCallback((forceRefresh = false) => {
     console.log('🔍 [FACULTY ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
+    
+    // Don't fetch if faculty has no classes assigned
+    if (facultyId && facultyClassesRef.current.length === 0) {
+      console.log('🚫 [FACULTY ANALYTICS] Faculty has no classes - skipping fetch');
+      setData([]);
+      setClusterMeta({ enabled: false });
+      setHasFetched(true);
+      setLoading(false);
+      setProgress(100);
+      return;
+    }
     
     // Build cache key with all filters for better cache management
     const filterKey = [
@@ -1135,8 +1147,15 @@ const Analytics = () => {
   const filteredData = useMemo(() => {
     let filtered = data;
 
-    // Filter by faculty's classes - only show students from classes taught by this faculty
-    if (facultyId && facultyClassesRef.current.length > 0) {
+    // STRICT FILTERING: Only show students from faculty's classes
+    // If faculty has no classes, return empty array immediately
+    if (facultyId) {
+      if (facultyClassesRef.current.length === 0) {
+        console.log(`🚫 [FACULTY ANALYTICS] Faculty has no classes - returning empty data`);
+        return [];
+      }
+      
+      // Filter to only show students from faculty's classes
       const facultySectionIds = new Set(facultyClassesRef.current.map(cls => cls.section_id));
       const facultySectionCourseIds = new Set(facultyClassesRef.current.map(cls => cls.section_course_id));
       
@@ -1146,13 +1165,19 @@ const Analytics = () => {
         const rowSectionId = row.section_id;
         const rowSectionCourseId = row.section_course_id;
         
-        return (
+        const matches = (
           (rowSectionId && facultySectionIds.has(rowSectionId)) ||
           (rowSectionCourseId && facultySectionCourseIds.has(rowSectionCourseId))
         );
+        
+        return matches;
       });
       
       console.log(`🔍 [FACULTY ANALYTICS] Filtered to ${filtered.length} students from faculty's ${facultyClassesRef.current.length} classes`);
+    } else {
+      // If no facultyId, this shouldn't happen but return empty to be safe
+      console.warn(`⚠️ [FACULTY ANALYTICS] No facultyId provided - returning empty data`);
+      return [];
     }
 
     // Filter by cluster
@@ -1283,6 +1308,8 @@ const Analytics = () => {
 
   // Calculate statistics
   const stats = useMemo(() => {
+    // Don't show stats if faculty has no classes assigned
+    if (!facultyId || facultyClassesRef.current.length === 0) return null;
     if (filteredData.length === 0) return null;
     
     const total = filteredData.length;
@@ -1299,10 +1326,12 @@ const Analytics = () => {
       avgScore: avgScore.toFixed(2),
       avgSubmissionRate: avgSubmissionRate.toFixed(1)
     };
-  }, [filteredData]);
+  }, [filteredData, facultyId]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
+    // Don't show charts if faculty has no classes assigned
+    if (!facultyId || facultyClassesRef.current.length === 0) return null;
     if (filteredData.length === 0) return null;
 
     // Cluster distribution for pie chart (only valid clusters)
@@ -1438,7 +1467,7 @@ const Analytics = () => {
       submissionData,
       scatterData
     };
-  }, [filteredData]);
+  }, [filteredData, facultyId]);
 
   // Color palette for charts
   const COLORS = {
