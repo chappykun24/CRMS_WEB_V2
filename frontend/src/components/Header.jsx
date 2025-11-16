@@ -215,6 +215,7 @@ const Header = ({ onSidebarToggle, sidebarExpanded }) => {
         if (path === '/dashboard/assessments' || path === '/faculty/assessments') return 'Assessments'
         if (path === '/dashboard/grades' || path === '/faculty/grades') return 'Grades'
         if (path === '/dashboard/syllabus' || path === '/faculty/syllabus') return 'Syllabus'
+        if (path === '/dashboard/analytics' || path === '/faculty/analytics') return 'Analytics'
         break
       case 'DEAN':
         if (path === '/dean' || path === '/dean/') return 'Home'
