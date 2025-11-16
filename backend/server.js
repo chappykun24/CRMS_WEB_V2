@@ -3040,13 +3040,30 @@ app.post('/api/section-courses', async (req, res) => {
 
     // Check if section-course combination already exists
     const existingCheck = await pool.query(
-      'SELECT section_course_id FROM section_courses WHERE section_id = $1 AND course_id = $2 AND term_id = $3',
+      `SELECT sc.section_course_id, s.section_code, c.course_code, c.title as course_title, t.school_year, t.semester
+       FROM section_courses sc
+       JOIN sections s ON sc.section_id = s.section_id
+       JOIN courses c ON sc.course_id = c.course_id
+       JOIN school_terms t ON sc.term_id = t.term_id
+       WHERE sc.section_id = $1 AND sc.course_id = $2 AND sc.term_id = $3`,
       [section_id, course_id, term_id]
     );
 
     if (existingCheck.rows.length > 0) {
+      const existing = existingCheck.rows[0];
+      console.log('❌ [SECTION COURSE] Duplicate detected:', {
+        section_id,
+        course_id,
+        term_id,
+        existing: {
+          section_code: existing.section_code,
+          course_code: existing.course_code,
+          course_title: existing.course_title,
+          term: `${existing.school_year} - ${existing.semester}`
+        }
+      });
       return res.status(409).json({ 
-        error: 'A class with this course, section, and semester combination already exists. Please choose different values or update the existing class.' 
+        error: `A class with this combination already exists: Course "${existing.course_code} ${existing.course_title}", Section "${existing.section_code}", Term "${existing.school_year} - ${existing.semester}". Please choose different values or update the existing class.` 
       });
     }
 

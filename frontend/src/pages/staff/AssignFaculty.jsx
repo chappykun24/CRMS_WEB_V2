@@ -206,6 +206,9 @@ const AssignFaculty = () => {
       }
 
       console.log('Creating section course with data:', sectionCourseData)
+      console.log('Selected course:', selectedCourse)
+      console.log('Selected section:', selectedSection)
+      console.log('Available sections with same code:', sections.filter(s => s.section_code === formData.section))
 
       // Make API call to create section course
       const response = await fetch(`${API_BASE_URL}/section-courses`, {
@@ -219,9 +222,10 @@ const AssignFaculty = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         if (response.status === 409) {
-          throw new Error('This class already exists! Please choose a different course, section, or semester combination.')
+          // Use the detailed error message from backend which shows the exact conflicting combination
+          throw new Error(errorData.error || 'This class already exists! Please choose a different course, section, or semester combination.')
         }
-        throw new Error(errorData.message || `Failed to create class: ${response.status}`)
+        throw new Error(errorData.error || errorData.message || `Failed to create class: ${response.status}`)
       }
 
       const createdSectionCourse = await response.json()
