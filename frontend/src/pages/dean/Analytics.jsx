@@ -782,19 +782,38 @@ const Analytics = () => {
           
           if (studentsWithClusters.length === 0 && studentsData.length > 0) {
             const clusteringMeta = json.clustering || {};
-            const errorMessage = clusteringMeta.error || 
-              (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null 
-                ? 'Clustering API was called but returned no cluster labels. Check backend logs for details.' 
-                : 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.');
+            
+            // Check for clustering_explanation errors in student data
+            const studentsWithErrors = studentsData.filter(s => 
+              s.clustering_explanation && 
+              s.clustering_explanation.includes('Error:')
+            );
+            
+            let errorMessage = clusteringMeta.error;
+            if (!errorMessage) {
+              if (studentsWithErrors.length > 0) {
+                const firstError = studentsWithErrors[0].clustering_explanation;
+                errorMessage = `Python API error: ${firstError}`;
+              } else if (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null) {
+                errorMessage = 'Clustering API was called but returned no cluster labels. Check backend logs for details.';
+              } else {
+                errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+              }
+            }
             
             console.error('❌ [DEAN ANALYTICS] No students have cluster labels!');
             console.error('❌ [DEAN ANALYTICS] Error:', errorMessage);
             console.error('❌ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
+            if (studentsWithErrors.length > 0) {
+              console.error(`❌ [DEAN ANALYTICS] Found ${studentsWithErrors.length} students with clustering_explanation errors`);
+              console.error('❌ [DEAN ANALYTICS] First error:', studentsWithErrors[0].clustering_explanation);
+            }
             console.error('❌ [DEAN ANALYTICS] Diagnostic steps:');
             console.error('   1. Check backend logs for clustering errors');
             console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
             console.error('   3. Test clustering service: GET /api/assessments/clustering/health');
             console.error('   4. Check Python API logs on Railway');
+            console.error('   5. Check clustering_explanation field in student data for Python API errors');
             
             // Set error state for UI display
             if (setErrorRef.current) {
