@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { ChartBarIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
+import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
 import { API_BASE_URL } from '../../utils/api';
-import facultyCacheService from '../../services/facultyCacheService';
+import deanCacheService from '../../services/deanCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
-import { useAuth } from '../../contexts/UnifiedAuthContext';
 
 // Analytics-specific skeleton components
 const AnalyticsTableSkeleton = () => (
@@ -124,8 +124,8 @@ const ModalSkeleton = () => (
 );
 
 // Cache helpers
-const getCachedData = createCacheGetter(facultyCacheService);
-const setCachedData = createCacheSetter(facultyCacheService);
+const getCachedData = createCacheGetter(deanCacheService);
+const setCachedData = createCacheSetter(deanCacheService);
 
 import {
   PieChart,
@@ -145,10 +145,6 @@ import {
 } from 'recharts';
 
 const Analytics = () => {
-  const { user } = useAuth();
-  // Normalize faculty ID from user context
-  const facultyId = user?.user_id ?? user?.id;
-  
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -174,8 +170,15 @@ const Analytics = () => {
   const itemsPerPage = 50;
   const [schoolTerms, setSchoolTerms] = useState([]);
   const [selectedTermId, setSelectedTermId] = useState('');
-  const [facultyClasses, setFacultyClasses] = useState([]); // Faculty's classes for selected term
+  const [sections, setSections] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+  const [selectedSpecializationId, setSelectedSpecializationId] = useState('');
   const [studentEnrollmentsMap, setStudentEnrollmentsMap] = useState(new Map()); // Map<student_id, specialization_ids[]>
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [selectedYearLevel, setSelectedYearLevel] = useState('');
   // Standard filters (SO, IGA, CDIO, SDG) - these are the primary filters
   const [availableStandards, setAvailableStandards] = useState({ so: [], iga: [], cdio: [], sdg: [] });
@@ -196,18 +199,18 @@ const Analytics = () => {
 
   // Fetch school terms with caching
   const fetchSchoolTerms = useCallback(async () => {
-    console.log('🔍 [FACULTY ANALYTICS] fetchSchoolTerms starting');
+    console.log('🔍 [DEAN ANALYTICS] fetchSchoolTerms starting');
     
     // Check sessionStorage first for instant display
-    const sessionCacheKey = 'faculty_school_terms_session';
+    const sessionCacheKey = 'dean_school_terms_session';
     const sessionCached = safeGetItem(sessionCacheKey);
     
     // Check enhanced cache
-    const cacheKey = 'faculty_school_terms';
+    const cacheKey = 'dean_school_terms';
     const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000); // 30 minute cache
     
     if (sessionCached) {
-      console.log('📦 [FACULTY ANALYTICS] Using session cached school terms');
+      console.log('📦 [DEAN ANALYTICS] Using session cached school terms');
       // Sort terms to prioritize latest term
       const sortedCached = Array.isArray(sessionCached) ? [...sessionCached].sort((a, b) => {
         return (b.term_id || 0) - (a.term_id || 0);
@@ -221,7 +224,7 @@ const Analytics = () => {
       }
       // Continue to fetch fresh data in background
     } else if (cachedData) {
-      console.log('📦 [FACULTY ANALYTICS] Using enhanced cached school terms');
+      console.log('📦 [DEAN ANALYTICS] Using enhanced cached school terms');
       // Sort terms to prioritize latest term
       const sortedCached = Array.isArray(cachedData) ? [...cachedData].sort((a, b) => {
         return (b.term_id || 0) - (a.term_id || 0);
@@ -247,7 +250,7 @@ const Analytics = () => {
     termsAbortControllerRef.current = new AbortController();
     
     try {
-      console.log('🔄 [FACULTY ANALYTICS] Fetching fresh school terms...');
+      console.log('🔄 [DEAN ANALYTICS] Fetching fresh school terms...');
       const response = await fetch(`${API_BASE_URL}/school-terms`, {
         headers: {
           'Accept': 'application/json',
@@ -266,7 +269,7 @@ const Analytics = () => {
       }
       
       const terms = await response.json();
-      console.log(`✅ [FACULTY ANALYTICS] Received ${Array.isArray(terms) ? terms.length : 0} school terms`);
+      console.log(`✅ [DEAN ANALYTICS] Received ${Array.isArray(terms) ? terms.length : 0} school terms`);
       
       // Sort terms to prioritize latest term (by term_id descending, highest ID = latest)
       const termsData = Array.isArray(terms) ? terms.sort((a, b) => {
@@ -293,10 +296,10 @@ const Analytics = () => {
       
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('🚫 [FACULTY ANALYTICS] School terms request was aborted');
+        console.log('🚫 [DEAN ANALYTICS] School terms request was aborted');
         return;
       }
-      console.error('❌ [FACULTY ANALYTICS] Error fetching school terms:', error);
+      console.error('❌ [DEAN ANALYTICS] Error fetching school terms:', error);
       // Only set error if we don't have cached data and setError is available
       const hasCachedTerms = sessionCached || cachedData;
       if (!hasCachedTerms && setErrorRef.current) {
@@ -304,54 +307,71 @@ const Analytics = () => {
           setErrorRef.current(error.message);
         } catch (e) {
           // Component may have unmounted, ignore silently
-          console.warn('⚠️ [FACULTY ANALYTICS] Could not set error state (component may have unmounted)');
+          console.warn('⚠️ [DEAN ANALYTICS] Could not set error state (component may have unmounted)');
         }
       }
     }
   }, []);
 
-  // Fetch faculty classes for selected term
-  const fetchFacultyClasses = useCallback(async (termId) => {
-    if (!facultyId || !termId) {
-      setFacultyClasses([]);
-      return [];
-    }
-
+  // Fetch sections, programs, departments, and specializations
+  const fetchFilterOptions = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/section-courses/faculty/${facultyId}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        signal: abortControllerRef.current?.signal
-      });
+      const [sectionsRes, programsRes, departmentsRes, specializationsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/section-courses/sections`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/programs`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/departments`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/program-specializations`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        })
+      ]);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch faculty classes');
+      if (sectionsRes.ok) {
+        const sectionsData = await sectionsRes.json();
+        setSections(Array.isArray(sectionsData) ? sectionsData : []);
       }
-
-      const allClasses = await response.json();
-      // Filter by selected term
-      const termClasses = Array.isArray(allClasses) 
-        ? allClasses.filter(c => c.term_id === termId)
-        : [];
-      
-      setFacultyClasses(termClasses);
-      console.log(`✅ [FACULTY ANALYTICS] Found ${termClasses.length} classes for term ${termId}`);
-      return termClasses;
+      if (programsRes.ok) {
+        const programsData = await programsRes.json();
+        setPrograms(Array.isArray(programsData) ? programsData : []);
+      }
+      if (departmentsRes.ok) {
+        const departmentsData = await departmentsRes.json();
+        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      }
+      if (specializationsRes.ok) {
+        const specializationsData = await specializationsRes.json();
+        // Filter to only show Business Analytics, Networking, and Service Management
+        const allowedSpecializations = ['Business Analytics', 'Networking', 'Service Management'];
+        const filteredSpecializations = Array.isArray(specializationsData) 
+          ? specializationsData.filter(spec => 
+              allowedSpecializations.some(allowed => 
+                spec.name?.toLowerCase().includes(allowed.toLowerCase()) ||
+                spec.abbreviation?.toLowerCase().includes(allowed.toLowerCase())
+              )
+            )
+          : [];
+        console.log('✅ [DEAN ANALYTICS] Loaded specializations:', filteredSpecializations.length, filteredSpecializations);
+        setSpecializations(filteredSpecializations);
+      }
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('❌ [FACULTY ANALYTICS] Error fetching faculty classes:', error);
-      }
-      setFacultyClasses([]);
-      return [];
+      console.error('❌ [DEAN ANALYTICS] Error fetching filter options:', error);
     }
-  }, [facultyId]);
+  }, []);
 
   // Fetch school terms on component mount
   useEffect(() => {
-    if (!facultyId) return;
     fetchSchoolTerms();
+    fetchFilterOptions();
+    
+    // Prefetch data for other dean pages in the background
+    setTimeout(() => {
+      prefetchDeanData();
+    }, 1000);
     
     // Cleanup function to abort pending requests
     return () => {
@@ -359,7 +379,7 @@ const Analytics = () => {
         termsAbortControllerRef.current.abort();
       }
     };
-  }, [facultyId, fetchSchoolTerms]);
+  }, [fetchSchoolTerms, fetchFilterOptions]);
 
   // Auto-load analytics when component mounts or when school terms are loaded
   useEffect(() => {
@@ -388,7 +408,7 @@ const Analytics = () => {
       isInitialTermLoadRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTermId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
 
   // Load student photo when modal opens (with caching to prevent duplicate loads)
   const loadStudentPhoto = useCallback(async (studentId) => {
@@ -431,7 +451,7 @@ const Analytics = () => {
         setStudentPhoto(null);
       }
     } catch (error) {
-      console.error('❌ [FACULTY ANALYTICS] Error loading student photo:', error);
+      console.error('❌ [DEAN ANALYTICS] Error loading student photo:', error);
       // Cache null to prevent retrying failed loads
       studentPhotoCache.current.set(studentId, null);
       setStudentPhoto(null);
@@ -457,11 +477,11 @@ const Analytics = () => {
         const result = await response.json();
         if (result.success && result.data) {
           setStudentEnrollments(result.data);
-          console.log('✅ [FACULTY ANALYTICS] Loaded student enrollments:', result.data.length);
+          console.log('✅ [DEAN ANALYTICS] Loaded student enrollments:', result.data.length);
         }
       }
     } catch (error) {
-      console.error('❌ [FACULTY ANALYTICS] Error loading student enrollments:', error);
+      console.error('❌ [DEAN ANALYTICS] Error loading student enrollments:', error);
       setStudentEnrollments([]);
     }
   }, []);
@@ -481,7 +501,7 @@ const Analytics = () => {
       });
       
       const url = `${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`;
-      console.log('🔄 [FACULTY ANALYTICS] Fetching class analytics:', url);
+      console.log('🔄 [DEAN ANALYTICS] Fetching class analytics:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -494,14 +514,14 @@ const Analytics = () => {
         const result = await response.json();
         if (result.success && result.data && result.data.length > 0) {
           const classData = result.data[0]; // Get the student's data for this class
-          console.log('✅ [FACULTY ANALYTICS] Loaded class-specific analytics:', {
+          console.log('✅ [DEAN ANALYTICS] Loaded class-specific analytics:', {
             student_id: studentId,
             section_course_id: sectionCourseId,
             data: classData
           });
           setClassFilteredData(classData);
         } else {
-          console.warn('⚠️ [FACULTY ANALYTICS] No class-specific data found in response:', result);
+          console.warn('⚠️ [DEAN ANALYTICS] No class-specific data found in response:', result);
           setClassFilteredData(null);
         }
       } else {
@@ -522,14 +542,14 @@ const Analytics = () => {
           } catch (jsonError) {
             // Not JSON, use text as error message
             errorMessage = textResponse || errorMessage;
-            console.error('❌ [FACULTY ANALYTICS] Non-JSON error response:', textResponse);
+            console.error('❌ [DEAN ANALYTICS] Non-JSON error response:', textResponse);
           }
         } catch (textError) {
           // Failed to read response body
-          console.error('❌ [FACULTY ANALYTICS] Failed to read error response:', textError);
+          console.error('❌ [DEAN ANALYTICS] Failed to read error response:', textError);
         }
         
-        console.error('❌ [FACULTY ANALYTICS] Failed to fetch class analytics:', {
+        console.error('❌ [DEAN ANALYTICS] Failed to fetch class analytics:', {
           status: response.status,
           statusText: response.statusText,
           error: errorMessage,
@@ -543,7 +563,7 @@ const Analytics = () => {
         // If 500 error, the backend query might be failing
         // Log additional details for debugging
         if (response.status === 500) {
-          console.error('❌ [FACULTY ANALYTICS] Backend 500 error details:', {
+          console.error('❌ [DEAN ANALYTICS] Backend 500 error details:', {
             error: errorMessage,
             errorCode: errorCode,
             errorDetails: errorDetails,
@@ -552,14 +572,14 @@ const Analytics = () => {
               section_course_id: sectionCourseId
             }
           });
-          console.warn('⚠️ [FACULTY ANALYTICS] Backend error (500) - using overall data as fallback');
+          console.warn('⚠️ [DEAN ANALYTICS] Backend error (500) - using overall data as fallback');
           setClassFilteredData(null); // This will trigger using overall data
         } else {
           setClassFilteredData(null);
         }
       }
     } catch (error) {
-      console.error('❌ [FACULTY ANALYTICS] Error loading class analytics:', {
+      console.error('❌ [DEAN ANALYTICS] Error loading class analytics:', {
         error: error.message,
         student_id: studentId,
         section_course_id: sectionCourseId
@@ -597,42 +617,40 @@ const Analytics = () => {
     }
   }, [isModalOpen, selectedStudent, fetchStudentEnrollments, loadStudentPhoto]);
 
-  const handleFetch = useCallback(async (forceRefresh = false) => {
-    console.log('🔍 [FACULTY ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
-    
-    if (!facultyId || !selectedTermId) {
-      console.warn('⚠️ [FACULTY ANALYTICS] Missing facultyId or selectedTermId');
-      return;
-    }
+  const handleFetch = useCallback((forceRefresh = false) => {
+    console.log('🔍 [DEAN ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
     
     // Build cache key with all filters for better cache management
     const filterKey = [
       selectedTermId || 'all',
+      selectedSectionId || 'all',
+      selectedProgramId || 'all',
       selectedYearLevel || 'all',
+      selectedSpecializationId || 'all',
       selectedStandardType || 'all',
       selectedStandardId || 'all'
     ].join('_');
     
     // If force refresh, clear all caches first
     if (forceRefresh) {
-      console.log('🔄 [FACULTY ANALYTICS] Force refresh - clearing caches...');
-      const sessionCacheKey = `faculty_analytics_${filterKey}_session`;
-      const cacheKey = `faculty_analytics_${filterKey}`;
+      console.log('🔄 [DEAN ANALYTICS] Force refresh - clearing caches...');
+    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
+      const cacheKey = `dean_analytics_${filterKey}`;
       
       // Clear sessionStorage cache
       try {
         sessionStorage.removeItem(sessionCacheKey);
-        console.log('✅ [FACULTY ANALYTICS] Cleared sessionStorage cache');
+        console.log('✅ [DEAN ANALYTICS] Cleared sessionStorage cache');
       } catch (e) {
-        console.warn('⚠️ [FACULTY ANALYTICS] Could not clear sessionStorage:', e);
+        console.warn('⚠️ [DEAN ANALYTICS] Could not clear sessionStorage:', e);
       }
       
       // Clear enhanced cache
       try {
-        facultyCacheService.clear('analytics', cacheKey);
-        console.log('✅ [FACULTY ANALYTICS] Cleared enhanced cache');
+        deanCacheService.clear('analytics', cacheKey);
+        console.log('✅ [DEAN ANALYTICS] Cleared enhanced cache');
       } catch (e) {
-        console.warn('⚠️ [FACULTY ANALYTICS] Could not clear enhanced cache:', e);
+        console.warn('⚠️ [DEAN ANALYTICS] Could not clear enhanced cache:', e);
       }
       
       // Reset charts loaded state
@@ -640,11 +658,11 @@ const Analytics = () => {
     }
     
     // Check sessionStorage first for instant display (skip if force refresh)
-    const sessionCacheKey = `faculty_analytics_${filterKey}_session`;
+    const sessionCacheKey = `dean_analytics_${filterKey}_session`;
     const sessionCached = forceRefresh ? null : safeGetItem(sessionCacheKey);
     
     if (sessionCached && sessionCached.success) {
-      console.log('📦 [FACULTY ANALYTICS] Using session cached analytics data');
+      console.log('📦 [DEAN ANALYTICS] Using session cached analytics data');
       setData(sessionCached.data || []);
       setClusterMeta(sessionCached.clustering || { enabled: false });
       setHasFetched(true);
@@ -660,10 +678,10 @@ const Analytics = () => {
     }
     
     // Check enhanced cache (skip if force refresh)
-    const cacheKey = `faculty_analytics_${filterKey}`;
+    const cacheKey = `dean_analytics_${filterKey}`;
     const cachedData = forceRefresh ? null : getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
     if (cachedData && cachedData.success && !sessionCached) {
-      console.log('📦 [FACULTY ANALYTICS] Using enhanced cached analytics data');
+      console.log('📦 [DEAN ANALYTICS] Using enhanced cached analytics data');
       setData(cachedData.data || []);
       setClusterMeta(cachedData.clustering || { enabled: false });
       setHasFetched(true);
@@ -707,255 +725,273 @@ const Analytics = () => {
     }
     if (setErrorRef.current) setErrorRef.current(null);
 
-    try {
-      // Fetch faculty classes for the selected term
-      const classes = await fetchFacultyClasses(parseInt(selectedTermId));
-      
-      if (!classes || classes.length === 0) {
-        console.warn('⚠️ [FACULTY ANALYTICS] No classes found for selected term');
-        setData([]);
-        setClusterMeta({ enabled: false });
-        setHasFetched(true);
-        setLoading(false);
-        setProgress(100);
-        return;
-      }
-
-      // Fetch analytics for each class and aggregate
-      setProgress(30);
-      const analyticsPromises = classes.map(async (classItem, index) => {
-        try {
-          const params = new URLSearchParams();
-          params.append('section_course_id', classItem.section_course_id.toString());
-          // Add Standard filter if selected
-          if (selectedStandardType && selectedStandardId && selectedStandardId !== 'all') {
-            const paramName = selectedStandardType.toLowerCase() + '_id';
-            params.append(paramName, selectedStandardId);
-          }
-          if (forceRefresh) {
-            params.append('force_refresh', 'true');
-          }
-          
-          const url = `${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`;
-          
-          const response = await fetch(url, {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            signal: abortControllerRef.current.signal
-          });
-
-          if (!response.ok) {
-            let errorMessage = `HTTP ${response.status}`;
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorData.message || errorMessage;
-              console.warn(`⚠️ [FACULTY ANALYTICS] Failed to fetch analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, errorMessage);
-            } catch (e) {
-              console.warn(`⚠️ [FACULTY ANALYTICS] Failed to fetch analytics for class ${classItem.section_course_id} (${classItem.course_code}): ${response.status} ${response.statusText}`);
+    // Build URL with filters
+    const params = new URLSearchParams();
+    if (selectedTermId) params.append('term_id', selectedTermId);
+    if (selectedSectionId) params.append('section_id', selectedSectionId);
+    if (selectedProgramId) params.append('program_id', selectedProgramId);
+    // Add Standard filter if selected (SO, IGA, CDIO, or SDG)
+    if (selectedStandardType && selectedStandardId && selectedStandardId !== 'all') {
+      const paramName = selectedStandardType.toLowerCase() + '_id';
+      params.append(paramName, selectedStandardId);
+      console.log(`🎯 [DEAN ANALYTICS] Adding ${selectedStandardType} filter:`, selectedStandardId);
+    }
+    // Note: year_level filtering is done client-side since backend doesn't support it directly
+    // Add force_refresh parameter to bypass backend cache and recompute clusters
+    if (forceRefresh) {
+      params.append('force_refresh', 'true');
+      console.log('🔄 [DEAN ANALYTICS] Adding force_refresh parameter to API call');
+    }
+    const url = `${API_BASE_URL}/assessments/dean-analytics/sample${params.toString() ? '?' + params.toString() : ''}`;
+    
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      signal: abortControllerRef.current.signal
+    })
+      .then(async (res) => {
+        console.log('📡 [Analytics] Response status:', res.status);
+        setProgress(95);
+        
+        // Clone response before consuming to allow error handling
+        const clonedRes = res.clone();
+        
+        // Check if response is OK (200-299)
+        if (!res.ok) {
+          // Try to parse as JSON first, but fallback to text for HTML error pages
+          let errorData;
+          const contentType = res.headers.get('content-type');
+          try {
+            if (contentType && contentType.includes('application/json')) {
+              errorData = await res.json();
+            } else {
+              const errorText = await res.text();
+              console.error('❌ [Analytics] Non-JSON error response:', errorText.substring(0, 200));
+              errorData = { 
+                success: false, 
+                error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable. The server may be down or the request timed out.' : errorText.substring(0, 100)}`
+              };
             }
-            return null;
-          }
-
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            console.warn(`⚠️ [FACULTY ANALYTICS] Non-JSON response for class ${classItem.section_course_id} (${classItem.course_code})`);
-            return null;
-          }
-
-          const result = await response.json();
-          if (result.success && Array.isArray(result.data)) {
-            // Add class info to each student record
-            return {
-              data: result.data.map(student => ({
-                ...student,
-                section_course_id: classItem.section_course_id,
-                course_code: classItem.course_code,
-                course_title: classItem.course_title,
-                section_code: classItem.section_code
-              })),
-              clustering: result.clustering || { enabled: false }
+          } catch (parseError) {
+            console.error('❌ [Analytics] Failed to parse error response:', parseError);
+            // Try to read from cloned response
+            try {
+              const errorText = await clonedRes.text();
+              console.error('❌ [Analytics] Error response text (first 500 chars):', errorText.substring(0, 500));
+            } catch (e) {
+              console.error('❌ [Analytics] Could not read error response:', e);
+            }
+            errorData = { 
+              success: false, 
+              error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable or request timed out.' : 'Unable to parse error response'}`
             };
           }
-          return null;
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error(`❌ [FACULTY ANALYTICS] Error fetching analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, error);
-          }
-          return null;
-        }
-      });
-
-      // Wait for all class analytics to complete
-      setProgress(60);
-      const results = await Promise.all(analyticsPromises);
-      
-      // Aggregate data from all classes
-      const aggregatedStudents = [];
-      const clusteringResults = [];
-      
-      results.forEach((result, index) => {
-        if (result && result.data) {
-          aggregatedStudents.push(...result.data);
-          if (result.clustering) {
-            clusteringResults.push(result.clustering);
-          }
-        }
-      });
-
-      setProgress(80);
-
-      // Determine clustering meta from results (use first non-null clustering result)
-      const clusteringMeta = clusteringResults.find(c => c && c.enabled) || { enabled: false };
-      if (clusteringResults.length > 0) {
-        // Use the first clustering result's metadata
-        const firstClustering = clusteringResults[0];
-        if (firstClustering) {
-          clusteringMeta.silhouetteScore = firstClustering.silhouetteScore;
-          clusteringMeta.backendPlatform = firstClustering.backendPlatform;
-          clusteringMeta.apiPlatform = firstClustering.apiPlatform;
-        }
-      }
-
-      // Build student enrollments map
-      const enrollmentsMap = new Map();
-      aggregatedStudents.forEach(student => {
-        const specializationIds = student.enrolled_specializations || [];
-        const specIds = Array.isArray(specializationIds) 
-          ? specializationIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id).filter(id => !isNaN(id))
-          : [];
-        enrollmentsMap.set(student.student_id, specIds);
-      });
-      setStudentEnrollmentsMap(enrollmentsMap);
-
-      // Check if clustering data is present
-      const studentsWithClusters = aggregatedStudents.filter(s => {
-        const cluster = s.cluster_label;
-        return cluster && 
-               cluster !== null && 
-               cluster !== undefined &&
-               !(typeof cluster === 'number' && isNaN(cluster)) &&
-               !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''));
-      });
-      
-      console.log(`📊 [FACULTY ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${aggregatedStudents.length}`);
-      
-      if (studentsWithClusters.length === 0 && aggregatedStudents.length > 0) {
-        const studentsWithErrors = aggregatedStudents.filter(s => 
-          s.clustering_explanation && 
-          s.clustering_explanation.includes('Error:')
-        );
-        
-        let errorMessage = clusteringMeta.error;
-        if (!errorMessage && studentsWithErrors.length > 0) {
-          const firstError = studentsWithErrors[0].clustering_explanation;
-          errorMessage = `Python API error: ${firstError}`;
-        } else if (!errorMessage) {
-          errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+          throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
         }
         
-        if (setErrorRef.current) {
-          try {
-            setErrorRef.current(`Clustering failed: ${errorMessage}. Check console for details.`);
-          } catch (e) {
-            console.warn('⚠️ [FACULTY ANALYTICS] Could not set error state');
-          }
-        }
-      }
-
-      // Create response object matching dean's format
-      const aggregatedResponse = {
-        success: true,
-        data: aggregatedStudents,
-        clustering: clusteringMeta
-      };
-
-      setData(aggregatedStudents);
-      setClusterMeta(clusteringMeta);
-
-      // Build cache key with all filters
-      const filterKey = [
-        selectedTermId || 'all',
-        selectedYearLevel || 'all',
-        selectedStandardType || 'all',
-        selectedStandardId || 'all'
-      ].join('_');
-      
-      // Store in sessionStorage for instant next load
-      const sessionCacheKey = `faculty_analytics_${filterKey}_session`;
-      safeSetItem(sessionCacheKey, aggregatedResponse);
-      
-      // Store full data in enhanced cache
-      const cacheKey = `faculty_analytics_${filterKey}`;
-      setCachedData('analytics', cacheKey, aggregatedResponse);
-      
-      // Load charts after data is loaded
-      setTimeout(() => setChartsLoaded(true), 200);
-      
-      // Log cluster distribution
-      const clusterCounts = aggregatedStudents.reduce((acc, row) => {
-        let cluster = row.cluster_label;
-        if (cluster && 
-            cluster !== null && 
-            cluster !== undefined &&
-            !(typeof cluster === 'number' && isNaN(cluster)) &&
-            !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
-          acc[cluster] = (acc[cluster] || 0) + 1;
-        }
-        return acc;
-      }, {});
-      console.log('📈 [FACULTY ANALYTICS] Cluster distribution:', clusterCounts);
-      console.log('🔍 [FACULTY ANALYTICS] Clustering enabled status:', clusteringMeta?.enabled);
-
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
-      setProgress(100);
-      setTimeout(() => setLoading(false), 500);
-      setHasFetched(true);
-      try {
-        trackEvent('faculty_analytics_loaded', {
-          success: true,
-          count: aggregatedStudents.length,
-          clustering_enabled: Boolean(clusteringMeta?.enabled),
-          platform: clusteringMeta?.platform || 'Unknown',
-        });
-      } catch {}
-    } catch (err) {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
-      
-      if (err.name === 'AbortError') {
-        console.log('🚫 [FACULTY ANALYTICS] Request was aborted');
-        return;
-      }
-      
-      console.error('❌ [FACULTY ANALYTICS] Fetch error:', err);
-      const errorMessage = err?.message || 'Unable to fetch analytics';
-      const sessionCached = safeGetItem(`faculty_analytics_${selectedTermId || 'all'}_session`);
-      const cachedData = getCachedData('analytics', `faculty_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
-      if (!sessionCached && !cachedData && setErrorRef.current) {
+        // Clone again for error handling in JSON parsing
+        const jsonClonedRes = res.clone();
         try {
-          setErrorRef.current(errorMessage.includes('502') || errorMessage.includes('timeout') 
-            ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
-            : errorMessage);
-        } catch (e) {
-          console.warn('⚠️ [FACULTY ANALYTICS] Could not set error state (component may have unmounted)');
+          return await res.json();
+        } catch (jsonError) {
+          console.error('❌ [Analytics] Error parsing JSON:', jsonError);
+          // Try to read response as text to see what we got
+          try {
+            const responseText = await jsonClonedRes.text();
+            console.error('❌ [Analytics] Response text (first 1000 chars):', responseText.substring(0, 1000));
+            // Check if response looks truncated
+            if (responseText.length > 1000 && !responseText.endsWith('}') && !responseText.endsWith(']')) {
+              console.error('❌ [Analytics] Response appears to be truncated!');
+            }
+          } catch (e) {
+            console.error('❌ [Analytics] Could not read response as text:', e);
+          }
+          throw jsonError;
         }
-      }
-      setProgress(0);
-      setLoading(false);
-      setHasFetched(true);
-      setChartsLoaded(false);
-      try {
-        trackEvent('faculty_analytics_error', { message: String(err?.message || err) });
-      } catch {}
-    }
-  }, [facultyId, selectedTermId, selectedYearLevel, selectedStandardType, selectedStandardId, fetchFacultyClasses]);
+      })
+      .then((json) => {
+        console.log('✅ [DEAN ANALYTICS] Received data:', json);
+        console.log('🎯 [DEAN ANALYTICS] Clustering enabled:', json.clustering?.enabled);
+        
+        if (json.success) {
+          const studentsData = json.data || [];
+          
+          // Check if clustering data is present
+          const studentsWithClusters = studentsData.filter(s => {
+            const cluster = s.cluster_label;
+            return cluster && 
+                   cluster !== null && 
+                   cluster !== undefined &&
+                   !(typeof cluster === 'number' && isNaN(cluster)) &&
+                   !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''));
+          });
+          
+          console.log(`📊 [DEAN ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${studentsData.length}`);
+          
+          if (studentsWithClusters.length === 0 && studentsData.length > 0) {
+            const clusteringMeta = json.clustering || {};
+            
+            // Check for clustering_explanation errors in student data
+            const studentsWithErrors = studentsData.filter(s => 
+              s.clustering_explanation && 
+              s.clustering_explanation.includes('Error:')
+            );
+            
+            let errorMessage = clusteringMeta.error;
+            if (!errorMessage) {
+              if (studentsWithErrors.length > 0) {
+                const firstError = studentsWithErrors[0].clustering_explanation;
+                errorMessage = `Python API error: ${firstError}`;
+              } else if (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null) {
+                errorMessage = 'Clustering API was called but returned no cluster labels. Check backend logs for details.';
+              } else {
+                errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+              }
+            }
+            
+            console.error('❌ [DEAN ANALYTICS] No students have cluster labels!');
+            console.error('❌ [DEAN ANALYTICS] Error:', errorMessage);
+            console.error('❌ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
+            if (studentsWithErrors.length > 0) {
+              console.error(`❌ [DEAN ANALYTICS] Found ${studentsWithErrors.length} students with clustering_explanation errors`);
+              console.error('❌ [DEAN ANALYTICS] First error:', studentsWithErrors[0].clustering_explanation);
+            }
+            console.error('❌ [DEAN ANALYTICS] Diagnostic steps:');
+            console.error('   1. Check backend logs for clustering errors');
+            console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
+            console.error('   3. Test clustering service: GET /api/assessments/clustering/health');
+            console.error('   4. Check Python API logs on Railway');
+            console.error('   5. Check clustering_explanation field in student data for Python API errors');
+            
+            // Set error state for UI display
+            if (setErrorRef.current) {
+              try {
+                setErrorRef.current(`Clustering failed: ${errorMessage}. Check console for details.`);
+              } catch (e) {
+                console.warn('⚠️ [DEAN ANALYTICS] Could not set error state');
+              }
+            }
+          }
+          
+          setData(studentsData);
+          setClusterMeta(json.clustering || { enabled: false });
+          
+          // Build student enrollments map for specialization filtering
+          // Backend now includes enrolled_specializations array for each student
+          const enrollmentsMap = new Map();
+          studentsData.forEach(student => {
+            // enrolled_specializations is an array of specialization_ids from backend
+            const specializationIds = student.enrolled_specializations || [];
+            // Convert to array of integers if needed
+            const specIds = Array.isArray(specializationIds) 
+              ? specializationIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id).filter(id => !isNaN(id))
+              : [];
+            enrollmentsMap.set(student.student_id, specIds);
+          });
+          setStudentEnrollmentsMap(enrollmentsMap);
+          
+          // Build cache key with all filters
+          const filterKey = [
+            selectedTermId || 'all',
+            selectedSectionId || 'all',
+            selectedProgramId || 'all',
+            selectedYearLevel || 'all',
+            selectedSpecializationId || 'all',
+            selectedStandardType || 'all',
+            selectedStandardId || 'all'
+          ].join('_');
+          
+          // Store in sessionStorage for instant next load
+          const sessionCacheKey = `dean_analytics_${filterKey}_session`;
+          safeSetItem(sessionCacheKey, json);
+          
+          // Store full data in enhanced cache
+          const cacheKey = `dean_analytics_${filterKey}`;
+          setCachedData('analytics', cacheKey, json);
+          
+          // Load charts after data is loaded
+          setTimeout(() => setChartsLoaded(true), 200);
+          
+          // Log cluster distribution with detailed logging (only count valid clusters)
+          const clusterCounts = studentsData.reduce((acc, row) => {
+            let cluster = row.cluster_label;
+            // Only count valid cluster labels (skip null/undefined/invalid)
+            if (cluster && 
+                cluster !== null && 
+                cluster !== undefined &&
+                !(typeof cluster === 'number' && isNaN(cluster)) &&
+                !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            }
+            return acc;
+          }, {});
+          console.log('📈 [DEAN ANALYTICS] Cluster distribution:', clusterCounts);
+          console.log('🔍 [DEAN ANALYTICS] Clustering enabled status:', json.clustering?.enabled);
+          console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
+          console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
+        } else {
+          if (setErrorRef.current) {
+            try {
+              setErrorRef.current('Failed to load analytics');
+            } catch (e) {
+              console.warn('⚠️ [DEAN ANALYTICS] Could not set error state');
+            }
+          }
+        }
+        
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        setProgress(100);
+        setTimeout(() => setLoading(false), 500);
+        setHasFetched(true);
+        setChartsLoaded(false); // Reset charts loaded state
+        try {
+          trackEvent('dean_analytics_loaded', {
+            success: Boolean(json.success),
+            count: Array.isArray(json.data) ? json.data.length : 0,
+            clustering_enabled: Boolean(json?.clustering?.enabled),
+            platform: json?.clustering?.platform || 'Unknown',
+          });
+        } catch {}
+      })
+      .catch((err) => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        
+        if (err.name === 'AbortError') {
+          console.log('🚫 [DEAN ANALYTICS] Request was aborted');
+          return;
+        }
+        
+        console.error('❌ [DEAN ANALYTICS] Fetch error:', err);
+        // Display more specific error messages
+        const errorMessage = err?.message || 'Unable to fetch analytics';
+        const sessionCached = safeGetItem(`dean_analytics_${selectedTermId || 'all'}_session`);
+        const cachedData = getCachedData('analytics', `dean_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
+        if (!sessionCached && !cachedData && setErrorRef.current) {
+          try {
+            setErrorRef.current(errorMessage.includes('502') || errorMessage.includes('timeout') 
+              ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
+              : errorMessage);
+          } catch (e) {
+            console.warn('⚠️ [DEAN ANALYTICS] Could not set error state (component may have unmounted)');
+          }
+        }
+        setProgress(0);
+        setLoading(false);
+        setHasFetched(true);
+        setChartsLoaded(false);
+        try {
+          trackEvent('dean_analytics_error', { message: String(err?.message || err) });
+        } catch {}
+      });
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel, selectedSpecializationId]);
 
   const getClusterStyle = (label) => {
     // Return null if no valid cluster label (don't show "Not Clustered" fallback)
@@ -1070,6 +1106,18 @@ const Analytics = () => {
       });
     }
 
+    // Filter by specialization (based on enrolled courses)
+    if (selectedSpecializationId) {
+      filtered = filtered.filter(row => {
+        // Check if student has enrollments in courses with the selected specialization
+        const studentSpecializations = studentEnrollmentsMap.get(row.student_id);
+        if (!studentSpecializations || studentSpecializations.length === 0) {
+          return false;
+        }
+        return studentSpecializations.includes(parseInt(selectedSpecializationId, 10));
+      });
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -1092,7 +1140,7 @@ const Analytics = () => {
     });
 
     return filtered;
-  }, [data, selectedCluster, searchQuery, selectedYearLevel]);
+  }, [data, selectedCluster, searchQuery, selectedYearLevel, selectedSpecializationId]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -1125,7 +1173,7 @@ const Analytics = () => {
           setAvailableStandards(standards);
           const totalStandards = (standards.so?.length || 0) + (standards.iga?.length || 0) + 
                                  (standards.cdio?.length || 0) + (standards.sdg?.length || 0);
-          console.log(`✅ [FACULTY ANALYTICS] Loaded standards for term ${selectedTermId}:`, {
+          console.log(`✅ [DEAN ANALYTICS] Loaded standards for term ${selectedTermId}:`, {
             SO: standards.so?.length || 0,
             IGA: standards.iga?.length || 0,
             CDIO: standards.cdio?.length || 0,
@@ -1136,13 +1184,13 @@ const Analytics = () => {
           setSelectedStandardType('');
           setSelectedStandardId('all');
         } else {
-          console.warn('⚠️ [FACULTY ANALYTICS] Failed to fetch standards');
+          console.warn('⚠️ [DEAN ANALYTICS] Failed to fetch standards');
           setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
           setSelectedStandardType('');
           setSelectedStandardId('all');
         }
       } catch (error) {
-        console.error('❌ [FACULTY ANALYTICS] Error fetching standards:', error);
+        console.error('❌ [DEAN ANALYTICS] Error fetching standards:', error);
         setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
         setSelectedStandardType('');
         setSelectedStandardId('all');
@@ -1155,7 +1203,7 @@ const Analytics = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCluster, searchQuery, selectedTermId, selectedYearLevel, selectedStandardType, selectedStandardId]);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId, selectedStandardType, selectedStandardId]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -2136,7 +2184,7 @@ const Analytics = () => {
                 const calculateOverallMetrics = () => {
                   // Per-class view - use classFilteredData if available and a class is selected
                   if (selectedClassId !== 'all' && classFilteredData) {
-                    console.log('📊 [FACULTY ANALYTICS] Using per-class metrics:', {
+                    console.log('📊 [DEAN ANALYTICS] Using per-class metrics:', {
                       classId: selectedClassId,
                       attendance: classFilteredData.attendance_percentage,
                       score: classFilteredData.average_score,
@@ -2154,7 +2202,7 @@ const Analytics = () => {
                   }
                   
                   // Overall view - use selectedStudent data (already aggregated from backend)
-                  console.log('📊 [FACULTY ANALYTICS] Using overall metrics:', {
+                  console.log('📊 [DEAN ANALYTICS] Using overall metrics:', {
                     attendance: selectedStudent.attendance_percentage,
                     score: selectedStudent.average_score,
                     submission: selectedStudent.submission_rate
