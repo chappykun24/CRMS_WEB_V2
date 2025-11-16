@@ -2208,10 +2208,10 @@ const Assessments = () => {
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'ontime')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'ontime'
-                                                  ? 'bg-green-100 text-green-800 border border-green-300 shadow-sm'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                                  ? 'bg-green-100 text-green-800'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-green-50'
                                               }`}
                                               title="On Time"
                                             >
@@ -2219,10 +2219,10 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'late')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'late'
-                                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                                  ? 'bg-yellow-100 text-yellow-800'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-yellow-50'
                                               }`}
                                               title="Late"
                                             >
@@ -2230,10 +2230,10 @@ const Assessments = () => {
                                             </button>
                                             <button
                                               onClick={() => handleGradeChange(enrollmentId, 'submission_status', 'missing')}
-                                              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors whitespace-nowrap ${
+                                              className={`px-2 py-0.5 text-xs leading-4 font-semibold rounded-full transition-colors whitespace-nowrap ${
                                                 gradeData.submission_status === 'missing'
-                                                  ? 'bg-red-100 text-red-800 border border-red-300 shadow-sm'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                                  ? 'bg-red-100 text-red-800'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-red-50'
                                               }`}
                                               title="Missing"
                                             >
