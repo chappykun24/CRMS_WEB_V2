@@ -45,11 +45,11 @@ const SyllabusApproval = () => {
       if (response.ok) {
         const data = await response.json()
         // Filter for syllabi pending either review or approval
-        // Include: pending review (review_status === 'pending') OR pending approval (review_status === 'approved' && approval_status === 'pending')
+        // Show if review is pending OR approval is pending (regardless of the other status)
         const pendingApproval = Array.isArray(data) 
           ? data.filter(s => 
-              (s.review_status === 'pending' && s.approval_status === 'pending') || // Pending review
-              (s.review_status === 'approved' && s.approval_status === 'pending') // Pending approval
+              s.review_status === 'pending' || // Pending on program chair
+              s.approval_status === 'pending' // Pending on dean (even if approved by program chair)
             )
           : []
         setSyllabi(pendingApproval)
