@@ -840,11 +840,14 @@ const SyllabusCreationWizard = ({
   
   const prepareSyllabusData = (isDraft = false) => {
     // Include ILOs in the form data and set title for backward compatibility
-    // Ensure assessment_criteria is properly formatted with numeric weights
+    // Ensure assessment_criteria is properly formatted with numeric weights and CPA fields
     const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
       abbreviation: (item.abbreviation || '').trim(),
       name: item.name.trim(),
-      weight: parseFloat(item.weight) || 0
+      weight: parseFloat(item.weight) || 0,
+      cognitive: parseFloat(item.cognitive) || 0,
+      psychomotor: parseFloat(item.psychomotor) || 0,
+      affective: parseFloat(item.affective) || 0
     }))
     
     // Format sub-assessments for saving
@@ -2492,10 +2495,10 @@ const SyllabusCreationWizard = ({
                                   )
                                 })}
                                 <td className="px-2 py-2 border border-gray-300 text-center text-gray-900">
-                                  <div className="flex justify-center gap-2 font-medium">
-                                    <span>{criterionGroup.cognitive > 0 ? criterionGroup.cognitive.toFixed(1) : '—'}</span>
-                                    <span>{criterionGroup.psychomotor > 0 ? criterionGroup.psychomotor.toFixed(1) : '—'}</span>
-                                    <span>{criterionGroup.affective > 0 ? criterionGroup.affective.toFixed(1) : '—'}</span>
+                                  <div className="flex justify-center gap-1 font-medium">
+                                    <span className="border-r border-gray-300 pr-1">{criterionGroup.cognitive > 0 ? Math.round(criterionGroup.cognitive) : '—'}</span>
+                                    <span className="border-r border-gray-300 pr-1">{criterionGroup.psychomotor > 0 ? Math.round(criterionGroup.psychomotor) : '—'}</span>
+                                    <span>{criterionGroup.affective > 0 ? Math.round(criterionGroup.affective) : '—'}</span>
                                   </div>
                                 </td>
                               </tr>
@@ -2526,9 +2529,9 @@ const SyllabusCreationWizard = ({
                                       )
                                     })}
                                     <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
-                                      <div className="flex justify-center gap-2">
-                                        <span>—</span>
-                                        <span>—</span>
+                                      <div className="flex justify-center gap-1">
+                                        <span className="border-r border-gray-300 pr-1">—</span>
+                                        <span className="border-r border-gray-300 pr-1">—</span>
                                         <span>—</span>
                                       </div>
                                     </td>
@@ -2566,10 +2569,10 @@ const SyllabusCreationWizard = ({
                             )
                           })}
                           <td className="px-2 py-1.5 border border-gray-300 text-center">
-                            <div className="flex justify-center gap-2 font-medium">
-                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.cognitive || 0), 0).toFixed(1)}</span>
-                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.psychomotor || 0), 0).toFixed(1)}</span>
-                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.affective || 0), 0).toFixed(1)}</span>
+                            <div className="flex justify-center gap-1 font-medium">
+                              <span className="border-r border-gray-300 pr-1">{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.cognitive || 0), 0))}</span>
+                              <span className="border-r border-gray-300 pr-1">{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.psychomotor || 0), 0))}</span>
+                              <span>{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.affective || 0), 0))}</span>
                             </div>
                           </td>
                         </tr>
@@ -2674,6 +2677,48 @@ const SyllabusCreationWizard = ({
                             {ilos.map((ilo, iloIdx) => {
                               const soTasks = getAssessmentTasksForMapping(ilo, 'so_mappings')
                               const soTaskScores = calculateScoreForTasks(soTasks)
+                              
+                              // Calculate CPA for this ILO based on all mapped assessment tasks
+                              const calculateCPAForILO = () => {
+                                let cognitive = 0
+                                let psychomotor = 0
+                                let affective = 0
+                                
+                                // Get all assessment tasks mapped to this ILO from all mapping types
+                                const allTasks = new Set()
+                                ;['so_mappings', 'iga_mappings', 'cdio_mappings', 'sdg_mappings'].forEach(mappingType => {
+                                  if (ilo[mappingType]) {
+                                    ilo[mappingType].forEach(mapping => {
+                                      if (mapping.assessment_tasks) {
+                                        mapping.assessment_tasks.forEach(task => allTasks.add(task))
+                                      }
+                                    })
+                                  }
+                                })
+                                
+                                // Find unique criteria that contain these tasks
+                                const criteriaUsed = new Set()
+                                Array.from(allTasks).forEach(taskCode => {
+                                  formData.assessment_criteria.forEach((criterion, idx) => {
+                                    const subAssessments = formData.sub_assessments[idx] || []
+                                    const hasTask = subAssessments.some(sub => {
+                                      const code = sub.abbreviation || sub.name.substring(0, 2).toUpperCase()
+                                      return code === taskCode
+                                    })
+                                    if (hasTask && !criteriaUsed.has(idx)) {
+                                      criteriaUsed.add(idx)
+                                      cognitive += parseFloat(criterion.cognitive) || 0
+                                      psychomotor += parseFloat(criterion.psychomotor) || 0
+                                      affective += parseFloat(criterion.affective) || 0
+                                    }
+                                  })
+                                })
+                                
+                                return { cognitive, psychomotor, affective }
+                              }
+                              
+                              const cpa = calculateCPAForILO()
+                              
                               return (
                                 <tr key={iloIdx} className="hover:bg-gray-50">
                                   <td className="px-2 py-1.5 border border-gray-300">
@@ -2697,18 +2742,9 @@ const SyllabusCreationWizard = ({
                                       </td>
                                     )
                                   })}
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">—</td>
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
-                                    {soTasks.length > 0 ? (
-                                      <div>
-                                        <div className="text-xs">{soTaskScores.display}</div>
-                                        {soTaskScores.totalScore > 0 && (
-                                          <div className="text-xs font-semibold text-red-600 mt-0.5">{soTaskScores.totalScore.toFixed(1)}</div>
-                                        )}
-                                      </div>
-                                    ) : '—'}
-                                  </td>
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">—</td>
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.cognitive > 0 ? Math.round(cpa.cognitive) : '—'}</td>
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.psychomotor > 0 ? Math.round(cpa.psychomotor) : '—'}</td>
+                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.affective > 0 ? Math.round(cpa.affective) : '—'}</td>
                                 </tr>
                               )
                             })}
