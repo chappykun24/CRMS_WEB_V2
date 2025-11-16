@@ -2034,6 +2034,7 @@ import assessmentRoutes from './routes/assessments.js';
 import gradingRoutes from './routes/grading.js';
 import syllabiRoutes from './routes/syllabi.js';
 import iloRoutes from './routes/ilos.js';
+import standardsRoutes from './routes/standards.js';
 
 // Use API routes
 app.use('/api/auth', authRoutes);
@@ -2043,6 +2044,7 @@ app.use('/api/assessments', assessmentRoutes);
 app.use('/api/grading', gradingRoutes);
 app.use('/api/syllabi', syllabiRoutes);
 app.use('/api/ilos', iloRoutes);
+app.use('/api/standards', standardsRoutes);
 
 console.log('🚀 [SERVER] API routes loaded:');
 console.log('   📍 /api/auth');

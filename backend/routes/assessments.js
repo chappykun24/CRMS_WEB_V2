@@ -491,7 +491,7 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh, ilo_id, so_id } = req.query;
+  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh, ilo_id, so_id, iga_id, cdio_id, sdg_id } = req.query;
   const forceRefresh = force_refresh === 'true' || force_refresh === '1';
   console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'ilo_id:', ilo_id, 'so_id:', so_id, 'force_refresh:', forceRefresh);
   
@@ -517,6 +517,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const sectionCourseIdValue = section_course_id && !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
     const iloIdValue = ilo_id && !isNaN(parseInt(ilo_id)) ? parseInt(ilo_id) : null;
     const soIdValue = so_id && !isNaN(parseInt(so_id)) ? parseInt(so_id) : null;
+    const igaIdValue = iga_id && !isNaN(parseInt(iga_id)) ? parseInt(iga_id) : null;
+    const cdioIdValue = cdio_id && !isNaN(parseInt(cdio_id)) ? parseInt(cdio_id) : null;
+    const sdgIdValue = sdg_id && !isNaN(parseInt(sdg_id)) ? parseInt(sdg_id) : null;
     
     if (termIdValue) console.log('🔍 [Backend] Applying term filter:', termIdValue);
     if (sectionIdValue) console.log('🔍 [Backend] Applying section filter:', sectionIdValue);
@@ -588,32 +591,50 @@ router.get('/dean-analytics/sample', async (req, res) => {
       ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
       : '';
     
-    // Build ILO/SO filter for assessment alignment
+    // Build Standard/ILO filter for assessment alignment
+    // Priority: Standard filters (SO, IGA, CDIO, SDG) > ILO filter
+    // When filtering by Standard: find ILOs mapped to that standard, then assessments mapped to those ILOs
     // When filtering by ILO: only include assessments mapped to that ILO
-    // When filtering by SO: only include assessments mapped to ILOs that map to that SO
     let iloSoAssessmentFilter = '';
-    if (iloIdValue) {
-      // Filter to assessments mapped to this ILO via assessment_ilo_weights
-      // Note: This filter works with both 'a' and 'ass' aliases used in different queries
-      // The correlated subquery will reference the assessment table from the outer query
-      iloSoAssessmentFilter = `AND EXISTS (
-        SELECT 1 FROM assessment_ilo_weights aiw_filter 
-        WHERE aiw_filter.assessment_id = COALESCE(
-          (SELECT assessment_id FROM assessments WHERE assessment_id = a.assessment_id LIMIT 1),
-          (SELECT assessment_id FROM assessments WHERE assessment_id = ass.assessment_id LIMIT 1)
-        )
-        AND aiw_filter.ilo_id = ${iloIdValue}
-      )`;
-    } else if (soIdValue) {
+    if (soIdValue) {
       // Filter to assessments mapped to ILOs that map to this SO via ilo_so_mappings
       iloSoAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_so_mappings ism ON aiw_filter.ilo_id = ism.ilo_id
-        WHERE aiw_filter.assessment_id = COALESCE(
-          (SELECT assessment_id FROM assessments WHERE assessment_id = a.assessment_id LIMIT 1),
-          (SELECT assessment_id FROM assessments WHERE assessment_id = ass.assessment_id LIMIT 1)
-        )
+        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
         AND ism.so_id = ${soIdValue}
+      )`;
+    } else if (igaIdValue) {
+      // Filter to assessments mapped to ILOs that map to this IGA via ilo_iga_mappings
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter
+        INNER JOIN ilo_iga_mappings iiga ON aiw_filter.ilo_id = iiga.ilo_id
+        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
+        AND iiga.iga_id = ${igaIdValue}
+      )`;
+    } else if (cdioIdValue) {
+      // Filter to assessments mapped to ILOs that map to this CDIO via ilo_cdio_mappings
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter
+        INNER JOIN ilo_cdio_mappings icdio ON aiw_filter.ilo_id = icdio.ilo_id
+        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
+        AND icdio.cdio_id = ${cdioIdValue}
+      )`;
+    } else if (sdgIdValue) {
+      // Filter to assessments mapped to ILOs that map to this SDG via ilo_sdg_mappings
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter
+        INNER JOIN ilo_sdg_mappings isdg ON aiw_filter.ilo_id = isdg.ilo_id
+        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
+        AND isdg.sdg_id = ${sdgIdValue}
+      )`;
+    } else if (iloIdValue) {
+      // Filter to assessments mapped to this ILO via assessment_ilo_weights
+      // Works with both 'a' and 'ass' aliases - directly references the outer query's assessment table
+      iloSoAssessmentFilter = `AND EXISTS (
+        SELECT 1 FROM assessment_ilo_weights aiw_filter 
+        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
+        AND aiw_filter.ilo_id = ${iloIdValue}
       )`;
     }
     
@@ -1160,7 +1181,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
         timeoutMs: clusteringConfig.timeoutMs,
         forceRefresh: forceRefresh,
         sectionCourseId: sectionCourseIdValue, // Pass section_course_id for per-class clustering
-        iloId: iloIdValue // Pass ilo_id for ILO-filtered clustering
+        iloId: iloIdValue, // Pass ilo_id for ILO-filtered clustering
+        standardType: soIdValue ? 'SO' : (igaIdValue ? 'IGA' : (cdioIdValue ? 'CDIO' : (sdgIdValue ? 'SDG' : null))),
+        standardId: soIdValue || igaIdValue || cdioIdValue || sdgIdValue // Pass standard ID for standard-filtered clustering
       }
     );
 

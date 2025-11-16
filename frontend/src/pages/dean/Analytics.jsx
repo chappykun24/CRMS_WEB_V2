@@ -179,8 +179,10 @@ const Analytics = () => {
   const [selectedProgramId, setSelectedProgramId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [selectedYearLevel, setSelectedYearLevel] = useState('');
-  const [availableILOs, setAvailableILOs] = useState([]);
-  const [selectedILOId, setSelectedILOId] = useState('all');
+  // Standard filters (SO, IGA, CDIO, SDG) - these are the primary filters
+  const [availableStandards, setAvailableStandards] = useState({ so: [], iga: [], cdio: [], sdg: [] });
+  const [selectedStandardType, setSelectedStandardType] = useState(''); // 'SO', 'IGA', 'CDIO', 'SDG', or ''
+  const [selectedStandardId, setSelectedStandardId] = useState('all');
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
@@ -579,7 +581,8 @@ const Analytics = () => {
       selectedProgramId || 'all',
       selectedYearLevel || 'all',
       selectedSpecializationId || 'all',
-      selectedILOId || 'all'
+      selectedStandardType || 'all',
+      selectedStandardId || 'all'
     ].join('_');
     
     // If force refresh, clear all caches first
@@ -681,10 +684,11 @@ const Analytics = () => {
     if (selectedTermId) params.append('term_id', selectedTermId);
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
-    // Add ILO filter if selected (not 'all')
-    if (selectedILOId && selectedILOId !== 'all') {
-      params.append('ilo_id', selectedILOId);
-      console.log('🎯 [DEAN ANALYTICS] Adding ILO filter:', selectedILOId);
+    // Add Standard filter if selected (SO, IGA, CDIO, or SDG)
+    if (selectedStandardType && selectedStandardId && selectedStandardId !== 'all') {
+      const paramName = selectedStandardType.toLowerCase() + '_id';
+      params.append(paramName, selectedStandardId);
+      console.log(`🎯 [DEAN ANALYTICS] Adding ${selectedStandardType} filter:`, selectedStandardId);
     }
     // Note: year_level filtering is done client-side since backend doesn't support it directly
     // Add force_refresh parameter to bypass backend cache and recompute clusters
@@ -849,7 +853,8 @@ const Analytics = () => {
             selectedProgramId || 'all',
             selectedYearLevel || 'all',
             selectedSpecializationId || 'all',
-            selectedILOId || 'all'
+            selectedStandardType || 'all',
+            selectedStandardId || 'all'
           ].join('_');
           
           // Store in sessionStorage for instant next load
@@ -1099,17 +1104,18 @@ const Analytics = () => {
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
-  // Fetch ILOs when term changes
+  // Fetch Standards (SO, IGA, CDIO, SDG) when term changes
   useEffect(() => {
-    const fetchILOs = async () => {
+    const fetchStandards = async () => {
       if (!selectedTermId) {
-        setAvailableILOs([]);
-        setSelectedILOId('all');
+        setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+        setSelectedStandardType('');
+        setSelectedStandardId('all');
         return;
       }
       
       try {
-        const response = await fetch(`${API_BASE_URL}/ilos/term/${selectedTermId}`, {
+        const response = await fetch(`${API_BASE_URL}/standards/term/${selectedTermId}`, {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
@@ -1117,30 +1123,41 @@ const Analytics = () => {
         });
         
         if (response.ok) {
-          const ilos = await response.json();
-          setAvailableILOs(ilos);
-          console.log(`✅ [DEAN ANALYTICS] Loaded ${ilos.length} ILOs for term ${selectedTermId}`);
-          // Reset ILO filter when term changes
-          setSelectedILOId('all');
+          const standards = await response.json();
+          setAvailableStandards(standards);
+          const totalStandards = (standards.so?.length || 0) + (standards.iga?.length || 0) + 
+                                 (standards.cdio?.length || 0) + (standards.sdg?.length || 0);
+          console.log(`✅ [DEAN ANALYTICS] Loaded standards for term ${selectedTermId}:`, {
+            SO: standards.so?.length || 0,
+            IGA: standards.iga?.length || 0,
+            CDIO: standards.cdio?.length || 0,
+            SDG: standards.sdg?.length || 0,
+            total: totalStandards
+          });
+          // Reset standard filters when term changes
+          setSelectedStandardType('');
+          setSelectedStandardId('all');
         } else {
-          console.warn('⚠️ [DEAN ANALYTICS] Failed to fetch ILOs');
-          setAvailableILOs([]);
-          setSelectedILOId('all');
+          console.warn('⚠️ [DEAN ANALYTICS] Failed to fetch standards');
+          setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+          setSelectedStandardType('');
+          setSelectedStandardId('all');
         }
       } catch (error) {
-        console.error('❌ [DEAN ANALYTICS] Error fetching ILOs:', error);
-        setAvailableILOs([]);
-        setSelectedILOId('all');
+        console.error('❌ [DEAN ANALYTICS] Error fetching standards:', error);
+        setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+        setSelectedStandardType('');
+        setSelectedStandardId('all');
       }
     };
     
-    fetchILOs();
+    fetchStandards();
   }, [selectedTermId]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId, selectedILOId]);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId, selectedStandardType, selectedStandardId]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -1460,42 +1477,55 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* ILO Filter - Clustering Based on Mapping */}
-                  {selectedTermId && availableILOs.length > 0 && (
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="relative">
-                        <select
-                          value={selectedILOId}
-                          onChange={(e) => setSelectedILOId(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                          title="Filter clustering by ILO (Intended Learning Outcome) mapping. Only ILOs aligned with SO (Student Outcomes), SDG (Sustainable Development Goals), IGA (Institutional Graduate Attributes), or CDIO are shown. 'Overall' uses all assessments, specific ILOs use only assessments mapped to that ILO."
-                        >
-               <option value="all">Overall (All Assessments)</option>
-               {availableILOs.map(ilo => {
-                 // Build alignment indicators for all mapping types
-                 const alignments = [];
-                 if (ilo.aligned_so_codes && ilo.aligned_so_codes.length > 0) {
-                   alignments.push(`SO: ${ilo.aligned_so_codes.join(', ')}`);
-                 }
-                 if (ilo.aligned_sdg_codes && ilo.aligned_sdg_codes.length > 0) {
-                   alignments.push(`SDG: ${ilo.aligned_sdg_codes.join(', ')}`);
-                 }
-                 if (ilo.aligned_iga_codes && ilo.aligned_iga_codes.length > 0) {
-                   alignments.push(`IGA: ${ilo.aligned_iga_codes.join(', ')}`);
-                 }
-                 if (ilo.aligned_cdio_codes && ilo.aligned_cdio_codes.length > 0) {
-                   alignments.push(`CDIO: ${ilo.aligned_cdio_codes.join(', ')}`);
-                 }
-                 const alignmentText = alignments.length > 0 ? ` [${alignments.join(' | ')}]` : '';
-                 return (
-                   <option key={ilo.ilo_id} value={ilo.ilo_id.toString()}>
-                     {ilo.ilo_code}{alignmentText} {ilo.description ? `: ${ilo.description.substring(0, 30)}${ilo.description.length > 30 ? '...' : ''}` : ''}
-                   </option>
-                 );
-               })}
-                        </select>
-                        <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                  {/* Standard Filter - Filter by SO, IGA, CDIO, or SDG */}
+                  {selectedTermId && (
+                    <div className="flex gap-3 flex-1 min-w-[400px]">
+                      {/* Standard Type Selector */}
+                      <div className="flex-1 min-w-[120px]">
+                        <div className="relative">
+                          <select
+                            value={selectedStandardType}
+                            onChange={(e) => {
+                              setSelectedStandardType(e.target.value);
+                              setSelectedStandardId('all'); // Reset standard ID when type changes
+                            }}
+                            className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                            title="Select standard type to filter by"
+                          >
+                            <option value="">Overall (All Assessments)</option>
+                            {availableStandards.so?.length > 0 && <option value="SO">SO (Student Outcomes)</option>}
+                            {availableStandards.iga?.length > 0 && <option value="IGA">IGA (Institutional Graduate Attributes)</option>}
+                            {availableStandards.cdio?.length > 0 && <option value="CDIO">CDIO</option>}
+                            {availableStandards.sdg?.length > 0 && <option value="SDG">SDG (Sustainable Development Goals)</option>}
+                          </select>
+                          <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                        </div>
                       </div>
+
+                      {/* Standard Value Selector */}
+                      {selectedStandardType && (
+                        <div className="flex-1 min-w-[200px]">
+                          <div className="relative">
+                            <select
+                              value={selectedStandardId}
+                              onChange={(e) => setSelectedStandardId(e.target.value)}
+                              className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                              title={`Filter clustering by ${selectedStandardType}. Shows all ILOs mapped to the selected ${selectedStandardType}, then filters assessments mapped to those ILOs.`}
+                            >
+                              <option value="all">All {selectedStandardType}s</option>
+                              {(selectedStandardType === 'SO' ? availableStandards.so :
+                                selectedStandardType === 'IGA' ? availableStandards.iga :
+                                selectedStandardType === 'CDIO' ? availableStandards.cdio :
+                                selectedStandardType === 'SDG' ? availableStandards.sdg : []).map(standard => (
+                                <option key={standard[`${selectedStandardType.toLowerCase()}_id`]} value={standard[`${selectedStandardType.toLowerCase()}_id`].toString()}>
+                                  {standard.code} {standard.description ? `: ${standard.description.substring(0, 40)}${standard.description.length > 40 ? '...' : ''}` : ''} ({standard.ilo_count || 0} ILOs, {standard.assessment_count || 0} assessments)
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
