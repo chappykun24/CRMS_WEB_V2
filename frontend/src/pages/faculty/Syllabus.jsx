@@ -39,7 +39,6 @@ const Syllabus = () => {
   const [editingSyllabus, setEditingSyllabus] = useState(null)
   const [viewingSyllabus, setViewingSyllabus] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeTab, setActiveTab] = useState('syllabi')
   const [viewingSyllabusILOs, setViewingSyllabusILOs] = useState([])
   const [loadingILOs, setLoadingILOs] = useState(false)
   const [editRequestReason, setEditRequestReason] = useState('')
@@ -239,10 +238,8 @@ const Syllabus = () => {
     loadSyllabi(sectionId, syllabiCacheKey, !cached)
   }, [selectedClass])
   
-  // Reset selected syllabus when switching tabs
+  // Restore selected class from localStorage
   useEffect(() => {
-    setSelectedSyllabusForILO(null)
-    // Restore selected class from localStorage
       if (!selectedClass && filteredClasses.length > 0) {
         const savedClass = getSelectedClass()
         if (savedClass?.section_course_id) {
@@ -252,8 +249,7 @@ const Syllabus = () => {
           }
         }
       }
-    }
-  }, [activeTab, classes, selectedClass])
+  }, [classes, selectedClass, filteredClasses])
 
   const loadSyllabi = async (sectionCourseId, cacheKey, showLoading = true) => {
     if (!sectionCourseId) return
@@ -917,12 +913,9 @@ const Syllabus = () => {
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between bg-gray-50">
               <div className="flex space-x-4 sm:space-x-6 lg:space-x-8">
-                <button
-                  onClick={() => setActiveTab('syllabi')}
-                  className="py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm text-red-600 border-b-2 border-red-600 bg-transparent border-0 focus:outline-none focus:ring-0"
-                >
+                <div className="py-2 px-3 sm:px-4 font-medium text-xs sm:text-sm text-red-600 border-b-2 border-red-600">
                   Syllabus
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -932,7 +925,7 @@ const Syllabus = () => {
         <div className="flex-1 overflow-hidden min-h-0">
           <div className="px-8 py-6 h-full overflow-hidden flex flex-col">
             {/* Content with Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full min-h-0">
                 {/* Main Content - Syllabus Table */}
                 <div className="lg:col-span-4 flex flex-col min-h-0">
                 {/* Search Bar and Create Button */}
