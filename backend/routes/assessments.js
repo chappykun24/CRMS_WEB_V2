@@ -585,6 +585,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const sectionCourseFilterIlo = sectionCourseIdValue 
       ? `AND ce_ilo.section_course_id = ${sectionCourseIdValue}` 
       : '';
+    const sectionCourseFilterIloDetail = sectionCourseIdValue 
+      ? `AND ce_ilo_detail.section_course_id = ${sectionCourseIdValue}` 
+      : '';
     const sectionCourseFilterActual = sectionCourseIdValue 
       ? `AND ce_actual.section_course_id = ${sectionCourseIdValue}` 
       : '';
@@ -1095,7 +1098,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND a.weight_percentage IS NOT NULL
               AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_ilo_detail.term_id = ${termIdValue}` : ''}
-              ${sectionCourseFilterSub || ''}
+              ${sectionCourseFilterIloDetail || ''}
               ${standardAssessmentFilter || ''}
             GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage, a.assessment_id, a.title, a.total_points, a.weight_percentage
             HAVING COUNT(sub.submission_id) > 0 OR COUNT(CASE WHEN sub.transmuted_score IS NOT NULL THEN 1 END) > 0
