@@ -88,7 +88,7 @@ profileApi.interceptors.request.use(
 profileApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 errors
+    // Handle 401 errors (profile API is always protected, so token error is appropriate)
     if (error.response?.status === 401) {
       console.warn('[ProfileAPI] 401 Unauthorized - token may be invalid or expired');
     }
@@ -110,7 +110,11 @@ api.interceptors.response.use(
     
     // Handle 401 errors more gracefully
     if (error.response?.status === 401) {
-      console.warn('[API] 401 Unauthorized - token may be invalid or expired');
+      // Only show token error message for protected routes, not for login endpoint
+      const isLoginEndpoint = error.config?.url?.includes('/auth/login');
+      if (!isLoginEndpoint) {
+        console.warn('[API] 401 Unauthorized - token may be invalid or expired');
+      }
       // Don't automatically clear tokens here - let the auth context handle it
     }
     
