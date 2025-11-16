@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
-import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, ImageSkeleton } from '../../components/skeletons'
+import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, StudentListSkeleton, ImageSkeleton } from '../../components/skeletons'
 import LazyStudentImage from '../../components/LazyStudentImage'
 import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
 import staffCacheService, { resetStaffCache, clearStaffLargeCache } from '../../services/staffCacheService'
@@ -930,29 +930,30 @@ const AssignFaculty = () => {
 
             {/* Right Section - Class Details and Students (Expanded) - Only show when class is selected */}
             {selectedClass && (
-              <div className="w-96 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col flex-shrink-0">
+              <div 
+                key="student-list-sidebar"
+                className="w-96 bg-white rounded-lg shadow-sm border border-gray-200 p-4 min-h-[120px] overflow-hidden flex flex-col flex-shrink-0 slide-in-from-right expand-from-right transition-all duration-500 ease-in-out">
               {loadingStudents ? (
                 <ClassDetailsSkeleton />
               ) : (
                 <div className="h-full flex flex-col">
                   {/* Class Header */}
-                  <div className="mb-4 pb-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedClass.title}</h3>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div><span className="font-medium">Code:</span> {selectedClass.code}</div>
-                      <div><span className="font-medium">Section:</span> {selectedClass.section}</div>
-                      <div><span className="font-medium">Instructor:</span> {selectedClass.instructor}</div>
+                  <div className="mb-3 pb-3 border-b border-gray-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-base font-semibold text-gray-900 whitespace-normal break-words">
+                          {selectedClass.title}
+                        </h2>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Students List */}
-                  <div className="flex-1 min-h-0 flex flex-col">
+                  {/* Enrolled Students Section */}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {/* Header with Add Button */}
                     <div className="flex items-center justify-between mb-3 shrink-0">
-                      <h4 className="text-md font-medium text-gray-900">Enrolled Students</h4>
+                      <h4 className="text-sm font-medium text-gray-900">Enrolled Students</h4>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {loadingStudents ? '...' : `${students.length} student${students.length !== 1 ? 's' : ''}`}
-                        </span>
                         <button
                           onClick={handleOpenStudentsModal}
                           className="inline-flex items-center justify-center w-6 h-6 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
@@ -998,79 +999,78 @@ const AssignFaculty = () => {
                         )}
                       </div>
                     )}
-                    
-                    {loadingStudents ? (
-                      <div className="flex-1 overflow-y-auto">
-                        <div className="space-y-3">
-                          <StudentListItemSkeleton count={6} />
+
+                    {/* Students List - Grid Layout matching Faculty interface */}
+                    <div className="flex-1 overflow-auto min-h-0">
+                      {loadingStudents ? (
+                        <StudentListSkeleton students={5} />
+                      ) : students.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {students.map((student, index) => {
+                            // Calculate sequential number for grid layout
+                            const sequentialNumber = index + 1
+                            
+                            return (
+                              <div 
+                                key={student.enrollment_id || student.student_id} 
+                                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                                  selectedSidebarStudents.has(student.enrollment_id)
+                                    ? 'bg-red-50 border-2 border-red-300'
+                                    : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                                }`}
+                                onClick={() => handleToggleSidebarStudent(student.enrollment_id)}
+                              >
+                                <div className="flex-shrink-0 w-6 text-center">
+                                  <span className="text-xs font-medium text-gray-500">
+                                    {sequentialNumber}
+                                  </span>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedSidebarStudents.has(student.enrollment_id)}
+                                    onChange={() => handleToggleSidebarStudent(student.enrollment_id)}
+                                    disabled={unenrollingStudents.has(student.enrollment_id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 disabled:opacity-50"
+                                  />
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <LazyStudentImage
+                                    studentId={student.student_id}
+                                    alt={student.full_name}
+                                    size="md"
+                                    shape="circle"
+                                    className="border border-gray-200"
+                                    priority={false}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {formatStudentName(student.full_name)}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {student.student_number}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
-                      </div>
-                    ) : students.length > 0 ? (
-                      <div className="flex-1 overflow-y-auto">
-                        <div className="space-y-2">
-                          {students.map((student) => (
-                            <div 
-                              key={student.enrollment_id || student.student_id} 
-                              className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-                                selectedSidebarStudents.has(student.enrollment_id)
-                                  ? 'bg-red-50 border-2 border-red-300'
-                                  : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                              }`}
-                            >
-                              <div className="flex-shrink-0">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedSidebarStudents.has(student.enrollment_id)}
-                                  onChange={() => handleToggleSidebarStudent(student.enrollment_id)}
-                                  disabled={unenrollingStudents.has(student.enrollment_id)}
-                                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 disabled:opacity-50"
-                                />
-                              </div>
-                              <div className="flex-shrink-0">
-                                <LazyStudentImage
-                                  studentId={student.student_id}
-                                  alt={student.full_name}
-                                  size="md"
-                                  shape="circle"
-                                  className="border-2 border-gray-200"
-                                  priority={false}
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {formatStudentName(student.full_name)}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">
-                                  {student.student_number}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  student.status === 'enrolled' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : student.status === 'dropped'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {student.status || 'enrolled'}
-                                </span>
-                              </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-8 text-center">
+                          <div>
+                            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                              <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                              </svg>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-center">
-                        <div>
-                          <div className="mx-auto mb-2 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                            </svg>
+                            <h3 className="text-sm font-medium text-gray-900 mb-1">No students enrolled</h3>
+                            <p className="text-xs text-gray-500">This class has no enrolled students yet.</p>
                           </div>
-                          <p className="text-sm text-gray-500">No students enrolled</p>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
