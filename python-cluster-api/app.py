@@ -140,7 +140,8 @@ def calculate_score_features(row):
     3. Actual Score → Transmuted Score: actual × (weight_percentage / 100)
     4. Final Grade = SUM(transmuted_score) per course, then averaged across courses
     
-    The database already calculates these values, so we use them directly.
+    NEW: Also processes assessment-level transmuted scores grouped by ILO mapping.
+    This allows for ILO-specific performance analysis.
     """
     # Use pre-calculated average_score from database (sum of transmuted scores per course, averaged)
     # This follows the new grading computation: Raw → Adjusted → Actual → Transmuted
@@ -150,15 +151,83 @@ def calculate_score_features(row):
     # ILO boost is applied to transmuted scores: transmuted_score × ilo_boost_factor
     ilo_score = float(row.get('ilo_weighted_score', syllabus_weighted_score)) if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
     
-    # Use ILO-weighted score as final_score (includes syllabus weights + ILO boost)
-    # Falls back to syllabus-weighted score if ILO data unavailable
-    final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
+    # Process assessment-level transmuted scores grouped by ILO (NEW)
+    assessment_scores_by_ilo = row.get('assessment_scores_by_ilo')
+    ilo_specific_scores = {}
+    ilo_average_scores = {}
     
-    return {
+    if assessment_scores_by_ilo and isinstance(assessment_scores_by_ilo, (list, dict)):
+        # Handle both JSON array and dict formats
+        ilo_data_list = assessment_scores_by_ilo if isinstance(assessment_scores_by_ilo, list) else [assessment_scores_by_ilo]
+        
+        for ilo_data in ilo_data_list:
+            if isinstance(ilo_data, dict):
+                ilo_id = ilo_data.get('ilo_id')
+                ilo_code = ilo_data.get('ilo_code', f'ILO_{ilo_id}')
+                assessments = ilo_data.get('assessments', [])
+                
+                if ilo_id and assessments:
+                    # Calculate average transmuted score for this ILO
+                    transmuted_scores = []
+                    total_weight = 0.0
+                    
+                    for assessment in assessments:
+                        if isinstance(assessment, dict):
+                            transmuted = assessment.get('transmuted_score')
+                            weight = assessment.get('weight_percentage', 0) or 0
+                            
+                            if transmuted is not None and not (isinstance(transmuted, float) and (transmuted != transmuted)):  # Check for NaN
+                                try:
+                                    transmuted_float = float(transmuted)
+                                    if transmuted_float >= 0:
+                                        transmuted_scores.append(transmuted_float)
+                                        total_weight += float(weight) if weight else 0
+                                except (ValueError, TypeError):
+                                    pass
+                    
+                    if transmuted_scores:
+                        # Calculate weighted average for this ILO
+                        if total_weight > 0:
+                            weighted_sum = sum(transmuted_scores)
+                            ilo_average = weighted_sum / len(transmuted_scores)  # Simple average for now
+                        else:
+                            ilo_average = sum(transmuted_scores) / len(transmuted_scores)
+                        
+                        ilo_specific_scores[f'ilo_{ilo_id}_score'] = ilo_average
+                        ilo_average_scores[ilo_id] = {
+                            'ilo_code': ilo_code,
+                            'average_score': ilo_average,
+                            'assessment_count': len(transmuted_scores),
+                            'total_weight': total_weight
+                        }
+    
+    # Calculate overall ILO-based score (average of all ILO scores if available)
+    ilo_based_final_score = ilo_score
+    if ilo_specific_scores:
+        ilo_scores_list = [score for score in ilo_specific_scores.values() if score > 0]
+        if ilo_scores_list:
+            # Use weighted average of ILO scores, or simple average
+            ilo_based_final_score = sum(ilo_scores_list) / len(ilo_scores_list)
+            # Prefer ILO-based score if available
+            final_score = ilo_based_final_score
+        else:
+            final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
+    else:
+        # Use ILO-weighted score as final_score (includes syllabus weights + ILO boost)
+        # Falls back to syllabus-weighted score if ILO data unavailable
+        final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
+    
+    result = {
         'average_score': syllabus_weighted_score,  # Final grade using new computation (transmuted scores)
         'ilo_weighted_score': ilo_score,  # Final grade with ILO boost applied
-        'final_score': final_score  # Primary score for clustering (syllabus + ILO)
+        'final_score': final_score,  # Primary score for clustering (syllabus + ILO)
+        'ilo_based_score': ilo_based_final_score  # Score calculated from ILO-specific assessments
     }
+    
+    # Add ILO-specific scores to result
+    result.update(ilo_specific_scores)
+    
+    return result
 
 
 def validate_clustering_data(records):

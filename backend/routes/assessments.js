@@ -995,6 +995,69 @@ router.get('/dean-analytics/sample', async (req, res) => {
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
         )::INTEGER AS submission_total_assessments,
+        -- Assessment-level transmuted scores grouped by ILO (NEW)
+        -- Returns JSON array of {ilo_id, ilo_code, assessments: [{assessment_id, transmuted_score, weight_percentage}]}
+        (
+          SELECT COALESCE(
+            json_agg(
+              json_build_object(
+                'ilo_id', ilo_data.ilo_id,
+                'ilo_code', ilo_data.ilo_code,
+                'ilo_description', ilo_data.ilo_description,
+                'total_weight', ilo_data.total_weight,
+                'assessments', ilo_data.assessments
+              )
+            ),
+            '[]'::json
+          )
+          FROM (
+            SELECT DISTINCT
+              i.ilo_id,
+              i.code as ilo_code,
+              i.description as ilo_description,
+              SUM(aiw.weight_percentage) OVER (PARTITION BY i.ilo_id) as total_weight,
+              json_agg(
+                DISTINCT json_build_object(
+                  'assessment_id', a.assessment_id,
+                  'assessment_title', a.title,
+                  'transmuted_score', 
+                    CASE 
+                      WHEN sub.transmuted_score IS NOT NULL
+                      THEN sub.transmuted_score
+                      WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                      THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                      WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+                      THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+                      ELSE NULL
+                    END,
+                  'raw_score', sub.total_score,
+                  'adjusted_score', sub.adjusted_score,
+                  'weight_percentage', a.weight_percentage,
+                  'ilo_weight_percentage', aiw.weight_percentage
+                )
+                ORDER BY a.assessment_id
+              ) FILTER (WHERE sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL) as assessments
+            FROM course_enrollments ce_ilo_detail
+            INNER JOIN section_courses sc_ilo_detail ON ce_ilo_detail.section_course_id = sc_ilo_detail.section_course_id
+            INNER JOIN assessments a ON sc_ilo_detail.section_course_id = a.section_course_id
+            INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+            INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+            LEFT JOIN submissions sub ON (
+              ce_ilo_detail.enrollment_id = sub.enrollment_id 
+              AND sub.assessment_id = a.assessment_id
+              AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+            )
+            WHERE ce_ilo_detail.student_id = s.student_id
+              AND ce_ilo_detail.status = 'enrolled'
+              AND a.weight_percentage IS NOT NULL
+              AND a.weight_percentage > 0
+              ${termIdValue ? `AND sc_ilo_detail.term_id = ${termIdValue}` : ''}
+              ${sectionCourseFilterSub || ''}
+              ${iloSoAssessmentFilter || ''}
+            GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage
+            HAVING COUNT(sub.submission_id) > 0 OR COUNT(CASE WHEN sub.transmuted_score IS NOT NULL THEN 1 END) > 0
+          ) ilo_data
+        )::JSONB AS assessment_scores_by_ilo,
         -- Specializations: array of specialization_ids from courses the student is enrolled in
         -- This allows filtering by specialization (Business Analytics, Networking, Service Management)
         -- Note: We don't filter by section_course_id here because we want ALL specializations

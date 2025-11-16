@@ -366,6 +366,8 @@ const normalizeStudentData = (students) => {
     ilo_weighted_score: row.ilo_weighted_score !== null && row.ilo_weighted_score !== undefined && !isNaN(row.ilo_weighted_score)
       ? Number(row.ilo_weighted_score)
       : null,
+    // Assessment-level transmuted scores grouped by ILO (NEW)
+    assessment_scores_by_ilo: row.assessment_scores_by_ilo || null,
     // Submission behavior data
     submission_rate: row.submission_rate !== null && row.submission_rate !== undefined && !isNaN(row.submission_rate)
       ? Number(row.submission_rate)
