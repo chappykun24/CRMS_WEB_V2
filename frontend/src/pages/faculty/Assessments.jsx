@@ -1722,15 +1722,6 @@ const Assessments = () => {
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                               <h3 className="text-sm font-semibold text-gray-900 truncate">{assessment.title}</h3>
-                                              {assessment.syllabus_version && (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
-                                                  assessment.syllabus_approval_status === 'approved' 
-                                                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                                                    : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                                }`}>
-                                                  Revision no. {assessment.syllabus_version}
-                                                </span>
-                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -1738,7 +1729,30 @@ const Assessments = () => {
                                       <td className="px-4 py-3">
                                         <div className="flex justify-center">
                                           <span className="text-xs text-gray-700">
-                                            {assessment.type}
+                                            {(() => {
+                                              // If this is a sub-assessment, determine type from parent criterion
+                                              const description = assessment.description || ''
+                                              const match = description.match(/Sub-assessment from (.+)/)
+                                              if (match && match[1]) {
+                                                const parentCriterion = match[1].trim().toLowerCase()
+                                                // Determine type based on parent criterion name/abbreviation
+                                                if (parentCriterion.includes('quiz') || parentCriterion.includes('qz')) {
+                                                  return 'Quiz'
+                                                } else if (parentCriterion.includes('exam') || parentCriterion.includes('me') || parentCriterion.includes('fe')) {
+                                                  return 'Exam'
+                                                } else if (parentCriterion.includes('project') || parentCriterion.includes('fp')) {
+                                                  return 'Project'
+                                                } else if (parentCriterion.includes('lab') || parentCriterion.includes('la')) {
+                                                  return 'Lab'
+                                                } else if (parentCriterion.includes('written') || parentCriterion.includes('ps') || parentCriterion.includes('wa')) {
+                                                  return 'Assignment'
+                                                }
+                                                // Fallback to assessment's own type if criterion doesn't match
+                                                return assessment.type
+                                              }
+                                              // Not a sub-assessment, use its own type
+                                              return assessment.type
+                                            })()}
                                           </span>
                                         </div>
                                       </td>
