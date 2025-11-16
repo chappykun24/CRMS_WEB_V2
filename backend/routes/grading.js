@@ -23,7 +23,17 @@ router.post('/submit-grades', async (req, res) => {
       const results = [];
       
       for (const grade of grades) {
-        const { enrollment_id, raw_score, late_penalty = 0, feedback = '', graded_by, submission_status = 'missing' } = grade;
+        const { 
+          enrollment_id, 
+          raw_score, 
+          late_penalty = 0, 
+          feedback = '', 
+          graded_by, 
+          submission_status = 'missing',
+          adjusted_score: providedAdjustedScore,
+          actual_score: providedActualScore,
+          transmuted_score: providedTransmutedScore
+        } = grade;
         
         // Validate submission_status
         const validStatuses = ['ontime', 'late', 'missing'];
@@ -36,9 +46,20 @@ router.post('/submit-grades', async (req, res) => {
         
         // Calculate adjusted score (only if raw_score is valid)
         // If missing submission, adjusted_score should be null, not 0
-        const adjusted_score = (finalStatus === 'missing' || numericRawScore === null) 
+        const adjusted_score = providedAdjustedScore !== undefined 
+          ? (providedAdjustedScore !== null ? parseFloat(providedAdjustedScore) : null)
+          : ((finalStatus === 'missing' || numericRawScore === null) 
+            ? null 
+            : Math.max(0, numericRawScore - (late_penalty || 0)));
+        
+        // Use provided computed scores or set to null for missing submissions
+        const actual_score = (finalStatus === 'missing' || numericRawScore === null) 
           ? null 
-          : Math.max(0, numericRawScore - (late_penalty || 0));
+          : (providedActualScore !== undefined ? parseFloat(providedActualScore) : null);
+        
+        const transmuted_score = (finalStatus === 'missing' || numericRawScore === null) 
+          ? null 
+          : (providedTransmutedScore !== undefined ? parseFloat(providedTransmutedScore) : null);
         
         // Check if submission already exists
         const existingSubmission = await client.query(
@@ -55,19 +76,21 @@ router.post('/submit-grades', async (req, res) => {
               total_score = $1::NUMERIC,
               raw_score = $2::NUMERIC,
               adjusted_score = $3::NUMERIC,
-              late_penalty = $4::NUMERIC,
+              actual_score = $4::NUMERIC,
+              transmuted_score = $5::NUMERIC,
+              late_penalty = $6::NUMERIC,
               graded_at = CURRENT_TIMESTAMP,
-              graded_by = $5,
+              graded_by = $7,
               status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
-              submission_status = $6,
-              remarks = $7
-            WHERE enrollment_id = $8 AND assessment_id = $9
-            RETURNING submission_id, total_score, adjusted_score, submission_status
+              submission_status = $8,
+              remarks = $9
+            WHERE enrollment_id = $10 AND assessment_id = $11
+            RETURNING submission_id, total_score, adjusted_score, actual_score, transmuted_score, submission_status
           `;
           
           const updateResult = await client.query(updateQuery, [
-            adjusted_score, numericRawScore, adjusted_score, late_penalty || 0, 
-            graded_by, finalStatus, feedback, enrollment_id, assessment_id
+            adjusted_score, numericRawScore, adjusted_score, actual_score, transmuted_score,
+            late_penalty || 0, graded_by, finalStatus, feedback, enrollment_id, assessment_id
           ]);
           
           results.push({
@@ -86,14 +109,15 @@ router.post('/submit-grades', async (req, res) => {
           const insertQuery = `
             INSERT INTO submissions (
               enrollment_id, assessment_id, total_score, raw_score, 
-              adjusted_score, late_penalty, graded_by, status, submission_status, remarks
-            ) VALUES ($1, $2, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7, CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END, $8, $9)
-            RETURNING submission_id, total_score, adjusted_score, submission_status
+              adjusted_score, actual_score, transmuted_score, late_penalty, graded_by, status, submission_status, remarks
+            ) VALUES ($1, $2, $3::NUMERIC, $4::NUMERIC, $5::NUMERIC, $6::NUMERIC, $7::NUMERIC, $8::NUMERIC, $9, CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END, $10, $11)
+            RETURNING submission_id, total_score, adjusted_score, actual_score, transmuted_score, submission_status
           `;
           
           const insertResult = await client.query(insertQuery, [
             enrollment_id, assessment_id, adjusted_score, numericRawScore, 
-            adjusted_score, late_penalty || 0, graded_by, finalStatus, feedback
+            adjusted_score, actual_score, transmuted_score,
+            late_penalty || 0, graded_by, finalStatus, feedback
           ]);
           
           results.push({
@@ -101,6 +125,8 @@ router.post('/submit-grades', async (req, res) => {
             submission_id: insertResult.rows[0].submission_id,
             total_score: insertResult.rows[0].total_score,
             adjusted_score: insertResult.rows[0].adjusted_score,
+            actual_score: insertResult.rows[0].actual_score,
+            transmuted_score: insertResult.rows[0].transmuted_score,
             submission_status: insertResult.rows[0].submission_status,
             action: 'created'
           });

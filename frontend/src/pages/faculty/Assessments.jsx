@@ -1295,19 +1295,118 @@ const Assessments = () => {
     return ((adjustedScore / totalPoints) * 100).toFixed(1)
   }
 
+  // Grading Computation Functions (Non-zero based)
+  
+  /**
+   * Transmutation: Raw Score → Actual Score
+   * Formula: (Raw Score / Max Score) × 62.5 + 37.5
+   * Non-zero based: Minimum score is 37.5 (not 0)
+   */
+  const calculateActualScore = (rawScore, maxScore) => {
+    if (!maxScore || maxScore === 0) return 0
+    const raw = parseFloat(rawScore) || 0
+    // Non-zero based computation: minimum is 37.5
+    return (raw / maxScore) * 62.5 + 37.5
+  }
+
+  /**
+   * Weighting: Actual Score → Transmuted Score
+   * Formula: Actual Score × (Weight Percentage / 100)
+   */
+  const calculateTransmutedScore = (actualScore, weightPercentage) => {
+    const actual = parseFloat(actualScore) || 0
+    const weight = parseFloat(weightPercentage) || 0
+    return (actual * weight) / 100
+  }
+
+  /**
+   * Group assessments by parent criterion and calculate aggregated scores
+   */
+  const calculateGroupedScores = (assessments, studentGrades, enrollmentId) => {
+    const { groups } = groupAssessmentsByCriterion(assessments)
+    const groupedScores = {}
+    
+    Object.entries(groups).forEach(([criterionName, groupAssessments]) => {
+      let groupTransmutedTotal = 0
+      
+      groupAssessments.forEach(assessment => {
+        const gradeData = studentGrades[assessment.assessment_id]?.[enrollmentId]
+        if (!gradeData) return
+        
+        const adjustedScore = calculateAdjustedScore(
+          gradeData.raw_score || 0,
+          gradeData.late_penalty || 0,
+          assessment.total_points
+        )
+        
+        const actualScore = calculateActualScore(adjustedScore, assessment.total_points)
+        const transmutedScore = calculateTransmutedScore(
+          actualScore,
+          assessment.weight_percentage || 0
+        )
+        
+        groupTransmutedTotal += transmutedScore
+      })
+      
+      groupedScores[criterionName] = {
+        totalTransmuted: groupTransmutedTotal,
+        assessmentCount: groupAssessments.length
+      }
+    })
+    
+    return groupedScores
+  }
+
+  /**
+   * Calculate final grade by summing all aggregated transmuted scores
+   */
+  const calculateFinalGrade = (groupedScores) => {
+    return Object.values(groupedScores).reduce((sum, group) => {
+      return sum + (group.totalTransmuted || 0)
+    }, 0)
+  }
+
+  /**
+   * Convert final percentage grade to numeric grade using grading scale
+   */
+  const convertToNumericGrade = (finalPercentage) => {
+    if (finalPercentage >= 98) return { numeric: 1, status: 'PASSED' }
+    if (finalPercentage >= 94) return { numeric: 1.25, status: 'PASSED' }
+    if (finalPercentage >= 90) return { numeric: 1.5, status: 'PASSED' }
+    if (finalPercentage >= 88) return { numeric: 1.75, status: 'PASSED' }
+    if (finalPercentage >= 85) return { numeric: 2, status: 'PASSED' }
+    if (finalPercentage >= 83) return { numeric: 2.25, status: 'PASSED' }
+    if (finalPercentage >= 80) return { numeric: 2.5, status: 'PASSED' }
+    if (finalPercentage >= 78) return { numeric: 2.75, status: 'PASSED' }
+    if (finalPercentage >= 75) return { numeric: 3, status: 'PASSED' }
+    if (finalPercentage > 0) return { numeric: 5, status: 'FAILED' }
+    return { numeric: 5, status: 'FAILED' }
+  }
+
   const handleSubmitGrades = async () => {
     if (!selectedAssessment) return
 
     setIsSubmittingGrades(true)
     try {
-      const gradesArray = Object.entries(grades).map(([enrollmentId, gradeData]) => ({
-        enrollment_id: parseInt(enrollmentId),
-        raw_score: gradeData.submission_status === 'missing' ? 0 : (parseFloat(gradeData.raw_score) || 0),
-        late_penalty: gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime' ? 0 : (parseFloat(gradeData.late_penalty) || 0),
-        feedback: gradeData.feedback || '',
-        graded_by: user.user_id,
-        submission_status: gradeData.submission_status || 'missing'
-      }))
+      const gradesArray = Object.entries(grades).map(([enrollmentId, gradeData]) => {
+        const rawScore = gradeData.submission_status === 'missing' ? 0 : (parseFloat(gradeData.raw_score) || 0)
+        const latePenalty = gradeData.submission_status === 'missing' || gradeData.submission_status === 'ontime' ? 0 : (parseFloat(gradeData.late_penalty) || 0)
+        const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, selectedAssessment.total_points)
+        const actualScore = gradeData.submission_status === 'missing' ? 0 : calculateActualScore(adjustedScore, selectedAssessment.total_points)
+        const transmutedScore = gradeData.submission_status === 'missing' ? 0 : calculateTransmutedScore(actualScore, selectedAssessment.weight_percentage || 0)
+        
+        return {
+          enrollment_id: parseInt(enrollmentId),
+          raw_score: rawScore,
+          late_penalty: latePenalty,
+          adjusted_score: adjustedScore,
+          actual_score: actualScore,
+          transmuted_score: transmutedScore,
+          feedback: gradeData.feedback || '',
+          graded_by: user.user_id,
+          submission_status: gradeData.submission_status || 'missing'
+        }
+      })
 
       const response = await fetch('/api/grading/submit-grades', {
         method: 'POST',
@@ -2077,6 +2176,12 @@ const Assessments = () => {
                                       <div className="w-[90px] flex-shrink-0 px-3">
                                         <div className="h-5 bg-gray-200 rounded w-16 animate-pulse mx-auto"></div>
                                       </div>
+                                      <div className="w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-5 bg-gray-200 rounded w-16 animate-pulse mx-auto"></div>
+                                      </div>
+                                      <div className="w-[90px] flex-shrink-0 px-3">
+                                        <div className="h-5 bg-gray-200 rounded w-16 animate-pulse mx-auto"></div>
+                                      </div>
                                       <div className="w-[140px] flex-shrink-0 px-3">
                                         <div className="h-9 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
@@ -2105,6 +2210,8 @@ const Assessments = () => {
                                   <div className="w-[90px] flex-shrink-0 px-3">Raw</div>
                                   <div className="w-[90px] flex-shrink-0 px-3">Penalty</div>
                                   <div className="w-[90px] flex-shrink-0 px-3">Adjusted</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Actual</div>
+                                  <div className="w-[90px] flex-shrink-0 px-3">Transmuted</div>
                                   <div className="w-[140px] flex-shrink-0 px-3">Feedback</div>
                                   <div className="flex-1 min-w-[320px] px-4 whitespace-nowrap">Status / %</div>
                                 </div>
@@ -2165,6 +2272,19 @@ const Assessments = () => {
                                       </div>
                                       <div className="w-[90px] flex-shrink-0 px-3 text-sm font-semibold text-gray-900 text-center">
                                         {gradeData.submission_status === 'missing' ? '—' : calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points).toFixed(1)}
+                                      </div>
+                                      <div className="w-[90px] flex-shrink-0 px-3 text-sm font-semibold text-blue-600 text-center" title="Actual Score = (Adjusted / Max) × 62.5 + 37.5">
+                                        {gradeData.submission_status === 'missing' ? '—' : (() => {
+                                          const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
+                                          return calculateActualScore(adjusted, selectedAssessment.total_points).toFixed(2)
+                                        })()}
+                                      </div>
+                                      <div className="w-[90px] flex-shrink-0 px-3 text-sm font-semibold text-green-600 text-center" title="Transmuted Score = Actual × (Weight / 100)">
+                                        {gradeData.submission_status === 'missing' ? '—' : (() => {
+                                          const adjusted = calculateAdjustedScore(gradeData.raw_score, gradeData.late_penalty, selectedAssessment.total_points)
+                                          const actual = calculateActualScore(adjusted, selectedAssessment.total_points)
+                                          return calculateTransmutedScore(actual, selectedAssessment.weight_percentage || 0).toFixed(2)
+                                        })()}
                                       </div>
                                       <div className="w-[140px] flex-shrink-0 px-3">
                                         <textarea
