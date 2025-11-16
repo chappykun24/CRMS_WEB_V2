@@ -774,7 +774,14 @@ const Syllabus = () => {
       
       if (response.ok) {
         const data = await response.json()
-        setShareableClasses(Array.isArray(data) ? data : [])
+        const classesArray = Array.isArray(data) ? data : []
+        
+        // Remove duplicates based on section_course_id
+        const uniqueClasses = classesArray.filter((classItem, index, self) => 
+          index === self.findIndex(c => c.section_course_id === classItem.section_course_id)
+        )
+        
+        setShareableClasses(uniqueClasses)
       } else {
         console.error('Failed to load shareable classes')
         setShareableClasses([])
