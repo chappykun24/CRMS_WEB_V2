@@ -121,6 +121,7 @@ const LoginPage = () => {
       return
     }
 
+    try {
       // Use UserContext login function for proper authentication flow
       const isDev = process.env.NODE_ENV === 'development'
       if (isDev) {
