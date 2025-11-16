@@ -15,7 +15,8 @@
     "debug-clustering": "node scripts/debug_clustering.js",
     "insert-assessment-grades": "node ../archive/scripts/insertAssessmentGrades.js",
     "identify-clusters": "node ../archive/scripts/identifyClusters.js",
-    "identify-ilo-mappings": "node ../archive/scripts/identifyILOMappings.js"
+    "identify-ilo-mappings": "node ../archive/scripts/identifyILOMappings.js",
+    "check-syllabus-ilos": "node ../archive/scripts/checkSyllabusILOs.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

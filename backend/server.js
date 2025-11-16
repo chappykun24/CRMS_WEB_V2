@@ -2991,8 +2991,9 @@ app.get('/api/section-courses/assigned', async (req, res) => {
       LEFT JOIN sections s ON sc.section_id = s.section_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
       LEFT JOIN users u ON sc.instructor_id = u.user_id
-      LEFT JOIN school_terms st ON sc.term_id = st.term_id
-      ORDER BY st.term_id DESC, s.section_code, c.title
+      INNER JOIN school_terms st ON sc.term_id = st.term_id
+      WHERE st.is_active = true
+      ORDER BY s.section_code, c.title
     `);
     
     // Sanitize data to ensure JSON safety
