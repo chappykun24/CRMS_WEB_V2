@@ -2,14 +2,13 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { MagnifyingGlassIcon, XMarkIcon, TrashIcon } from '@heroicons/react/24/solid'
 import { Loader2 } from 'lucide-react'
 import ClassCard from '../../components/ClassCard'
-import ClassCardSkeleton from '../../components/ClassCardSkeleton'
 import LazyImage from '../../components/LazyImage'
 import { getPrefetchedClasses } from '../../services/dataPrefetchService'
 import { API_BASE_URL } from '../../utils/api'
 import deanCacheService from '../../services/deanCacheService'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 import attendanceService from '../../services/attendanceService'
-import { StudentListSkeleton } from '../../components/skeletons'
+import { StudentListSkeleton, CardGridSkeleton } from '../../components/skeletons'
 import imageLoaderService from '../../services/imageLoaderService'
 
 // Cache helpers
@@ -921,13 +920,9 @@ const MyClasses = () => {
               </div>
 
               {/* Classes Grid */}
-              <div className="flex-1 min-h-0 overflow-auto">
+              <div className="flex-1 min-h-0 overflow-auto p-6">
                 {loadingClasses ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, index) => (
-                      <ClassCardSkeleton key={index} />
-                    ))}
-                  </div>
+                  <CardGridSkeleton cards={6} />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filtered.map(cls => (
