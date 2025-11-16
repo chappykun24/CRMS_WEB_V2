@@ -8,7 +8,9 @@ import {
   Eye, 
   EyeOff,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  X,
+  AlertCircle
 } from 'lucide-react'
 
 const LoginPage = () => {
@@ -21,6 +23,8 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   const [logoLoaded, setLogoLoaded] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [validationErrors, setValidationErrors] = useState({ email: '', password: '' })
   
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
@@ -71,19 +75,51 @@ const LoginPage = () => {
       [e.target.name]: e.target.value
     })
     setError('')
+    // Clear validation errors when user starts typing
+    setValidationErrors({
+      ...validationErrors,
+      [e.target.name]: ''
+    })
+  }
+
+  const validateForm = () => {
+    const errors = { email: '', password: '' }
+    let isValid = true
+
+    // Email validation
+    if (!formData.email) {
+      errors.email = 'Email is required'
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address'
+      isValid = false
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.password = 'Password is required'
+      isValid = false
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long'
+      isValid = false
+    }
+
+    setValidationErrors(errors)
+    return isValid
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setShowErrorModal(false)
 
-    try {
-      // Validate form data
-      if (!formData.email || !formData.password) {
-        setError('Please fill in all fields')
-        return
-      }
+    // Validate form before submission
+    if (!validateForm()) {
+      setIsLoading(false)
+      setShowErrorModal(true)
+      return
+    }
 
       // Use UserContext login function for proper authentication flow
       const isDev = process.env.NODE_ENV === 'development'
@@ -111,14 +147,18 @@ const LoginPage = () => {
         }
         navigate(roleDefaultPath, { replace: true })
       } else {
-        setError(result.error || 'Login failed. Please check your credentials.')
+        const errorMessage = result.error || 'Login failed. Please check your credentials.'
+        setError(errorMessage)
+        setShowErrorModal(true)
       }
     } catch (err) {
       const isDev = process.env.NODE_ENV === 'development'
       if (isDev) {
         console.error('[LoginPage] login exception', err)
       }
-      setError('An unexpected error occurred. Please try again.')
+      const errorMessage = err.response?.data?.message || err.message || 'An unexpected error occurred. Please try again.'
+      setError(errorMessage)
+      setShowErrorModal(true)
     } finally {
       setIsLoading(false)
     }
@@ -183,13 +223,6 @@ const LoginPage = () => {
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-6 border border-gray-200 sm:rounded-3xl sm:px-10 shadow-lg">
             <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span>{error}</span>
-                </div>
-              )}
-
               <div>
                 <div className="mt-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -203,11 +236,18 @@ const LoginPage = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
+                    className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 transition-all duration-300 ${
+                      validationErrors.email 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-gray-300 focus:border-gray-300'
+                    }`}
                     placeholder="Email"
                     disabled={isLoading}
                   />
                 </div>
+                {validationErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -223,7 +263,11 @@ const LoginPage = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-gray-300 transition-all duration-300"
+                    className={`block w-full pl-10 pr-10 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-0 transition-all duration-300 ${
+                      validationErrors.password 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-gray-300 focus:border-gray-300'
+                    }`}
                     placeholder="Password"
                     disabled={isLoading}
                   />
@@ -240,6 +284,9 @@ const LoginPage = () => {
                     )}
                   </button>
                 </div>
+                {validationErrors.password && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                )}
               </div>
 
               <div className="flex items-center justify-between">
@@ -355,7 +402,7 @@ const LoginPage = () => {
                   
                   <button
                     type="button"
-                    onClick={() => setFormData({ email: 'jose.torres148@university.edu', password: 'password123' })}
+                    onClick={() => setFormData({ email: 'jose.torres148@university.edu', password: 'Password123!' })}
                     className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
                     style={{ border: '1px solid #e5e7eb', outline: 'none' }}
                   >
@@ -388,6 +435,73 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowErrorModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Login Error</h3>
+              </div>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="mb-6">
+              {error ? (
+                <p className="text-gray-700">{error}</p>
+              ) : (
+                <div className="space-y-3">
+                  {validationErrors.email && (
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Email Error</p>
+                        <p className="text-sm text-gray-600">{validationErrors.email}</p>
+                      </div>
+                    </div>
+                  )}
+                  {validationErrors.password && (
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Password Error</p>
+                        <p className="text-sm text-gray-600">{validationErrors.password}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
