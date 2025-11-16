@@ -495,18 +495,46 @@ const Syllabus = () => {
     let targetSyllabusId = syllabusId || viewingSyllabus?.syllabus_id
     const targetSyllabus = syllabusId ? null : viewingSyllabus
 
+    // Debug logging
+    console.log('🔍 [DELETE] handleDeleteSyllabus called:', { 
+      syllabusId, 
+      viewingSyllabus: viewingSyllabus ? { 
+        syllabus_id: viewingSyllabus.syllabus_id,
+        title: viewingSyllabus.title 
+      } : null,
+      targetSyllabusId,
+      targetSyllabusIdType: typeof targetSyllabusId
+    })
+
     // Ensure targetSyllabusId is a primitive value (number or string)
     if (targetSyllabusId && typeof targetSyllabusId === 'object') {
       // If it's an object, try to extract the ID
       targetSyllabusId = targetSyllabusId.syllabus_id || targetSyllabusId.id || targetSyllabusId
+      console.log('🔍 [DELETE] Extracted ID from object:', targetSyllabusId)
     }
     
-    // Convert to string/number and ensure it's valid
-    targetSyllabusId = targetSyllabusId ? String(targetSyllabusId) : null
+    // Convert to string and ensure it's valid
+    if (targetSyllabusId != null) {
+      targetSyllabusId = String(targetSyllabusId).trim()
+      // Check if it's a valid number string
+      if (targetSyllabusId === '' || targetSyllabusId === 'null' || targetSyllabusId === 'undefined') {
+        targetSyllabusId = null
+      }
+    } else {
+      targetSyllabusId = null
+    }
 
-    if (!targetSyllabusId) {
-      console.error('Invalid syllabus ID for deletion:', { syllabusId, viewingSyllabus })
-      alert('Error: Invalid syllabus ID. Cannot delete.')
+    if (!targetSyllabusId || targetSyllabusId === 'null' || targetSyllabusId === 'undefined') {
+      console.error('❌ [DELETE] Invalid syllabus ID for deletion:', { 
+        syllabusId, 
+        viewingSyllabus: viewingSyllabus ? {
+          syllabus_id: viewingSyllabus.syllabus_id,
+          title: viewingSyllabus.title,
+          keys: Object.keys(viewingSyllabus)
+        } : null,
+        targetSyllabusId 
+      })
+      alert('Error: Invalid syllabus ID. Cannot delete. Please refresh the page and try again.')
       return
     }
 
@@ -756,7 +784,7 @@ const Syllabus = () => {
         setShowShareModal(false)
         // Reload syllabi if we have a selected class
         if (selectedClass) {
-          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+          await loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
         }
       } else {
         const error = await response.json()
@@ -2906,7 +2934,7 @@ const Syllabus = () => {
                       </button>
                       <button
                         onClick={handleDeleteSyllabus}
-                        disabled={deletingSyllabus}
+                        disabled={deletingSyllabus || !viewingSyllabus?.syllabus_id}
                         className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {deletingSyllabus ? (
