@@ -44,14 +44,12 @@ const SyllabusApproval = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Filter for syllabi approved by program chair but pending dean approval
-        const pendingApproval = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'pending')
-          : []
-        setSyllabi(pendingApproval)
+        // Show all syllabi regardless of status
+        const allSyllabi = Array.isArray(data) ? data : []
+        setSyllabi(allSyllabi)
       }
     } catch (error) {
-      console.error('Error loading pending approval syllabi:', error)
+      console.error('Error loading syllabi:', error)
     } finally {
       setLoading(false)
     }
@@ -66,14 +64,12 @@ const SyllabusApproval = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Filter for approved syllabi
-        const approved = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'approved')
-          : []
-        setApprovedSyllabi(approved)
+        // Show all syllabi regardless of status
+        const allSyllabi = Array.isArray(data) ? data : []
+        setApprovedSyllabi(allSyllabi)
       }
     } catch (error) {
-      console.error('Error loading approved syllabi:', error)
+      console.error('Error loading syllabi:', error)
     }
   }
 
@@ -226,6 +222,8 @@ const SyllabusApproval = () => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'pending_approval': return 'bg-yellow-100 text-yellow-800'
+      case 'pending_review': return 'bg-blue-100 text-blue-800'
       case 'rejected': return 'bg-red-100 text-red-800'
       case 'needs_revision': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
@@ -347,20 +345,52 @@ const SyllabusApproval = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSyllabi.map((syllabus) => (
-                    <tr 
-                      key={syllabus.syllabus_id} 
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => openViewModal(syllabus)}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredSyllabi.map((syllabus) => {
+                    // Determine overall status
+                    const overallStatus = syllabus.approval_status === 'approved' 
+                      ? 'approved' 
+                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
+                      ? 'pending_approval'
+                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
+                      ? 'rejected'
+                      : syllabus.review_status === 'rejected'
+                      ? 'rejected'
+                      : syllabus.review_status === 'needs_revision'
+                      ? 'needs_revision'
+                      : 'pending_review'
+                    
+                    return (
+                      <tr 
+                        key={syllabus.syllabus_id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => openViewModal(syllabus)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
+                            {overallStatus === 'pending_approval' ? 'Pending Approval' : 
+                             overallStatus === 'pending_review' ? 'Pending Review' :
+                             overallStatus === 'needs_revision' ? 'Needs Revision' :
+                             overallStatus}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {syllabus.version || '1.0'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {formatDate(syllabus.created_at)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -385,20 +415,52 @@ const SyllabusApproval = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredApprovedSyllabi.map((syllabus) => (
-                      <tr 
-                        key={syllabus.syllabus_id} 
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => openViewModal(syllabus)}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredApprovedSyllabi.map((syllabus) => {
+                      // Determine overall status
+                      const overallStatus = syllabus.approval_status === 'approved' 
+                        ? 'approved' 
+                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
+                        ? 'pending_approval'
+                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
+                        ? 'rejected'
+                        : syllabus.review_status === 'rejected'
+                        ? 'rejected'
+                        : syllabus.review_status === 'needs_revision'
+                        ? 'needs_revision'
+                        : 'pending_review'
+                      
+                      return (
+                        <tr 
+                          key={syllabus.syllabus_id} 
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => openViewModal(syllabus)}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
+                              {overallStatus === 'pending_approval' ? 'Pending Approval' : 
+                               overallStatus === 'pending_review' ? 'Pending Review' :
+                               overallStatus === 'needs_revision' ? 'Needs Revision' :
+                               overallStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {syllabus.version || '1.0'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {formatDate(syllabus.created_at)}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

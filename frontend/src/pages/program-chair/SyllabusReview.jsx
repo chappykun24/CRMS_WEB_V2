@@ -93,20 +93,18 @@ const SyllabusReview = () => {
       }
       
       const data = await response.json()
-      // Filter for syllabi pending review (review_status = 'pending')
-      const pendingSyllabi = Array.isArray(data) 
-        ? data.filter(s => s.review_status === 'pending')
-        : []
-      console.log(`✅ [PROGRAM CHAIR SYLLABUS] Received ${pendingSyllabi.length} pending syllabi`)
-      setSyllabi(pendingSyllabi)
+      // Show all syllabi regardless of status
+      const allSyllabi = Array.isArray(data) ? data : []
+      console.log(`✅ [PROGRAM CHAIR SYLLABUS] Received ${allSyllabi.length} syllabi`)
+      setSyllabi(allSyllabi)
       
       // Store minimized data in sessionStorage for instant next load
       if (!sessionCached) {
-        safeSetItem(sessionCacheKey, pendingSyllabi, minimizeSyllabusData)
+        safeSetItem(sessionCacheKey, allSyllabi, minimizeSyllabusData)
       }
       
       // Store full data in enhanced cache
-      setCachedData('syllabi', cacheKey, pendingSyllabi)
+      setCachedData('syllabi', cacheKey, allSyllabi)
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('🚫 [PROGRAM CHAIR SYLLABUS] Request was aborted')
@@ -133,11 +131,9 @@ const SyllabusReview = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Filter for approved syllabi
-        const approved = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'approved')
-          : []
-        setApprovedSyllabi(approved)
+        // Show all syllabi regardless of status
+        const allSyllabi = Array.isArray(data) ? data : []
+        setApprovedSyllabi(allSyllabi)
       }
     } catch (error) {
       console.error('Error loading approved syllabi:', error)
@@ -309,6 +305,8 @@ const SyllabusReview = () => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'pending_approval': return 'bg-yellow-100 text-yellow-800'
+      case 'pending_review': return 'bg-blue-100 text-blue-800'
       case 'rejected': return 'bg-red-100 text-red-800'
       case 'needs_revision': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
@@ -435,22 +433,25 @@ const SyllabusReview = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredSyllabi.map((syllabus) => {
-                    // Extract revision number from grading_policy.metadata
-                    let revisionNo = '0'
-                    try {
-                      const gradingPolicy = typeof syllabus.grading_policy === 'string' 
-                        ? JSON.parse(syllabus.grading_policy) 
-                        : syllabus.grading_policy
-                      if (gradingPolicy && gradingPolicy.metadata && gradingPolicy.metadata.revision_no) {
-                        revisionNo = gradingPolicy.metadata.revision_no
-                      }
-                    } catch (e) {
-                      // If parsing fails, use default
-                    }
+                    // Determine overall status
+                    const overallStatus = syllabus.approval_status === 'approved' 
+                      ? 'approved' 
+                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
+                      ? 'pending_approval'
+                      : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
+                      ? 'rejected'
+                      : syllabus.review_status === 'rejected'
+                      ? 'rejected'
+                      : syllabus.review_status === 'needs_revision'
+                      ? 'needs_revision'
+                      : 'pending_review'
                     
                     return (
                       <tr 
@@ -460,6 +461,20 @@ const SyllabusReview = () => {
                       >
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
+                            {overallStatus === 'pending_approval' ? 'Pending Approval' : 
+                             overallStatus === 'pending_review' ? 'Pending Review' :
+                             overallStatus === 'needs_revision' ? 'Needs Revision' :
+                             overallStatus}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {syllabus.version || '1.0'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {formatDate(syllabus.created_at)}
                         </td>
                       </tr>
                     )
@@ -488,22 +503,25 @@ const SyllabusReview = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Submission</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredApprovedSyllabi.map((syllabus) => {
-                      // Extract revision number from grading_policy.metadata
-                      let revisionNo = '0'
-                      try {
-                        const gradingPolicy = typeof syllabus.grading_policy === 'string' 
-                          ? JSON.parse(syllabus.grading_policy) 
-                          : syllabus.grading_policy
-                        if (gradingPolicy && gradingPolicy.metadata && gradingPolicy.metadata.revision_no) {
-                          revisionNo = gradingPolicy.metadata.revision_no
-                        }
-                      } catch (e) {
-                        // If parsing fails, use default
-                      }
+                      // Determine overall status
+                      const overallStatus = syllabus.approval_status === 'approved' 
+                        ? 'approved' 
+                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'pending'
+                        ? 'pending_approval'
+                        : syllabus.review_status === 'approved' && syllabus.approval_status === 'rejected'
+                        ? 'rejected'
+                        : syllabus.review_status === 'rejected'
+                        ? 'rejected'
+                        : syllabus.review_status === 'needs_revision'
+                        ? 'needs_revision'
+                        : 'pending_review'
                       
                       return (
                         <tr 
@@ -513,6 +531,20 @@ const SyllabusReview = () => {
                         >
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium text-gray-900">{syllabus.title}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(overallStatus)}`}>
+                              {overallStatus === 'pending_approval' ? 'Pending Approval' : 
+                               overallStatus === 'pending_review' ? 'Pending Review' :
+                               overallStatus === 'needs_revision' ? 'Needs Revision' :
+                               overallStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {syllabus.version || '1.0'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {formatDate(syllabus.created_at)}
                           </td>
                         </tr>
                       )
