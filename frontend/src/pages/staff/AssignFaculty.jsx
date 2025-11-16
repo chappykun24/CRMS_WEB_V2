@@ -35,6 +35,8 @@ const AssignFaculty = () => {
   const [selectedStudents, setSelectedStudents] = useState(new Set())
   const [enrollingStudents, setEnrollingStudents] = useState(new Set())
   const [showEnrolledView, setShowEnrolledView] = useState(false) // Toggle between available and enrolled
+  const [courseSections, setCourseSections] = useState([]) // Sections for the current course
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState('') // Selected section for filtering enrolled students
 
   // Success message state
   const [successMessage, setSuccessMessage] = useState('')
@@ -116,19 +118,67 @@ const AssignFaculty = () => {
     }
   }
 
-  // Load enrolled students
+  // Load enrolled students and sections for the course
   const loadEnrolledStudents = async () => {
     if (!selectedClass) return
     
     setLoadingEnrolledStudents(true)
     try {
+      // Fetch enrolled students
       const response = await fetch(`/api/section-courses/${selectedClass.id}/students`)
       if (!response.ok) throw new Error(`Failed to fetch enrolled students: ${response.status}`)
       const data = await response.json()
       setEnrolledStudents(Array.isArray(data) ? data : [])
+      
+      // Fetch all sections for this course (across all terms/sections)
+      // Get course_id from classes array (which has course_id from /api/section-courses/assigned)
+      const matchingClass = classes.find(cls => String(cls.id) === String(selectedClass.id))
+      let courseId = matchingClass?.course_id
+      
+      // If not found in classes, try to get from the assigned endpoint
+      if (!courseId) {
+        const sectionsResponse = await fetch(`/api/section-courses/assigned`)
+        if (sectionsResponse.ok) {
+          const allSectionCourses = await sectionsResponse.json()
+          const matchingSectionCourse = Array.isArray(allSectionCourses)
+            ? allSectionCourses.find(sc => String(sc.section_course_id) === String(selectedClass.id))
+            : null
+          courseId = matchingSectionCourse?.course_id
+        }
+      }
+      
+      if (courseId) {
+        // Fetch all section_courses for this course to get unique sections
+        const sectionsResponse = await fetch(`/api/section-courses/assigned`)
+        if (sectionsResponse.ok) {
+          const allSectionCourses = await sectionsResponse.json()
+          // Filter by course_id to get all sections for this course
+          const courseSectionCourses = Array.isArray(allSectionCourses) 
+            ? allSectionCourses.filter(sc => String(sc.course_id) === String(courseId))
+            : []
+          
+          // Extract unique sections
+          const uniqueSections = []
+          const seenSectionIds = new Set()
+          courseSectionCourses.forEach(sc => {
+            if (sc.section_id && !seenSectionIds.has(sc.section_id)) {
+              seenSectionIds.add(sc.section_id)
+              uniqueSections.push({
+                section_id: sc.section_id,
+                section_code: sc.section_code
+              })
+            }
+          })
+          
+          setCourseSections(uniqueSections.sort((a, b) => 
+            (a.section_code || '').localeCompare(b.section_code || '')
+          ))
+        }
+      }
     } catch (error) {
       console.error('Error loading enrolled students:', error)
       setEnrolledStudents([])
+      setCourseSections([])
     } finally {
       setLoadingEnrolledStudents(false)
     }
@@ -139,6 +189,7 @@ const AssignFaculty = () => {
     setShowEnrolledView(showEnrolled)
     setSelectedStudents(new Set())
     setStudentSearchQuery('')
+    setSelectedSectionFilter('') // Reset section filter when switching views
     
     if (showEnrolled) {
       await loadEnrolledStudents()
@@ -502,7 +553,8 @@ const AssignFaculty = () => {
             bannerType: item.banner_type || 'color',
             bannerColor: item.banner_color || '#3B82F6',
             bannerImage: item.banner_image,
-            avatarUrl: item.faculty_avatar
+            avatarUrl: item.faculty_avatar,
+            course_id: item.course_id // Include course_id for section filtering
           }))
           setClasses(formattedClasses)
           
@@ -633,9 +685,17 @@ const AssignFaculty = () => {
     return filtered
   }, [availableStudents, studentSearchQuery])
 
-  // Filter and sort enrolled students based on search query
+  // Filter and sort enrolled students based on search query and section filter
   const filteredEnrolledStudents = useMemo(() => {
     let filtered = enrolledStudents
+    
+    // Filter by section if selected
+    if (selectedSectionFilter) {
+      filtered = filtered.filter(student => 
+        String(student.section_id) === String(selectedSectionFilter) ||
+        student.section_code === selectedSectionFilter
+      )
+    }
     
     // Filter by search query
     if (studentSearchQuery.trim()) {
@@ -660,7 +720,7 @@ const AssignFaculty = () => {
     })
     
     return filtered
-  }, [enrolledStudents, studentSearchQuery])
+  }, [enrolledStudents, studentSearchQuery, selectedSectionFilter])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -1185,6 +1245,23 @@ const AssignFaculty = () => {
                       className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     />
                   </div>
+                  {/* Section Filter Dropdown - Only show in Enrolled view */}
+                  {showEnrolledView && courseSections.length > 0 && (
+                    <div className="flex-shrink-0">
+                      <select
+                        value={selectedSectionFilter}
+                        onChange={(e) => setSelectedSectionFilter(e.target.value)}
+                        className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white"
+                      >
+                        <option value="">All Sections</option>
+                        {courseSections.map(section => (
+                          <option key={section.section_id} value={section.section_id}>
+                            {section.section_code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-gray-900">
                       {showEnrolledView ? 'Enrolled Students' : 'Available Students'}
