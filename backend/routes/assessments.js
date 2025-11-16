@@ -585,6 +585,9 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const sectionCourseFilterIlo = sectionCourseIdValue 
       ? `AND ce_ilo.section_course_id = ${sectionCourseIdValue}` 
       : '';
+    const sectionCourseFilterActual = sectionCourseIdValue 
+      ? `AND ce_actual.section_course_id = ${sectionCourseIdValue}` 
+      : '';
     const sectionCourseFilterFallback = sectionCourseIdValue 
       ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
       : '';
@@ -798,7 +801,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage IS NOT NULL
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_actual.term_id = ${termIdValue}` : ''}
-                ${sectionCourseFilterWeighted}
+                ${sectionCourseFilterActual}
                 ${standardAssessmentFilter}
               GROUP BY sc_actual.section_course_id
             )
