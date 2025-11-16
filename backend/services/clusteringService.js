@@ -70,10 +70,11 @@ const getClusteringConfig = () => {
  * Get cached clusters from database
  * @param {number|null} termId - School term ID (null for all terms)
  * @param {number|null} sectionCourseId - Section course ID (null for all classes)
+ * @param {number|null} iloId - ILO ID (null for overall clustering, set for ILO-filtered clustering)
  * @param {number} maxAgeHours - Maximum cache age in hours (default: 24)
  * @returns {Promise<Array>} Array of cached cluster records
  */
-const getCachedClusters = async (termId, sectionCourseId = null, maxAgeHours = 24) => {
+const getCachedClusters = async (termId, sectionCourseId = null, iloId = null, maxAgeHours = 24) => {
   try {
     const maxAge = new Date();
     maxAge.setHours(maxAge.getHours() - maxAgeHours);
@@ -97,17 +98,34 @@ const getCachedClusters = async (termId, sectionCourseId = null, maxAgeHours = 2
       // For specific term: get clusters for this term OR term_id IS NULL (fallback for "all terms" clusters)
       // Prioritize term-specific clusters by ordering term_id DESC (non-null first)
       // Exclude class-specific clusters (section_course_id IS NULL)
-      query = `
-        SELECT DISTINCT ON (student_id)
-          student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
-        FROM analytics_clusters
-        WHERE (term_id = $1 OR term_id IS NULL) 
-          AND section_course_id IS NULL
-          AND generated_at > $2 
-          AND student_id IS NOT NULL
-        ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
-      `;
-      params = [termId, maxAge];
+      // Filter by ILO ID if provided (check based_on JSON field)
+      if (iloId !== null && iloId !== undefined) {
+        query = `
+          SELECT DISTINCT ON (student_id)
+            student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
+          FROM analytics_clusters
+          WHERE (term_id = $1 OR term_id IS NULL) 
+            AND section_course_id IS NULL
+            AND generated_at > $2 
+            AND student_id IS NOT NULL
+            AND (based_on->>'ilo_id')::int = $3
+          ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
+        `;
+        params = [termId, maxAge, iloId];
+      } else {
+        query = `
+          SELECT DISTINCT ON (student_id)
+            student_id, cluster_label, cluster_number, based_on, algorithm_used, model_version, generated_at, silhouette_score
+          FROM analytics_clusters
+          WHERE (term_id = $1 OR term_id IS NULL) 
+            AND section_course_id IS NULL
+            AND generated_at > $2 
+            AND student_id IS NOT NULL
+            AND (based_on->>'ilo_id') IS NULL
+          ORDER BY student_id, term_id DESC NULLS LAST, generated_at DESC
+        `;
+        params = [termId, maxAge];
+      }
     } else {
       // For all terms, get the most recent clusters per student from any term
       // Exclude class-specific clusters (section_course_id IS NULL)
@@ -125,7 +143,8 @@ const getCachedClusters = async (termId, sectionCourseId = null, maxAgeHours = 2
     
     const result = await db.query(query, params);
     const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
-    console.log(`📦 [Clustering] Retrieved ${result.rows.length} cached clusters (${scope}, max age: ${maxAgeHours}h)`);
+    const iloScope = iloId ? `, ILO: ${iloId}` : ', Overall';
+    console.log(`📦 [Clustering] Retrieved ${result.rows.length} cached clusters (${scope}${iloScope}, max age: ${maxAgeHours}h)`);
     
     // Log sample cluster data for debugging
     if (result.rows.length > 0) {
@@ -153,25 +172,40 @@ const getCachedClusters = async (termId, sectionCourseId = null, maxAgeHours = 2
  * @param {Array} clusters - Array of cluster results from ML API
  * @param {number|null} termId - School term ID
  * @param {number|null} sectionCourseId - Section course ID (null for all classes)
+ * @param {number|null} iloId - ILO ID (null for overall clustering, set for ILO-filtered clustering)
  * @param {string} algorithm - Algorithm name (default: 'kmeans')
  * @param {string} version - Model version (default: '1.0')
  * @returns {Promise<void>}
  */
-const saveClustersToCache = async (clusters, termId, sectionCourseId = null, algorithm = 'kmeans', version = '1.0') => {
+const saveClustersToCache = async (clusters, termId, sectionCourseId = null, iloId = null, algorithm = 'kmeans', version = '1.0') => {
   if (!clusters || clusters.length === 0) {
     console.warn('⚠️ [Clustering] No clusters to save');
     return;
   }
   
   try {
-    // Delete old clusters based on scope
+    // Delete old clusters based on scope (including ILO filter)
+    // When iloId is provided, we need to delete clusters with matching ilo_id in based_on JSON
     if (sectionCourseId !== null && sectionCourseId !== undefined) {
       // Delete old clusters for this specific class
       if (termId !== null && termId !== undefined) {
-        await db.query(
-          'DELETE FROM analytics_clusters WHERE section_course_id = $1 AND term_id = $2 AND student_id IS NOT NULL',
-          [sectionCourseId, termId]
-        );
+        if (iloId !== null && iloId !== undefined) {
+          // Delete ILO-specific clusters for this class
+          await db.query(
+            `DELETE FROM analytics_clusters 
+             WHERE section_course_id = $1 AND term_id = $2 AND student_id IS NOT NULL
+             AND ((based_on->>'ilo_id')::int = $3 OR (based_on->>'ilo_id') IS NULL)`,
+            [sectionCourseId, termId, iloId]
+          );
+        } else {
+          // Delete overall clusters (no ILO filter) for this class
+          await db.query(
+            `DELETE FROM analytics_clusters 
+             WHERE section_course_id = $1 AND term_id = $2 AND student_id IS NOT NULL
+             AND (based_on->>'ilo_id') IS NULL`,
+            [sectionCourseId, termId]
+          );
+        }
       } else {
         await db.query(
           'DELETE FROM analytics_clusters WHERE section_course_id = $1 AND student_id IS NOT NULL',
@@ -180,10 +214,23 @@ const saveClustersToCache = async (clusters, termId, sectionCourseId = null, alg
       }
     } else if (termId !== null && termId !== undefined) {
       // Delete old clusters for this term (only non-class-specific)
-      await db.query(
-        'DELETE FROM analytics_clusters WHERE term_id = $1 AND section_course_id IS NULL AND student_id IS NOT NULL',
-        [termId]
-      );
+      if (iloId !== null && iloId !== undefined) {
+        // Delete ILO-specific clusters for this term
+        await db.query(
+          `DELETE FROM analytics_clusters 
+           WHERE term_id = $1 AND section_course_id IS NULL AND student_id IS NOT NULL
+           AND ((based_on->>'ilo_id')::int = $2 OR (based_on->>'ilo_id') IS NULL)`,
+          [termId, iloId]
+        );
+      } else {
+        // Delete overall clusters (no ILO filter) for this term
+        await db.query(
+          `DELETE FROM analytics_clusters 
+           WHERE term_id = $1 AND section_course_id IS NULL AND student_id IS NOT NULL
+           AND (based_on->>'ilo_id') IS NULL`,
+          [termId]
+        );
+      }
     } else {
       // For all terms, delete clusters older than 48 hours (only non-class-specific)
       const twoDaysAgo = new Date();
@@ -203,12 +250,13 @@ const saveClustersToCache = async (clusters, termId, sectionCourseId = null, alg
       const studentId = typeof cluster.student_id === 'string' ? parseInt(cluster.student_id, 10) : cluster.student_id;
       if (isNaN(studentId)) continue;
       
-      // Prepare based_on data
+      // Prepare based_on data (include ilo_id if provided for ILO-filtered clustering)
       const basedOn = {
         attendance: cluster.attendance_percentage || null,
         score: cluster.average_score || null,
         submission_rate: cluster.submission_rate || null,
-        average_days_late: cluster.average_days_late || null
+        average_days_late: cluster.average_days_late || null,
+        ilo_id: cluster.ilo_id || null  // Store ILO ID for ILO-filtered clusters
       };
       
       // Get cluster number (0, 1, 2, etc.)
@@ -310,7 +358,8 @@ const saveClustersToCache = async (clusters, termId, sectionCourseId = null, alg
     }
     
     const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
-    console.log(`💾 [Clustering] Saved ${savedCount} clusters to database cache (${scope})`);
+    const iloScope = iloId ? `, ILO: ${iloId}` : ', Overall';
+    console.log(`💾 [Clustering] Saved ${savedCount} clusters to database cache (${scope}${iloScope})`);
     console.log(`💾 [Clustering] Cache save details:`, {
       savedCount,
       totalClusters: clusters.length,
@@ -608,6 +657,7 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
  * @param {number|null} termId - School term ID (optional)
  * @param {Object} options - Additional options
  * @param {number|null} options.sectionCourseId - Section course ID for per-class clustering (optional)
+ * @param {number|null} options.iloId - ILO ID for ILO-filtered clustering (optional)
  * @returns {Promise<Object>} Object with clusters map and metadata
  */
 const getStudentClusters = async (students, termId = null, options = {}) => {
@@ -617,7 +667,8 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     version = '1.0',
     timeoutMs = 30000,
     forceRefresh = false,
-    sectionCourseId = null
+    sectionCourseId = null,
+    iloId = null
   } = options;
   
   const config = getClusteringConfig();
@@ -639,7 +690,7 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
   // Step 1: Check cache first (FAST PATH) - skip if forceRefresh is true
   if (!forceRefresh && config.enabled) {
     try {
-      const cachedClusters = await getCachedClusters(termId, sectionCourseId, cacheMaxAgeHours);
+      const cachedClusters = await getCachedClusters(termId, sectionCourseId, iloId, cacheMaxAgeHours);
       
       if (cachedClusters.length > 0) {
       // Check if cache covers all students
@@ -847,14 +898,15 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
           attendance_percentage: studentData?.attendance_percentage || null,
           average_score: studentData?.average_score || null,
           submission_rate: studentData?.submission_rate || null,
-          average_days_late: studentData?.average_days_late || null
+          average_days_late: studentData?.average_days_late || null,
+          ilo_id: iloId // Include ILO ID for ILO-filtered clusters
         };
       });
       
       // Save to cache asynchronously (don't wait for it to complete)
       // This happens for both normal API calls and force refresh
       console.log(`💾 [Clustering] Preparing to save ${clustersToSave.length} clusters to database cache...`);
-      saveClustersToCache(clustersToSave, termId, sectionCourseId, algorithm, version)
+      saveClustersToCache(clustersToSave, termId, sectionCourseId, iloId, algorithm, version)
         .then(() => {
           const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
           console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (${scope})`);

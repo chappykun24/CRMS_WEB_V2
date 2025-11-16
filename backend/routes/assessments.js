@@ -1135,6 +1135,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Get clusters using the centralized service
     // If force_refresh is true, set cacheMaxAgeHours to 0 to bypass cache
     // If sectionCourseId is provided, perform per-class clustering (identify at-risk students within that class)
+    // If iloIdValue is provided, perform ILO-filtered clustering (only assessments mapped to that ILO)
     const clusteringResult = await clusteringService.getStudentClusters(
       students,
       termIdValue,
@@ -1144,7 +1145,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
         version: '1.0',
         timeoutMs: clusteringConfig.timeoutMs,
         forceRefresh: forceRefresh,
-        sectionCourseId: sectionCourseIdValue // Pass section_course_id for per-class clustering
+        sectionCourseId: sectionCourseIdValue, // Pass section_course_id for per-class clustering
+        iloId: iloIdValue // Pass ilo_id for ILO-filtered clustering
       }
     );
 
