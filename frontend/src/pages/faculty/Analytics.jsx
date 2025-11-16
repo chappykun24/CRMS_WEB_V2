@@ -791,18 +791,152 @@ const Analytics = () => {
       setProgress(60);
       const results = await Promise.all(analyticsPromises);
       
-      // Aggregate data from all classes
-      const aggregatedStudents = [];
+      // Aggregate data from all classes - merge students by student_id
+      const studentMap = new Map(); // Map<student_id, aggregatedStudent>
       const clusteringResults = [];
       
       results.forEach((result, index) => {
         if (result && result.data) {
-          aggregatedStudents.push(...result.data);
+          result.data.forEach(student => {
+            const studentId = student.student_id;
+            
+            if (studentMap.has(studentId)) {
+              // Merge with existing student record
+              const existing = studentMap.get(studentId);
+              
+              // Aggregate numeric fields (weighted averages)
+              const existingAttendance = parseFloat(existing.attendance_percentage) || 0;
+              const newAttendance = parseFloat(student.attendance_percentage) || 0;
+              const existingSessions = parseInt(existing.attendance_total_sessions) || 0;
+              const newSessions = parseInt(student.attendance_total_sessions) || 0;
+              const totalSessions = existingSessions + newSessions;
+              
+              // Weighted average for attendance
+              const aggregatedAttendance = totalSessions > 0
+                ? ((existingAttendance * existingSessions + newAttendance * newSessions) / totalSessions)
+                : existingAttendance;
+              
+              // Aggregate attendance counts
+              existing.attendance_present_count = (parseInt(existing.attendance_present_count) || 0) + (parseInt(student.attendance_present_count) || 0);
+              existing.attendance_absent_count = (parseInt(existing.attendance_absent_count) || 0) + (parseInt(student.attendance_absent_count) || 0);
+              existing.attendance_late_count = (parseInt(existing.attendance_late_count) || 0) + (parseInt(student.attendance_late_count) || 0);
+              existing.attendance_total_sessions = totalSessions;
+              existing.attendance_percentage = aggregatedAttendance.toFixed(2);
+              
+              // Aggregate scores (average across classes)
+              const existingScore = parseFloat(existing.average_score) || 0;
+              const newScore = parseFloat(student.average_score) || 0;
+              const existingIloScore = parseFloat(existing.ilo_weighted_score) || 0;
+              const newIloScore = parseFloat(student.ilo_weighted_score) || 0;
+              
+              // Count how many classes we've seen for this student
+              const classCount = existing._class_count || 1;
+              existing._class_count = classCount + 1;
+              
+              // Running average for scores
+              existing.average_score = ((existingScore * classCount + newScore) / (classCount + 1)).toFixed(2);
+              existing.ilo_weighted_score = ((existingIloScore * classCount + newIloScore) / (classCount + 1)).toFixed(2);
+              
+              // Aggregate submission data
+              const existingOnTime = parseInt(existing.submission_ontime_count) || 0;
+              const newOnTime = parseInt(student.submission_ontime_count) || 0;
+              const existingLate = parseInt(existing.submission_late_count) || 0;
+              const newLate = parseInt(student.submission_late_count) || 0;
+              const existingMissing = parseInt(existing.submission_missing_count) || 0;
+              const newMissing = parseInt(student.submission_missing_count) || 0;
+              const existingTotal = parseInt(existing.submission_total_assessments) || 0;
+              const newTotal = parseInt(student.submission_total_assessments) || 0;
+              
+              existing.submission_ontime_count = existingOnTime + newOnTime;
+              existing.submission_late_count = existingLate + newLate;
+              existing.submission_missing_count = existingMissing + newMissing;
+              existing.submission_total_assessments = existingTotal + newTotal;
+              
+              // Calculate aggregated submission rate
+              const totalSubmissions = existingTotal + newTotal;
+              const totalOnTime = existingOnTime + newOnTime;
+              existing.submission_rate = totalSubmissions > 0 ? (totalOnTime / totalSubmissions).toFixed(4) : '0';
+              
+              // Keep the most recent or most common cluster label
+              // If both have clusters, prefer the one that's not null/undefined
+              if (student.cluster_label && 
+                  student.cluster_label !== null && 
+                  student.cluster_label !== undefined &&
+                  !(typeof student.cluster_label === 'number' && isNaN(student.cluster_label)) &&
+                  !(typeof student.cluster_label === 'string' && (student.cluster_label.toLowerCase() === 'nan' || student.cluster_label.trim() === ''))) {
+                // Prefer the new cluster if existing doesn't have a valid one
+                if (!existing.cluster_label || 
+                    existing.cluster_label === null || 
+                    existing.cluster_label === undefined ||
+                    (typeof existing.cluster_label === 'number' && isNaN(existing.cluster_label)) ||
+                    (typeof existing.cluster_label === 'string' && (existing.cluster_label.toLowerCase() === 'nan' || existing.cluster_label.trim() === ''))) {
+                  existing.cluster_label = student.cluster_label;
+                }
+                // Otherwise keep existing (could implement voting logic here if needed)
+              }
+              
+              // Track classes this student is in (for modal)
+              if (!existing._classes) {
+                existing._classes = [{
+                  section_course_id: existing.section_course_id,
+                  course_code: existing.course_code,
+                  course_title: existing.course_title,
+                  section_code: existing.section_code
+                }];
+              }
+              existing._classes.push({
+                section_course_id: student.section_course_id,
+                course_code: student.course_code,
+                course_title: student.course_title,
+                section_code: student.section_code
+              });
+              
+              // Merge enrolled_specializations arrays
+              const existingSpecs = existing.enrolled_specializations || [];
+              const newSpecs = student.enrolled_specializations || [];
+              const mergedSpecs = [...new Set([...existingSpecs, ...newSpecs])];
+              existing.enrolled_specializations = mergedSpecs;
+              
+            } else {
+              // First time seeing this student - add to map
+              const studentCopy = { ...student };
+              studentCopy._class_count = 1;
+              studentCopy._classes = [{
+                section_course_id: student.section_course_id,
+                course_code: student.course_code,
+                course_title: student.course_title,
+                section_code: student.section_code
+              }];
+              studentMap.set(studentId, studentCopy);
+            }
+          });
+          
           if (result.clustering) {
             clusteringResults.push(result.clustering);
           }
         }
       });
+      
+      // Convert map to array and clean up internal tracking fields
+      // Keep the first class's info for display (section_course_id, course_code, etc.)
+      const aggregatedStudents = Array.from(studentMap.values()).map(student => {
+        // Remove internal tracking fields but keep class display info from first class
+        const { _class_count, _classes, ...cleanStudent } = student;
+        // If we removed class info but it was in _classes, restore the first one
+        if (_classes && _classes.length > 0 && !cleanStudent.section_course_id) {
+          cleanStudent.section_course_id = _classes[0].section_course_id;
+          cleanStudent.course_code = _classes[0].course_code;
+          cleanStudent.course_title = _classes[0].course_title;
+          cleanStudent.section_code = _classes[0].section_code;
+        }
+        return cleanStudent;
+      });
+
+      console.log(`✅ [FACULTY ANALYTICS] Aggregated ${aggregatedStudents.length} unique students from ${results.filter(r => r && r.data).length} classes`);
+      const duplicateCheck = new Set(aggregatedStudents.map(s => s.student_id));
+      if (duplicateCheck.size !== aggregatedStudents.length) {
+        console.warn(`⚠️ [FACULTY ANALYTICS] Found ${aggregatedStudents.length - duplicateCheck.size} duplicate student IDs after aggregation!`);
+      }
 
       setProgress(80);
 
