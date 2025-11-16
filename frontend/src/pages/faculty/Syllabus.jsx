@@ -490,30 +490,6 @@ const Syllabus = () => {
   }
 
 
-  const handleDeleteSyllabus = async (syllabusId) => {
-    if (!confirm('Are you sure you want to delete this syllabus?')) return
-
-    try {
-      const response = await fetch(`/api/syllabi/${syllabusId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
-
-      if (response.ok) {
-        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
-        alert('Syllabus deleted successfully!')
-      } else {
-        alert('Failed to delete syllabus')
-      }
-    } catch (error) {
-      console.error('Error deleting syllabus:', error)
-      alert('Failed to delete syllabus')
-    }
-  }
-
-
   const openEditModal = (syllabus) => {
     setEditingSyllabus(syllabus)
     setShowEditModal(true)
