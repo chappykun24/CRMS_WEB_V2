@@ -2032,7 +2032,7 @@ const Assessments = () => {
                                   <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
                                   <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
                                   <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
-                                  <div className="flex-1 min-w-0 px-1">Status / %</div>
+                                  <div className="w-[200px] flex-shrink-0 px-1">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Array.from({ length: 8 }).map((_, i) => (
@@ -2062,7 +2062,7 @@ const Assessments = () => {
                                       <div className="w-[80px] flex-shrink-0 px-0.5">
                                         <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
                                       </div>
-                                      <div className="flex-1 min-w-0 px-1">
+                                      <div className="w-[200px] flex-shrink-0 px-1">
                                         <div className="flex items-center gap-3">
                                           <div className="flex gap-2 flex-shrink-0">
                                             <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
@@ -2090,7 +2090,7 @@ const Assessments = () => {
                                   <div className="w-[50px] flex-shrink-0 px-0.5">Actual</div>
                                   <div className="w-[60px] flex-shrink-0 px-0.5">Trans</div>
                                   <div className="w-[80px] flex-shrink-0 px-0.5">Feedback</div>
-                                  <div className="flex-1 min-w-0 px-1 whitespace-nowrap">Status / %</div>
+                                  <div className="w-[200px] flex-shrink-0 px-1 whitespace-nowrap">Status / %</div>
                                 </div>
                                 <ul className="divide-y divide-gray-100">
                                   {Object.entries(grades)
@@ -2173,7 +2173,7 @@ const Assessments = () => {
                                           maxLength={200}
                                         />
                                       </div>
-                                      <div className="flex-1 min-w-0 px-1 flex-shrink-0">
+                                      <div className="w-[200px] flex-shrink-0 px-1">
                                         <div className="flex items-center gap-1.5 justify-start">
                                           <div className="flex gap-1 flex-shrink-0">
                                             <button
