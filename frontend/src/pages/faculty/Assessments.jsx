@@ -974,36 +974,10 @@ const Assessments = () => {
     return `${lastName}, ${firstAndMiddle}`
   }
 
-  // Helper function to get parent assessment type based on description
-  const getParentAssessmentType = (assessment) => {
-    const description = assessment.description || ''
-    const match = description.match(/Sub-assessment from (.+)/)
-    if (match && match[1]) {
-      const parentCriterion = match[1].trim().toLowerCase()
-      // Determine type based on parent criterion name/abbreviation
-      if (parentCriterion.includes('quiz') || parentCriterion.includes('qz')) {
-        return 'Quiz'
-      } else if (parentCriterion.includes('exam') || parentCriterion.includes('me') || parentCriterion.includes('fe')) {
-        return 'Exam'
-      } else if (parentCriterion.includes('project') || parentCriterion.includes('fp')) {
-        return 'Project'
-      } else if (parentCriterion.includes('lab') || parentCriterion.includes('la')) {
-        return 'Lab'
-      } else if (parentCriterion.includes('written') || parentCriterion.includes('ps') || parentCriterion.includes('wa')) {
-        return 'Assignment'
-      }
-      // Fallback to assessment's own type if criterion doesn't match
-      return assessment.type
-    }
-    // Not a sub-assessment, use its own type
-    return assessment.type
-  }
-
   const filteredAssessments = assessments.filter(assessment => {
-    const parentType = getParentAssessmentType(assessment)
     const matchesSearch = assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      parentType.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = typeFilter === 'all' || parentType === typeFilter
+      assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = typeFilter === 'all' || assessment.type === typeFilter
     return matchesSearch && matchesType
   })
 
@@ -1016,8 +990,8 @@ const Assessments = () => {
     return sum + (parseFloat(assessment.total_points) || 0)
   }, 0)
 
-  // Get unique assessment types for filter dropdown (based on parent assessment type)
-  const assessmentTypes = ['all', ...new Set(assessments.map(a => getParentAssessmentType(a)).filter(Boolean))]
+  // Get unique assessment types for filter dropdown
+  const assessmentTypes = ['all', ...new Set(assessments.map(a => a.type).filter(Boolean))]
 
   // Group assessments by parent criterion
   const groupAssessmentsByCriterion = (assessmentsList) => {
@@ -1755,7 +1729,30 @@ const Assessments = () => {
                                       <td className="px-4 py-3">
                                         <div className="flex justify-center">
                                           <span className="text-xs text-gray-700">
-                                            {getParentAssessmentType(assessment)}
+                                            {(() => {
+                                              // If this is a sub-assessment, determine type from parent criterion
+                                              const description = assessment.description || ''
+                                              const match = description.match(/Sub-assessment from (.+)/)
+                                              if (match && match[1]) {
+                                                const parentCriterion = match[1].trim().toLowerCase()
+                                                // Determine type based on parent criterion name/abbreviation
+                                                if (parentCriterion.includes('quiz') || parentCriterion.includes('qz')) {
+                                                  return 'Quiz'
+                                                } else if (parentCriterion.includes('exam') || parentCriterion.includes('me') || parentCriterion.includes('fe')) {
+                                                  return 'Exam'
+                                                } else if (parentCriterion.includes('project') || parentCriterion.includes('fp')) {
+                                                  return 'Project'
+                                                } else if (parentCriterion.includes('lab') || parentCriterion.includes('la')) {
+                                                  return 'Lab'
+                                                } else if (parentCriterion.includes('written') || parentCriterion.includes('ps') || parentCriterion.includes('wa')) {
+                                                  return 'Assignment'
+                                                }
+                                                // Fallback to assessment's own type if criterion doesn't match
+                                                return assessment.type
+                                              }
+                                              // Not a sub-assessment, use its own type
+                                              return assessment.type
+                                            })()}
                                           </span>
                                         </div>
                                       </td>
