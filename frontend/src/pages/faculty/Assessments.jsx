@@ -1873,11 +1873,7 @@ const Assessments = () => {
                                         </div>
                                       </td>
                                     </tr>
-                                      )
-                                    })
-                                    
-                                    return result
-                                  })()}
+                                  ))}
                                 </tbody>
                               </table>
                             </div>
