@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../utils/api';
 import facultyCacheService from '../../services/facultyCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
 import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
+import { useAuth } from '../../contexts/UnifiedAuthContext';
 
 // Analytics-specific skeleton components
 const AnalyticsTableSkeleton = () => (
@@ -146,6 +147,10 @@ import {
 } from 'recharts';
 
 const Analytics = () => {
+  const { user } = useAuth();
+  // Normalize faculty ID from user context
+  const facultyId = user?.user_id ?? user?.id;
+  
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -185,6 +190,10 @@ const Analytics = () => {
   const [availableStandards, setAvailableStandards] = useState({ so: [], iga: [], cdio: [], sdg: [] });
   const [selectedStandardType, setSelectedStandardType] = useState(''); // 'SO', 'IGA', 'CDIO', 'SDG', or ''
   const [selectedStandardId, setSelectedStandardId] = useState('all');
+  // Faculty classes state - to filter analytics to only faculty's classes
+  const [facultyClasses, setFacultyClasses] = useState([]);
+  const [loadingFacultyClasses, setLoadingFacultyClasses] = useState(false);
+  const facultyClassesRef = useRef([]); // Ref to track faculty classes for filtering
   const abortControllerRef = useRef(null);
   const termsAbortControllerRef = useRef(null);
   const progressIntervalRef = useRef(null);
@@ -314,13 +323,67 @@ const Analytics = () => {
     }
   }, []);
 
+  // Fetch faculty classes for the selected term
+  const fetchFacultyClasses = useCallback(async () => {
+    if (!facultyId || !selectedTermId) {
+      setFacultyClasses([]);
+      facultyClassesRef.current = [];
+      return;
+    }
+    
+    setLoadingFacultyClasses(true);
+    try {
+      console.log(`🔍 [FACULTY ANALYTICS] Fetching classes for faculty ID: ${facultyId}, term: ${selectedTermId}`);
+      
+      const response = await fetch(`${API_BASE_URL}/section-courses/faculty/${facultyId}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const classesData = await response.json();
+        const allClasses = Array.isArray(classesData) ? classesData : [];
+        
+        // Filter classes by selected term
+        const termClasses = allClasses.filter(cls => 
+          cls.term_id?.toString() === selectedTermId
+        );
+        
+        console.log(`✅ [FACULTY ANALYTICS] Loaded ${termClasses.length} classes for faculty ${facultyId} in term ${selectedTermId}`);
+        setFacultyClasses(termClasses);
+        facultyClassesRef.current = termClasses;
+        
+        // Update sections to only show sections from faculty's classes
+        const facultySectionIds = new Set(termClasses.map(cls => cls.section_id));
+        const uniqueSections = termClasses
+          .filter((cls, index, self) => 
+            index === self.findIndex(c => c.section_id === cls.section_id)
+          )
+          .map(cls => ({
+            section_id: cls.section_id,
+            section_code: cls.section_code
+          }));
+        setSections(uniqueSections);
+      } else {
+        console.warn('⚠️ [FACULTY ANALYTICS] Failed to fetch faculty classes');
+        setFacultyClasses([]);
+        facultyClassesRef.current = [];
+      }
+    } catch (error) {
+      console.error('❌ [FACULTY ANALYTICS] Error fetching faculty classes:', error);
+      setFacultyClasses([]);
+      facultyClassesRef.current = [];
+    } finally {
+      setLoadingFacultyClasses(false);
+    }
+  }, [facultyId, selectedTermId]);
+
   // Fetch sections, programs, departments, and specializations
   const fetchFilterOptions = useCallback(async () => {
     try {
-      const [sectionsRes, programsRes, departmentsRes, specializationsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/section-courses/sections`, {
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
-        }),
+      const [programsRes, departmentsRes, specializationsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/catalog/programs`, {
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
         }),
@@ -332,17 +395,26 @@ const Analytics = () => {
         })
       ]);
 
-      if (sectionsRes.ok) {
-        const sectionsData = await sectionsRes.json();
-        setSections(Array.isArray(sectionsData) ? sectionsData : []);
-      }
+      // Sections are now filtered from faculty classes, so we don't fetch all sections
       if (programsRes.ok) {
         const programsData = await programsRes.json();
-        setPrograms(Array.isArray(programsData) ? programsData : []);
+        // Filter programs to only show programs from faculty's classes
+        const facultyProgramIds = new Set(facultyClassesRef.current.map(cls => cls.program_id).filter(Boolean));
+        const allPrograms = Array.isArray(programsData) ? programsData : [];
+        const filteredPrograms = facultyProgramIds.size > 0
+          ? allPrograms.filter(prog => facultyProgramIds.has(prog.program_id))
+          : allPrograms;
+        setPrograms(filteredPrograms);
       }
       if (departmentsRes.ok) {
         const departmentsData = await departmentsRes.json();
-        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+        // Filter departments to only show departments from faculty's classes
+        const facultyDeptIds = new Set(facultyClassesRef.current.map(cls => cls.department_id).filter(Boolean));
+        const allDepartments = Array.isArray(departmentsData) ? departmentsData : [];
+        const filteredDepartments = facultyDeptIds.size > 0
+          ? allDepartments.filter(dept => facultyDeptIds.has(dept.department_id))
+          : allDepartments;
+        setDepartments(filteredDepartments);
       }
       if (specializationsRes.ok) {
         const specializationsData = await specializationsRes.json();
@@ -382,19 +454,36 @@ const Analytics = () => {
     };
   }, [fetchSchoolTerms, fetchFilterOptions]);
 
-  // Auto-load analytics when component mounts or when school terms are loaded
+  // Fetch faculty classes when term or faculty ID changes
   useEffect(() => {
-    // Only auto-load on initial mount if we have school terms loaded
-    // This ensures we have the term selection available
-    if (!hasFetched && schoolTerms.length > 0 && !loading) {
-      // Small delay to ensure state is ready
-      const timer = setTimeout(() => {
-        handleFetch();
-      }, 200);
-      return () => clearTimeout(timer);
+    if (facultyId && selectedTermId) {
+      fetchFacultyClasses().then(() => {
+        // After fetching classes, update filter options to reflect faculty's classes
+        fetchFilterOptions();
+      });
+    } else {
+      setFacultyClasses([]);
+      facultyClassesRef.current = [];
+      setSections([]);
+    }
+  }, [facultyId, selectedTermId, fetchFacultyClasses, fetchFilterOptions]);
+
+  // Auto-load analytics when component mounts or when school terms and faculty classes are loaded
+  useEffect(() => {
+    // Only auto-load on initial mount if we have school terms loaded and faculty classes loaded
+    // This ensures we have the term selection available and can filter by faculty's classes
+    if (!hasFetched && schoolTerms.length > 0 && !loading && facultyId) {
+      // Wait for faculty classes to load before fetching analytics
+      if (selectedTermId && (facultyClassesRef.current.length > 0 || !loadingFacultyClasses)) {
+        // Small delay to ensure state is ready
+        const timer = setTimeout(() => {
+          handleFetch();
+        }, 200);
+        return () => clearTimeout(timer);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolTerms.length]);
+  }, [schoolTerms.length, selectedTermId, facultyId, loadingFacultyClasses]);
 
   // Track if this is the initial term selection (from active term)
   const isInitialTermLoadRef = useRef(true);
@@ -1046,6 +1135,26 @@ const Analytics = () => {
   const filteredData = useMemo(() => {
     let filtered = data;
 
+    // Filter by faculty's classes - only show students from classes taught by this faculty
+    if (facultyId && facultyClassesRef.current.length > 0) {
+      const facultySectionIds = new Set(facultyClassesRef.current.map(cls => cls.section_id));
+      const facultySectionCourseIds = new Set(facultyClassesRef.current.map(cls => cls.section_course_id));
+      
+      filtered = filtered.filter(row => {
+        // Check if student's section_id matches any of faculty's classes
+        // OR check if section_course_id matches (if available in data)
+        const rowSectionId = row.section_id;
+        const rowSectionCourseId = row.section_course_id;
+        
+        return (
+          (rowSectionId && facultySectionIds.has(rowSectionId)) ||
+          (rowSectionCourseId && facultySectionCourseIds.has(rowSectionCourseId))
+        );
+      });
+      
+      console.log(`🔍 [FACULTY ANALYTICS] Filtered to ${filtered.length} students from faculty's ${facultyClassesRef.current.length} classes`);
+    }
+
     // Filter by cluster
     if (selectedCluster !== 'all') {
       filtered = filtered.filter(row => {
@@ -1107,7 +1216,7 @@ const Analytics = () => {
     });
 
     return filtered;
-  }, [data, selectedCluster, searchQuery, selectedYearLevel, selectedSpecializationId]);
+  }, [data, selectedCluster, searchQuery, selectedYearLevel, selectedSpecializationId, facultyId]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -1514,7 +1623,15 @@ const Analytics = () => {
               {/* Data Table */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
-                  {filteredData.length === 0 ? (
+                  {!facultyId || facultyClassesRef.current.length === 0 ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="text-center">
+                        <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No classes assigned</h3>
+                        <p className="text-gray-500">You don't have any classes assigned for the selected term.</p>
+                      </div>
+                    </div>
+                  ) : filteredData.length === 0 ? (
                     <div className="flex items-center justify-center py-16">
                       <div className="text-center">
                         <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
