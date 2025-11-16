@@ -2718,15 +2718,29 @@ const Syllabus = () => {
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
                     <h3 className="text-sm font-bold italic text-gray-700 mb-1">Review Status</h3>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.review_status)}`}>
-                      {viewingSyllabus.review_status || 'pending'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.review_status)}`}>
+                        {viewingSyllabus.review_status || 'pending'}
+                      </span>
+                      {viewingSyllabus.review_status === 'approved' && viewingSyllabus.reviewer_name && (
+                        <p className="text-xs text-gray-600">
+                          Reviewed by: <span className="font-medium">{viewingSyllabus.reviewer_name}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-sm font-bold italic text-gray-700 mb-1">Approval Status</h3>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.approval_status)}`}>
-                      {viewingSyllabus.approval_status || 'pending'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingSyllabus.approval_status)}`}>
+                        {viewingSyllabus.approval_status || 'pending'}
+                      </span>
+                      {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.approver_name && (
+                        <p className="text-xs text-gray-600">
+                          Approved by: <span className="font-medium">{viewingSyllabus.approver_name}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

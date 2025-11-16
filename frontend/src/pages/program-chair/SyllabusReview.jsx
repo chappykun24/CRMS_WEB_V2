@@ -1739,15 +1739,29 @@ const SyllabusReview = () => {
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-1">Review Status</h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSyllabus.review_status)}`}>
-                        {selectedSyllabus.review_status || 'pending'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSyllabus.review_status)}`}>
+                          {selectedSyllabus.review_status || 'pending'}
+                        </span>
+                        {selectedSyllabus.review_status === 'approved' && selectedSyllabus.reviewer_name && (
+                          <p className="text-xs text-gray-600">
+                            Reviewed by: <span className="font-medium">{selectedSyllabus.reviewer_name}</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-700 mb-1">Approval Status</h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSyllabus.approval_status)}`}>
-                        {selectedSyllabus.approval_status || 'pending'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSyllabus.approval_status)}`}>
+                          {selectedSyllabus.approval_status || 'pending'}
+                        </span>
+                        {selectedSyllabus.approval_status === 'approved' && selectedSyllabus.approver_name && (
+                          <p className="text-xs text-gray-600">
+                            Approved by: <span className="font-medium">{selectedSyllabus.approver_name}</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 

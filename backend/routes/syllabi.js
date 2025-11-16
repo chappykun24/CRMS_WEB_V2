@@ -26,7 +26,11 @@ router.get('/faculty/:facultyId', async (req, res) => {
         s.template_name,
         s.section_course_id,
         s.review_status,
+        s.reviewed_by,
+        s.reviewed_at,
         s.approval_status,
+        s.approved_by,
+        s.approved_at,
         s.created_at,
         s.updated_at,
         sc.section_id,
@@ -35,13 +39,17 @@ router.get('/faculty/:facultyId', async (req, res) => {
         c.course_code,
         st.school_year,
         st.semester,
-        u.name as instructor_name
+        u.name as instructor_name,
+        reviewer.name as reviewer_name,
+        approver.name as approver_name
       FROM syllabi s
       LEFT JOIN section_courses sc ON s.section_course_id = sc.section_course_id
       LEFT JOIN sections sec ON sc.section_id = sec.section_id
       LEFT JOIN courses c ON s.course_id = c.course_id
       LEFT JOIN school_terms st ON s.term_id = st.term_id
       LEFT JOIN users u ON s.created_by = u.user_id
+      LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+      LEFT JOIN users approver ON s.approved_by = approver.user_id
       WHERE s.created_by = $1
       ORDER BY s.created_at DESC
     `;
@@ -77,16 +85,24 @@ router.get('/class/:sectionCourseId', async (req, res) => {
         s.template_name,
         s.section_course_id,
         s.review_status,
+        s.reviewed_by,
+        s.reviewed_at,
         s.approval_status,
+        s.approved_by,
+        s.approved_at,
         s.created_at,
         s.updated_at,
         c.title as course_title,
         c.course_code,
         st.school_year,
-        st.semester
+        st.semester,
+        reviewer.name as reviewer_name,
+        approver.name as approver_name
       FROM syllabi s
       LEFT JOIN courses c ON s.course_id = c.course_id
       LEFT JOIN school_terms st ON s.term_id = st.term_id
+      LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+      LEFT JOIN users approver ON s.approved_by = approver.user_id
       WHERE s.section_course_id = $1
       ORDER BY s.created_at DESC
     `;
@@ -131,11 +147,15 @@ router.get('/', async (req, res) => {
         c.course_code,
         st.school_year,
         st.semester,
-        u.name as instructor_name
+        u.name as instructor_name,
+        reviewer.name as reviewer_name,
+        approver.name as approver_name
       FROM syllabi s
       LEFT JOIN courses c ON s.course_id = c.course_id
       LEFT JOIN school_terms st ON s.term_id = st.term_id
       LEFT JOIN users u ON s.created_by = u.user_id
+      LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+      LEFT JOIN users approver ON s.approved_by = approver.user_id
       ORDER BY s.created_at DESC
     `;
     
@@ -161,13 +181,17 @@ router.get('/:id', async (req, res) => {
         c.course_code,
         st.school_year,
         st.semester,
-        u.name as instructor_name
+        u.name as instructor_name,
+        reviewer.name as reviewer_name,
+        approver.name as approver_name
       FROM syllabi s
       LEFT JOIN section_courses sc ON s.section_course_id = sc.section_course_id
       LEFT JOIN sections sec ON sc.section_id = sec.section_id
       LEFT JOIN courses c ON s.course_id = c.course_id
       LEFT JOIN school_terms st ON s.term_id = st.term_id
       LEFT JOIN users u ON s.created_by = u.user_id
+      LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+      LEFT JOIN users approver ON s.approved_by = approver.user_id
       WHERE s.syllabus_id = $1
     `;
     
