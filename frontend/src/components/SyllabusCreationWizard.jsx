@@ -340,13 +340,26 @@ const SyllabusCreationWizard = ({
             remedial_note: formData.grading_policy.remedial_note
           })
       
-      const teachingStrategies = typeof editingSyllabus.teaching_strategies === 'object'
-        ? editingSyllabus.teaching_strategies
-        : (editingSyllabus.teaching_strategies ? JSON.parse(editingSyllabus.teaching_strategies) : formData.teaching_strategies)
+      // Extract contact_hours and teaching_strategies from assessment_framework
+      const assessmentFramework = typeof editingSyllabus.assessment_framework === 'object'
+        ? editingSyllabus.assessment_framework
+        : (editingSyllabus.assessment_framework ? JSON.parse(editingSyllabus.assessment_framework) : {})
       
-      // Handle contact hours - convert old object format to new array format
+      // Extract teaching_strategies from assessment_framework or old location
+      let teachingStrategies = formData.teaching_strategies
+      if (assessmentFramework && assessmentFramework.teaching_strategies) {
+        teachingStrategies = assessmentFramework.teaching_strategies
+      } else if (editingSyllabus.teaching_strategies) {
+        teachingStrategies = typeof editingSyllabus.teaching_strategies === 'object'
+          ? editingSyllabus.teaching_strategies
+          : (editingSyllabus.teaching_strategies ? JSON.parse(editingSyllabus.teaching_strategies) : formData.teaching_strategies)
+      }
+      
+      // Extract contact_hours from assessment_framework or old location
       let contactHours = formData.contact_hours
-      if (editingSyllabus.contact_hours) {
+      if (assessmentFramework && assessmentFramework.contact_hours) {
+        contactHours = assessmentFramework.contact_hours
+      } else if (editingSyllabus.contact_hours) {
         if (Array.isArray(editingSyllabus.contact_hours)) {
           contactHours = editingSyllabus.contact_hours
         } else if (typeof editingSyllabus.contact_hours === 'string') {
@@ -368,6 +381,9 @@ const SyllabusCreationWizard = ({
           ]
         }
       }
+      
+      // Extract metadata from grading_policy
+      const metadata = gradingPolicy?.metadata || {}
       
       // Extract assessment_criteria - check both direct field and within grading_policy
       let assessmentCriteria = []
@@ -444,16 +460,16 @@ const SyllabusCreationWizard = ({
         // Course Information
         course_title: editingSyllabus.course_title || editingSyllabus.title || '',
         course_code: editingSyllabus.course_code || selectedClass?.course_code || '',
-        course_category: editingSyllabus.course_category || '',
-        semester_year: editingSyllabus.semester_year || '',
-        course_instructor: editingSyllabus.course_instructor || prev.course_instructor,
-        credit_hours: editingSyllabus.credit_hours || '',
+        course_category: metadata.course_category || editingSyllabus.course_category || '',
+        semester_year: metadata.semester_year || editingSyllabus.semester_year || '',
+        course_instructor: metadata.course_instructor || editingSyllabus.course_instructor || prev.course_instructor,
+        credit_hours: metadata.credit_hours || editingSyllabus.credit_hours || '',
         prerequisites: editingSyllabus.prerequisites || '',
-        id_number: editingSyllabus.id_number || '',
-        reference_cmo: editingSyllabus.reference_cmo || '',
-        date_prepared: editingSyllabus.date_prepared || prev.date_prepared,
-        revision_no: editingSyllabus.revision_no || '0',
-        revision_date: editingSyllabus.revision_date || '',
+        id_number: metadata.id_number || editingSyllabus.id_number || '',
+        reference_cmo: metadata.reference_cmo || editingSyllabus.reference_cmo || '',
+        date_prepared: metadata.date_prepared || editingSyllabus.date_prepared || prev.date_prepared,
+        revision_no: metadata.revision_no || editingSyllabus.revision_no || '0',
+        revision_date: metadata.revision_date || editingSyllabus.revision_date || '',
         version: editingSyllabus.version || '1.0',
         term_id: editingSyllabus.term_id || '',
         
@@ -471,6 +487,9 @@ const SyllabusCreationWizard = ({
         
         // Teaching Strategies
         teaching_strategies: teachingStrategies,
+        
+        // Assessment Framework (with contact_hours and teaching_strategies)
+        assessment_framework: assessmentFramework,
         
         // Learning Resources
         learning_resources: Array.isArray(editingSyllabus.learning_resources) 
@@ -878,11 +897,43 @@ const SyllabusCreationWizard = ({
       }))
     })
     
+    // Prepare assessment_framework with contact_hours and teaching_strategies
+    const assessmentFramework = {
+      ...(formData.assessment_framework || {}),
+      components: formData.assessment_framework?.components || [],
+      contact_hours: formData.contact_hours || [],
+      teaching_strategies: formData.teaching_strategies || {
+        general_description: '',
+        assessment_components: []
+      }
+    }
+    
+    // Prepare grading_policy with all metadata and assessment data
+    const gradingPolicy = {
+      ...(formData.grading_policy || {}),
+      assessment_criteria: formattedAssessmentCriteria,
+      sub_assessments: formattedSubAssessments,
+      // Store additional metadata fields
+      metadata: {
+        course_category: formData.course_category || '',
+        semester_year: formData.semester_year || '',
+        course_instructor: formData.course_instructor || {},
+        credit_hours: formData.credit_hours || '',
+        id_number: formData.id_number || '',
+        reference_cmo: formData.reference_cmo || '',
+        date_prepared: formData.date_prepared || '',
+        revision_no: formData.revision_no || '0',
+        revision_date: formData.revision_date || ''
+      }
+    }
+    
     return {
       ...formData,
       title: formData.course_title || formData.title, // Use course_title as title for backward compatibility
       description: formData.course_rationale || formData.description,
-      assessment_criteria: formattedAssessmentCriteria, // Explicitly include and format assessment criteria
+      assessment_framework: assessmentFramework, // Include contact_hours and teaching_strategies
+      grading_policy: gradingPolicy, // Include assessment_criteria, sub_assessments, and metadata
+      assessment_criteria: formattedAssessmentCriteria, // Explicitly include for backward compatibility
       sub_assessments: formattedSubAssessments, // Include sub-assessments
       ilos: ilos, // Include ILOs to be saved
       status: isDraft ? 'draft' : 'published' // Add status field

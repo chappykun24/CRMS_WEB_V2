@@ -342,10 +342,13 @@ const Syllabus = () => {
       }
 
       // Prepare JSON fields - they should already be objects from the wizard
+      // assessment_framework should already include contact_hours and teaching_strategies from prepareSyllabusData
       const assessmentFramework = wizardFormData.assessment_framework || null
       
-      // Merge assessment_criteria into grading_policy if it exists
+      // grading_policy should already include assessment_criteria, sub_assessments, and metadata from prepareSyllabusData
       let gradingPolicy = wizardFormData.grading_policy || null
+      
+      // Backward compatibility: if assessment_criteria is provided separately, merge it
       if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
         // Ensure grading_policy is an object
         if (!gradingPolicy || typeof gradingPolicy === 'string') {
@@ -423,10 +426,13 @@ const Syllabus = () => {
       }
 
       // Prepare JSON fields
+      // assessment_framework should already include contact_hours and teaching_strategies from prepareSyllabusData
       const assessmentFramework = wizardFormData.assessment_framework || null
       
-      // Merge assessment_criteria into grading_policy if it exists
+      // grading_policy should already include assessment_criteria, sub_assessments, and metadata from prepareSyllabusData
       let gradingPolicy = wizardFormData.grading_policy || null
+      
+      // Backward compatibility: if assessment_criteria is provided separately, merge it
       if (wizardFormData.assessment_criteria && Array.isArray(wizardFormData.assessment_criteria) && wizardFormData.assessment_criteria.length > 0) {
         // Ensure grading_policy is an object
         if (!gradingPolicy || typeof gradingPolicy === 'string') {
