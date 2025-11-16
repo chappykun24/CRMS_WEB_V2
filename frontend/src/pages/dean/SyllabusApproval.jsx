@@ -44,9 +44,13 @@ const SyllabusApproval = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Filter for syllabi approved by program chair but pending dean approval
+        // Filter for syllabi pending either review or approval
+        // Include: pending review (review_status === 'pending') OR pending approval (review_status === 'approved' && approval_status === 'pending')
         const pendingApproval = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'pending')
+          ? data.filter(s => 
+              (s.review_status === 'pending' && s.approval_status === 'pending') || // Pending review
+              (s.review_status === 'approved' && s.approval_status === 'pending') // Pending approval
+            )
           : []
         setSyllabi(pendingApproval)
       }
@@ -431,7 +435,7 @@ const SyllabusApproval = () => {
               {searchQuery ? 'No syllabi match your search' : 'No pending approvals'}
             </h3>
             <p className="text-gray-500">
-              {searchQuery ? 'Try a different search term' : 'All syllabi have been approved or no syllabi are pending dean approval.'}
+              {searchQuery ? 'Try a different search term' : 'All syllabi have been approved or no syllabi are pending review or approval.'}
             </p>
           </div>
         )
