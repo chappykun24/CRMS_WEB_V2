@@ -1843,8 +1843,8 @@ const SyllabusCreationWizard = ({
                                       }}
                                       className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                                     />
-                                    <span className="text-sm text-gray-700 flex-1">
-                                      {ref[`${type === 'so' ? 'so' : type === 'iga' ? 'iga' : type === 'cdio' ? 'cdio' : 'sdg'}_code`]} - {ref.description?.substring(0, 60)}
+                                    <span className="text-sm text-gray-700 flex-1 break-words">
+                                      {ref[`${type === 'so' ? 'so' : type === 'iga' ? 'iga' : type === 'cdio' ? 'cdio' : 'sdg'}_code`]} - {ref.description || ''}
                                     </span>
                                   </label>
                                 )
@@ -1868,8 +1868,8 @@ const SyllabusCreationWizard = ({
                                 return (
                                   <div key={idx} className="border border-gray-300 rounded-lg p-3 bg-white">
                                     <div className="mb-2">
-                                      <span className="text-sm font-medium text-gray-900">{refCode}</span>
-                                      <span className="text-xs text-gray-600 ml-2">- {ref.description?.substring(0, 50)}</span>
+                                      <div className="text-sm font-medium text-gray-900 mb-1">{refCode}</div>
+                                      <div className="text-xs text-gray-600 break-words">{ref.description || ''}</div>
                                     </div>
                                     {allSubAssessments.length > 0 ? (
                                       <div className="border border-gray-200 rounded p-2 max-h-40 overflow-y-auto bg-gray-50">
