@@ -2732,13 +2732,7 @@ const MyClasses = () => {
                 <h2 className="text-lg font-semibold text-gray-900">Attendance Records</h2>
                 <div className="flex items-center gap-3 mt-1">
                   <p className="text-sm text-gray-500">
-                    {selectedClass?.course_title} • {
-                      loadingFullAttendance ? (
-                        <span className="inline-block h-4 bg-gray-200 rounded w-20 animate-pulse align-middle"></span>
-                      ) : (
-                        `${sessionList.reduce((sum, session) => sum + session.student_count, 0)} total records`
-                      )
-                    }
+                    {selectedClass?.course_title}
                   </p>
                   
                   {/* Month Filter Dropdown */}
