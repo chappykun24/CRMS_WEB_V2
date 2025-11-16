@@ -491,9 +491,9 @@ router.get('/:id/students', async (req, res) => {
 // Dean analytics endpoint (aggregated student analytics)
 router.get('/dean-analytics/sample', async (req, res) => {
   console.log('🔍 [Backend] Dean analytics endpoint called');
-  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh, ilo_id, so_id, iga_id, cdio_id, sdg_id } = req.query;
+  const { term_id, section_id, program_id, department_id, student_id, section_course_id, force_refresh, so_id, iga_id, cdio_id, sdg_id } = req.query;
   const forceRefresh = force_refresh === 'true' || force_refresh === '1';
-  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'ilo_id:', ilo_id, 'so_id:', so_id, 'force_refresh:', forceRefresh);
+  console.log('📋 [Backend] Filters - term_id:', term_id, 'section_id:', section_id, 'program_id:', program_id, 'department_id:', department_id, 'student_id:', student_id, 'section_course_id:', section_course_id, 'so_id:', so_id, 'iga_id:', iga_id, 'cdio_id:', cdio_id, 'sdg_id:', sdg_id, 'force_refresh:', forceRefresh);
   
   // Set a timeout to prevent hanging requests
   const timeout = setTimeout(() => {
@@ -515,7 +515,6 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const departmentIdValue = department_id && !isNaN(parseInt(department_id)) ? parseInt(department_id) : null;
     const studentIdValue = student_id && !isNaN(parseInt(student_id)) ? parseInt(student_id) : null;
     const sectionCourseIdValue = section_course_id && !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
-    const iloIdValue = ilo_id && !isNaN(parseInt(ilo_id)) ? parseInt(ilo_id) : null;
     const soIdValue = so_id && !isNaN(parseInt(so_id)) ? parseInt(so_id) : null;
     const igaIdValue = iga_id && !isNaN(parseInt(iga_id)) ? parseInt(iga_id) : null;
     const cdioIdValue = cdio_id && !isNaN(parseInt(cdio_id)) ? parseInt(cdio_id) : null;
@@ -527,7 +526,6 @@ router.get('/dean-analytics/sample', async (req, res) => {
     if (departmentIdValue) console.log('🔍 [Backend] Applying department filter:', departmentIdValue);
     if (studentIdValue) console.log('🔍 [Backend] Applying student filter:', studentIdValue);
     if (sectionCourseIdValue) console.log('🔍 [Backend] Applying section_course filter:', sectionCourseIdValue);
-    if (iloIdValue) console.log('🔍 [Backend] Applying ILO filter:', iloIdValue);
     if (soIdValue) console.log('🔍 [Backend] Applying SO filter:', soIdValue);
     
     // Build additional WHERE conditions for filtering
@@ -591,14 +589,12 @@ router.get('/dean-analytics/sample', async (req, res) => {
       ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
       : '';
     
-    // Build Standard/ILO filter for assessment alignment
-    // Priority: Standard filters (SO, IGA, CDIO, SDG) > ILO filter
+    // Build Standard filter for assessment alignment
     // When filtering by Standard: find ILOs mapped to that standard, then assessments mapped to those ILOs
-    // When filtering by ILO: only include assessments mapped to that ILO
-    let iloSoAssessmentFilter = '';
+    let standardAssessmentFilter = '';
     if (soIdValue) {
       // Filter to assessments mapped to ILOs that map to this SO via ilo_so_mappings
-      iloSoAssessmentFilter = `AND EXISTS (
+      standardAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_so_mappings ism ON aiw_filter.ilo_id = ism.ilo_id
         WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
@@ -606,7 +602,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
       )`;
     } else if (igaIdValue) {
       // Filter to assessments mapped to ILOs that map to this IGA via ilo_iga_mappings
-      iloSoAssessmentFilter = `AND EXISTS (
+      standardAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_iga_mappings iiga ON aiw_filter.ilo_id = iiga.ilo_id
         WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
@@ -614,7 +610,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
       )`;
     } else if (cdioIdValue) {
       // Filter to assessments mapped to ILOs that map to this CDIO via ilo_cdio_mappings
-      iloSoAssessmentFilter = `AND EXISTS (
+      standardAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_cdio_mappings icdio ON aiw_filter.ilo_id = icdio.ilo_id
         WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
@@ -622,23 +618,19 @@ router.get('/dean-analytics/sample', async (req, res) => {
       )`;
     } else if (sdgIdValue) {
       // Filter to assessments mapped to ILOs that map to this SDG via ilo_sdg_mappings
-      iloSoAssessmentFilter = `AND EXISTS (
+      standardAssessmentFilter = `AND EXISTS (
         SELECT 1 FROM assessment_ilo_weights aiw_filter
         INNER JOIN ilo_sdg_mappings isdg ON aiw_filter.ilo_id = isdg.ilo_id
         WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
         AND isdg.sdg_id = ${sdgIdValue}
       )`;
-    } else if (iloIdValue) {
-      // Filter to assessments mapped to this ILO via assessment_ilo_weights
-      // Works with both 'a' and 'ass' aliases - directly references the outer query's assessment table
-      iloSoAssessmentFilter = `AND EXISTS (
-        SELECT 1 FROM assessment_ilo_weights aiw_filter 
-        WHERE aiw_filter.assessment_id = COALESCE(a.assessment_id, ass.assessment_id)
-        AND aiw_filter.ilo_id = ${iloIdValue}
-      )`;
     }
     
-    // Fetch student analytics: attendance, average score, and submission rate
+    // Fetch student analytics for clustering
+    // Clustering is based on THREE primary data sources:
+    // 1. TRANSMUTED SCORES: Pre-calculated transmuted scores (average_score, ilo_weighted_score, assessment_scores_by_ilo)
+    // 2. SUBMISSION DATA: Submission behavior (ontime, late, missing counts and rates)
+    // 3. ATTENDANCE DATA: Attendance patterns (present, absent, late counts and percentages)
     // Enhanced with detailed attendance counts and submission behavior
     // Includes section/program/department information for filtering
     const query = `
@@ -772,7 +764,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_weighted.term_id = ${termIdValue}` : ''}
                 ${sectionCourseFilterWeighted}
-                ${iloSoAssessmentFilter}
+                ${standardAssessmentFilter}
               GROUP BY sc_weighted.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale)
@@ -807,7 +799,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_actual.term_id = ${termIdValue}` : ''}
                 ${sectionCourseFilterWeighted}
-                ${iloSoAssessmentFilter}
+                ${standardAssessmentFilter}
               GROUP BY sc_actual.section_course_id
             )
             SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
@@ -867,7 +859,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
                 ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
                 ${sectionCourseFilterIlo}
-                ${iloSoAssessmentFilter}
+                ${standardAssessmentFilter}
               GROUP BY sc_ilo.section_course_id
             )
             -- Average across all courses (normalizes to 0-100 scale, but may exceed 100 due to ILO boost)
@@ -906,7 +898,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
                 AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterFallback}
-              ${iloSoAssessmentFilter}
+              ${standardAssessmentFilter}
               GROUP BY sc_fallback.section_course_id
             )
             SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
@@ -936,7 +928,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_status.status = 'enrolled'
               ${termIdValue ? `AND sc_status.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterStatus}
-              ${iloSoAssessmentFilter}
+              ${standardAssessmentFilter}
           ),
           2
         )::NUMERIC AS average_submission_status_score,
@@ -967,7 +959,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND ce_rate.status = 'enrolled'
               ${termIdValue ? `AND sc_rate.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterRate}
-              ${iloSoAssessmentFilter}
+              ${standardAssessmentFilter}
           ),
           0
         )::NUMERIC AS submission_rate,
@@ -986,7 +978,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
-            ${iloSoAssessmentFilter}
+            ${standardAssessmentFilter}
         )::INTEGER AS submission_ontime_count,
         (
           SELECT COUNT(DISTINCT CASE WHEN COALESCE(sub.submission_status, 'missing') = 'late' THEN sub.submission_id END)::INTEGER
@@ -1001,7 +993,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
-            ${iloSoAssessmentFilter}
+            ${standardAssessmentFilter}
         )::INTEGER AS submission_late_count,
         (
           SELECT COUNT(DISTINCT ass.assessment_id)::INTEGER
@@ -1016,7 +1008,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
-            ${iloSoAssessmentFilter}
+            ${standardAssessmentFilter}
             AND COALESCE(sub.submission_status, 'missing') = 'missing'
         )::INTEGER AS submission_missing_count,
         (
@@ -1028,7 +1020,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             AND ce_sub.status = 'enrolled'
             ${termIdValue ? `AND sc_sub.term_id = ${termIdValue}` : ''}
             ${sectionCourseFilterSub}
-            ${iloSoAssessmentFilter}
+            ${standardAssessmentFilter}
         )::INTEGER AS submission_total_assessments,
         -- Assessment-level transmuted scores grouped by ILO (NEW)
         -- Returns JSON array of {ilo_id, ilo_code, assessments: [{assessment_id, transmuted_score, weight_percentage}]}
@@ -1101,7 +1093,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
               AND a.weight_percentage > 0
               ${termIdValue ? `AND sc_ilo_detail.term_id = ${termIdValue}` : ''}
               ${sectionCourseFilterSub || ''}
-              ${iloSoAssessmentFilter || ''}
+              ${standardAssessmentFilter || ''}
             GROUP BY i.ilo_id, i.code, i.description, aiw.weight_percentage, a.assessment_id, a.title, a.total_points, a.weight_percentage
             HAVING COUNT(sub.submission_id) > 0 OR COUNT(CASE WHEN sub.transmuted_score IS NOT NULL THEN 1 END) > 0
             ) assessment_scores
@@ -1170,7 +1162,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Get clusters using the centralized service
     // If force_refresh is true, set cacheMaxAgeHours to 0 to bypass cache
     // If sectionCourseId is provided, perform per-class clustering (identify at-risk students within that class)
-    // If iloIdValue is provided, perform ILO-filtered clustering (only assessments mapped to that ILO)
+    // If standard filters are provided, perform standard-filtered clustering (only assessments mapped to ILOs that map to that standard)
     const clusteringResult = await clusteringService.getStudentClusters(
       students,
       termIdValue,
@@ -1181,7 +1173,6 @@ router.get('/dean-analytics/sample', async (req, res) => {
         timeoutMs: clusteringConfig.timeoutMs,
         forceRefresh: forceRefresh,
         sectionCourseId: sectionCourseIdValue, // Pass section_course_id for per-class clustering
-        iloId: iloIdValue, // Pass ilo_id for ILO-filtered clustering
         standardType: soIdValue ? 'SO' : (igaIdValue ? 'IGA' : (cdioIdValue ? 'CDIO' : (sdgIdValue ? 'SDG' : null))),
         standardId: soIdValue || igaIdValue || cdioIdValue || sdgIdValue // Pass standard ID for standard-filtered clustering
       }

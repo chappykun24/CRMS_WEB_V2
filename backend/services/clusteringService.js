@@ -437,13 +437,21 @@ const saveClustersToCache = async (clusters, termId, sectionCourseId = null, ilo
 
 /**
  * Normalize student data for clustering API
+ * 
+ * Clustering is based on THREE primary data sources:
+ * 1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments (average_score, ilo_weighted_score, assessment_scores_by_ilo)
+ * 2. SUBMISSION DATA: Submission behavior (ontime, late, missing counts and rates)
+ * 3. ATTENDANCE DATA: Attendance patterns (present, absent, late counts and percentages)
+ * 
  * @param {Array} students - Array of student data
- * @returns {Array} Sanitized student data
+ * @returns {Array} Sanitized student data ready for clustering
  */
 const normalizeStudentData = (students) => {
   return students.map((row) => ({
     student_id: row.student_id,
-    // Attendance data
+    // ==========================================
+    // 1. ATTENDANCE DATA (Primary clustering feature)
+    // ==========================================
     attendance_percentage: row.attendance_percentage !== null && row.attendance_percentage !== undefined && !isNaN(row.attendance_percentage)
       ? Number(row.attendance_percentage)
       : null,
@@ -459,16 +467,22 @@ const normalizeStudentData = (students) => {
     attendance_total_sessions: row.attendance_total_sessions !== null && row.attendance_total_sessions !== undefined && !isNaN(row.attendance_total_sessions)
       ? Number(row.attendance_total_sessions)
       : null,
-    // Score data
+    // ==========================================
+    // 2. TRANSMUTED SCORES DATA (Primary clustering feature)
+    // These scores follow: Raw → Adjusted → Actual → Transmuted formula
+    // ==========================================
     average_score: row.average_score !== null && row.average_score !== undefined && !isNaN(row.average_score)
-      ? Number(row.average_score)
+      ? Number(row.average_score)  // Final grade using transmuted scores (sum of transmuted_score per course, averaged)
       : null,
     ilo_weighted_score: row.ilo_weighted_score !== null && row.ilo_weighted_score !== undefined && !isNaN(row.ilo_weighted_score)
-      ? Number(row.ilo_weighted_score)
+      ? Number(row.ilo_weighted_score)  // Transmuted scores with ILO boost factor applied
       : null,
-    // Assessment-level transmuted scores grouped by ILO (NEW)
+    // Assessment-level transmuted scores grouped by ILO
+    // Contains: {ilo_id, ilo_code, assessments: [{assessment_id, transmuted_score, weight_percentage}]}
     assessment_scores_by_ilo: row.assessment_scores_by_ilo || null,
-    // Submission behavior data
+    // ==========================================
+    // 3. SUBMISSION DATA (Primary clustering feature)
+    // ==========================================
     submission_rate: row.submission_rate !== null && row.submission_rate !== undefined && !isNaN(row.submission_rate)
       ? Number(row.submission_rate)
       : null,

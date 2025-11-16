@@ -332,10 +332,20 @@ def validate_cluster_quality(cluster_stats, labels, total_students, silhouette_s
 
 def cluster_records(records):
     """
-    Enhanced clustering function with validation:
-    - Attendance: present, absent, late counts
-    - Submission scores: based on Assessment and ILO mapping
-    - Submission behavior: late, ontime, missing counts
+    Enhanced clustering function with validation.
+    
+    Clustering is based on THREE primary data sources:
+    1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments
+       - Formula: Raw → Adjusted → Actual → Transmuted
+       - Uses: average_score, ilo_weighted_score, assessment_scores_by_ilo
+    2. SUBMISSION DATA: Submission behavior patterns
+       - Counts: ontime, late, missing submissions
+       - Rates: submission_rate, submission_ontime_rate, etc.
+    3. ATTENDANCE DATA: Attendance patterns
+       - Counts: present, absent, late attendance
+       - Rates: attendance_percentage, attendance_present_rate, etc.
+    
+    Features:
     - Data quality validation before clustering
     - Cluster quality validation after clustering
     """
@@ -379,14 +389,21 @@ def cluster_records(records):
         for col in score_df.columns:
             df[col] = score_df[col].values
     
-    # Define features for clustering (using status-based numerical values)
+    # Define features for clustering
+    # Features are derived from THREE primary data sources:
+    # 1. TRANSMUTED SCORES: final_score (calculated from transmuted scores)
+    # 2. SUBMISSION DATA: submission rates and quality scores
+    # 3. ATTENDANCE DATA: attendance percentages and rates
+    # 
     # PRIORITIZES ONTIME SUBMISSIONS: ontime_rate and ontime_priority_score have higher influence
     features = [
+        # ATTENDANCE FEATURES (from attendance data)
         'attendance_percentage',           # Overall attendance percentage
         'attendance_present_rate',         # Present rate (0-1)
         'attendance_late_rate',            # Late rate (0-1)
-        'final_score',                     # Score (ILO-weighted if available)
-        # Submission features - ONTIME PRIORITIZED (listed first for higher weight)
+        # TRANSMUTED SCORE FEATURES (from transmuted scores data)
+        'final_score',                     # Transmuted score (ILO-weighted if available, calculated from transmuted scores)
+        # SUBMISSION FEATURES (from submission data) - ONTIME PRIORITIZED (listed first for higher weight)
         'submission_ontime_rate',          # PRIORITY: Ontime submission rate (0-1) - highest weight
         'submission_ontime_priority_score', # PRIORITY: Direct ontime percentage (0-100) - high weight
         'submission_quality_score',        # Quality score (0-100, prioritizes ontime) - high weight
