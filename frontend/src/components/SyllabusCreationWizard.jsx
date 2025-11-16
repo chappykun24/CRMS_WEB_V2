@@ -111,11 +111,14 @@ const SyllabusCreationWizard = ({
     name: '', 
     weight: '' 
   })
-  const [newSubAssessment, setNewSubAssessment] = useState({ 
+  const [newSubAssessment, setNewSubAssessment] = useState({
     abbreviation: '',
-    name: '', 
+    name: '',
     weight_percentage: '',
-    score: '' 
+    score: '',
+    cognitive: '',
+    psychomotor: '',
+    affective: ''
   })
   const [editingSubAssessmentFor, setEditingSubAssessmentFor] = useState(null) // criterion index
   const [newContactHour, setNewContactHour] = useState({ 
@@ -183,7 +186,7 @@ const SyllabusCreationWizard = ({
               : (sub.abbreviation || sub.name)
             const existingTask = allTasks.find(t => t.code === code)
             
-            // Include weight and score information
+            // Include weight, score, and domain information
             if (!existingTask) {
               allTasks.push({
                 code,
@@ -191,6 +194,9 @@ const SyllabusCreationWizard = ({
                 name: sub.name,
                 weight: parseFloat(sub.weight_percentage) || 0,
                 score: parseFloat(sub.score) || 0,
+                cognitive: parseFloat(sub.cognitive) || 0,
+                psychomotor: parseFloat(sub.psychomotor) || 0,
+                affective: parseFloat(sub.affective) || 0,
                 type: 'sub-assessment'
               })
             } else {
@@ -203,6 +209,9 @@ const SyllabusCreationWizard = ({
                   name: sub.name,
                   weight: parseFloat(sub.weight_percentage) || 0,
                   score: parseFloat(sub.score) || 0,
+                  cognitive: parseFloat(sub.cognitive) || 0,
+                  psychomotor: parseFloat(sub.psychomotor) || 0,
+                  affective: parseFloat(sub.affective) || 0,
                   type: 'sub-assessment'
                 }
               }
@@ -1460,41 +1469,85 @@ const SyllabusCreationWizard = ({
                           
                           {isExpanded && (
                             <div className="mt-2 p-2 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                              <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                                <input
-                                  type="text"
-                                  value={newSubAssessment.name}
-                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
-                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="Sub-assessment Name"
-                                />
-                                <input
-                                  type="text"
-                                  value={newSubAssessment.abbreviation}
-                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
-                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="Abbreviation (e.g., QZ1)"
-                                  maxLength="10"
-                                />
-                                <input
-                                  type="number"
-                                  value={newSubAssessment.weight_percentage}
-                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, weight_percentage: e.target.value }))}
-                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="Weight %"
-                                  min="0"
-                                  max={criterion.weight}
-                                  step="0.1"
-                                />
-                                <input
-                                  type="number"
-                                  value={newSubAssessment.score}
-                                  onChange={(e) => setNewSubAssessment(prev => ({ ...prev, score: e.target.value }))}
-                                  className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                  placeholder="Score"
-                                  min="0"
-                                  step="0.01"
-                                />
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                  <input
+                                    type="text"
+                                    value={newSubAssessment.name}
+                                    onChange={(e) => setNewSubAssessment(prev => ({ ...prev, name: e.target.value }))}
+                                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Sub-assessment Name"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={newSubAssessment.abbreviation}
+                                    onChange={(e) => setNewSubAssessment(prev => ({ ...prev, abbreviation: e.target.value }))}
+                                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Abbreviation (e.g., QZ1)"
+                                    maxLength="10"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={newSubAssessment.weight_percentage}
+                                    onChange={(e) => setNewSubAssessment(prev => ({ ...prev, weight_percentage: e.target.value }))}
+                                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Weight %"
+                                    min="0"
+                                    max={criterion.weight}
+                                    step="0.1"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={newSubAssessment.score}
+                                    onChange={(e) => setNewSubAssessment(prev => ({ ...prev, score: e.target.value }))}
+                                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Score (optional)"
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                </div>
+                                {/* Domain Fields */}
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
+                                      <input
+                                        type="number"
+                                        value={newSubAssessment.cognitive}
+                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, cognitive: e.target.value }))}
+                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="C"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Psychomotor (P)</label>
+                                      <input
+                                        type="number"
+                                        value={newSubAssessment.psychomotor}
+                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, psychomotor: e.target.value }))}
+                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="P"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Affective (A)</label>
+                                      <input
+                                        type="number"
+                                        value={newSubAssessment.affective}
+                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, affective: e.target.value }))}
+                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="A"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1505,10 +1558,21 @@ const SyllabusCreationWizard = ({
                                         abbreviation: newSubAssessment.abbreviation.trim(),
                                         name: newSubAssessment.name.trim(),
                                         weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0,
-                                        score: parseFloat(newSubAssessment.score) || 0
+                                        score: parseFloat(newSubAssessment.score) || 0,
+                                        cognitive: parseFloat(newSubAssessment.cognitive) || 0,
+                                        psychomotor: parseFloat(newSubAssessment.psychomotor) || 0,
+                                        affective: parseFloat(newSubAssessment.affective) || 0
                                       }]
                                       setFormData(prev => ({ ...prev, sub_assessments: updated }))
-                                      setNewSubAssessment({ abbreviation: '', name: '', weight_percentage: '', score: '' })
+                                      setNewSubAssessment({ 
+                                        abbreviation: '', 
+                                        name: '', 
+                                        weight_percentage: '', 
+                                        score: '',
+                                        cognitive: '',
+                                        psychomotor: '',
+                                        affective: ''
+                                      })
                                     }
                                   }}
                                   className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 flex items-center justify-center gap-1.5"
@@ -1767,7 +1831,10 @@ const SyllabusCreationWizard = ({
                         code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
                         name: sub.name,
                         weight: parseFloat(sub.weight_percentage) || 0,
-                        score: parseFloat(sub.score) || 0
+                        score: parseFloat(sub.score) || 0,
+                        cognitive: parseFloat(sub.cognitive) || 0,
+                        psychomotor: parseFloat(sub.psychomotor) || 0,
+                        affective: parseFloat(sub.affective) || 0
                       })
                     }
                   })
@@ -2109,6 +2176,9 @@ const SyllabusCreationWizard = ({
                       name: sub.name,
                       weight: parseFloat(sub.weight_percentage) || 0,
                       score: parseFloat(sub.score) || 0,
+                      cognitive: parseFloat(sub.cognitive) || 0,
+                      psychomotor: parseFloat(sub.psychomotor) || 0,
+                      affective: parseFloat(sub.affective) || 0,
                       criterionName: criterion.name || '',
                       criterionWeight: parseFloat(criterion.weight) || 0
                     })
@@ -2224,9 +2294,9 @@ const SyllabusCreationWizard = ({
                               })}
                               <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                 <div className="flex justify-center gap-2">
-                                  <span>—</span>
-                                  <span>{sub.score > 0 ? sub.score.toFixed(1) : '100'}</span>
-                                  <span>—</span>
+                                  <span>{sub.cognitive > 0 ? sub.cognitive.toFixed(1) : '—'}</span>
+                                  <span>{sub.psychomotor > 0 ? sub.psychomotor.toFixed(1) : '—'}</span>
+                                  <span>{sub.affective > 0 ? sub.affective.toFixed(1) : '—'}</span>
                                 </div>
                               </td>
                             </tr>
@@ -2261,9 +2331,9 @@ const SyllabusCreationWizard = ({
                           })}
                           <td className="px-2 py-1.5 border border-gray-300 text-center">
                             <div className="flex justify-center gap-2">
-                              <span>—</span>
-                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.score || 0), 0).toFixed(1)}</span>
-                              <span>—</span>
+                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.cognitive || 0), 0).toFixed(1)}</span>
+                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.psychomotor || 0), 0).toFixed(1)}</span>
+                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.affective || 0), 0).toFixed(1)}</span>
                             </div>
                           </td>
                         </tr>
@@ -2286,7 +2356,10 @@ const SyllabusCreationWizard = ({
                       code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
                       name: sub.name,
                       weight: parseFloat(sub.weight_percentage) || 0,
-                      score: parseFloat(sub.score) || 0
+                      score: parseFloat(sub.score) || 0,
+                      cognitive: parseFloat(sub.cognitive) || 0,
+                      psychomotor: parseFloat(sub.psychomotor) || 0,
+                      affective: parseFloat(sub.affective) || 0
                     })
                   }
                 })
