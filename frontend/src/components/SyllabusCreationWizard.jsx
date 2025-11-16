@@ -118,10 +118,7 @@ const SyllabusCreationWizard = ({
     abbreviation: '',
     name: '',
     weight_percentage: '',
-    score: '',
-    cognitive: '',
-    psychomotor: '',
-    affective: ''
+    score: ''
   })
   const [editingSubAssessmentFor, setEditingSubAssessmentFor] = useState(null) // criterion index
   const [editingSubAssessment, setEditingSubAssessment] = useState(null) // { criterionIndex: number, subIndex: number }
@@ -181,6 +178,7 @@ const SyllabusCreationWizard = ({
     // Primary source: Get tasks from sub-assessments with scores and weights
     if (formData.sub_assessments) {
       Object.keys(formData.sub_assessments).forEach(criterionIndex => {
+        const criterion = formData.assessment_criteria[criterionIndex]
         const subAssessments = formData.sub_assessments[criterionIndex] || []
         subAssessments.forEach(sub => {
           if (sub.abbreviation || sub.name) {
@@ -190,7 +188,7 @@ const SyllabusCreationWizard = ({
               : (sub.abbreviation || sub.name)
             const existingTask = allTasks.find(t => t.code === code)
             
-            // Include weight, score, and domain information
+            // Include weight, score, and domain information from parent criterion
             if (!existingTask) {
               allTasks.push({
                 code,
@@ -198,9 +196,9 @@ const SyllabusCreationWizard = ({
                 name: sub.name,
                 weight: parseFloat(sub.weight_percentage) || 0,
                 score: parseFloat(sub.score) || 0,
-                cognitive: parseFloat(sub.cognitive) || 0,
-                psychomotor: parseFloat(sub.psychomotor) || 0,
-                affective: parseFloat(sub.affective) || 0,
+                cognitive: criterion ? (parseFloat(criterion.cognitive) || 0) : 0,
+                psychomotor: criterion ? (parseFloat(criterion.psychomotor) || 0) : 0,
+                affective: criterion ? (parseFloat(criterion.affective) || 0) : 0,
                 type: 'sub-assessment'
               })
             } else {
@@ -213,9 +211,9 @@ const SyllabusCreationWizard = ({
                   name: sub.name,
                   weight: parseFloat(sub.weight_percentage) || 0,
                   score: parseFloat(sub.score) || 0,
-                  cognitive: parseFloat(sub.cognitive) || 0,
-                  psychomotor: parseFloat(sub.psychomotor) || 0,
-                  affective: parseFloat(sub.affective) || 0,
+                  cognitive: criterion ? (parseFloat(criterion.cognitive) || 0) : 0,
+                  psychomotor: criterion ? (parseFloat(criterion.psychomotor) || 0) : 0,
+                  affective: criterion ? (parseFloat(criterion.affective) || 0) : 0,
                   type: 'sub-assessment'
                 }
               }
@@ -241,6 +239,9 @@ const SyllabusCreationWizard = ({
               name: criterion.name,
               weight: parseFloat(criterion.weight) || 0,
               score: 0,
+              cognitive: parseFloat(criterion.cognitive) || 0,
+              psychomotor: parseFloat(criterion.psychomotor) || 0,
+              affective: parseFloat(criterion.affective) || 0,
               type: 'criterion'
             })
           }
@@ -1563,15 +1564,12 @@ const SyllabusCreationWizard = ({
                             <div className="mb-2 space-y-1.5">
                               {subAssessments.map((sub, subIndex) => (
                                 <div key={subIndex} className="flex items-center gap-1.5 p-1.5 bg-gray-50 rounded">
-                                  <div className="flex-1 grid grid-cols-4 gap-1.5 text-xs">
+                                  <div className="flex-1 grid grid-cols-3 gap-1.5 text-xs">
                                     <span className="font-medium text-gray-700">
                                       {sub.abbreviation && `${sub.abbreviation} - `}{sub.name}
                                     </span>
                                     <span className="text-gray-600">Weight: {sub.weight_percentage}%</span>
                                     <span className="text-gray-600">Score: {parseFloat(sub.score) || 0}</span>
-                                    <span className="text-gray-600">
-                                      C:{parseFloat(sub.cognitive) || 0} P:{parseFloat(sub.psychomotor) || 0} A:{parseFloat(sub.affective) || 0}
-                                    </span>
                                   </div>
                                   <div className="flex gap-1.5">
                                     <button
@@ -1582,10 +1580,7 @@ const SyllabusCreationWizard = ({
                                           abbreviation: sub.abbreviation || '',
                                           name: sub.name || '',
                                           weight_percentage: sub.weight_percentage || '',
-                                          score: sub.score || '',
-                                          cognitive: sub.cognitive || '',
-                                          psychomotor: sub.psychomotor || '',
-                                          affective: sub.affective || ''
+                                          score: sub.score || ''
                                         })
                                         setEditingSubAssessmentFor(criterionIndex)
                                       }}
@@ -1672,48 +1667,6 @@ const SyllabusCreationWizard = ({
                                     step="0.01"
                                   />
                                 </div>
-                                {/* Domain Fields */}
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
-                                      <input
-                                        type="number"
-                                        value={newSubAssessment.cognitive}
-                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, cognitive: e.target.value }))}
-                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        placeholder="C"
-                                        min="0"
-                                        step="0.01"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Psychomotor (P)</label>
-                                      <input
-                                        type="number"
-                                        value={newSubAssessment.psychomotor}
-                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, psychomotor: e.target.value }))}
-                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        placeholder="P"
-                                        min="0"
-                                        step="0.01"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Affective (A)</label>
-                                      <input
-                                        type="number"
-                                        value={newSubAssessment.affective}
-                                        onChange={(e) => setNewSubAssessment(prev => ({ ...prev, affective: e.target.value }))}
-                                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        placeholder="A"
-                                        min="0"
-                                        step="0.01"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
                                 <div className="flex gap-2">
                                   <button
                                     type="button"
@@ -1726,10 +1679,7 @@ const SyllabusCreationWizard = ({
                                           abbreviation: newSubAssessment.abbreviation.trim(),
                                           name: newSubAssessment.name.trim(),
                                           weight_percentage: parseFloat(newSubAssessment.weight_percentage) || 0,
-                                          score: parseFloat(newSubAssessment.score) || 0,
-                                          cognitive: parseFloat(newSubAssessment.cognitive) || 0,
-                                          psychomotor: parseFloat(newSubAssessment.psychomotor) || 0,
-                                          affective: parseFloat(newSubAssessment.affective) || 0
+                                          score: parseFloat(newSubAssessment.score) || 0
                                         }
                                         
                                         // Check if we're editing an existing sub-assessment
@@ -1750,10 +1700,7 @@ const SyllabusCreationWizard = ({
                                           abbreviation: '', 
                                           name: '', 
                                           weight_percentage: '', 
-                                          score: '',
-                                          cognitive: '',
-                                          psychomotor: '',
-                                          affective: ''
+                                          score: ''
                                         })
                                       }
                                     }}
@@ -1780,10 +1727,7 @@ const SyllabusCreationWizard = ({
                                           abbreviation: '', 
                                           name: '', 
                                           weight_percentage: '', 
-                                          score: '',
-                                          cognitive: '',
-                                          psychomotor: '',
-                                          affective: ''
+                                          score: ''
                                         })
                                       }}
                                       className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
@@ -2377,27 +2321,42 @@ const SyllabusCreationWizard = ({
 
             {/* Dynamic Assessment Method and Distribution Map Table */}
             {ilos.length > 0 && formData.assessment_criteria.length > 0 && (() => {
-              // Get all sub-assessments with their data
-              const allSubAssessments = []
+              // Group sub-assessments by their parent criteria
+              const criteriaWithSubAssessments = []
               formData.assessment_criteria.forEach((criterion, idx) => {
                 const subAssessments = formData.sub_assessments[idx] || []
+                const criterionSubAssessments = []
+                
                 subAssessments.forEach(sub => {
                   if (sub.abbreviation || sub.name) {
-                    allSubAssessments.push({
+                    criterionSubAssessments.push({
                       code: sub.abbreviation || sub.name.substring(0, 2).toUpperCase(),
                       name: sub.name,
                       weight: parseFloat(sub.weight_percentage) || 0,
                       score: parseFloat(sub.score) || 0,
-                      cognitive: parseFloat(sub.cognitive) || 0,
-                      psychomotor: parseFloat(sub.psychomotor) || 0,
-                      affective: parseFloat(sub.affective) || 0,
-                      criterionName: criterion.name || '',
-                      criterionWeight: parseFloat(criterion.weight) || 0
+                      cognitive: parseFloat(criterion.cognitive) || 0,
+                      psychomotor: parseFloat(criterion.psychomotor) || 0,
+                      affective: parseFloat(criterion.affective) || 0
                     })
                   }
                 })
+                
+                if (criterionSubAssessments.length > 0) {
+                  criteriaWithSubAssessments.push({
+                    criterionCode: criterion.abbreviation || criterion.name.substring(0, 2).toUpperCase(),
+                    criterionName: criterion.name || '',
+                    criterionWeight: parseFloat(criterion.weight) || 0,
+                    cognitive: parseFloat(criterion.cognitive) || 0,
+                    psychomotor: parseFloat(criterion.psychomotor) || 0,
+                    affective: parseFloat(criterion.affective) || 0,
+                    subAssessments: criterionSubAssessments
+                  })
+                }
               })
 
+              // Flatten for calculations
+              const allSubAssessments = criteriaWithSubAssessments.flatMap(c => c.subAssessments)
+              
               // Calculate distribution percentages
               const totalWeight = allSubAssessments.reduce((sum, sub) => sum + sub.weight, 0)
               
@@ -2432,6 +2391,32 @@ const SyllabusCreationWizard = ({
                     mappings[iloIndex + 1] = {
                       weightPct: Math.round(weightContribution * 10) / 10,
                       score: Math.round(scoreContribution * 10) / 10
+                    }
+                  }
+                })
+                return mappings
+              }
+              
+              // Get criterion totals for ILO mappings
+              const getCriterionILOMappings = (criterionSubAssessments) => {
+                const mappings = {}
+                ilos.forEach((ilo, iloIndex) => {
+                  let totalWeightPct = 0
+                  let totalScore = 0
+                  
+                  criterionSubAssessments.forEach(sub => {
+                    const subMappings = getILOMappings(sub.code, sub.score, sub.weight)
+                    const mapping = subMappings[iloIndex + 1]
+                    if (mapping) {
+                      totalWeightPct += mapping.weightPct
+                      totalScore += mapping.score
+                    }
+                  })
+                  
+                  if (totalWeightPct > 0) {
+                    mappings[iloIndex + 1] = {
+                      weightPct: Math.round(totalWeightPct * 10) / 10,
+                      score: Math.round(totalScore * 10) / 10
                     }
                   }
                 })
@@ -2476,42 +2461,81 @@ const SyllabusCreationWizard = ({
                         </tr>
                       </thead>
                       <tbody className="bg-white">
-                        {allSubAssessments.map((sub, idx) => {
-                          const iloMappings = getILOMappings(sub.code, sub.score, sub.weight)
-                          const distributionPct = totalWeight > 0 ? 
-                            Math.round((sub.weight / totalWeight) * 100) : 0
+                        {criteriaWithSubAssessments.map((criterionGroup, groupIdx) => {
+                          const criterionMappings = getCriterionILOMappings(criterionGroup.subAssessments)
+                          const criterionTotalWeight = criterionGroup.subAssessments.reduce((sum, sub) => sum + sub.weight, 0)
                           
                           return (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-2 py-1.5 border border-gray-300 font-medium text-gray-900">{sub.code}</td>
-                              <td className="px-2 py-1.5 border border-gray-300 text-gray-700">{sub.name}</td>
-                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">R</td>
-                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{sub.weight}%</td>
-                              {ilos.map((ilo, iloIdx) => {
-                                const mapping = iloMappings[iloIdx + 1]
-                                const contribution = mapping ? mapping.weightPct : 0
-                                const scoreValue = mapping ? mapping.score : 0
+                            <React.Fragment key={groupIdx}>
+                              {/* Criterion Header Row */}
+                              <tr className="bg-blue-50 hover:bg-blue-100 font-semibold">
+                                <td className="px-2 py-2 border border-gray-300 text-gray-900" colSpan="2">
+                                  {criterionGroup.criterionCode} - {criterionGroup.criterionName}
+                                </td>
+                                <td className="px-2 py-2 border border-gray-300 text-center text-gray-600">R</td>
+                                <td className="px-2 py-2 border border-gray-300 text-center text-gray-900">{criterionTotalWeight}%</td>
+                                {ilos.map((ilo, iloIdx) => {
+                                  const mapping = criterionMappings[iloIdx + 1]
+                                  const contribution = mapping ? mapping.weightPct : 0
+                                  const scoreValue = mapping ? mapping.score : 0
+                                  return (
+                                    <td key={iloIdx} className="px-2 py-2 border border-gray-300 text-center text-gray-900">
+                                      {contribution > 0 ? (
+                                        <div>
+                                          <div className="font-medium">{contribution}%</div>
+                                          {scoreValue > 0 && (
+                                            <div className="text-xs text-gray-600">({scoreValue.toFixed(1)})</div>
+                                          )}
+                                        </div>
+                                      ) : '—'}
+                                    </td>
+                                  )
+                                })}
+                                <td className="px-2 py-2 border border-gray-300 text-center text-gray-900">
+                                  <div className="flex justify-center gap-2 font-medium">
+                                    <span>{criterionGroup.cognitive > 0 ? criterionGroup.cognitive.toFixed(1) : '—'}</span>
+                                    <span>{criterionGroup.psychomotor > 0 ? criterionGroup.psychomotor.toFixed(1) : '—'}</span>
+                                    <span>{criterionGroup.affective > 0 ? criterionGroup.affective.toFixed(1) : '—'}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                              {/* Sub-Assessment Rows */}
+                              {criterionGroup.subAssessments.map((sub, subIdx) => {
+                                const iloMappings = getILOMappings(sub.code, sub.score, sub.weight)
                                 return (
-                                  <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
-                                    {contribution > 0 ? (
-                                      <div>
-                                        <div className="font-medium">{contribution}%</div>
-                                        {scoreValue > 0 && (
-                                          <div className="text-xs text-gray-500">({scoreValue.toFixed(1)})</div>
-                                        )}
+                                  <tr key={`${groupIdx}-${subIdx}`} className="hover:bg-gray-50 bg-white">
+                                    <td className="px-4 py-1.5 border border-gray-300 font-medium text-gray-700">{sub.code}</td>
+                                    <td className="px-2 py-1.5 border border-gray-300 text-gray-600">{sub.name}</td>
+                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-500">R</td>
+                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">{sub.weight}%</td>
+                                    {ilos.map((ilo, iloIdx) => {
+                                      const mapping = iloMappings[iloIdx + 1]
+                                      const contribution = mapping ? mapping.weightPct : 0
+                                      const scoreValue = mapping ? mapping.score : 0
+                                      return (
+                                        <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
+                                          {contribution > 0 ? (
+                                            <div>
+                                              <div>{contribution}%</div>
+                                              {scoreValue > 0 && (
+                                                <div className="text-xs text-gray-400">({scoreValue.toFixed(1)})</div>
+                                              )}
+                                            </div>
+                                          ) : '—'}
+                                        </td>
+                                      )
+                                    })}
+                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
+                                      <div className="flex justify-center gap-2">
+                                        <span>—</span>
+                                        <span>—</span>
+                                        <span>—</span>
                                       </div>
-                                    ) : '—'}
-                                  </td>
+                                    </td>
+                                  </tr>
                                 )
                               })}
-                              <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
-                                <div className="flex justify-center gap-2">
-                                  <span>{sub.cognitive > 0 ? sub.cognitive.toFixed(1) : '—'}</span>
-                                  <span>{sub.psychomotor > 0 ? sub.psychomotor.toFixed(1) : '—'}</span>
-                                  <span>{sub.affective > 0 ? sub.affective.toFixed(1) : '—'}</span>
-                                </div>
-                              </td>
-                            </tr>
+                            </React.Fragment>
                           )
                         })}
                         <tr className="bg-gray-100 font-semibold">
@@ -2542,10 +2566,10 @@ const SyllabusCreationWizard = ({
                             )
                           })}
                           <td className="px-2 py-1.5 border border-gray-300 text-center">
-                            <div className="flex justify-center gap-2">
-                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.cognitive || 0), 0).toFixed(1)}</span>
-                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.psychomotor || 0), 0).toFixed(1)}</span>
-                              <span>{allSubAssessments.reduce((sum, sub) => sum + (sub.affective || 0), 0).toFixed(1)}</span>
+                            <div className="flex justify-center gap-2 font-medium">
+                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.cognitive || 0), 0).toFixed(1)}</span>
+                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.psychomotor || 0), 0).toFixed(1)}</span>
+                              <span>{criteriaWithSubAssessments.reduce((sum, c) => sum + (c.affective || 0), 0).toFixed(1)}</span>
                             </div>
                           </td>
                         </tr>
@@ -2569,9 +2593,9 @@ const SyllabusCreationWizard = ({
                       name: sub.name,
                       weight: parseFloat(sub.weight_percentage) || 0,
                       score: parseFloat(sub.score) || 0,
-                      cognitive: parseFloat(sub.cognitive) || 0,
-                      psychomotor: parseFloat(sub.psychomotor) || 0,
-                      affective: parseFloat(sub.affective) || 0
+                      cognitive: parseFloat(criterion.cognitive) || 0,
+                      psychomotor: parseFloat(criterion.psychomotor) || 0,
+                      affective: parseFloat(criterion.affective) || 0
                     })
                   }
                 })
