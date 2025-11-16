@@ -1939,13 +1939,20 @@ const SyllabusCreationWizard = ({
                     </div>
 
                     {/* Modal Footer */}
-                    <div className="p-4 border-t border-gray-200 flex justify-end">
+                    <div className="p-4 border-t border-gray-200 flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMappingModal({ iloId: null, type: null })}
+                        className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
                       <button
                         type="button"
                         onClick={() => setOpenMappingModal({ iloId: null, type: null })}
                         className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
                       >
-                        Close
+                        Confirm
                       </button>
                     </div>
                   </div>
