@@ -608,44 +608,100 @@ const SyllabusApproval = () => {
                       policy = null
                     }
                     
+                    const assessmentCriteria = policy?.assessment_criteria || []
+                    const subAssessments = policy?.sub_assessments || {}
+                    
                     return (
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-700 mb-2">Grading Policy</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                {policy.scale.map((item, index) => (
-                                  <div key={index} className="p-2 bg-white rounded border border-gray-200">
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium text-gray-900 text-sm">{item.grade || 'N/A'}</span>
-                                      <span className="text-xs text-gray-600">{item.range || 'N/A'}</span>
+                      <div className="space-y-4">
+                        {/* Assessment Criteria Section */}
+                        {assessmentCriteria.length > 0 && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 className="text-sm font-bold text-blue-900 mb-3 pb-2 border-b border-blue-300">Assessment Criteria</h3>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border border-gray-300">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">Assessment Name</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">Abbreviation</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">I/R/D</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Weight (%)</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Cognitive</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Psychomotor</th>
+                                    <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Affective</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white">
+                                  {assessmentCriteria.map((criterion, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 border border-gray-300 text-gray-900">{criterion.name || '—'}</td>
+                                      <td className="px-3 py-2 border border-gray-300 text-gray-700">{criterion.abbreviation || '—'}</td>
+                                      <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">{criterion.ird || 'R'}</td>
+                                      <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                        <span title="Weight percentage of this assessment criterion">
+                                          {criterion.weight || 0}%
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                        <span title="Cognitive domain percentage" className="cursor-help">
+                                          {criterion.cognitive || 0}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                        <span title="Psychomotor domain percentage" className="cursor-help">
+                                          {criterion.psychomotor || 0}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                        <span title="Affective domain percentage" className="cursor-help">
+                                          {criterion.affective || 0}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-700 mb-2">Grading Policy</h3>
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            {policy?.scale && Array.isArray(policy.scale) && policy.scale.length > 0 && (
+                              <div className="mb-4">
+                                <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Scale</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {policy.scale.map((item, index) => (
+                                    <div key={index} className="p-2 bg-white rounded border border-gray-200">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium text-gray-900 text-sm">{item.grade || 'N/A'}</span>
+                                        <span className="text-xs text-gray-600">{item.range || 'N/A'}</span>
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate" title={item.description}>{item.description}</p>
+                                      )}
                                     </div>
-                                    {item.description && (
-                                      <p className="text-xs text-gray-500 mt-0.5 truncate" title={item.description}>{item.description}</p>
-                                    )}
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          {policy?.components && policy.components.length > 0 && (
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Components</h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                {policy.components.map((comp, index) => (
-                                  <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                                    <span className="text-xs text-gray-900 truncate">{comp.type || comp.name || 'Component'}</span>
-                                    <span className="text-xs font-medium text-blue-600 ml-2">{comp.weight || comp.percentage || 0}%</span>
-                                  </div>
-                                ))}
+                            )}
+                            {policy?.components && policy.components.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-800 mb-2">Grading Components</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {policy.components.map((comp, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                                      <span className="text-xs text-gray-900 truncate">{comp.type || comp.name || 'Component'}</span>
+                                      <span className="text-xs font-medium text-blue-600 ml-2">{comp.weight || comp.percentage || 0}%</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          {!policy?.scale && !policy?.components && (
-                            <p className="text-sm text-gray-500 italic">No grading policy details available</p>
-                          )}
+                            )}
+                            {!policy?.scale && !policy?.components && assessmentCriteria.length === 0 && (
+                              <p className="text-sm text-gray-500 italic">No grading policy details available</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )
