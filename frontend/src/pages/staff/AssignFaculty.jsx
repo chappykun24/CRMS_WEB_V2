@@ -30,8 +30,7 @@ const AssignFaculty = () => {
   const [availableStudents, setAvailableStudents] = useState([])
   const [loadingAvailableStudents, setLoadingAvailableStudents] = useState(false)
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
-  const [yearLevelFilter, setYearLevelFilter] = useState('')
-  const [sectionYearLevel, setSectionYearLevel] = useState(null)
+  const [selectedStudents, setSelectedStudents] = useState(new Set())
   const [enrollingStudents, setEnrollingStudents] = useState(new Set())
 
   // Success message state
@@ -90,75 +89,112 @@ const AssignFaculty = () => {
     setShowStudentsModal(true)
     setLoadingAvailableStudents(true)
     setStudentSearchQuery('')
-    setYearLevelFilter('') // Reset filter when opening modal
+    setSelectedStudents(new Set()) // Reset selected students when opening modal
     
     try {
       const response = await fetch(`/api/students/available-for-section/${selectedClass.id}`)
       if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
       const data = await response.json()
       setAvailableStudents(Array.isArray(data.students) ? data.students : [])
-      setSectionYearLevel(data.sectionYearLevel || null)
     } catch (error) {
       console.error('Error loading available students:', error)
       setAvailableStudents([])
-      setSectionYearLevel(null)
     } finally {
       setLoadingAvailableStudents(false)
     }
   }
 
-  // Handle enrolling a student
-  const handleEnrollStudent = async (studentId) => {
-    if (!selectedClass) return
+  // Handle toggling student selection
+  const handleToggleStudent = (studentId) => {
+    setSelectedStudents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId)
+      } else {
+        newSet.add(studentId)
+      }
+      return newSet
+    })
+  }
+
+  // Handle selecting/deselecting all students
+  const handleSelectAll = () => {
+    if (selectedStudents.size === filteredAvailableStudents.length) {
+      setSelectedStudents(new Set())
+    } else {
+      setSelectedStudents(new Set(filteredAvailableStudents.map(s => s.student_id)))
+    }
+  }
+
+  // Handle enrolling multiple students
+  const handleBulkEnroll = async () => {
+    if (!selectedClass || selectedStudents.size === 0) return
     
-    // Add to loading set
-    setEnrollingStudents(prev => new Set(prev).add(studentId))
+    const studentIds = Array.from(selectedStudents)
+    setEnrollingStudents(new Set(studentIds))
     
     try {
-      const response = await fetch('/api/students/enroll', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          section_course_id: selectedClass.id,
-          student_id: studentId
+      // Enroll students one by one (or you could create a bulk endpoint)
+      const enrollPromises = studentIds.map(async (studentId) => {
+        const response = await fetch('/api/students/enroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            section_course_id: selectedClass.id,
+            student_id: studentId
+          })
         })
+        
+        const data = await response.json()
+        
+        if (!response.ok) {
+          if (response.status === 409) {
+            console.warn(`Student ${studentId} is already enrolled`)
+            return { success: false, studentId, error: 'already_enrolled' }
+          } else {
+            throw new Error(data.error || `Failed to enroll student: ${response.status}`)
+          }
+        }
+        
+        return { success: true, studentId }
       })
       
-      const data = await response.json()
+      const results = await Promise.allSettled(enrollPromises)
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
+      const failed = results.length - successful
       
-      if (!response.ok) {
-        if (response.status === 409) {
-          alert('Student is already enrolled in this class.')
-        } else {
-          throw new Error(data.error || `Failed to enroll student: ${response.status}`)
-        }
-        return
-      }
+      // Remove successfully enrolled students from available list
+      const enrolledIds = results
+        .filter(r => r.status === 'fulfilled' && r.value.success)
+        .map(r => r.value.studentId)
       
-      if (data.success) {
-        // Remove the enrolled student from available list
-        setAvailableStudents(prev => prev.filter(s => s.student_id !== studentId))
-        
-        // Refresh the enrolled students list
-        await handleClassSelect(selectedClass)
-        
-        // Show success message
-        setSuccessMessage('Student enrolled successfully!')
+      setAvailableStudents(prev => prev.filter(s => !enrolledIds.includes(s.student_id)))
+      
+      // Clear selected students
+      setSelectedStudents(new Set())
+      
+      // Refresh the enrolled students list
+      await handleClassSelect(selectedClass)
+      
+      // Show success message
+      if (successful > 0) {
+        setSuccessMessage(
+          failed > 0 
+            ? `${successful} student(s) enrolled successfully. ${failed} student(s) were already enrolled or failed.`
+            : `${successful} student(s) enrolled successfully!`
+        )
         setShowSuccessModal(true)
+      } else {
+        alert('No students were enrolled. They may already be enrolled in this class.')
       }
       
     } catch (error) {
-      console.error('Error enrolling student:', error)
-      alert(`Failed to enroll student: ${error.message}`)
+      console.error('Error enrolling students:', error)
+      alert(`Failed to enroll students: ${error.message}`)
     } finally {
-      // Remove from loading set
-      setEnrollingStudents(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(studentId)
-        return newSet
-      })
+      setEnrollingStudents(new Set())
     }
   }
 
@@ -537,13 +573,6 @@ const AssignFaculty = () => {
       )
     }
     
-    // Filter by year level
-    if (yearLevelFilter) {
-      filtered = filtered.filter(student => 
-        String(student.year_level) === String(yearLevelFilter)
-      )
-    }
-    
     // Sort by last name (last word), then by full name
     filtered.sort((a, b) => {
       const aLastName = extractLastName(a.full_name || '')
@@ -558,7 +587,7 @@ const AssignFaculty = () => {
     })
     
     return filtered
-  }, [availableStudents, studentSearchQuery, yearLevelFilter])
+  }, [availableStudents, studentSearchQuery])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -1039,7 +1068,7 @@ const AssignFaculty = () => {
 
             {/* Modal Body */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Search Bar, Year Level Filter and Students Count */}
+              {/* Search Bar and Students Count */}
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center space-x-4">
                   <div className="flex-1 relative">
@@ -1052,25 +1081,16 @@ const AssignFaculty = () => {
                       className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500"
                     />
                   </div>
-                  <div className="flex-shrink-0">
-                    <select
-                      value={yearLevelFilter}
-                      onChange={(e) => setYearLevelFilter(e.target.value)}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white"
-                    >
-                      <option value="">All Year Levels</option>
-                      <option value="1">1st Year</option>
-                      <option value="2">2nd Year</option>
-                      <option value="3">3rd Year</option>
-                      <option value="4">4th Year</option>
-                      <option value="5">5th Year</option>
-                    </select>
-                  </div>
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-gray-900">Available Students</h4>
                     <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
                       {filteredAvailableStudents.length} student{filteredAvailableStudents.length !== 1 ? 's' : ''}
                     </span>
+                    {selectedStudents.size > 0 && (
+                      <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full border border-red-200 font-medium">
+                        {selectedStudents.size} selected
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1083,53 +1103,68 @@ const AssignFaculty = () => {
                     <span className="ml-2 text-sm text-gray-600">Loading...</span>
                   </div>
                 ) : filteredAvailableStudents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {filteredAvailableStudents.map((student, index) => (
-                      <div key={student.student_id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
-                        <div className="flex-shrink-0">
-                          <div className="flex items-center justify-center w-6 h-6 bg-gray-200 rounded-full text-xs font-medium text-gray-600">
-                            {index + 1}
+                  <div>
+                    {/* Select All Checkbox */}
+                    <div className="mb-3 px-2">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudents.size === filteredAvailableStudents.length && filteredAvailableStudents.length > 0}
+                          onChange={handleSelectAll}
+                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Select All ({filteredAvailableStudents.length} students)
+                        </span>
+                      </label>
+                    </div>
+                    
+                    {/* Students Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {filteredAvailableStudents.map((student, index) => (
+                        <div 
+                          key={student.student_id} 
+                          className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                            selectedStudents.has(student.student_id)
+                              ? 'bg-red-50 border-2 border-red-300'
+                              : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                          }`}
+                        >
+                          <div className="flex-shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.has(student.student_id)}
+                              onChange={() => handleToggleStudent(student.student_id)}
+                              disabled={enrollingStudents.has(student.student_id)}
+                              className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 disabled:opacity-50"
+                            />
+                          </div>
+                          <div className="flex-shrink-0">
+                            <div className="flex items-center justify-center w-6 h-6 bg-gray-200 rounded-full text-xs font-medium text-gray-600">
+                              {index + 1}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <LazyStudentImage
+                              studentId={student.student_id}
+                              alt={student.full_name}
+                              size="sm"
+                              shape="circle"
+                              className="border-2 border-gray-200"
+                              priority={false}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-900 truncate">
+                              {formatStudentName(student.full_name)}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {student.student_number}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex-shrink-0">
-                          <LazyStudentImage
-                            studentId={student.student_id}
-                            alt={student.full_name}
-                            size="sm"
-                            shape="circle"
-                            className="border-2 border-gray-200"
-                            priority={false}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-900 truncate">
-                            {formatStudentName(student.full_name)}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {student.student_number}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <button
-                            onClick={() => handleEnrollStudent(student.student_id)}
-                            disabled={enrollingStudents.has(student.student_id)}
-                            className="inline-flex items-center px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {enrollingStudents.has(student.student_id) ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                                Enrolling...
-                              </>
-                            ) : (
-                              <>
-                                <PlusIcon className="h-3 w-3 mr-1" />
-                                Enroll
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-12 text-center">
@@ -1150,13 +1185,40 @@ const AssignFaculty = () => {
 
             {/* Modal Footer */}
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowStudentsModal(false)}
-                  className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
-                >
-                  Close
-                </button>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  {selectedStudents.size > 0 && (
+                    <span>{selectedStudents.size} student{selectedStudents.size !== 1 ? 's' : ''} selected</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      setShowStudentsModal(false)
+                      setSelectedStudents(new Set())
+                    }}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleBulkEnroll}
+                    disabled={selectedStudents.size === 0 || enrollingStudents.size > 0}
+                    className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {enrollingStudents.size > 0 ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Enrolling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="h-4 w-4" />
+                        <span>Enroll Selected ({selectedStudents.size})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
