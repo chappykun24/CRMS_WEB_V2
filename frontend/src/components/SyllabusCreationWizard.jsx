@@ -1396,7 +1396,7 @@ const SyllabusCreationWizard = ({
                         </button>
                       </div>
                       <div className="border-t border-gray-200 pt-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains</label>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
@@ -1494,7 +1494,7 @@ const SyllabusCreationWizard = ({
                   </button>
                 </div>
                 <div className="border-t border-gray-200 pt-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains</label>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
