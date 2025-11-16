@@ -311,6 +311,28 @@ const Syllabus = () => {
     }))
   }
 
+  // Safe stringify helper that handles circular references and non-serializable values
+  const safeStringify = (value, fallback = '') => {
+    // If already a string, return as is
+    if (typeof value === 'string') {
+      return value
+    }
+    
+    // If null or undefined, return fallback
+    if (value === null || value === undefined) {
+      return fallback
+    }
+    
+    // Try to stringify, but handle circular references and non-serializable values
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch (e) {
+      // If stringification fails (circular reference, non-serializable), return fallback
+      console.warn('Failed to stringify value:', e)
+      return fallback
+    }
+  }
+
   const handleJSONInputChange = (field, value) => {
     // Try to parse JSON, if invalid, store as string
     try {
@@ -1555,9 +1577,7 @@ const Syllabus = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Framework (JSON)</label>
                   <textarea
                     name="assessment_framework"
-                    value={typeof formData.assessment_framework === 'string' 
-                      ? formData.assessment_framework 
-                      : JSON.stringify(formData.assessment_framework, null, 2)}
+                    value={safeStringify(formData.assessment_framework, '')}
                     onChange={(e) => handleJSONInputChange('assessment_framework', e.target.value)}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
@@ -1569,9 +1589,7 @@ const Syllabus = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Grading Policy (JSON)</label>
                   <textarea
                     name="grading_policy"
-                    value={typeof formData.grading_policy === 'string' 
-                      ? formData.grading_policy 
-                      : JSON.stringify(formData.grading_policy, null, 2)}
+                    value={safeStringify(formData.grading_policy, '')}
                     onChange={(e) => handleJSONInputChange('grading_policy', e.target.value)}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
@@ -1697,9 +1715,7 @@ const Syllabus = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Framework (JSON)</label>
                   <textarea
                     name="assessment_framework"
-                    value={typeof formData.assessment_framework === 'string' 
-                      ? formData.assessment_framework 
-                      : JSON.stringify(formData.assessment_framework, null, 2)}
+                    value={safeStringify(formData.assessment_framework, '')}
                     onChange={(e) => handleJSONInputChange('assessment_framework', e.target.value)}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
@@ -1710,9 +1726,7 @@ const Syllabus = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Grading Policy (JSON)</label>
                   <textarea
                     name="grading_policy"
-                    value={typeof formData.grading_policy === 'string' 
-                      ? formData.grading_policy 
-                      : JSON.stringify(formData.grading_policy, null, 2)}
+                    value={safeStringify(formData.grading_policy, '')}
                     onChange={(e) => handleJSONInputChange('grading_policy', e.target.value)}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-sm"
