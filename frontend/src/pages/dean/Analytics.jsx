@@ -1477,57 +1477,6 @@ const Analytics = () => {
                     </div>
                   </div>
 
-                  {/* Standard Filter - Filter by SO, IGA, CDIO, or SDG */}
-                  {selectedTermId && (
-                    <div className="flex gap-3 flex-1 min-w-[400px]">
-                      {/* Standard Type Selector */}
-                      <div className="flex-1 min-w-[120px]">
-                        <div className="relative">
-                          <select
-                            value={selectedStandardType}
-                            onChange={(e) => {
-                              setSelectedStandardType(e.target.value);
-                              setSelectedStandardId('all'); // Reset standard ID when type changes
-                            }}
-                            className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                            title="Select standard type to filter by"
-                          >
-                            {availableStandards.so?.length > 0 && <option value="SO">SO (Student Outcomes)</option>}
-                            {availableStandards.iga?.length > 0 && <option value="IGA">IGA (Institutional Graduate Attributes)</option>}
-                            {availableStandards.cdio?.length > 0 && <option value="CDIO">CDIO</option>}
-                            {availableStandards.sdg?.length > 0 && <option value="SDG">SDG (Sustainable Development Goals)</option>}
-                          </select>
-                          <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                        </div>
-                      </div>
-
-                      {/* Standard Value Selector */}
-                      {selectedStandardType && (
-                        <div className="flex-1 min-w-[200px]">
-                          <div className="relative">
-                            <select
-                              value={selectedStandardId}
-                              onChange={(e) => setSelectedStandardId(e.target.value)}
-                              className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
-                              title={`Filter clustering by ${selectedStandardType}. Shows all ILOs mapped to the selected ${selectedStandardType}, then filters assessments mapped to those ILOs.`}
-                            >
-                              <option value="all">All {selectedStandardType}s</option>
-                              {(selectedStandardType === 'SO' ? availableStandards.so :
-                                selectedStandardType === 'IGA' ? availableStandards.iga :
-                                selectedStandardType === 'CDIO' ? availableStandards.cdio :
-                                selectedStandardType === 'SDG' ? availableStandards.sdg : []).map(standard => (
-                                <option key={standard[`${selectedStandardType.toLowerCase()}_id`]} value={standard[`${selectedStandardType.toLowerCase()}_id`].toString()}>
-                                  {standard.code} {standard.description ? `: ${standard.description.substring(0, 40)}${standard.description.length > 40 ? '...' : ''}` : ''} ({standard.ilo_count || 0} ILOs, {standard.assessment_count || 0} assessments)
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Program Filter (Major) */}
                   <div className="flex-1 min-w-[200px]">
                     <div className="relative">
