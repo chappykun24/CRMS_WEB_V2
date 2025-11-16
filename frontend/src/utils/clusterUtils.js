@@ -36,13 +36,19 @@ export const getClusterStyle = (label) => {
 
   const normalized = String(label).toLowerCase();
 
-  // At Risk - Red
+  // At Risk - Red (check first to avoid matching "risk" in other contexts)
   if (normalized.includes('risk') || normalized.includes('at risk') || normalized.includes('needs support')) {
     return { text: label, className: 'bg-red-100 text-red-700' };
   }
 
   // Needs Improvement/Needs Guidance - Orange/Yellow
-  if (normalized.includes('improvement') || normalized.includes('guidance') || normalized.includes('needs')) {
+  // Check for "improvement" and "guidance" first
+  if (normalized.includes('improvement') || normalized.includes('guidance')) {
+    return { text: label, className: 'bg-orange-100 text-orange-700' };
+  }
+  
+  // Check for "needs" separately (but not "needs support" which is already handled as At Risk)
+  if (normalized.includes('needs') && !normalized.includes('support')) {
     return { text: label, className: 'bg-orange-100 text-orange-700' };
   }
 
@@ -63,30 +69,62 @@ export const getClusterStyle = (label) => {
 /**
  * Get cluster color for a given cluster label
  * Used for scatter plots and charts
+ * Uses the same logic as getClusterStyle to ensure consistency
  * @param {string} label - The cluster label
  * @returns {string} - Hex color code or default gray
  */
 export const getClusterColor = (label) => {
-  if (!label) return '#9ca3af'; // gray-400
-  
-  // Normalize the label
-  const normalized = String(label).trim();
-  
-  // Direct match first
-  if (clusterColors[normalized]) {
-    return clusterColors[normalized];
+  if (!label || 
+      label === null || 
+      label === undefined ||
+      (typeof label === 'number' && isNaN(label)) ||
+      (typeof label === 'string' && (label.toLowerCase() === 'nan' || label.trim() === ''))) {
+    return '#9ca3af'; // gray-400
   }
   
-  // Case-insensitive match
-  const lowerLabel = normalized.toLowerCase();
+  // Normalize the label (same logic as getClusterStyle)
+  const normalized = String(label).toLowerCase().trim();
+  
+  // At Risk - Red (check first to avoid matching "risk" in other contexts)
+  if (normalized.includes('risk') || normalized.includes('at risk') || normalized.includes('needs support')) {
+    return '#ef4444'; // red-500
+  }
+  
+  // Needs Improvement/Needs Guidance - Orange (check before "needs" to avoid matching "needs support")
+  if (normalized.includes('improvement') || normalized.includes('guidance')) {
+    return '#f59e0b'; // amber-500 (orange)
+  }
+  
+  // Check for "needs" separately (but not "needs support" which is already handled)
+  if (normalized.includes('needs') && !normalized.includes('support')) {
+    return '#f59e0b'; // amber-500 (orange)
+  }
+  
+  // Average Performance/Performing Well/On Track - Blue (check before Excellent to avoid matching "performance")
+  if (normalized.includes('average') || normalized.includes('performing') || normalized.includes('track') || normalized.includes('on track')) {
+    return '#3b82f6'; // blue-500
+  }
+  
+  // Excellent Performance - Green (check after Average to avoid conflicts)
+  if (normalized.includes('excellent') || normalized.includes('high')) {
+    return '#10b981'; // emerald-500 (green)
+  }
+  
+  // Try exact match as fallback
+  const trimmed = String(label).trim();
+  if (clusterColors[trimmed]) {
+    return clusterColors[trimmed];
+  }
+  
+  // Case-insensitive exact match as final fallback
   for (const [key, color] of Object.entries(clusterColors)) {
-    if (key.toLowerCase() === lowerLabel) {
+    if (key.toLowerCase() === normalized) {
       return color;
     }
   }
   
-  // Fallback to gray
-  return '#9ca3af';
+  // Default - Gray
+  return '#9ca3af'; // gray-400
 };
 
 /**
