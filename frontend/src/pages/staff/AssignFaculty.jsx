@@ -213,9 +213,11 @@ const AssignFaculty = () => {
     
     setLoadingEnrolledStudents(true)
     try {
-      // Get course_id from classes array
+      // Get course_id and section_id from classes array or assigned endpoint
       const matchingClass = classes.find(cls => String(cls.id) === String(selectedClass.id))
       let courseId = matchingClass?.course_id
+      let currentSectionId = null
+      let currentSectionCode = selectedClass.section
       
       // If not found in classes, try to get from the assigned endpoint
       if (!courseId) {
@@ -225,7 +227,11 @@ const AssignFaculty = () => {
           const matchingSectionCourse = Array.isArray(allSectionCourses)
             ? allSectionCourses.find(sc => String(sc.section_course_id) === String(selectedClass.id))
             : null
-          courseId = matchingSectionCourse?.course_id
+          if (matchingSectionCourse) {
+            courseId = matchingSectionCourse.course_id
+            currentSectionId = matchingSectionCourse.section_id
+            currentSectionCode = matchingSectionCourse.section_code
+          }
         }
       }
       
@@ -261,42 +267,27 @@ const AssignFaculty = () => {
           if (selectedClass && selectedClass.section) {
             const matchingSection = sortedSections.find(s => s.section_code === selectedClass.section)
             if (matchingSection) {
-              setSelectedSectionFilter(String(matchingSection.section_id))
+              const sectionIdToUse = String(matchingSection.section_id)
+              setSelectedSectionFilter(sectionIdToUse)
+              // Fetch students for this section
+              await loadStudentsBySection(sectionIdToUse)
+            } else if (currentSectionId) {
+              // Fallback: use section_id from API response
+              const sectionIdToUse = String(currentSectionId)
+              setSelectedSectionFilter(sectionIdToUse)
+              await loadStudentsBySection(sectionIdToUse)
             }
+          } else if (currentSectionId) {
+            // Fallback: use section_id from API response
+            const sectionIdToUse = String(currentSectionId)
+            setSelectedSectionFilter(sectionIdToUse)
+            await loadStudentsBySection(sectionIdToUse)
           }
-          
-          // Fetch all enrolled students from ALL sections of this course
-          const allEnrolledStudents = []
-          for (const sectionCourse of courseSectionCourses) {
-            try {
-              const studentsResponse = await fetch(`/api/section-courses/${sectionCourse.section_course_id}/students`)
-              if (studentsResponse.ok) {
-                const studentsData = await studentsResponse.json()
-                if (Array.isArray(studentsData)) {
-                  // Add section info to each student
-                  const studentsWithSection = studentsData.map(student => ({
-                    ...student,
-                    section_id: sectionCourse.section_id,
-                    section_code: sectionCourse.section_code,
-                    section_course_id: sectionCourse.section_course_id
-                  }))
-                  allEnrolledStudents.push(...studentsWithSection)
-                }
-              }
-            } catch (err) {
-              console.error(`Error fetching students for section ${sectionCourse.section_code}:`, err)
-            }
-          }
-          
-          setEnrolledStudents(allEnrolledStudents)
         }
       } else {
-        // Fallback: fetch only current section if course_id not found
-        const response = await fetch(`/api/section-courses/${selectedClass.id}/students`)
-        if (response.ok) {
-          const data = await response.json()
-          setEnrolledStudents(Array.isArray(data) ? data : [])
-        }
+        // Fallback: try to get section_id from current class
+        setCourseSections([])
+        setEnrolledStudents([])
       }
     } catch (error) {
       console.error('Error loading enrolled students:', error)
@@ -304,6 +295,67 @@ const AssignFaculty = () => {
       setCourseSections([])
     } finally {
       setLoadingEnrolledStudents(false)
+    }
+  }
+
+  // Load students by section_id
+  const loadStudentsBySection = async (sectionId) => {
+    if (!sectionId) {
+      setEnrolledStudents([])
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/sections/${sectionId}/students`)
+      if (response.ok) {
+        const studentsData = await response.json()
+        setEnrolledStudents(Array.isArray(studentsData) ? studentsData : [])
+      } else {
+        console.error('Failed to fetch students for section:', sectionId)
+        setEnrolledStudents([])
+      }
+    } catch (error) {
+      console.error('Error fetching students for section:', error)
+      setEnrolledStudents([])
+    }
+  }
+
+  // Load all students from all sections of the course
+  const loadAllStudentsFromAllSections = async () => {
+    if (!selectedClass || courseSections.length === 0) {
+      setEnrolledStudents([])
+      return
+    }
+    
+    try {
+      // Fetch students from all sections and combine them
+      const allStudents = []
+      const seenStudentIds = new Set()
+      
+      for (const section of courseSections) {
+        try {
+          const response = await fetch(`/api/sections/${section.section_id}/students`)
+          if (response.ok) {
+            const studentsData = await response.json()
+            if (Array.isArray(studentsData)) {
+              // Add unique students only (by student_id)
+              studentsData.forEach(student => {
+                if (!seenStudentIds.has(student.student_id)) {
+                  seenStudentIds.add(student.student_id)
+                  allStudents.push(student)
+                }
+              })
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching students for section ${section.section_code}:`, err)
+        }
+      }
+      
+      setEnrolledStudents(allStudents)
+    } catch (error) {
+      console.error('Error loading all students from all sections:', error)
+      setEnrolledStudents([])
     }
   }
 
@@ -810,25 +862,10 @@ const AssignFaculty = () => {
     return filtered
   }, [availableStudents, studentSearchQuery])
 
-  // Filter and sort enrolled students based on search query and section filter
-  // Exclude students already enrolled in the current class
+  // Filter and sort enrolled students based on search query
+  // Students are already filtered by section_id from the API, so we only need to filter by search query
   const filteredEnrolledStudents = useMemo(() => {
     let filtered = enrolledStudents
-    
-    // Filter out students who are already enrolled in the current class
-    if (selectedClass) {
-      filtered = filtered.filter(student => 
-        String(student.section_course_id) !== String(selectedClass.id)
-      )
-    }
-    
-    // Filter by section if selected
-    if (selectedSectionFilter) {
-      filtered = filtered.filter(student => 
-        String(student.section_id) === String(selectedSectionFilter) ||
-        student.section_code === selectedSectionFilter
-      )
-    }
     
     // Filter by search query
     if (studentSearchQuery.trim()) {
@@ -853,7 +890,7 @@ const AssignFaculty = () => {
     })
     
     return filtered
-  }, [enrolledStudents, studentSearchQuery, selectedSectionFilter, selectedClass])
+  }, [enrolledStudents, studentSearchQuery])
 
   // Filter sections based on selected semester
   const availableSections = useMemo(() => {
@@ -1452,7 +1489,19 @@ const AssignFaculty = () => {
                     <div className="flex-shrink-0">
                       <select
                         value={selectedSectionFilter}
-                        onChange={(e) => setSelectedSectionFilter(e.target.value)}
+                        onChange={async (e) => {
+                          const sectionId = e.target.value
+                          setSelectedSectionFilter(sectionId)
+                          setLoadingEnrolledStudents(true)
+                          // Load students for the selected section
+                          if (sectionId) {
+                            await loadStudentsBySection(sectionId)
+                          } else {
+                            // Load all students from all sections of the course
+                            await loadAllStudentsFromAllSections()
+                          }
+                          setLoadingEnrolledStudents(false)
+                        }}
                         className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-white"
                       >
                         <option value="">All Sections</option>

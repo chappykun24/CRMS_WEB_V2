@@ -3234,6 +3234,57 @@ app.get('/api/section-courses/:id/students', async (req, res) => {
   }
 });
 
+// Get all students enrolled in a section (by section_id)
+// Returns all students enrolled in any section_course that belongs to the specified section_id
+app.get('/api/sections/:sectionId/students', async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+    const includePhotos = req.query.includePhotos === 'true';
+    
+    console.log(`🔍 [SECTION STUDENTS] Fetching all students for section: ${sectionId} (photos: ${includePhotos ? 'included' : 'excluded'})`);
+    
+    // Exclude photos by default to save memory (photos are large base64 strings)
+    const photoField = includePhotos ? 's.student_photo' : 'NULL as student_photo';
+    
+    const result = await db.query(
+      `SELECT DISTINCT ON (s.student_id)
+        s.student_id,
+        s.full_name,
+        s.student_number,
+        ${photoField},
+        sec.section_id,
+        sec.section_code,
+        ce.enrollment_date,
+        ce.enrollment_id
+       FROM students s
+       JOIN course_enrollments ce ON s.student_id = ce.student_id
+       JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+       JOIN sections sec ON sc.section_id = sec.section_id
+       WHERE sec.section_id = $1
+         AND ce.status = 'enrolled'
+       ORDER BY 
+         s.student_id,
+         ce.enrollment_date DESC,
+         -- Extract last name (last word) for sorting
+         SPLIT_PART(TRIM(s.full_name), ' ', 
+           CASE 
+             WHEN (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) = 0 THEN 1
+             ELSE (LENGTH(s.full_name) - LENGTH(REPLACE(s.full_name, ' ', ''))) + 1
+           END
+         ) ASC,
+         -- Then sort by full name for consistent ordering
+         s.full_name ASC`,
+      [sectionId]
+    );
+    
+    console.log(`✅ [SECTION STUDENTS] Found ${result.rows.length} unique students for section ${sectionId}`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ [SECTION STUDENTS] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Available students for a section (not enrolled in the same course_id AND term_id)
 app.get('/api/students/available-for-section/:id', async (req, res) => {
   try {
