@@ -1365,7 +1365,8 @@ const SyllabusCreationWizard = ({
                           <select
                             value={item.ird || 'R'}
                             onChange={(e) => handleUpdateAssessmentCriteria(index, 'ird', e.target.value)}
-                            className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            className="px-2.5 py-1 pr-8 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white cursor-pointer hover:border-gray-400 transition-colors"
+                            title="I/R/D - Introduced/Reinforced/Developed"
                           >
                             <option value="I">I - Introduced</option>
                             <option value="R">R - Reinforced</option>
@@ -1462,7 +1463,8 @@ const SyllabusCreationWizard = ({
                   <select
                     value={newAssessmentCriteria.ird}
                     onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, ird: e.target.value }))}
-                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="px-2.5 py-1 pr-8 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white cursor-pointer hover:border-gray-400 transition-colors"
+                    title="I/R/D - Introduced/Reinforced/Developed"
                   >
                     <option value="I">I - Introduced</option>
                     <option value="R">R - Reinforced</option>
@@ -2325,33 +2327,66 @@ const SyllabusCreationWizard = ({
                                 )
                               }
                               
-                              return tasksArray.map((taskCode, taskIndex) => {
-                                const task = allAssessmentTasks.find(t => t.code === taskCode) || { 
-                                  code: taskCode, 
-                                  name: taskCode, 
-                                  weight: 0, 
-                                  score: 0 
+                              // Group tasks by base code (e.g., WA1, WA2, WA3 -> WA)
+                              const groupedTasks = {}
+                              tasksArray.forEach(taskCode => {
+                                // Extract base code (remove trailing numbers)
+                                const baseCode = taskCode.replace(/\d+$/, '')
+                                if (!groupedTasks[baseCode]) {
+                                  groupedTasks[baseCode] = {
+                                    baseCode: baseCode,
+                                    codes: [],
+                                    totalWeight: 0,
+                                    totalScore: 0,
+                                    names: new Set()
+                                  }
                                 }
+                                groupedTasks[baseCode].codes.push(taskCode)
+                                
+                                const task = allAssessmentTasks.find(t => t.code === taskCode)
+                                if (task) {
+                                  groupedTasks[baseCode].totalWeight += parseFloat(task.weight) || 0
+                                  groupedTasks[baseCode].totalScore += parseFloat(task.score) || 0
+                                  if (task.name) {
+                                    // Extract base name (remove trailing numbers)
+                                    const baseName = task.name.replace(/\s+\d+$/, '')
+                                    groupedTasks[baseCode].names.add(baseName)
+                                  }
+                                }
+                              })
+                              
+                              const groupedArray = Object.values(groupedTasks)
+                              
+                              return groupedArray.map((group, groupIndex) => {
+                                const groupName = Array.from(group.names)[0] || group.baseCode
+                                const codesDisplay = group.codes.length > 1 
+                                  ? `${group.baseCode} (${group.codes.join(', ')})` 
+                                  : group.codes[0]
                                 
                                 return (
-                                  <tr key={`${iloIndex}-${taskIndex}`} className="hover:bg-gray-50">
-                                    {taskIndex === 0 && (
+                                  <tr key={`${iloIndex}-${groupIndex}`} className="hover:bg-gray-50">
+                                    {groupIndex === 0 && (
                                       <>
-                                        <td rowSpan={tasksArray.length} className="px-3 py-2 border border-gray-300 font-medium text-gray-900 align-top">
+                                        <td rowSpan={groupedArray.length} className="px-3 py-2 border border-gray-300 font-medium text-gray-900 align-top">
                                           {ilo.code}
                                         </td>
-                                        <td rowSpan={tasksArray.length} className="px-3 py-2 border border-gray-300 text-gray-700 align-top">
+                                        <td rowSpan={groupedArray.length} className="px-3 py-2 border border-gray-300 text-gray-700 align-top">
                                           {ilo.description}
                                         </td>
                                       </>
                                     )}
-                                    <td className="px-3 py-2 border border-gray-300 font-medium text-gray-900">{task.code}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-gray-700">{task.name || taskCode}</td>
-                                    <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
-                                      {task.weight > 0 ? `${task.weight.toFixed(2)}%` : '—'}
+                                    <td className="px-3 py-2 border border-gray-300 font-medium text-gray-900">{group.baseCode}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-gray-700">
+                                      <div>{groupName}</div>
+                                      {group.codes.length > 1 && (
+                                        <div className="text-xs text-gray-500 mt-0.5">{codesDisplay}</div>
+                                      )}
                                     </td>
                                     <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
-                                      {task.score > 0 ? task.score.toFixed(1) : '—'}
+                                      {group.totalWeight > 0 ? `${group.totalWeight.toFixed(2)}%` : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                      {group.totalScore > 0 ? group.totalScore.toFixed(1) : '—'}
                                     </td>
                                   </tr>
                                 )
@@ -2694,10 +2729,10 @@ const SyllabusCreationWizard = ({
 
               return (
                 <div className="mt-4 border-t pt-4 space-y-4">
-                  {/* ILO-SO and ILO-CPA Mapping */}
+                  {/* ILO-SO Mapping */}
                   {soReferences.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-SO and ILO-CPA Mapping</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">ILO-SO Mapping</h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs border border-gray-300">
                           <thead className="bg-gray-50">
@@ -2706,63 +2741,18 @@ const SyllabusCreationWizard = ({
                               {soReferences.map((so, idx) => (
                                 <th key={idx} className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">{so.so_code}</th>
                               ))}
-                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">C</th>
-                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">P</th>
-                              <th className="px-2 py-1.5 border border-gray-300 text-center font-semibold text-gray-900">A</th>
                             </tr>
                             <tr className="bg-gray-100">
                               <th className="px-2 py-1 border border-gray-300 text-left font-medium text-gray-700">STUDENT OUTCOMES (SO): Mapping of Assessment Tasks (AT)</th>
                               {soReferences.map((so, idx) => (
                                 <th key={idx} className="px-2 py-1 border border-gray-300"></th>
                               ))}
-                              <th colSpan="3" className="px-2 py-1 border border-gray-300 text-center font-medium text-gray-700">Domains</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
                             {ilos.map((ilo, iloIdx) => {
                               const soTasks = getAssessmentTasksForMapping(ilo, 'so_mappings')
                               const soTaskScores = calculateScoreForTasks(soTasks)
-                              
-                              // Calculate CPA for this ILO based on all mapped assessment tasks
-                              const calculateCPAForILO = () => {
-                                let cognitive = 0
-                                let psychomotor = 0
-                                let affective = 0
-                                
-                                // Get all assessment tasks mapped to this ILO from all mapping types
-                                const allTasks = new Set()
-                                ;['so_mappings', 'iga_mappings', 'cdio_mappings', 'sdg_mappings'].forEach(mappingType => {
-                                  if (ilo[mappingType]) {
-                                    ilo[mappingType].forEach(mapping => {
-                                      if (mapping.assessment_tasks) {
-                                        mapping.assessment_tasks.forEach(task => allTasks.add(task))
-                                      }
-                                    })
-                                  }
-                                })
-                                
-                                // Find unique criteria that contain these tasks
-                                const criteriaUsed = new Set()
-                                Array.from(allTasks).forEach(taskCode => {
-                                  formData.assessment_criteria.forEach((criterion, idx) => {
-                                    const subAssessments = formData.sub_assessments[idx] || []
-                                    const hasTask = subAssessments.some(sub => {
-                                      const code = sub.abbreviation || sub.name.substring(0, 2).toUpperCase()
-                                      return code === taskCode
-                                    })
-                                    if (hasTask && !criteriaUsed.has(idx)) {
-                                      criteriaUsed.add(idx)
-                                      cognitive += parseFloat(criterion.cognitive) || 0
-                                      psychomotor += parseFloat(criterion.psychomotor) || 0
-                                      affective += parseFloat(criterion.affective) || 0
-                                    }
-                                  })
-                                })
-                                
-                                return { cognitive, psychomotor, affective }
-                              }
-                              
-                              const cpa = calculateCPAForILO()
                               
                               return (
                                 <tr key={iloIdx} className="hover:bg-gray-50">
@@ -2787,9 +2777,6 @@ const SyllabusCreationWizard = ({
                                       </td>
                                     )
                                   })}
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.cognitive > 0 ? Math.round(cpa.cognitive) : '—'}</td>
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.psychomotor > 0 ? Math.round(cpa.psychomotor) : '—'}</td>
-                                  <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">{cpa.affective > 0 ? Math.round(cpa.affective) : '—'}</td>
                                 </tr>
                               )
                             })}
