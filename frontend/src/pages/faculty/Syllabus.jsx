@@ -2932,7 +2932,7 @@ const Syllabus = () => {
                   </div>
                 </div>
 
-                {/* Draft Section - Show Edit, Submit, and Delete buttons for draft syllabi 
+                {/* Draft Section - Show Edit, Submit, Delete, and Share buttons for draft syllabi 
                     Drafts are identified by status='draft' or both review_status and approval_status being 'pending' */}
                 {(viewingSyllabus.status === 'draft' || 
                   (viewingSyllabus.review_status === 'pending' && 
@@ -2949,14 +2949,14 @@ const Syllabus = () => {
                           openEditModal(viewingSyllabus)
                           setShowViewModal(false)
                         }}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <PencilIcon className="h-4 w-4" />
                         Edit Syllabus
                       </button>
                       <button
                         onClick={() => handleSubmitForReview(viewingSyllabus)}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <ArrowPathIcon className="h-4 w-4" />
                         Submit for Review
@@ -2964,7 +2964,7 @@ const Syllabus = () => {
                       <button
                         onClick={handleDeleteSyllabus}
                         disabled={deletingSyllabus || !viewingSyllabus?.syllabus_id}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {deletingSyllabus ? (
                           <>
@@ -2977,6 +2977,13 @@ const Syllabus = () => {
                             <span>Delete</span>
                           </>
                         )}
+                      </button>
+                      <button
+                        onClick={handleOpenShareModal}
+                        className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                        Share to Class
                       </button>
                     </div>
                   </div>
@@ -2997,14 +3004,14 @@ const Syllabus = () => {
                           openEditModal(viewingSyllabus)
                           setShowViewModal(false)
                         }}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <PencilIcon className="h-4 w-4" />
                         Edit Syllabus
                       </button>
                       <button
                         onClick={() => handleSubmitForReview(viewingSyllabus)}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <ArrowPathIcon className="h-4 w-4" />
                         Resubmit for Review
@@ -3017,17 +3024,69 @@ const Syllabus = () => {
                 {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
                   <div className="pt-4 border-t border-gray-300">
                     {isPublished ? (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                        <p className="text-sm text-green-800 flex items-center gap-2">
-                          <CheckCircleIcon className="h-5 w-5" />
-                          <strong>Published:</strong> This syllabus has been published. Assessments are now visible in the assessment tab.
-                        </p>
-                      </div>
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-green-800 flex items-center gap-2">
+                            <CheckCircleIcon className="h-5 w-5" />
+                            <strong>Published:</strong> This syllabus has been published. Assessments are now visible in the assessment tab.
+                          </p>
+                        </div>
+                        {!showEditRequestForm ? (
+                          <div className="flex gap-3">
+                            <button
+                              onClick={handleOpenShareModal}
+                              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            >
+                              <ArrowUpTrayIcon className="h-5 w-5" />
+                              Share to Class
+                            </button>
+                            <button
+                              onClick={() => setShowEditRequestForm(true)}
+                              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                            >
+                              Request Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-bold italic text-gray-700 mb-1">
+                                Reason for Edit Request *
+                              </label>
+                              <textarea
+                                value={editRequestReason}
+                                onChange={(e) => setEditRequestReason(e.target.value)}
+                                rows={4}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                placeholder="Please provide a reason for requesting an edit to this approved syllabus..."
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setShowEditRequestForm(false)
+                                  setEditRequestReason('')
+                                }}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={handleSubmitEditRequest}
+                                disabled={!editRequestReason.trim()}
+                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                              >
+                                Submit Request
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <button
                         onClick={handlePublish}
                         disabled={isPublishing}
-                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ArrowUpTrayIcon className="h-5 w-5" />
                         {isPublishing ? 'Publishing...' : 'Publish Syllabus'}
@@ -3036,27 +3095,41 @@ const Syllabus = () => {
                   </div>
                 )}
 
-                {/* Share to Class Section - Show for all syllabi */}
-                <div className="pt-4 border-t border-gray-300">
-                  <button
-                    onClick={handleOpenShareModal}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
-                  >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    Share to Class
-                  </button>
-                </div>
+                {/* Share to Class Section - Show for non-approved syllabi that are not drafts */}
+                {!(viewingSyllabus.status === 'draft' || 
+                  (viewingSyllabus.review_status === 'pending' && 
+                   viewingSyllabus.approval_status === 'pending')) &&
+                 !(viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved') && (
+                  <div className="pt-4 border-t border-gray-300">
+                    <button
+                      onClick={handleOpenShareModal}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      <ArrowUpTrayIcon className="h-5 w-5" />
+                      Share to Class
+                    </button>
+                  </div>
+                )}
 
-                {/* Edit Request Section - Only show for approved syllabi */}
-                {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
+                {/* Edit Request Section - Only show for approved syllabi when not published (published case handled above) */}
+                {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && !isPublished && (
                   <div className="pt-4 border-t border-gray-300">
                     {!showEditRequestForm ? (
-                      <button
-                        onClick={() => setShowEditRequestForm(true)}
-                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                      >
-                        Request Edit
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleOpenShareModal}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                          <ArrowUpTrayIcon className="h-5 w-5" />
+                          Share to Class
+                        </button>
+                        <button
+                          onClick={() => setShowEditRequestForm(true)}
+                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                          Request Edit
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         <div>
@@ -3067,7 +3140,7 @@ const Syllabus = () => {
                             value={editRequestReason}
                             onChange={(e) => setEditRequestReason(e.target.value)}
                             rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             placeholder="Please provide a reason for requesting an edit to this approved syllabus..."
                           />
                         </div>
@@ -3084,7 +3157,7 @@ const Syllabus = () => {
                           <button
                             onClick={handleSubmitEditRequest}
                             disabled={!editRequestReason.trim()}
-                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                           >
                             Submit Request
                           </button>
