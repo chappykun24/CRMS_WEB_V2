@@ -252,9 +252,18 @@ const AssignFaculty = () => {
             }
           })
           
-          setCourseSections(uniqueSections.sort((a, b) => 
+          const sortedSections = uniqueSections.sort((a, b) => 
             (a.section_code || '').localeCompare(b.section_code || '')
-          ))
+          )
+          setCourseSections(sortedSections)
+          
+          // Set default section filter to current class's section
+          if (selectedClass && selectedClass.section) {
+            const matchingSection = sortedSections.find(s => s.section_code === selectedClass.section)
+            if (matchingSection) {
+              setSelectedSectionFilter(String(matchingSection.section_id))
+            }
+          }
           
           // Fetch all enrolled students from ALL sections of this course
           const allEnrolledStudents = []
@@ -303,11 +312,13 @@ const AssignFaculty = () => {
     setShowEnrolledView(showEnrolled)
     setSelectedStudents(new Set())
     setStudentSearchQuery('')
-    setSelectedSectionFilter('') // Reset section filter to "All Sections" when switching views
     
     if (showEnrolled) {
+      // Reset filter first, then load enrolled students (which will set the filter to current class's section)
+      setSelectedSectionFilter('')
       await loadEnrolledStudents()
     } else {
+      setSelectedSectionFilter('') // Reset section filter when switching to available view
       await loadAvailableStudents()
     }
   }
