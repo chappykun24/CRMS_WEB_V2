@@ -503,58 +503,81 @@ const Syllabus = () => {
 
 
   const handleDeleteSyllabus = async (syllabusId) => {
-    // If syllabusId is provided, use it; otherwise use viewingSyllabus
-    let targetSyllabusId = syllabusId
+    // Always use viewingSyllabus when called from the modal
     const targetSyllabus = viewingSyllabus
-
-    // If no syllabusId provided, extract from viewingSyllabus
-    if (!targetSyllabusId && targetSyllabus) {
-      targetSyllabusId = targetSyllabus.syllabus_id || targetSyllabus.id
+    
+    if (!targetSyllabus) {
+      console.error('❌ [DELETE] No viewingSyllabus available')
+      alert('Error: No syllabus selected. Please close and reopen the syllabus view.')
+      return
     }
 
-    // Debug logging
-    console.log('🔍 [DELETE] handleDeleteSyllabus called:', { 
-      syllabusId, 
-      viewingSyllabus: viewingSyllabus ? { 
-        syllabus_id: viewingSyllabus.syllabus_id,
-        id: viewingSyllabus.id,
-        title: viewingSyllabus.title,
-        keys: Object.keys(viewingSyllabus)
-      } : null,
-      targetSyllabusId,
-      targetSyllabusIdType: typeof targetSyllabusId
-    })
-
-    // Ensure targetSyllabusId is a primitive value (number or string)
-    if (targetSyllabusId && typeof targetSyllabusId === 'object') {
-      // If it's an object, try to extract the ID
-      targetSyllabusId = targetSyllabusId.syllabus_id || targetSyllabusId.id || targetSyllabusId
-      console.log('🔍 [DELETE] Extracted ID from object:', targetSyllabusId)
+    // Extract syllabus_id - handle various formats
+    // First, try to get the ID directly from the syllabus object
+    let targetSyllabusId = null
+    
+    // Get raw values
+    const rawSyllabusId = targetSyllabus.syllabus_id
+    const rawId = targetSyllabus.id
+    
+    // Helper function to extract numeric ID from any value
+    const extractNumericId = (value) => {
+      if (value == null) return null
+      
+      // If it's already a number, return it
+      if (typeof value === 'number' && !isNaN(value) && value > 0) {
+        return value
+      }
+      
+      // If it's a string, try to parse it
+      if (typeof value === 'string') {
+        const parsed = parseInt(value.trim(), 10)
+        if (!isNaN(parsed) && parsed > 0) {
+          return parsed
+        }
+      }
+      
+      // If it's an object, try to extract from it
+      if (typeof value === 'object' && value !== null) {
+        const objId = value.syllabus_id || value.id || value.value
+        if (objId != null) {
+          return extractNumericId(objId) // Recursively extract
+        }
+      }
+      
+      return null
     }
     
-    // Convert to string and ensure it's valid
-    if (targetSyllabusId != null && targetSyllabusId !== undefined) {
-      targetSyllabusId = String(targetSyllabusId).trim()
-      // Check if it's a valid number string
-      if (targetSyllabusId === '' || targetSyllabusId === 'null' || targetSyllabusId === 'undefined' || targetSyllabusId === 'NaN') {
-        targetSyllabusId = null
-      }
-    } else {
-      targetSyllabusId = null
-    }
+    // Try to extract ID from various sources
+    targetSyllabusId = extractNumericId(rawSyllabusId) || 
+                       extractNumericId(rawId) || 
+                       extractNumericId(syllabusId)
 
-    if (!targetSyllabusId || targetSyllabusId === 'null' || targetSyllabusId === 'undefined' || targetSyllabusId === 'NaN') {
-      console.error('❌ [DELETE] Invalid syllabus ID for deletion:', { 
-        syllabusId, 
-        viewingSyllabus: viewingSyllabus ? {
-          syllabus_id: viewingSyllabus.syllabus_id,
-          id: viewingSyllabus.id,
-          title: viewingSyllabus.title,
-          keys: Object.keys(viewingSyllabus),
-          allProps: viewingSyllabus
-        } : null,
-        targetSyllabusId 
-      })
+    // Debug logging
+    console.log('🔍 [DELETE] ID extraction:', JSON.stringify({ 
+      syllabusId_param: syllabusId,
+      rawSyllabusId,
+      rawSyllabusIdType: typeof rawSyllabusId,
+      rawId,
+      rawIdType: typeof rawId,
+      extracted_targetSyllabusId: targetSyllabusId,
+      viewingSyllabus_title: viewingSyllabus?.title,
+      viewingSyllabus_keys: viewingSyllabus ? Object.keys(viewingSyllabus) : []
+    }, null, 2))
+
+    // Validate the extracted ID
+    if (!targetSyllabusId || typeof targetSyllabusId !== 'number' || targetSyllabusId <= 0) {
+      console.error('❌ [DELETE] Invalid syllabus ID for deletion:', JSON.stringify({ 
+        syllabusId_param: syllabusId, 
+        rawSyllabusId,
+        rawSyllabusIdType: typeof rawSyllabusId,
+        rawId,
+        rawIdType: typeof rawId,
+        extracted_targetSyllabusId: targetSyllabusId,
+        viewingSyllabus_title: viewingSyllabus?.title,
+        viewingSyllabus_keys: viewingSyllabus ? Object.keys(viewingSyllabus) : [],
+        viewingSyllabus_full: viewingSyllabus
+      }, null, 2))
       alert('Error: Invalid syllabus ID. Cannot delete. The syllabus may not have been loaded correctly. Please close and reopen the syllabus view, then try again.')
       return
     }
@@ -576,9 +599,23 @@ const Syllabus = () => {
       if (!confirm('Are you sure you want to delete this syllabus?')) return
     }
 
+    // Final validation - ensure we have a valid numeric ID
+    const finalId = parseInt(targetSyllabusId, 10)
+    if (isNaN(finalId) || finalId <= 0) {
+      console.error('❌ [DELETE] Final ID validation failed:', {
+        targetSyllabusId,
+        finalId,
+        type: typeof targetSyllabusId
+      })
+      alert('Error: Invalid syllabus ID format. Cannot delete.')
+      return
+    }
+
+    console.log('✅ [DELETE] Proceeding with deletion, ID:', finalId)
+
     setDeletingSyllabus(true)
     try {
-      const response = await fetch(`/api/syllabi/${targetSyllabusId}`, {
+      const response = await fetch(`/api/syllabi/${finalId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -600,12 +637,13 @@ const Syllabus = () => {
           loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
         }
       } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to delete syllabus')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('❌ [DELETE] Delete failed:', errorData)
+        alert(errorData.error || 'Failed to delete syllabus')
       }
     } catch (error) {
-      console.error('Error deleting syllabus:', error)
-      alert('Failed to delete syllabus')
+      console.error('❌ [DELETE] Error deleting syllabus:', error)
+      alert('Failed to delete syllabus: ' + (error.message || 'Unknown error'))
     } finally {
       setDeletingSyllabus(false)
     }
@@ -693,10 +731,12 @@ const Syllabus = () => {
       syllabus_id: syllabus.syllabus_id || syllabus.id
     }
     
-    console.log('🔍 [VIEW MODAL] Opening syllabus:', {
-      original: { syllabus_id: syllabus.syllabus_id, id: syllabus.id },
-      normalized: { syllabus_id: normalizedSyllabus.syllabus_id }
-    })
+    console.log('🔍 [VIEW MODAL] Opening syllabus:', JSON.stringify({
+      original_syllabus_id: syllabus.syllabus_id,
+      original_id: syllabus.id,
+      normalized_syllabus_id: normalizedSyllabus.syllabus_id,
+      syllabus_keys: Object.keys(syllabus)
+    }, null, 2))
     
     setViewingSyllabus(normalizedSyllabus)
     setShowViewModal(true)
