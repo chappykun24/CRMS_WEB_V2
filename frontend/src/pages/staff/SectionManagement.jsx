@@ -964,14 +964,14 @@ const SectionManagement = () => {
                       </option>
                       {isLoadingTerms ? (
                         <option value="" disabled>Loading...</option>
-                      ) : activeTerms.length > 0 ? (
-                        activeTerms.map(term => (
+                      ) : terms.length > 0 ? (
+                        terms.map(term => (
                           <option key={term.term_id} value={term.term_id}>
                             {`${term.school_year} - ${term.semester}`}
                           </option>
                         ))
                       ) : (
-                        <option value="" disabled>No active terms available</option>
+                        <option value="" disabled>No terms available</option>
                       )}
                     </select>
                     {isLoadingTerms && (
@@ -979,9 +979,9 @@ const SectionManagement = () => {
                         Loading school terms...
                       </p>
                     )}
-                                          {!isLoadingTerms && activeTerms.length === 0 && (
+                                          {!isLoadingTerms && terms.length === 0 && (
                         <p className="text-xs text-amber-600 mt-1">
-                          No active school terms found. Please contact an administrator.
+                          No school terms found. Please contact an administrator.
                         </p>
                       )}
                   </div>
@@ -1127,14 +1127,14 @@ const SectionManagement = () => {
                       </option>
                       {isLoadingTerms ? (
                         <option value="" disabled>Loading...</option>
-                      ) : activeTerms.length > 0 ? (
-                        activeTerms.map(term => (
+                      ) : terms.length > 0 ? (
+                        terms.map(term => (
                           <option key={term.term_id} value={term.term_id}>
                             {`${term.school_year} - ${term.semester}`}
                           </option>
                         ))
                       ) : (
-                        <option value="" disabled>No active terms available</option>
+                        <option value="" disabled>No terms available</option>
                       )}
                     </select>
                     {isLoadingTerms && (
@@ -1142,9 +1142,9 @@ const SectionManagement = () => {
                         Loading school terms...
                       </p>
                     )}
-                    {!isLoadingTerms && activeTerms.length === 0 && (
+                    {!isLoadingTerms && terms.length === 0 && (
                       <p className="text-xs text-amber-600 mt-1">
-                        No active school terms found. Please contact an administrator.
+                        No school terms found. Please contact an administrator.
                       </p>
                     )}
                   </div>
