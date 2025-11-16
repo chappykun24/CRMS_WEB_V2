@@ -848,15 +848,24 @@ const SyllabusCreationWizard = ({
   const prepareSyllabusData = (isDraft = false) => {
     // Include ILOs in the form data and set title for backward compatibility
     // Ensure assessment_criteria is properly formatted with numeric weights, CPA fields, and I/R/D
-    const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
-      abbreviation: (item.abbreviation || '').trim(),
-      name: item.name.trim(),
-      weight: parseFloat(item.weight) || 0,
-      cognitive: parseFloat(item.cognitive) || 0,
-      psychomotor: parseFloat(item.psychomotor) || 0,
-      affective: parseFloat(item.affective) || 0,
-      ird: item.ird || 'R'
-    }))
+    const formattedAssessmentCriteria = formData.assessment_criteria.map(item => {
+      // Safely parse numeric values, handling empty strings, null, undefined
+      const parseNumeric = (value) => {
+        if (value === null || value === undefined || value === '') return 0
+        const parsed = parseFloat(value)
+        return isNaN(parsed) ? 0 : parsed
+      }
+      
+      return {
+        abbreviation: (item.abbreviation || '').trim(),
+        name: (item.name || '').trim(),
+        weight: parseNumeric(item.weight),
+        cognitive: parseNumeric(item.cognitive),
+        psychomotor: parseNumeric(item.psychomotor),
+        affective: parseNumeric(item.affective),
+        ird: item.ird || 'R' // Ensure IRD always has a default value
+      }
+    })
     
     // Format sub-assessments for saving
     const formattedSubAssessments = {}
