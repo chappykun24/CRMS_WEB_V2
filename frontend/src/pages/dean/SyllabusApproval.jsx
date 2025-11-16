@@ -618,7 +618,7 @@ const SyllabusApproval = () => {
                                         <td className="px-3 py-2 border border-gray-300 text-gray-700 font-medium">Qualification</td>
                                         <td className="px-3 py-2 border border-gray-300 text-gray-900">{metadata.course_instructor.qualification}</td>
                                       </tr>
-                                    )}
+                  )}
                                     {metadata.course_instructor.contact_email && (
                                       <tr className="hover:bg-gray-50">
                                         <td className="px-3 py-2 border border-gray-300 text-gray-700 font-medium">Contact Email</td>
