@@ -492,10 +492,23 @@ const Syllabus = () => {
 
   const handleDeleteSyllabus = async (syllabusId) => {
     // If syllabusId is provided, use it; otherwise use viewingSyllabus
-    const targetSyllabusId = syllabusId || viewingSyllabus?.syllabus_id
+    let targetSyllabusId = syllabusId || viewingSyllabus?.syllabus_id
     const targetSyllabus = syllabusId ? null : viewingSyllabus
 
-    if (!targetSyllabusId) return
+    // Ensure targetSyllabusId is a primitive value (number or string)
+    if (targetSyllabusId && typeof targetSyllabusId === 'object') {
+      // If it's an object, try to extract the ID
+      targetSyllabusId = targetSyllabusId.syllabus_id || targetSyllabusId.id || targetSyllabusId
+    }
+    
+    // Convert to string/number and ensure it's valid
+    targetSyllabusId = targetSyllabusId ? String(targetSyllabusId) : null
+
+    if (!targetSyllabusId) {
+      console.error('Invalid syllabus ID for deletion:', { syllabusId, viewingSyllabus })
+      alert('Error: Invalid syllabus ID. Cannot delete.')
+      return
+    }
 
     // If we have viewingSyllabus, check if it's a draft
     if (targetSyllabus) {

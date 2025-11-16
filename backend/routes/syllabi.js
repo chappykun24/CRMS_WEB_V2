@@ -710,10 +710,19 @@ router.put('/:id/approve', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   
+  // Validate ID is a valid number
+  const syllabusId = parseInt(id, 10);
+  if (isNaN(syllabusId) || syllabusId <= 0) {
+    return res.status(400).json({ 
+      error: 'Invalid syllabus ID',
+      details: `Expected a valid number, received: ${id}`
+    });
+  }
+  
   try {
     // First check if syllabus exists
     const checkQuery = 'SELECT syllabus_id, title FROM syllabi WHERE syllabus_id = $1';
-    const checkResult = await db.query(checkQuery, [id]);
+    const checkResult = await db.query(checkQuery, [syllabusId]);
     
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Syllabus not found' });
@@ -721,7 +730,7 @@ router.delete('/:id', async (req, res) => {
     
     // Delete the syllabus (cascade will handle related records)
     const deleteQuery = 'DELETE FROM syllabi WHERE syllabus_id = $1 RETURNING title';
-    const result = await db.query(deleteQuery, [id]);
+    const result = await db.query(deleteQuery, [syllabusId]);
     
     res.json({ 
       message: 'Syllabus deleted successfully',
