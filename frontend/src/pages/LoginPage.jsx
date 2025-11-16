@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/UnifiedAuthContext'
+import logo from '../images/logo.png'
 import { 
   Mail, 
   Lock, 
@@ -20,46 +21,22 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   const [logoLoaded, setLogoLoaded] = useState(false)
-  const [logoSrc, setLogoSrc] = useState(null)
   
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Asynchronously load logo image after interface renders
+  // Preload logo image
   useEffect(() => {
-    // Load logo after interface is shown (deferred loading)
-    const loadLogo = async () => {
-      try {
-        // Use dynamic import for async loading
-        const logoModule = await import('../images/logo.png')
-        setLogoSrc(logoModule.default)
-        
-        // Preload the image
-        const img = new Image()
-        img.onload = () => {
-          setLogoLoaded(true)
-        }
-        img.onerror = () => {
-          console.warn('Failed to load logo image')
-          setLogoLoaded(true) // Still set to true to show placeholder
-        }
-        img.src = logoModule.default
-      } catch (error) {
-        console.warn('Error loading logo:', error)
-        setLogoLoaded(true) // Show placeholder even if load fails
-      }
+    const img = new Image()
+    img.onload = () => {
+      setLogoLoaded(true)
     }
-
-    // Delay logo loading to prioritize interface rendering
-    // Use requestIdleCallback for better performance, fallback to setTimeout
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => {
-        setTimeout(loadLogo, 100) // Small delay to ensure interface renders first
-      }, { timeout: 500 })
-    } else {
-      setTimeout(loadLogo, 100)
+    img.onerror = () => {
+      console.warn('Failed to load logo image')
+      setLogoLoaded(true) // Still set to true to show placeholder
     }
+    img.src = logo
   }, [])
 
   // If already authenticated, don't allow visiting the login page
@@ -158,9 +135,9 @@ const LoginPage = () => {
       {isLoading && (
         <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
           <div className="text-center">
-            {logoLoaded && logoSrc ? (
+            {logoLoaded ? (
               <img 
-                src={logoSrc} 
+                src={logo} 
                 alt="CRMS Logo" 
                 className="w-40 h-40 mx-auto mb-8 animate-pulse object-contain"
                 loading="eager"
@@ -179,9 +156,9 @@ const LoginPage = () => {
       {/* BSU Logo at Top Left - Lazy loaded */}
       <div className="fixed top-4 left-4 z-40">
         <Link to="/" className="hover:opacity-80 transition-opacity inline-block">
-          {logoLoaded && logoSrc ? (
+          {logoLoaded ? (
             <img 
-              src={logoSrc} 
+              src={logo} 
               alt="BSU Logo" 
               className="w-10 h-10 object-contain"
               loading="lazy"

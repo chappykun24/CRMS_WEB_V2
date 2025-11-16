@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useRef, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { TableSkeleton } from '../../components/skeletons'
+import { prefetchAdminData } from '../../services/dataPrefetchService'
 
 // Lazy load admin components for code splitting
 const UserManagement = lazy(() => import('./UserManagement'))
@@ -29,11 +30,8 @@ const AdminDashboard = ({ user }) => {
     
     // Only prefetch after a delay and only once
     const timer = setTimeout(() => {
-      // Use dynamic import to load prefetch service only when needed
-      import('../../services/dataPrefetchService').then(({ prefetchAdminData }) => {
-        prefetchAdminData().catch(err => {
-          console.error('Prefetch error (non-blocking):', err)
-        })
+      prefetchAdminData().catch(err => {
+        console.error('Prefetch error (non-blocking):', err)
       })
       prefetchCalledRef.current = true
     }, 2000) // Increased delay to reduce initial load impact

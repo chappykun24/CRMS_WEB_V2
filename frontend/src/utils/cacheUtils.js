@@ -2,6 +2,7 @@
  * Utility functions for efficient caching with sessionStorage
  * Handles quota limits by storing only minimal essential data
  */
+import { clearStaffLargeCache } from '../services/staffCacheService'
 
 /**
  * Minimize class data by removing large fields (base64 images)
@@ -92,10 +93,7 @@ export const safeSetItem = (key, value, minimizeFn = null) => {
       // If it's a staff cache entry, try to clear large staff entries
       if (key.includes('staff_')) {
         try {
-          // Import dynamically to avoid circular dependencies
-          import('../services/staffCacheService').then(({ clearStaffLargeCache }) => {
-            clearStaffLargeCache();
-          });
+          clearStaffLargeCache();
         } catch (e) {
           // Ignore if import fails
         }
