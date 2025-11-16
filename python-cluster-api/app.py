@@ -646,11 +646,25 @@ def cluster_records(records):
     df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
     df_clean['student_id'] = pd.to_numeric(df_clean['student_id'], errors='coerce').astype('Int64')
     
+    # Log merge diagnostics
+    print(f'\n🔍 [Python API] Merge diagnostics:')
+    print(f'   Original df student_ids: {df["student_id"].tolist()[:5]}...')
+    print(f'   Clean df student_ids: {df_clean["student_id"].tolist()[:5]}...')
+    print(f'   Original df shape: {df.shape}')
+    print(f'   Clean df shape: {df_clean.shape}')
+    print(f'   Clean df has cluster_label: {"cluster_label" in df_clean.columns}')
+    
     output = df.merge(
         df_clean[['student_id', 'cluster', 'cluster_label', 'silhouette_score', 'clustering_explanation']],
         on='student_id',
         how='left'
     )
+    
+    # Log merge results
+    print(f'   Output shape after merge: {output.shape}')
+    print(f'   Output has cluster_label: {"cluster_label" in output.columns}')
+    clustered_after_merge = output['cluster_label'].notna().sum()
+    print(f'   Students with cluster_label after merge: {clustered_after_merge}/{len(output)}')
     
     # Convert NaN to None for JSON serialization
     result = output.to_dict(orient='records')
@@ -710,7 +724,24 @@ def cluster_students():
               f'Late={sample.get("submission_late_count")}, '
               f'Missing={sample.get("submission_missing_count")}')
     
-    results = cluster_records(data)
+    try:
+        results = cluster_records(data)
+    except Exception as e:
+        print(f'❌ [Python API] Error during clustering: {str(e)}')
+        import traceback
+        print(f'❌ [Python API] Traceback:')
+        traceback.print_exc()
+        # Return error response with original student IDs but no clusters
+        error_results = []
+        for record in data:
+            error_results.append({
+                'student_id': record.get('student_id'),
+                'cluster': None,
+                'cluster_label': None,
+                'silhouette_score': None,
+                'clustering_explanation': f'Error: {str(e)}'
+            })
+        results = error_results
     
     # Log results
     clustered_count = sum(1 for r in results if r.get('cluster_label') and r.get('cluster_label') != 'Not Clustered')
