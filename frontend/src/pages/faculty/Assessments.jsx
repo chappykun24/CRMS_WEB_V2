@@ -1656,18 +1656,15 @@ const Assessments = () => {
                               <table className="min-w-full">
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
                                   <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                       Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
                                     </th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                       Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
                                     </th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Transmuted</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-12"></th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1690,22 +1687,8 @@ const Assessments = () => {
                                         <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
                                       </td>
                                       <td className="px-4 py-5">
-                                        <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="h-4 bg-gray-200 rounded w-20 skeleton mx-auto"></div>
-                                      </td>
-                                      <td className="px-4 py-5">
                                         <div className="flex justify-center">
                                           <div className="h-6 bg-gray-200 rounded-md w-16 skeleton"></div>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5">
-                                        <div className="flex items-center justify-center">
-                                          <div className="h-5 w-5 bg-gray-200 rounded skeleton"></div>
                                         </div>
                                       </td>
                                     </tr>
@@ -1720,13 +1703,11 @@ const Assessments = () => {
                               <table className="min-w-full">
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
                                   <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Points</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
-                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Points</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
+                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1774,115 +1755,10 @@ const Assessments = () => {
                                         </div>
                                       </td>
                                       <td className="px-4 py-3">
-                                        <div className="text-center">
-                                          <span className="text-sm font-semibold text-green-600" title="Transmuted Score = (Adjusted / Max) × 62.5 + 37.5, then × (Weight / 100)">
-                                            {(() => {
-                                              // Calculate transmuted score from cached grades if available
-                                              const gradesCacheKey = `assessment_grades_${assessment.assessment_id}`
-                                              const cachedGrades = safeGetItem(gradesCacheKey)
-                                              if (cachedGrades && Object.keys(cachedGrades).length > 0) {
-                                                let totalTransmuted = 0
-                                                let count = 0
-                                                Object.values(cachedGrades).forEach(gradeData => {
-                                                  if (gradeData.raw_score !== null && gradeData.raw_score !== '' && gradeData.submission_status !== 'missing') {
-                                                    const rawScore = parseFloat(gradeData.raw_score) || 0
-                                                    const latePenalty = parseFloat(gradeData.late_penalty) || 0
-                                                    const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, assessment.total_points)
-                                                    const actualScore = calculateActualScore(adjustedScore, assessment.total_points)
-                                                    const transmutedScore = calculateTransmutedScore(actualScore, assessment.weight_percentage || 0)
-                                                    totalTransmuted += transmutedScore
-                                                    count++
-                                                  }
-                                                })
-                                                if (count > 0) {
-                                                  return (totalTransmuted / count).toFixed(2)
-                                                }
-                                              }
-                                              return '—'
-                                            })()}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3">
-                                        <div className="text-center">
-                                          <span className="text-sm text-gray-700">
-                                            {assessment.due_date ? (() => {
-                                              try {
-                                                const date = new Date(assessment.due_date)
-                                                if (!isNaN(date.getTime())) {
-                                                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                                }
-                                              } catch (e) {}
-                                              return '—'
-                                            })() : '—'}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3">
                                         <div className="flex justify-center">
                                           <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
                                             {assessment.status}
                                           </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-3">
-                                        <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                                          <div className="relative" ref={el => menuRefs.current[assessment.assessment_id] = el}>
-                                            <button
-                                              onClick={() => setOpenMenuId(openMenuId === assessment.assessment_id ? null : assessment.assessment_id)}
-                                              className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                                              title="More options"
-                                            >
-                                              <EllipsisVerticalIcon className="h-5 w-5" />
-                                            </button>
-                                            {openMenuId === assessment.assessment_id && (
-                                              <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 overflow-hidden">
-                                                <button
-                                                  onClick={() => {
-                                                    setOpenMenuId(null)
-                                                    openEditModal(assessment)
-                                                  }}
-                                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                >
-                                                  <PencilIcon className="h-4 w-4" />
-                                                  Edit
-                                                </button>
-                                                {assessment.is_published ? (
-                                                  <button
-                                                    onClick={() => {
-                                                      setOpenMenuId(null)
-                                                      handleUnpublishAssessment(assessment.assessment_id)
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                  >
-                                                    <XMarkIcon className="h-4 w-4" />
-                                                    Unpublish
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={() => {
-                                                      setOpenMenuId(null)
-                                                      handlePublishAssessment(assessment.assessment_id)
-                                                    }}
-                                                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                  >
-                                                    <CheckIcon className="h-4 w-4" />
-                                                    Publish
-                                                  </button>
-                                                )}
-                                                <button
-                                                  onClick={() => {
-                                                    setOpenMenuId(null)
-                                                    handleDeleteAssessment(assessment.assessment_id)
-                                                  }}
-                                                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                                >
-                                                  <TrashIcon className="h-4 w-4" />
-                                                  Delete
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
                                         </div>
                                       </td>
                                     </tr>
