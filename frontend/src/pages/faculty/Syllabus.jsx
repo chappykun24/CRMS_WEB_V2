@@ -491,10 +491,32 @@ const Syllabus = () => {
 
 
   const handleDeleteSyllabus = async (syllabusId) => {
-    if (!confirm('Are you sure you want to delete this syllabus?')) return
+    // If syllabusId is provided, use it; otherwise use viewingSyllabus
+    const targetSyllabusId = syllabusId || viewingSyllabus?.syllabus_id
+    const targetSyllabus = syllabusId ? null : viewingSyllabus
 
+    if (!targetSyllabusId) return
+
+    // If we have viewingSyllabus, check if it's a draft
+    if (targetSyllabus) {
+      const isDraft = targetSyllabus.review_status === 'pending' && 
+                      targetSyllabus.approval_status === 'pending'
+
+      if (!isDraft) {
+        alert('Only draft syllabi can be deleted. This syllabus has already been submitted for review.')
+        return
+      }
+
+      if (!confirm(`Are you sure you want to delete "${targetSyllabus.title}"? This action cannot be undone.`)) {
+        return
+      }
+    } else {
+      if (!confirm('Are you sure you want to delete this syllabus?')) return
+    }
+
+    setDeletingSyllabus(true)
     try {
-      const response = await fetch(`/api/syllabi/${syllabusId}`, {
+      const response = await fetch(`/api/syllabi/${targetSyllabusId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`
@@ -502,14 +524,28 @@ const Syllabus = () => {
       })
 
       if (response.ok) {
-        loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
-        alert('Syllabus deleted successfully!')
+        const result = await response.json()
+        alert(result.message || 'Syllabus deleted successfully!')
+        
+        // If deleting from view modal, close it
+        if (targetSyllabus) {
+          setShowViewModal(false)
+          setViewingSyllabus(null)
+        }
+        
+        // Reload syllabi if we have a selected class
+        if (selectedClass) {
+          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
+        }
       } else {
-        alert('Failed to delete syllabus')
+        const error = await response.json()
+        alert(error.error || 'Failed to delete syllabus')
       }
     } catch (error) {
       console.error('Error deleting syllabus:', error)
       alert('Failed to delete syllabus')
+    } finally {
+      setDeletingSyllabus(false)
     }
   }
 
@@ -721,52 +757,6 @@ const Syllabus = () => {
     }
   }
 
-  // Delete syllabus (only for draft mode)
-  const handleDeleteSyllabus = async () => {
-    if (!viewingSyllabus) return
-
-    // Check if it's a draft
-    const isDraft = viewingSyllabus.review_status === 'pending' && 
-                    viewingSyllabus.approval_status === 'pending'
-
-    if (!isDraft) {
-      alert('Only draft syllabi can be deleted. This syllabus has already been submitted for review.')
-      return
-    }
-
-    if (!confirm(`Are you sure you want to delete "${viewingSyllabus.title}"? This action cannot be undone.`)) {
-      return
-    }
-
-    setDeletingSyllabus(true)
-    try {
-      const response = await fetch(`/api/syllabi/${viewingSyllabus.syllabus_id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        alert(result.message || 'Syllabus deleted successfully!')
-        setShowViewModal(false)
-        setViewingSyllabus(null)
-        // Reload syllabi if we have a selected class
-        if (selectedClass) {
-          loadSyllabi(selectedClass.section_course_id, `syllabi_${selectedClass.section_course_id}`, false)
-        }
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to delete syllabus')
-      }
-    } catch (error) {
-      console.error('Error deleting syllabus:', error)
-      alert('Failed to delete syllabus')
-    } finally {
-      setDeletingSyllabus(false)
-    }
-  }
 
   const handleSubmitEditRequest = async () => {
     if (!editRequestReason.trim() || !viewingSyllabus) return
