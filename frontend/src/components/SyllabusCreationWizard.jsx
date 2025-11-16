@@ -2383,10 +2383,18 @@ const SyllabusCreationWizard = ({
                                       )}
                                     </td>
                                     <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
-                                      {group.totalWeight > 0 ? `${group.totalWeight.toFixed(2)}%` : '—'}
+                                      {group.totalWeight > 0 ? (
+                                        <span title="Total weight percentage of this assessment group across all mapped ILOs">
+                                          {group.totalWeight.toFixed(2)}%
+                                        </span>
+                                      ) : '—'}
                                     </td>
                                     <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
-                                      {group.totalScore > 0 ? group.totalScore.toFixed(1) : '—'}
+                                      {group.totalScore > 0 ? (
+                                        <span title="Total score points for this assessment group">
+                                          {group.totalScore.toFixed(1)}
+                                        </span>
+                                      ) : '—'}
                                     </td>
                                   </tr>
                                 )
@@ -2590,7 +2598,11 @@ const SyllabusCreationWizard = ({
                                     <td className="px-4 py-1.5 border border-gray-300 font-medium text-gray-700">{sub.code}</td>
                                     <td className="px-2 py-1.5 border border-gray-300 text-gray-600">{sub.name}</td>
                                     <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">—</td>
-                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">{sub.weight}%</td>
+                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
+                                      <span title="Weight percentage of this sub-assessment within its parent assessment criterion">
+                                        {sub.weight}%
+                                      </span>
+                                    </td>
                                     {ilos.map((ilo, iloIdx) => {
                                       const mapping = iloMappings[iloIdx + 1]
                                       const contribution = mapping ? mapping.weightPct : 0
@@ -2599,9 +2611,19 @@ const SyllabusCreationWizard = ({
                                         <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">
                                           {contribution > 0 ? (
                                             <div>
-                                              <div>{contribution}%</div>
+                                              <div 
+                                                className="cursor-help" 
+                                                title={`Weight contribution: Percentage of this sub-assessment's weight allocated to ${ilo.code}`}
+                                              >
+                                                {contribution}%
+                                              </div>
                                               {scoreValue > 0 && (
-                                                <div className="text-xs text-gray-400">({scoreValue.toFixed(1)})</div>
+                                                <div 
+                                                  className="text-xs text-gray-400 cursor-help" 
+                                                  title={`Score contribution: Weighted score points from this sub-assessment for ${ilo.code}`}
+                                                >
+                                                  ({scoreValue.toFixed(1)})
+                                                </div>
                                               )}
                                             </div>
                                           ) : '—'}
@@ -2623,7 +2645,14 @@ const SyllabusCreationWizard = ({
                         })}
                         <tr className="bg-gray-100 font-semibold">
                           <td colSpan="3" className="px-2 py-1.5 border border-gray-300 text-right">Total:</td>
-                          <td className="px-2 py-1.5 border border-gray-300 text-center">{totalWeight}%</td>
+                          <td className="px-2 py-1.5 border border-gray-300 text-center">
+                            <span 
+                              className="cursor-help" 
+                              title="Total weight: Sum of all sub-assessment weights for this assessment criterion"
+                            >
+                              {totalWeight}%
+                            </span>
+                          </td>
                           {ilos.map((ilo, iloIdx) => {
                             const totalStats = allSubAssessments.reduce((acc, sub) => {
                               const iloMappings = getILOMappings(sub.code, sub.score, sub.weight)
@@ -2639,9 +2668,19 @@ const SyllabusCreationWizard = ({
                               <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center">
                                 {totalStats.weightPct > 0 ? (
                                   <div>
-                                    <div className="font-medium">{totalStats.weightPct.toFixed(1)}%</div>
+                                    <div 
+                                      className="font-medium cursor-help" 
+                                      title={`Total weight contribution: Sum of all sub-assessment weights allocated to ${ilos[iloIdx].code}`}
+                                    >
+                                      {totalStats.weightPct.toFixed(1)}%
+                                    </div>
                                     {totalStats.score > 0 && (
-                                      <div className="text-xs text-gray-600">({totalStats.score.toFixed(1)})</div>
+                                      <div 
+                                        className="text-xs text-gray-600 cursor-help" 
+                                        title={`Total score contribution: Sum of all weighted scores from sub-assessments for ${ilos[iloIdx].code}`}
+                                      >
+                                        ({totalStats.score.toFixed(1)})
+                                      </div>
                                     )}
                                   </div>
                                 ) : '—'}
@@ -2650,9 +2689,24 @@ const SyllabusCreationWizard = ({
                           })}
                           <td className="px-2 py-1.5 border border-gray-300 text-center">
                             <div className="flex justify-center gap-1 font-medium">
-                              <span className="border-r border-gray-300 pr-1">{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.cognitive || 0), 0))}</span>
-                              <span className="border-r border-gray-300 pr-1">{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.psychomotor || 0), 0))}</span>
-                              <span>{Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.affective || 0), 0))}</span>
+                              <span 
+                                className="border-r border-gray-300 pr-1 cursor-help" 
+                                title="Total Cognitive domain value: Sum of all cognitive percentages from assessment criteria"
+                              >
+                                {Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.cognitive || 0), 0))}
+                              </span>
+                              <span 
+                                className="border-r border-gray-300 pr-1 cursor-help" 
+                                title="Total Psychomotor domain value: Sum of all psychomotor percentages from assessment criteria"
+                              >
+                                {Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.psychomotor || 0), 0))}
+                              </span>
+                              <span 
+                                className="cursor-help" 
+                                title="Total Affective domain value: Sum of all affective percentages from assessment criteria"
+                              >
+                                {Math.round(criteriaWithSubAssessments.reduce((sum, c) => sum + (c.affective || 0), 0))}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -2768,9 +2822,14 @@ const SyllabusCreationWizard = ({
                                       <td key={soIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                         {tasks.length > 0 ? (
                                           <div>
-                                            <div className="text-xs">{taskScores.display}</div>
+                                            <div className="text-xs" title="Assessment task codes mapped to this ILO and SO">{taskScores.display}</div>
                                             {taskScores.totalScore > 0 && (
-                                              <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                              <div 
+                                                className="text-xs font-semibold text-red-600 mt-0.5 cursor-help" 
+                                                title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and SO"
+                                              >
+                                                {taskScores.totalScore.toFixed(1)}
+                                              </div>
                                             )}
                                           </div>
                                         ) : '—'}
@@ -2821,9 +2880,14 @@ const SyllabusCreationWizard = ({
                                     <td key={igaIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                       {tasks.length > 0 ? (
                                         <div>
-                                          <div className="text-xs">{taskScores.display}</div>
+                                          <div className="text-xs" title="Assessment task codes mapped to this ILO and IGA">{taskScores.display}</div>
                                           {taskScores.totalScore > 0 && (
-                                            <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                            <div 
+                                              className="text-xs font-semibold text-red-600 mt-0.5 cursor-help" 
+                                              title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and IGA"
+                                            >
+                                              {taskScores.totalScore.toFixed(1)}
+                                            </div>
                                           )}
                                         </div>
                                       ) : '—'}
@@ -2874,9 +2938,14 @@ const SyllabusCreationWizard = ({
                                         <td key={cdioIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                           {tasks.length > 0 ? (
                                             <div>
-                                              <div className="text-xs">{taskScores.display}</div>
+                                              <div className="text-xs" title="Assessment task codes mapped to this ILO and CDIO">{taskScores.display}</div>
                                               {taskScores.totalScore > 0 && (
-                                                <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                                <div 
+                                                  className="text-xs font-semibold text-red-600 mt-0.5 cursor-help" 
+                                                  title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and CDIO"
+                                                >
+                                                  {taskScores.totalScore.toFixed(1)}
+                                                </div>
                                               )}
                                             </div>
                                           ) : '—'}
@@ -2921,9 +2990,14 @@ const SyllabusCreationWizard = ({
                                         <td key={sdgIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                           {tasks.length > 0 ? (
                                             <div>
-                                              <div className="text-xs">{taskScores.display}</div>
+                                              <div className="text-xs" title="Assessment task codes mapped to this ILO and SDG">{taskScores.display}</div>
                                               {taskScores.totalScore > 0 && (
-                                                <div className="text-xs font-semibold text-red-600 mt-0.5">{taskScores.totalScore.toFixed(1)}</div>
+                                                <div 
+                                                  className="text-xs font-semibold text-red-600 mt-0.5 cursor-help" 
+                                                  title="Total score points: Sum of scores from all assessment tasks mapped to this ILO and SDG"
+                                                >
+                                                  {taskScores.totalScore.toFixed(1)}
+                                                </div>
                                               )}
                                             </div>
                                           ) : '—'}
