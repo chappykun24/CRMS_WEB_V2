@@ -1206,7 +1206,7 @@ const SyllabusCreationWizard = ({
                     value={formData.course_instructor.name}
                     onChange={(e) => handleNestedChange('course_instructor.name', e.target.value)}
                     className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., Daryl Tiquio"
+                    placeholder="e.g., John Doe"
                   />
                 </div>
                 
@@ -1232,7 +1232,7 @@ const SyllabusCreationWizard = ({
                     value={formData.course_instructor.contact_email}
                     onChange={(e) => handleNestedChange('course_instructor.contact_email', e.target.value)}
                     className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., daryl.m.tiquio@g.batstate-u.edu.ph"
+                    placeholder="e.g., john.doe@university.edu"
                   />
                 </div>
                 
@@ -1245,7 +1245,7 @@ const SyllabusCreationWizard = ({
                     value={formData.course_instructor.contact_phone}
                     onChange={(e) => handleNestedChange('course_instructor.contact_phone', e.target.value)}
                     className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="e.g., 0908-877-8671"
+                    placeholder="e.g., 0912-345-6789"
                   />
                 </div>
               </div>
