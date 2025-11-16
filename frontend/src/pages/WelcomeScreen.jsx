@@ -18,8 +18,6 @@ import lipaSliderImage from '../images/lipa-slider-1-scaled.jpg'
 import bwBsuImage from '../images/b&w BSU.jpg'
 
 const WelcomeScreen = () => {
-  console.log('WelcomeScreen component is rendering')
-  
   const [currentSlide, setCurrentSlide] = React.useState(0)
   
   const slideshowImages = [
