@@ -2010,63 +2010,86 @@ const SyllabusCreationWizard = ({
                   }
                   
                   return (
-                    <div className="space-y-2">
-                      {ilos.map((ilo, iloIndex) => {
-                        // Get assessment tasks for this ILO from all mappings
-                        const iloTasks = new Set()
-                        ilo.so_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.iga_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.cdio_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        ilo.sdg_mappings?.forEach(m => {
-                          m.assessment_tasks?.forEach(task => iloTasks.add(task))
-                        })
-                        
-                        return (
-                          <div key={iloIndex} className="border border-gray-300 rounded-lg p-2 bg-white">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-semibold text-gray-900">{ilo.code}</span>
-                                <span className="text-xs text-gray-600">- {ilo.description}</span>
-                              </div>
-                            </div>
-                            
-                            {iloTasks.size > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {Array.from(iloTasks).map(taskCode => {
-                                  const task = allAssessmentTasks.find(t => t.code === taskCode) || { code: taskCode, name: taskCode, weight: 0, score: 0 }
-                                  let displayText = task.code
-                                  if (task.name) displayText += ` (${task.name}`
-                                  if (task.weight > 0 || task.score > 0) {
-                                    if (!task.name) displayText += ' ('
-                                    displayText += task.weight > 0 ? `W:${task.weight}%` : ''
-                                    displayText += task.weight > 0 && task.score > 0 ? ', ' : ''
-                                    displayText += task.score > 0 ? `S:${task.score}` : ''
-                                    displayText += ')'
-                                  } else if (task.name) {
-                                    displayText += ')'
-                                  }
-                                  return (
-                                    <span
-                                      key={taskCode}
-                                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs"
-                                    >
-                                      {displayText}
-                                    </span>
-                                  )
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-500 italic">No sub-assessments mapped yet. Click "Map Sub-Assessments" to add mappings.</p>
-                            )}
-                          </div>
-                        )
-                      })}
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">ILO Assessment Mapping</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs border border-gray-300">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">ILO Code</th>
+                              <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">ILO Description</th>
+                              <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">Assessment Code</th>
+                              <th className="px-3 py-2 border border-gray-300 text-left font-semibold text-gray-900">Assessment Name</th>
+                              <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Weight (%)</th>
+                              <th className="px-3 py-2 border border-gray-300 text-center font-semibold text-gray-900">Score</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white">
+                            {ilos.map((ilo, iloIndex) => {
+                              // Get assessment tasks for this ILO from all mappings
+                              const iloTasks = new Set()
+                              ilo.so_mappings?.forEach(m => {
+                                m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                              })
+                              ilo.iga_mappings?.forEach(m => {
+                                m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                              })
+                              ilo.cdio_mappings?.forEach(m => {
+                                m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                              })
+                              ilo.sdg_mappings?.forEach(m => {
+                                m.assessment_tasks?.forEach(task => iloTasks.add(task))
+                              })
+                              
+                              const tasksArray = Array.from(iloTasks)
+                              
+                              if (tasksArray.length === 0) {
+                                return (
+                                  <tr key={iloIndex} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 border border-gray-300 font-medium text-gray-900">{ilo.code}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-gray-700">{ilo.description}</td>
+                                    <td colSpan="4" className="px-3 py-2 border border-gray-300 text-center text-gray-400 italic">
+                                      No sub-assessments mapped yet
+                                    </td>
+                                  </tr>
+                                )
+                              }
+                              
+                              return tasksArray.map((taskCode, taskIndex) => {
+                                const task = allAssessmentTasks.find(t => t.code === taskCode) || { 
+                                  code: taskCode, 
+                                  name: taskCode, 
+                                  weight: 0, 
+                                  score: 0 
+                                }
+                                
+                                return (
+                                  <tr key={`${iloIndex}-${taskIndex}`} className="hover:bg-gray-50">
+                                    {taskIndex === 0 && (
+                                      <>
+                                        <td rowSpan={tasksArray.length} className="px-3 py-2 border border-gray-300 font-medium text-gray-900 align-top">
+                                          {ilo.code}
+                                        </td>
+                                        <td rowSpan={tasksArray.length} className="px-3 py-2 border border-gray-300 text-gray-700 align-top">
+                                          {ilo.description}
+                                        </td>
+                                      </>
+                                    )}
+                                    <td className="px-3 py-2 border border-gray-300 font-medium text-gray-900">{task.code}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-gray-700">{task.name || taskCode}</td>
+                                    <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                      {task.weight > 0 ? `${task.weight.toFixed(2)}%` : '—'}
+                                    </td>
+                                    <td className="px-3 py-2 border border-gray-300 text-center text-gray-700">
+                                      {task.score > 0 ? task.score.toFixed(1) : '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )
                 })()}
