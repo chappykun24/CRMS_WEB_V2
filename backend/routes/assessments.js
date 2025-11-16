@@ -514,7 +514,22 @@ router.get('/dean-analytics/sample', async (req, res) => {
     const programIdValue = program_id && !isNaN(parseInt(program_id)) ? parseInt(program_id) : null;
     const departmentIdValue = department_id && !isNaN(parseInt(department_id)) ? parseInt(department_id) : null;
     const studentIdValue = student_id && !isNaN(parseInt(student_id)) ? parseInt(student_id) : null;
-    const sectionCourseIdValue = section_course_id && !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
+    
+    // Handle section_course_id as single value or array (for faculty filtering)
+    let sectionCourseIdValue = null;
+    let sectionCourseIdArray = [];
+    if (section_course_id) {
+      if (Array.isArray(section_course_id)) {
+        // Multiple section_course_ids provided (faculty filtering)
+        sectionCourseIdArray = section_course_id
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id));
+        console.log('📋 [Backend] Multiple section_course_ids provided:', sectionCourseIdArray);
+      } else {
+        // Single section_course_id
+        sectionCourseIdValue = !isNaN(parseInt(section_course_id)) ? parseInt(section_course_id) : null;
+      }
+    }
     const soIdValue = so_id && !isNaN(parseInt(so_id)) ? parseInt(so_id) : null;
     const igaIdValue = iga_id && !isNaN(parseInt(iga_id)) ? parseInt(iga_id) : null;
     const cdioIdValue = cdio_id && !isNaN(parseInt(cdio_id)) ? parseInt(cdio_id) : null;
@@ -545,9 +560,19 @@ router.get('/dean-analytics/sample', async (req, res) => {
       additionalWhereConditions.push(`d.department_id = ${departmentIdValue}`);
     }
     
-    // If filtering by section_course_id, get ALL students in that class for clustering
+    // If filtering by section_course_id(s), get ALL students in those classes for clustering
     // Don't filter by student_id yet - we'll filter results after clustering
-    if (sectionCourseIdValue) {
+    if (sectionCourseIdArray.length > 0) {
+      // Multiple section_course_ids (faculty filtering)
+      const idsString = sectionCourseIdArray.join(', ');
+      additionalWhereConditions.push(`sc.section_course_id IN (${idsString})`);
+      console.log(`🔍 [Backend] Applying multiple section_course_id filter: IN (${idsString})`);
+      if (studentIdValue) {
+        // Mark that we need to filter by student_id after clustering
+        filterStudentsAfterClustering = true;
+      }
+    } else if (sectionCourseIdValue) {
+      // Single section_course_id
       additionalWhereConditions.push(`sc.section_course_id = ${sectionCourseIdValue}`);
       if (studentIdValue) {
         // Mark that we need to filter by student_id after clustering
@@ -564,36 +589,27 @@ router.get('/dean-analytics/sample', async (req, res) => {
     
     // Build section_course filter for subqueries (when filtering by specific class)
     // Each filter uses the correct alias for its subquery
-    const sectionCourseFilter = sectionCourseIdValue 
-      ? `AND ce_att.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterGrade = sectionCourseIdValue 
-      ? `AND ce_grade.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterWeighted = sectionCourseIdValue 
-      ? `AND ce_weighted.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterSub = sectionCourseIdValue 
-      ? `AND ce_sub.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterStatus = sectionCourseIdValue 
-      ? `AND ce_status.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterRate = sectionCourseIdValue 
-      ? `AND ce_rate.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterIlo = sectionCourseIdValue 
-      ? `AND ce_ilo.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterIloDetail = sectionCourseIdValue 
-      ? `AND ce_ilo_detail.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterActual = sectionCourseIdValue 
-      ? `AND ce_actual.section_course_id = ${sectionCourseIdValue}` 
-      : '';
-    const sectionCourseFilterFallback = sectionCourseIdValue 
-      ? `AND ce_fallback.section_course_id = ${sectionCourseIdValue}` 
-      : '';
+    // Support both single value and array of section_course_ids
+    const buildSectionCourseFilter = (alias) => {
+      if (sectionCourseIdArray.length > 0) {
+        const idsString = sectionCourseIdArray.join(', ');
+        return `AND ${alias}.section_course_id IN (${idsString})`;
+      } else if (sectionCourseIdValue) {
+        return `AND ${alias}.section_course_id = ${sectionCourseIdValue}`;
+      }
+      return '';
+    };
+    
+    const sectionCourseFilter = buildSectionCourseFilter('ce_att');
+    const sectionCourseFilterGrade = buildSectionCourseFilter('ce_grade');
+    const sectionCourseFilterWeighted = buildSectionCourseFilter('ce_weighted');
+    const sectionCourseFilterSub = buildSectionCourseFilter('ce_sub');
+    const sectionCourseFilterStatus = buildSectionCourseFilter('ce_status');
+    const sectionCourseFilterRate = buildSectionCourseFilter('ce_rate');
+    const sectionCourseFilterIlo = buildSectionCourseFilter('ce_ilo');
+    const sectionCourseFilterIloDetail = buildSectionCourseFilter('ce_ilo_detail');
+    const sectionCourseFilterActual = buildSectionCourseFilter('ce_actual');
+    const sectionCourseFilterFallback = buildSectionCourseFilter('ce_fallback');
     
     // Build Standard filter for assessment alignment
     // When filtering by Standard: find ILOs mapped to that standard, then assessments mapped to those ILOs
@@ -1166,9 +1182,31 @@ router.get('/dean-analytics/sample', async (req, res) => {
     });
 
     // Get clusters using the centralized service
-    // If force_refresh is true, set cacheMaxAgeHours to 0 to bypass cache
+    // REFRESH FLOW FOR FACULTY FILTERING:
+    // 1. When force_refresh=true: cacheMaxAgeHours=0 bypasses cache
+    // 2. All students from faculty's section_course_ids are sent to clustering API
+    // 3. Clustering API computes clusters for all students together (better clustering quality)
+    // 4. Clusters are saved to cache for EACH section_course_id (saves automatically clear old cache)
+    // 5. This ensures fresh clusters are computed and cached for all faculty's classes
+    //
     // If sectionCourseId is provided, perform per-class clustering (identify at-risk students within that class)
     // If standard filters are provided, perform standard-filtered clustering (only assessments mapped to ILOs that map to that standard)
+    // For faculty filtering: pass all section_course_ids for clustering
+    // This ensures clustering is recalculated for all students in faculty's classes
+    const clusteringSectionCourseId = sectionCourseIdArray.length > 0 
+      ? sectionCourseIdArray[0] // Use first one for cache key (clustering is per-class)
+      : sectionCourseIdValue;
+    
+    // Log clustering parameters for faculty filtering
+    if (sectionCourseIdArray.length > 0) {
+      console.log(`🎯 [Backend] Clustering for ${sectionCourseIdArray.length} faculty classes:`, sectionCourseIdArray);
+      console.log(`🎯 [Backend] Students to cluster: ${students.length} (from ${sectionCourseIdArray.length} classes)`);
+      if (forceRefresh) {
+        console.log(`🔄 [Backend] FORCE REFRESH: Recomputing clusters for all ${students.length} students in faculty's classes`);
+      }
+      console.log(`🎯 [Backend] Using section_course_id ${clusteringSectionCourseId} for clustering cache key`);
+    }
+    
     const clusteringResult = await clusteringService.getStudentClusters(
       students,
       termIdValue,
@@ -1178,7 +1216,8 @@ router.get('/dean-analytics/sample', async (req, res) => {
         version: '1.0',
         timeoutMs: clusteringConfig.timeoutMs,
         forceRefresh: forceRefresh,
-        sectionCourseId: sectionCourseIdValue, // Pass section_course_id for per-class clustering
+        sectionCourseId: clusteringSectionCourseId, // Pass section_course_id for per-class clustering
+        sectionCourseIds: sectionCourseIdArray.length > 0 ? sectionCourseIdArray : null, // Pass all IDs for faculty filtering
         standardType: soIdValue ? 'SO' : (igaIdValue ? 'IGA' : (cdioIdValue ? 'CDIO' : (sdgIdValue ? 'SDG' : null))),
         standardId: soIdValue || igaIdValue || cdioIdValue || sdgIdValue // Pass standard ID for standard-filtered clustering
       }

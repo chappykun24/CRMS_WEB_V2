@@ -832,6 +832,24 @@ const Analytics = () => {
     if (selectedTermId) params.append('term_id', selectedTermId);
     if (selectedSectionId) params.append('section_id', selectedSectionId);
     if (selectedProgramId) params.append('program_id', selectedProgramId);
+    
+    // CRITICAL: Filter by faculty's section_course_ids at API level
+    // This ensures we only get students enrolled in the faculty's classes
+    if (facultyId && facultyClassesRef.current.length > 0) {
+      const sectionCourseIds = facultyClassesRef.current
+        .map(cls => cls.section_course_id)
+        .filter(id => id != null && id !== undefined);
+      
+      if (sectionCourseIds.length > 0) {
+        // Add each section_course_id as a separate parameter
+        // Backend should handle multiple section_course_id parameters
+        sectionCourseIds.forEach(id => {
+          params.append('section_course_id', id.toString());
+        });
+        console.log(`🎯 [FACULTY ANALYTICS] Filtering by ${sectionCourseIds.length} section_course_ids at API level:`, sectionCourseIds);
+      }
+    }
+    
     // Add Standard filter if selected (SO, IGA, CDIO, or SDG)
     if (selectedStandardType && selectedStandardId && selectedStandardId !== 'all') {
       const paramName = selectedStandardType.toLowerCase() + '_id';
@@ -1156,24 +1174,53 @@ const Analytics = () => {
       }
       
       // Filter to only show students from faculty's classes
-      const facultySectionIds = new Set(facultyClassesRef.current.map(cls => cls.section_id));
-      const facultySectionCourseIds = new Set(facultyClassesRef.current.map(cls => cls.section_course_id));
+      // PRIMARY FILTER: section_course_id (course class) - students are enrolled in specific section_courses
+      const facultySectionCourseIds = new Set(
+        facultyClassesRef.current
+          .map(cls => cls.section_course_id)
+          .filter(id => id != null && id !== undefined)
+      );
+      
+      // Also get section_ids for fallback (in case data doesn't have section_course_id)
+      const facultySectionIds = new Set(
+        facultyClassesRef.current
+          .map(cls => cls.section_id)
+          .filter(id => id != null && id !== undefined)
+      );
+      
+      console.log(`🔍 [FACULTY ANALYTICS] Filtering by ${facultySectionCourseIds.size} section_course_ids:`, Array.from(facultySectionCourseIds));
+      console.log(`🔍 [FACULTY ANALYTICS] Faculty classes:`, facultyClassesRef.current.map(cls => ({
+        section_course_id: cls.section_course_id,
+        section_id: cls.section_id,
+        course_code: cls.course_code
+      })));
       
       filtered = filtered.filter(row => {
-        // Check if student's section_id matches any of faculty's classes
-        // OR check if section_course_id matches (if available in data)
-        const rowSectionId = row.section_id;
+        // PRIMARY: Check if student's section_course_id matches any of faculty's section_courses
         const rowSectionCourseId = row.section_course_id;
         
-        const matches = (
-          (rowSectionId && facultySectionIds.has(rowSectionId)) ||
-          (rowSectionCourseId && facultySectionCourseIds.has(rowSectionCourseId))
-        );
+        // FALLBACK: Check section_id if section_course_id is not available
+        const rowSectionId = row.section_id;
         
-        return matches;
+        // Match by section_course_id first (most accurate)
+        if (rowSectionCourseId != null && rowSectionCourseId !== undefined) {
+          const matches = facultySectionCourseIds.has(parseInt(rowSectionCourseId));
+          if (matches) {
+            return true;
+          }
+        }
+        
+        // Fallback to section_id matching (less accurate but may be needed)
+        if (rowSectionId != null && rowSectionId !== undefined) {
+          return facultySectionIds.has(parseInt(rowSectionId));
+        }
+        
+        // If neither matches, exclude this student
+        return false;
       });
       
-      console.log(`🔍 [FACULTY ANALYTICS] Filtered to ${filtered.length} students from faculty's ${facultyClassesRef.current.length} classes`);
+      console.log(`✅ [FACULTY ANALYTICS] Filtered to ${filtered.length} students from ${data.length} total students`);
+      console.log(`📊 [FACULTY ANALYTICS] Faculty has ${facultyClassesRef.current.length} classes with ${facultySectionCourseIds.size} unique section_course_ids`);
     } else {
       // If no facultyId, this shouldn't happen but return empty to be safe
       console.warn(`⚠️ [FACULTY ANALYTICS] No facultyId provided - returning empty data`);

@@ -735,6 +735,7 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
     timeoutMs = 30000,
     forceRefresh = false,
     sectionCourseId = null,
+    sectionCourseIds = null, // Array of section_course_ids for faculty filtering
     iloId = null,
     standardType = null,
     standardId = null
@@ -757,9 +758,33 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
   };
   
   // Step 1: Check cache first (FAST PATH) - skip if forceRefresh is true
+  // For faculty filtering with multiple section_course_ids, check cache for all classes
   if (!forceRefresh && config.enabled) {
     try {
-      const cachedClusters = await getCachedClusters(termId, sectionCourseId, iloId, standardType, standardId, cacheMaxAgeHours);
+      let cachedClusters = [];
+      
+      // If multiple section_course_ids provided (faculty filtering), check cache for each
+      if (sectionCourseIds && Array.isArray(sectionCourseIds) && sectionCourseIds.length > 0) {
+        console.log(`🔍 [Clustering] Checking cache for ${sectionCourseIds.length} section_course_ids:`, sectionCourseIds);
+        // Check cache for each section_course_id and combine results
+        for (const scId of sectionCourseIds) {
+          const classCached = await getCachedClusters(termId, scId, iloId, standardType, standardId, cacheMaxAgeHours);
+          cachedClusters = cachedClusters.concat(classCached);
+        }
+        // Remove duplicates (same student might be in multiple classes)
+        const uniqueCached = new Map();
+        cachedClusters.forEach(c => {
+          const studentId = typeof c.student_id === 'string' ? parseInt(c.student_id, 10) : c.student_id;
+          if (!uniqueCached.has(studentId)) {
+            uniqueCached.set(studentId, c);
+          }
+        });
+        cachedClusters = Array.from(uniqueCached.values());
+        console.log(`📦 [Clustering] Found cached clusters from ${sectionCourseIds.length} classes: ${cachedClusters.length} unique students`);
+      } else {
+        // Single section_course_id or no filtering
+        cachedClusters = await getCachedClusters(termId, sectionCourseId, iloId, standardType, standardId, cacheMaxAgeHours);
+      }
       
       if (cachedClusters.length > 0) {
       // Check if cache covers all students
@@ -831,8 +856,19 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       endpoint: config.endpoint,
       studentsCount: students.length,
       timeoutMs: timeoutMs,
-      termId: termId
+      termId: termId,
+      sectionCourseId: sectionCourseId,
+      sectionCourseIds: sectionCourseIds && Array.isArray(sectionCourseIds) ? sectionCourseIds : null,
+      forceRefresh: forceRefresh
     });
+    
+    // Log faculty filtering info
+    if (sectionCourseIds && Array.isArray(sectionCourseIds) && sectionCourseIds.length > 0) {
+      console.log(`🎯 [Clustering] Faculty filtering: Computing clusters for ${students.length} students across ${sectionCourseIds.length} classes`);
+      if (forceRefresh) {
+        console.log(`🔄 [Clustering] Force refresh: Recomputing clusters for all students in faculty's classes`);
+      }
+    }
     
     // Log sample student data being sent
     if (students.length > 0) {
@@ -976,16 +1012,39 @@ const getStudentClusters = async (students, termId = null, options = {}) => {
       
       // Save to cache asynchronously (don't wait for it to complete)
       // This happens for both normal API calls and force refresh
+      // For faculty filtering with multiple section_course_ids, save clusters for each class
       console.log(`💾 [Clustering] Preparing to save ${clustersToSave.length} clusters to database cache...`);
-      saveClustersToCache(clustersToSave, termId, sectionCourseId, iloId, standardType, standardId, algorithm, version)
-        .then(() => {
-          const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
-          console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (${scope})`);
-        })
-        .catch(err => {
-          console.error('⚠️ [Clustering] Failed to save clusters to cache (non-blocking):', err.message);
-          console.error('⚠️ [Clustering] Cache save error details:', err);
+      
+      if (sectionCourseIds && Array.isArray(sectionCourseIds) && sectionCourseIds.length > 0) {
+        // Save clusters for each section_course_id (faculty has multiple classes)
+        console.log(`💾 [Clustering] Saving clusters for ${sectionCourseIds.length} section_course_ids:`, sectionCourseIds);
+        Promise.all(
+          sectionCourseIds.map(scId => 
+            saveClustersToCache(clustersToSave, termId, scId, iloId, standardType, standardId, algorithm, version)
+              .then(() => {
+                console.log(`✅ [Clustering] Saved clusters for section_course_id ${scId}`);
+              })
+              .catch(err => {
+                console.error(`⚠️ [Clustering] Failed to save clusters for section_course_id ${scId}:`, err.message);
+              })
+          )
+        ).then(() => {
+          console.log(`✅ [Clustering] Successfully saved clusters for all ${sectionCourseIds.length} classes`);
+        }).catch(err => {
+          console.error('⚠️ [Clustering] Error saving clusters for some classes:', err);
         });
+      } else {
+        // Single section_course_id or no filtering
+        saveClustersToCache(clustersToSave, termId, sectionCourseId, iloId, standardType, standardId, algorithm, version)
+          .then(() => {
+            const scope = sectionCourseId ? `class: ${sectionCourseId}` : (termId ? `term: ${termId}` : 'all');
+            console.log(`✅ [Clustering] Successfully saved ${clustersToSave.length} clusters to database cache (${scope})`);
+          })
+          .catch(err => {
+            console.error('⚠️ [Clustering] Failed to save clusters to cache (non-blocking):', err.message);
+            console.error('⚠️ [Clustering] Cache save error details:', err);
+          });
+      }
     } else {
       console.warn('⚠️ [Clustering] No cluster results to save to cache');
     }
