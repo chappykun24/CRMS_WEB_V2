@@ -112,7 +112,8 @@ const SyllabusCreationWizard = ({
     weight: '',
     cognitive: '',
     psychomotor: '',
-    affective: ''
+    affective: '',
+    ird: 'R' // I - Introduced, R - Reinforced, D - Developed
   })
   const [newSubAssessment, setNewSubAssessment] = useState({
     abbreviation: '',
@@ -373,12 +374,13 @@ const SyllabusCreationWizard = ({
       if (editingSyllabus.assessment_criteria) {
         // If assessment_criteria is directly on the syllabus
         if (Array.isArray(editingSyllabus.assessment_criteria)) {
-          // Ensure each item has CPA fields, even if they're missing (backward compatibility)
+          // Ensure each item has CPA fields and I/R/D, even if they're missing (backward compatibility)
           assessmentCriteria = editingSyllabus.assessment_criteria.map(item => ({
             ...item,
             cognitive: item.cognitive !== undefined ? item.cognitive : 0,
             psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
-            affective: item.affective !== undefined ? item.affective : 0
+            affective: item.affective !== undefined ? item.affective : 0,
+            ird: item.ird || 'R'
           }))
         } else if (typeof editingSyllabus.assessment_criteria === 'object') {
           assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria) 
@@ -386,7 +388,8 @@ const SyllabusCreationWizard = ({
                 ...item,
                 cognitive: item.cognitive !== undefined ? item.cognitive : 0,
                 psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
-                affective: item.affective !== undefined ? item.affective : 0
+                affective: item.affective !== undefined ? item.affective : 0,
+                ird: item.ird || 'R'
               }))
             : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ 
                 abbreviation: '', 
@@ -394,7 +397,8 @@ const SyllabusCreationWizard = ({
                 weight,
                 cognitive: 0,
                 psychomotor: 0,
-                affective: 0
+                affective: 0,
+                ird: 'R'
               }))
         } else if (typeof editingSyllabus.assessment_criteria === 'string') {
           try {
@@ -404,7 +408,8 @@ const SyllabusCreationWizard = ({
                   ...item,
                   cognitive: item.cognitive !== undefined ? item.cognitive : 0,
                   psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
-                  affective: item.affective !== undefined ? item.affective : 0
+                  affective: item.affective !== undefined ? item.affective : 0,
+                  ird: item.ird || 'R'
                 }))
               : []
           } catch {
@@ -418,7 +423,8 @@ const SyllabusCreationWizard = ({
             ...item,
             cognitive: item.cognitive !== undefined ? item.cognitive : 0,
             psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
-            affective: item.affective !== undefined ? item.affective : 0
+            affective: item.affective !== undefined ? item.affective : 0,
+            ird: item.ird || 'R'
           }))
         } else if (typeof gradingPolicy.assessment_criteria === 'object') {
           assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ 
@@ -427,7 +433,8 @@ const SyllabusCreationWizard = ({
             weight,
             cognitive: 0,
             psychomotor: 0,
-            affective: 0
+            affective: 0,
+            ird: 'R'
           }))
         }
       }
@@ -840,14 +847,15 @@ const SyllabusCreationWizard = ({
   
   const prepareSyllabusData = (isDraft = false) => {
     // Include ILOs in the form data and set title for backward compatibility
-    // Ensure assessment_criteria is properly formatted with numeric weights and CPA fields
+    // Ensure assessment_criteria is properly formatted with numeric weights, CPA fields, and I/R/D
     const formattedAssessmentCriteria = formData.assessment_criteria.map(item => ({
       abbreviation: (item.abbreviation || '').trim(),
       name: item.name.trim(),
       weight: parseFloat(item.weight) || 0,
       cognitive: parseFloat(item.cognitive) || 0,
       psychomotor: parseFloat(item.psychomotor) || 0,
-      affective: parseFloat(item.affective) || 0
+      affective: parseFloat(item.affective) || 0,
+      ird: item.ird || 'R'
     }))
     
     // Format sub-assessments for saving
@@ -1201,10 +1209,11 @@ const SyllabusCreationWizard = ({
                 weight: parseFloat(newAssessmentCriteria.weight) || 0,
                 cognitive: parseFloat(newAssessmentCriteria.cognitive) || 0,
                 psychomotor: parseFloat(newAssessmentCriteria.psychomotor) || 0,
-                affective: parseFloat(newAssessmentCriteria.affective) || 0
+                affective: parseFloat(newAssessmentCriteria.affective) || 0,
+                ird: newAssessmentCriteria.ird || 'R'
               }]
             }))
-            setNewAssessmentCriteria({ abbreviation: '', name: '', weight: '', cognitive: '', psychomotor: '', affective: '' })
+            setNewAssessmentCriteria({ abbreviation: '', name: '', weight: '', cognitive: '', psychomotor: '', affective: '', ird: 'R' })
           }
         }
         
@@ -1328,7 +1337,7 @@ const SyllabusCreationWizard = ({
                   {formData.assessment_criteria.map((item, index) => (
                     <div key={index} className="p-2 bg-gray-50 rounded-lg space-y-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 grid grid-cols-3 gap-2">
+                        <div className="flex-1 grid grid-cols-4 gap-2">
                           <input
                             type="text"
                             value={item.name}
@@ -1344,6 +1353,19 @@ const SyllabusCreationWizard = ({
                             placeholder="Abbreviation (e.g., QZ, ME)"
                             maxLength="10"
                           />
+                          <select
+                            value={item.ird || 'R'}
+                            onChange={(e) => handleUpdateAssessmentCriteria(index, 'ird', e.target.value)}
+                            className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                          >
+                            <option value="I">I - Introduced</option>
+                            <option value="R">R - Reinforced</option>
+                            <option value="D">D - Developed</option>
+                            <option value="I/R">I/R - Introduced/Reinforced</option>
+                            <option value="R/D">R/D - Reinforced/Developed</option>
+                            <option value="I/D">I/D - Introduced/Developed</option>
+                            <option value="I/R/D">I/R/D - All</option>
+                          </select>
                           <input
                             type="number"
                             value={item.weight}
@@ -1410,7 +1432,7 @@ const SyllabusCreationWizard = ({
               )}
               
               <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   <input
                     type="text"
                     value={newAssessmentCriteria.name}
@@ -1428,6 +1450,19 @@ const SyllabusCreationWizard = ({
                     maxLength="10"
                     onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
                   />
+                  <select
+                    value={newAssessmentCriteria.ird}
+                    onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, ird: e.target.value }))}
+                    className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="I">I - Introduced</option>
+                    <option value="R">R - Reinforced</option>
+                    <option value="D">D - Developed</option>
+                    <option value="I/R">I/R - Introduced/Reinforced</option>
+                    <option value="R/D">R/D - Reinforced/Developed</option>
+                    <option value="I/D">I/D - Introduced/Developed</option>
+                    <option value="I/R/D">I/R/D - All</option>
+                  </select>
                   <input
                     type="number"
                     value={newAssessmentCriteria.weight}
@@ -2352,6 +2387,7 @@ const SyllabusCreationWizard = ({
                     cognitive: parseFloat(criterion.cognitive) || 0,
                     psychomotor: parseFloat(criterion.psychomotor) || 0,
                     affective: parseFloat(criterion.affective) || 0,
+                    ird: criterion.ird || 'R',
                     subAssessments: criterionSubAssessments
                   })
                 }
@@ -2475,7 +2511,7 @@ const SyllabusCreationWizard = ({
                                 <td className="px-2 py-2 border border-gray-300 text-gray-900" colSpan="2">
                                   {criterionGroup.criterionCode} - {criterionGroup.criterionName}
                                 </td>
-                                <td className="px-2 py-2 border border-gray-300 text-center text-gray-600">R</td>
+                                <td className="px-2 py-2 border border-gray-300 text-center text-gray-900">{criterionGroup.ird || 'R'}</td>
                                 <td className="px-2 py-2 border border-gray-300 text-center text-gray-900">{criterionTotalWeight}%</td>
                                 {ilos.map((ilo, iloIdx) => {
                                   const mapping = criterionMappings[iloIdx + 1]
@@ -2509,7 +2545,7 @@ const SyllabusCreationWizard = ({
                                   <tr key={`${groupIdx}-${subIdx}`} className="hover:bg-gray-50 bg-white">
                                     <td className="px-4 py-1.5 border border-gray-300 font-medium text-gray-700">{sub.code}</td>
                                     <td className="px-2 py-1.5 border border-gray-300 text-gray-600">{sub.name}</td>
-                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-500">R</td>
+                                    <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">—</td>
                                     <td className="px-2 py-1.5 border border-gray-300 text-center text-gray-600">{sub.weight}%</td>
                                     {ilos.map((ilo, iloIdx) => {
                                       const mapping = iloMappings[iloIdx + 1]
