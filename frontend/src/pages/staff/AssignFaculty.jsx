@@ -187,9 +187,20 @@ const AssignFaculty = () => {
         return
       }
 
-      const selectedSection = sections.find(s => s.section_code === formData.section)
+      // Find section by section_id (more reliable than section_code which might have duplicates)
+      // formData.section should contain section_id if we update the dropdown to use it
+      const selectedSection = availableSections.find(s => 
+        String(s.section_id) === String(formData.section) || 
+        s.section_code === formData.section
+      )
       if (!selectedSection) {
         alert('Please select a valid section')
+        return
+      }
+      
+      // Verify the section belongs to the selected term
+      if (String(selectedSection.term_id) !== String(formData.termId)) {
+        alert(`Section "${selectedSection.section_code}" does not belong to the selected semester. Please select a different section.`)
         return
       }
 
@@ -824,7 +835,7 @@ const AssignFaculty = () => {
                           {formData.termId ? 'Select section' : 'Select semester first'}
                         </option>
                         {availableSections.map(section => (
-                          <option key={section.section_id} value={section.section_code}>
+                          <option key={section.section_id} value={section.section_id}>
                             {section.section_code}
                           </option>
                         ))}
