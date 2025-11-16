@@ -310,7 +310,7 @@ const SyllabusReview = () => {
       case 'approved': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'pending_approval': return 'bg-yellow-100 text-yellow-800'
-      case 'pending_review': return 'bg-blue-100 text-blue-800'
+      case 'pending_review': return 'bg-yellow-100 text-yellow-800'
       case 'rejected': return 'bg-red-100 text-red-800'
       case 'needs_revision': return 'bg-orange-100 text-orange-800'
       default: return 'bg-gray-100 text-gray-800'
@@ -459,13 +459,15 @@ const SyllabusReview = () => {
                                              approvalStatus === 'rejected' ? 'Rejected' :
                                              'Pending Approval'
                     
-                    // Determine color based on both statuses
-                    const statusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
-                                      approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                      reviewStatus === 'approved' && approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                      reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                      reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
-                                      'bg-blue-100 text-blue-800'
+                    // Determine color for each status independently
+                    const reviewStatusColor = reviewStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                             reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                             reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
+                                             'bg-yellow-100 text-yellow-800' // pending
+                    
+                    const approvalStatusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                               approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                               'bg-yellow-100 text-yellow-800' // pending
                     
                     // Extract revision number from grading_policy.metadata
                     let revisionNo = '0'
@@ -491,10 +493,10 @@ const SyllabusReview = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${reviewStatusColor}`}>
                               {reviewStatusText}
                             </span>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalStatusColor}`}>
                               {approvalStatusText}
                             </span>
                           </div>
@@ -554,13 +556,15 @@ const SyllabusReview = () => {
                                                 approvalStatus === 'rejected' ? 'Rejected' :
                                                 'Pending Approval'
                       
-                      // Determine color based on both statuses
-                      const statusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
-                                        approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                        reviewStatus === 'approved' && approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                                        reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
-                                        'bg-blue-100 text-blue-800'
+                      // Determine color for each status independently
+                      const reviewStatusColor = reviewStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                               reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                               reviewStatus === 'needs_revision' ? 'bg-orange-100 text-orange-800' :
+                                               'bg-yellow-100 text-yellow-800' // pending
+                      
+                      const approvalStatusColor = approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                                 approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                 'bg-yellow-100 text-yellow-800' // pending
                       
                       // Extract revision number from grading_policy.metadata
                       let revisionNo = '0'
@@ -586,10 +590,10 @@ const SyllabusReview = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col gap-1">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${reviewStatusColor}`}>
                                 {reviewStatusText}
                               </span>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${approvalStatusColor}`}>
                                 {approvalStatusText}
                               </span>
                             </div>
