@@ -1,10 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/solid'
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, ClassDetailsSkeleton, StudentListItemSkeleton, StudentListSkeleton, ImageSkeleton } from '../../components/skeletons'
 import LazyStudentImage from '../../components/LazyStudentImage'
-import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { safeGetItem, safeSetItem, minimizeClassData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 import staffCacheService, { resetStaffCache, clearStaffLargeCache } from '../../services/staffCacheService'
+
+// Cache helpers for enrollment data
+const getCachedData = createCacheGetter(staffCacheService)
+const setCachedData = createCacheSetter(staffCacheService)
 
 
 
@@ -152,6 +156,16 @@ const AssignFaculty = () => {
       // Clear selected students
       setSelectedSidebarStudents(new Set())
       
+      // Clear relevant caches
+      if (selectedClass) {
+        staffCacheService.clear('students', `available_students_${selectedClass.id}`)
+        // Clear all section caches for this course
+        courseSections.forEach(section => {
+          staffCacheService.clear('students', `section_students_${section.section_id}`)
+        })
+        staffCacheService.clear('students', `all_sections_students_${selectedClass.id}`)
+      }
+      
       // Refresh the enrolled students list
       await handleClassSelect(selectedClass)
       
@@ -189,23 +203,53 @@ const AssignFaculty = () => {
     await loadAvailableStudents()
   }
 
-  // Load available students (not enrolled)
-  const loadAvailableStudents = async () => {
+  // Load available students (not enrolled) with caching and async fetching
+  const loadAvailableStudents = useCallback(async (forceRefresh = false) => {
     if (!selectedClass) return
     
-    setLoadingAvailableStudents(true)
-    try {
-      const response = await fetch(`/api/students/available-for-section/${selectedClass.id}`)
-      if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
-      const data = await response.json()
-      setAvailableStudents(Array.isArray(data.students) ? data.students : [])
-    } catch (error) {
-      console.error('Error loading available students:', error)
-      setAvailableStudents([])
-    } finally {
-      setLoadingAvailableStudents(false)
+    const cacheKey = `available_students_${selectedClass.id}`
+    
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = getCachedData('students', cacheKey, 5 * 60 * 1000) // 5 min TTL
+      if (cached) {
+        console.log('📦 [ENROLLMENT] Using cached available students')
+        setAvailableStudents(Array.isArray(cached) ? cached : [])
+        setLoadingAvailableStudents(false)
+        return
+      }
     }
-  }
+    
+    setLoadingAvailableStudents(true)
+    
+    // Use requestIdleCallback for async fetching when browser is idle
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`/api/students/available-for-section/${selectedClass.id}`)
+        if (!response.ok) throw new Error(`Failed to fetch available students: ${response.status}`)
+        const data = await response.json()
+        const students = Array.isArray(data.students) ? data.students : []
+        
+        // Cache the results
+        setCachedData('students', cacheKey, students)
+        
+        setAvailableStudents(students)
+      } catch (error) {
+        console.error('Error loading available students:', error)
+        setAvailableStudents([])
+      } finally {
+        setLoadingAvailableStudents(false)
+      }
+    }
+    
+    // Fetch asynchronously when browser is idle
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(fetchData, { timeout: 1000 })
+    } else {
+      // Fallback: use setTimeout for async behavior
+      setTimeout(fetchData, 0)
+    }
+  }, [selectedClass])
 
   // Load enrolled students and sections for the course (all sections)
   const loadEnrolledStudents = async () => {
@@ -298,66 +342,149 @@ const AssignFaculty = () => {
     }
   }
 
-  // Load students by section_id
-  const loadStudentsBySection = async (sectionId) => {
+  // Load students by section_id with caching and async fetching
+  const loadStudentsBySection = useCallback(async (sectionId, forceRefresh = false) => {
     if (!sectionId) {
       setEnrolledStudents([])
       return
     }
     
-    try {
-      const response = await fetch(`/api/sections/${sectionId}/students`)
-      if (response.ok) {
-        const studentsData = await response.json()
-        setEnrolledStudents(Array.isArray(studentsData) ? studentsData : [])
-      } else {
-        console.error('Failed to fetch students for section:', sectionId)
+    const cacheKey = `section_students_${sectionId}`
+    
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = getCachedData('students', cacheKey, 5 * 60 * 1000) // 5 min TTL
+      if (cached) {
+        console.log('📦 [ENROLLMENT] Using cached section students')
+        setEnrolledStudents(Array.isArray(cached) ? cached : [])
+        return
+      }
+    }
+    
+    // Use requestIdleCallback for async fetching when browser is idle
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`/api/sections/${sectionId}/students`)
+        if (response.ok) {
+          const studentsData = await response.json()
+          const students = Array.isArray(studentsData) ? studentsData : []
+          
+          // Cache the results
+          setCachedData('students', cacheKey, students)
+          
+          setEnrolledStudents(students)
+        } else {
+          console.error('Failed to fetch students for section:', sectionId)
+          setEnrolledStudents([])
+        }
+      } catch (error) {
+        console.error('Error fetching students for section:', error)
         setEnrolledStudents([])
       }
-    } catch (error) {
-      console.error('Error fetching students for section:', error)
-      setEnrolledStudents([])
     }
-  }
+    
+    // Fetch asynchronously when browser is idle
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(fetchData, { timeout: 1000 })
+    } else {
+      // Fallback: use setTimeout for async behavior
+      setTimeout(fetchData, 0)
+    }
+  }, [])
 
-  // Load all students from all sections of the course
-  const loadAllStudentsFromAllSections = async () => {
+  // Load all students from all sections of the course with caching and async fetching
+  const loadAllStudentsFromAllSections = useCallback(async () => {
     if (!selectedClass || courseSections.length === 0) {
       setEnrolledStudents([])
       return
     }
     
-    try {
-      // Fetch students from all sections and combine them
-      const allStudents = []
-      const seenStudentIds = new Set()
-      
-      for (const section of courseSections) {
-        try {
-          const response = await fetch(`/api/sections/${section.section_id}/students`)
-          if (response.ok) {
-            const studentsData = await response.json()
-            if (Array.isArray(studentsData)) {
-              // Add unique students only (by student_id)
-              studentsData.forEach(student => {
+    const cacheKey = `all_sections_students_${selectedClass.id}`
+    
+    // Check cache first
+    const cached = getCachedData('students', cacheKey, 5 * 60 * 1000) // 5 min TTL
+    if (cached) {
+      console.log('📦 [ENROLLMENT] Using cached all sections students')
+      setEnrolledStudents(Array.isArray(cached) ? cached : [])
+      return
+    }
+    
+    // Use requestIdleCallback for async fetching when browser is idle
+    const fetchData = async () => {
+      try {
+        // Fetch students from all sections and combine them
+        const allStudents = []
+        const seenStudentIds = new Set()
+        
+        // Fetch sections in parallel with batching for better performance
+        const sectionPromises = courseSections.map(async (section) => {
+          try {
+            // Check individual section cache first
+            const sectionCacheKey = `section_students_${section.section_id}`
+            const sectionCached = getCachedData('students', sectionCacheKey, 5 * 60 * 1000)
+            
+            if (sectionCached) {
+              return Array.isArray(sectionCached) ? sectionCached : []
+            }
+            
+            const response = await fetch(`/api/sections/${section.section_id}/students`)
+            if (response.ok) {
+              const studentsData = await response.json()
+              if (Array.isArray(studentsData)) {
+                // Cache individual section
+                setCachedData('students', sectionCacheKey, studentsData)
+                return studentsData
+              }
+            }
+            return []
+          } catch (err) {
+            console.error(`Error fetching students for section ${section.section_code}:`, err)
+            return []
+          }
+        })
+        
+        // Wait for all sections to load (with batching to avoid overwhelming)
+        const batchSize = 5
+        for (let i = 0; i < sectionPromises.length; i += batchSize) {
+          const batch = sectionPromises.slice(i, i + batchSize)
+          const batchResults = await Promise.all(batch)
+          
+          // Combine results
+          batchResults.forEach(students => {
+            if (Array.isArray(students)) {
+              students.forEach(student => {
                 if (!seenStudentIds.has(student.student_id)) {
                   seenStudentIds.add(student.student_id)
                   allStudents.push(student)
                 }
               })
             }
+          })
+          
+          // Yield to browser between batches
+          if (i + batchSize < sectionPromises.length && 'requestIdleCallback' in window) {
+            await new Promise(resolve => requestIdleCallback(resolve, { timeout: 100 }))
           }
-        } catch (err) {
-          console.error(`Error fetching students for section ${section.section_code}:`, err)
         }
+        
+        // Cache combined results
+        setCachedData('students', cacheKey, allStudents)
+        
+        setEnrolledStudents(allStudents)
+      } catch (error) {
+        console.error('Error loading all students from all sections:', error)
+        setEnrolledStudents([])
       }
-      
-      setEnrolledStudents(allStudents)
-    } catch (error) {
-      console.error('Error loading all students from all sections:', error)
-      setEnrolledStudents([])
     }
-  }
+    
+    // Fetch asynchronously when browser is idle
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(fetchData, { timeout: 1000 })
+    } else {
+      // Fallback: use setTimeout for async behavior
+      setTimeout(fetchData, 0)
+    }
+  }, [selectedClass, courseSections])
 
   // Toggle between available and enrolled students view
   const handleToggleView = async (showEnrolled) => {
@@ -446,6 +573,16 @@ const AssignFaculty = () => {
       
       // Clear selected students
       setSelectedStudents(new Set())
+      
+      // Clear relevant caches
+      if (selectedClass) {
+        staffCacheService.clear('students', `available_students_${selectedClass.id}`)
+        // Clear all section caches for this course
+        courseSections.forEach(section => {
+          staffCacheService.clear('students', `section_students_${section.section_id}`)
+        })
+        staffCacheService.clear('students', `all_sections_students_${selectedClass.id}`)
+      }
       
       // Refresh the enrolled students list
       await handleClassSelect(selectedClass)
@@ -1653,25 +1790,23 @@ const AssignFaculty = () => {
                   >
                     Close
                   </button>
-                  {!showEnrolledView && (
-                    <button
-                      onClick={handleBulkEnroll}
-                      disabled={selectedStudents.size === 0 || enrollingStudents.size > 0}
-                      className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                    >
-                      {enrollingStudents.size > 0 ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Enrolling...</span>
-                        </>
-                      ) : (
-                        <>
-                          <PlusIcon className="h-4 w-4" />
-                          <span>Enroll Selected ({selectedStudents.size})</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    onClick={handleBulkEnroll}
+                    disabled={selectedStudents.size === 0 || enrollingStudents.size > 0}
+                    className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {enrollingStudents.size > 0 ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Enrolling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusIcon className="h-4 w-4" />
+                        <span>Enroll Selected ({selectedStudents.size})</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
