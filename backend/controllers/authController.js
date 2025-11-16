@@ -133,10 +133,10 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate JWT token (synchronous operation)
+    // Generate JWT token (synchronous operation - already optimized)
     const token = generateToken(user.user_id, user.email);
 
-    // Parse name into first/last name efficiently
+    // Parse name into first/last name efficiently (synchronous - already optimized)
     const nameParts = user.name ? user.name.trim().split(/\s+/) : [];
     const first_name = nameParts[0] || '';
     const last_name = nameParts.slice(1).join(' ') || '';

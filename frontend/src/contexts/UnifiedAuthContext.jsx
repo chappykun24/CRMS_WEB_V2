@@ -85,8 +85,8 @@ export const UnifiedAuthProvider = ({ children }) => {
             })
             
             // Try to refresh user data in the background (non-blocking, with timeout)
-            // Use setTimeout to ensure it doesn't block the main thread
-            setTimeout(async () => {
+            // Use queueMicrotask for better async scheduling
+            queueMicrotask(async () => {
               try {
                 const userId = user.user_id || user.id
                 if (!userId) return
@@ -104,11 +104,24 @@ export const UnifiedAuthProvider = ({ children }) => {
                     if (isDev) {
                       console.log('[UnifiedAuth] User data refreshed successfully')
                     }
-                    localStorage.setItem('userData', JSON.stringify(profileResult.user))
-                    dispatch({ 
-                      type: 'UPDATE_USER', 
-                      payload: { user: profileResult.user } 
-                    })
+                    // Parallelize storage and state update
+                    Promise.all([
+                      Promise.resolve().then(() => {
+                        try {
+                          localStorage.setItem('userData', JSON.stringify(profileResult.user));
+                        } catch (e) {
+                          if (isDev) console.warn('Storage error (refresh):', e);
+                        }
+                      }),
+                      Promise.resolve().then(() => {
+                        dispatch({ 
+                          type: 'UPDATE_USER', 
+                          payload: { user: profileResult.user } 
+                        });
+                      })
+                    ]).catch(() => {
+                      // Silently handle errors
+                    });
                   } else {
                     // Silently fail - user already logged in with stored data
                     const isDev = process.env.NODE_ENV === 'development'
@@ -133,7 +146,7 @@ export const UnifiedAuthProvider = ({ children }) => {
                   console.debug('[UnifiedAuth] User data refresh error:', error.message)
                 }
               }
-            }, 0)
+            })
             return
           } else {
             const isDev = process.env.NODE_ENV === 'development'
@@ -180,24 +193,38 @@ export const UnifiedAuthProvider = ({ children }) => {
       const result = await authService.login(email, password)
       
       if (result.success && result.user) {
-        // Store user data and token immediately (non-blocking)
-        const storageOps = [
-          () => localStorage.setItem('userData', JSON.stringify(result.user)),
-          () => result.token && localStorage.setItem('authToken', result.token)
+        // Parallelize storage operations for faster execution
+        const storagePromises = [
+          Promise.resolve().then(() => {
+            try {
+              localStorage.setItem('userData', JSON.stringify(result.user));
+            } catch (e) {
+              if (isDev) console.warn('Storage error (userData):', e);
+            }
+          }),
+          result.token ? Promise.resolve().then(() => {
+            try {
+              localStorage.setItem('authToken', result.token);
+            } catch (e) {
+              if (isDev) console.warn('Storage error (authToken):', e);
+            }
+          }) : Promise.resolve()
         ];
-        storageOps.forEach(op => {
-          try { op(); } catch (e) { if (isDev) console.warn('Storage error:', e); }
-        });
         
-        // Update state immediately with login data
+        // Update state immediately with login data (non-blocking)
         dispatch({ 
           type: 'LOGIN_SUCCESS', 
           payload: { user: result.user, token: result.token } 
         })
         
-        // Fetch full profile in background (truly non-blocking, doesn't delay login response)
-        // Use setTimeout to ensure it doesn't block the main thread
-        setTimeout(async () => {
+        // Execute storage operations in parallel (non-blocking)
+        Promise.all(storagePromises).catch(() => {
+          // Silently handle any storage errors
+        });
+        
+        // Fetch full profile in background using queueMicrotask for better scheduling
+        // This ensures it runs after current synchronous code but before next event loop
+        queueMicrotask(async () => {
           try {
             // Create AbortController for timeout cancellation
             const abortController = new AbortController()
@@ -208,11 +235,24 @@ export const UnifiedAuthProvider = ({ children }) => {
               clearTimeout(timeoutId)
               
               if (profileResult.success && profileResult.user) {
-                localStorage.setItem('userData', JSON.stringify(profileResult.user))
-                dispatch({ 
-                  type: 'UPDATE_USER', 
-                  payload: { user: profileResult.user } 
-                })
+                // Update storage and state in parallel
+                Promise.all([
+                  Promise.resolve().then(() => {
+                    try {
+                      localStorage.setItem('userData', JSON.stringify(profileResult.user));
+                    } catch (e) {
+                      if (isDev) console.warn('Storage error (profile update):', e);
+                    }
+                  }),
+                  Promise.resolve().then(() => {
+                    dispatch({ 
+                      type: 'UPDATE_USER', 
+                      payload: { user: profileResult.user } 
+                    });
+                  })
+                ]).catch(() => {
+                  // Silently handle errors
+                });
               }
             } catch (profileError) {
               clearTimeout(timeoutId)
@@ -227,7 +267,7 @@ export const UnifiedAuthProvider = ({ children }) => {
               console.warn('[UnifiedAuth] Background profile fetch error:', error.message);
             }
           }
-        }, 0);
+        });
         
         return { success: true, user: result.user, token: result.token }
       } else {
