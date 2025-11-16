@@ -109,7 +109,10 @@ const SyllabusCreationWizard = ({
   const [newAssessmentCriteria, setNewAssessmentCriteria] = useState({ 
     abbreviation: '',
     name: '', 
-    weight: '' 
+    weight: '',
+    cognitive: '',
+    psychomotor: '',
+    affective: ''
   })
   const [newSubAssessment, setNewSubAssessment] = useState({
     abbreviation: '',
@@ -369,14 +372,40 @@ const SyllabusCreationWizard = ({
       if (editingSyllabus.assessment_criteria) {
         // If assessment_criteria is directly on the syllabus
         if (Array.isArray(editingSyllabus.assessment_criteria)) {
-          assessmentCriteria = editingSyllabus.assessment_criteria
+          // Ensure each item has CPA fields, even if they're missing (backward compatibility)
+          assessmentCriteria = editingSyllabus.assessment_criteria.map(item => ({
+            ...item,
+            cognitive: item.cognitive !== undefined ? item.cognitive : 0,
+            psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
+            affective: item.affective !== undefined ? item.affective : 0
+          }))
         } else if (typeof editingSyllabus.assessment_criteria === 'object') {
           assessmentCriteria = Array.isArray(editingSyllabus.assessment_criteria) 
-            ? editingSyllabus.assessment_criteria 
-            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ abbreviation: '', name, weight }))
+            ? editingSyllabus.assessment_criteria.map(item => ({
+                ...item,
+                cognitive: item.cognitive !== undefined ? item.cognitive : 0,
+                psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
+                affective: item.affective !== undefined ? item.affective : 0
+              }))
+            : Object.entries(editingSyllabus.assessment_criteria).map(([name, weight]) => ({ 
+                abbreviation: '', 
+                name, 
+                weight,
+                cognitive: 0,
+                psychomotor: 0,
+                affective: 0
+              }))
         } else if (typeof editingSyllabus.assessment_criteria === 'string') {
           try {
-            assessmentCriteria = JSON.parse(editingSyllabus.assessment_criteria)
+            const parsed = JSON.parse(editingSyllabus.assessment_criteria)
+            assessmentCriteria = Array.isArray(parsed)
+              ? parsed.map(item => ({
+                  ...item,
+                  cognitive: item.cognitive !== undefined ? item.cognitive : 0,
+                  psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
+                  affective: item.affective !== undefined ? item.affective : 0
+                }))
+              : []
           } catch {
             assessmentCriteria = []
           }
@@ -384,9 +413,21 @@ const SyllabusCreationWizard = ({
       } else if (gradingPolicy && gradingPolicy.assessment_criteria) {
         // If assessment_criteria is stored within grading_policy
         if (Array.isArray(gradingPolicy.assessment_criteria)) {
-          assessmentCriteria = gradingPolicy.assessment_criteria
+          assessmentCriteria = gradingPolicy.assessment_criteria.map(item => ({
+            ...item,
+            cognitive: item.cognitive !== undefined ? item.cognitive : 0,
+            psychomotor: item.psychomotor !== undefined ? item.psychomotor : 0,
+            affective: item.affective !== undefined ? item.affective : 0
+          }))
         } else if (typeof gradingPolicy.assessment_criteria === 'object') {
-          assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ abbreviation: '', name, weight }))
+          assessmentCriteria = Object.entries(gradingPolicy.assessment_criteria).map(([name, weight]) => ({ 
+            abbreviation: '', 
+            name, 
+            weight,
+            cognitive: 0,
+            psychomotor: 0,
+            affective: 0
+          }))
         }
       }
       
@@ -1153,10 +1194,13 @@ const SyllabusCreationWizard = ({
               assessment_criteria: [...prev.assessment_criteria, {
                 abbreviation: newAssessmentCriteria.abbreviation.trim() || '',
                 name: newAssessmentCriteria.name.trim(),
-                weight: parseFloat(newAssessmentCriteria.weight) || 0
+                weight: parseFloat(newAssessmentCriteria.weight) || 0,
+                cognitive: parseFloat(newAssessmentCriteria.cognitive) || 0,
+                psychomotor: parseFloat(newAssessmentCriteria.psychomotor) || 0,
+                affective: parseFloat(newAssessmentCriteria.affective) || 0
               }]
             }))
-            setNewAssessmentCriteria({ abbreviation: '', name: '', weight: '' })
+            setNewAssessmentCriteria({ abbreviation: '', name: '', weight: '', cognitive: '', psychomotor: '', affective: '' })
           }
         }
         
@@ -1172,7 +1216,9 @@ const SyllabusCreationWizard = ({
             const updated = [...prev.assessment_criteria]
             updated[index] = {
               ...updated[index],
-              [field]: field === 'weight' ? (parseFloat(value) || 0) : value
+              [field]: (field === 'weight' || field === 'cognitive' || field === 'psychomotor' || field === 'affective') 
+                ? (parseFloat(value) || 0) 
+                : value
             }
             return {
               ...prev,
@@ -1276,47 +1322,90 @@ const SyllabusCreationWizard = ({
               {formData.assessment_criteria.length > 0 && (
                 <div className="space-y-2 mb-2">
                   {formData.assessment_criteria.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                      <div className="flex-1 grid grid-cols-3 gap-2">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
-                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
-                        />
-                        <input
-                          type="text"
-                          value={item.abbreviation || ''}
-                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
-                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Abbreviation (e.g., QZ, ME)"
-                          maxLength="10"
-                        />
-                        <input
-                          type="number"
-                          value={item.weight}
-                          onChange={(e) => handleUpdateAssessmentCriteria(index, 'weight', e.target.value)}
-                          className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                          placeholder="Weight %"
-                          min="0"
-                          max="100"
-                        />
+                    <div key={index} className="p-2 bg-gray-50 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 grid grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleUpdateAssessmentCriteria(index, 'name', e.target.value)}
+                            className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Assessment Name (e.g., Quiz, Midterm Exam)"
+                          />
+                          <input
+                            type="text"
+                            value={item.abbreviation || ''}
+                            onChange={(e) => handleUpdateAssessmentCriteria(index, 'abbreviation', e.target.value)}
+                            className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Abbreviation (e.g., QZ, ME)"
+                            maxLength="10"
+                          />
+                          <input
+                            type="number"
+                            value={item.weight}
+                            onChange={(e) => handleUpdateAssessmentCriteria(index, 'weight', e.target.value)}
+                            className="px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder="Weight %"
+                            min="0"
+                            max="100"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAssessmentCriteria(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors duration-150"
+                          title="Remove"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAssessmentCriteria(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        title="Remove"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
+                      <div className="border-t border-gray-200 pt-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
+                            <input
+                              type="number"
+                              value={item.cognitive || ''}
+                              onChange={(e) => handleUpdateAssessmentCriteria(index, 'cognitive', e.target.value)}
+                              className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              placeholder="C"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-0.5">Psychomotor (P)</label>
+                            <input
+                              type="number"
+                              value={item.psychomotor || ''}
+                              onChange={(e) => handleUpdateAssessmentCriteria(index, 'psychomotor', e.target.value)}
+                              className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              placeholder="P"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-0.5">Affective (A)</label>
+                            <input
+                              type="number"
+                              value={item.affective || ''}
+                              onChange={(e) => handleUpdateAssessmentCriteria(index, 'affective', e.target.value)}
+                              className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              placeholder="A"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
               
-              <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg">
+              <div className="p-2 border-2 border-dashed border-gray-300 rounded-lg space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <input
                     type="text"
@@ -1353,6 +1442,50 @@ const SyllabusCreationWizard = ({
                     <PlusIcon className="h-5 w-5" />
                     Add
                   </button>
+                </div>
+                <div className="border-t border-gray-200 pt-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Domains (C - Cognitive, P - Psychomotor, A - Affective)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Cognitive (C)</label>
+                      <input
+                        type="number"
+                        value={newAssessmentCriteria.cognitive}
+                        onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, cognitive: e.target.value }))}
+                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="C"
+                        min="0"
+                        step="0.01"
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Psychomotor (P)</label>
+                      <input
+                        type="number"
+                        value={newAssessmentCriteria.psychomotor}
+                        onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, psychomotor: e.target.value }))}
+                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="P"
+                        min="0"
+                        step="0.01"
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-0.5">Affective (A)</label>
+                      <input
+                        type="number"
+                        value={newAssessmentCriteria.affective}
+                        onChange={(e) => setNewAssessmentCriteria(prev => ({ ...prev, affective: e.target.value }))}
+                        className="w-full px-2.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        placeholder="A"
+                        min="0"
+                        step="0.01"
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddAssessmentCriteria()}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               
