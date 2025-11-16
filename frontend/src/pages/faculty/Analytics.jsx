@@ -747,25 +747,65 @@ const Analytics = () => {
             signal: abortControllerRef.current.signal
           });
 
+          // Use dean's error handling logic
           if (!response.ok) {
-            let errorMessage = `HTTP ${response.status}`;
+            // Try to parse as JSON first, but fallback to text for HTML error pages
+            let errorData;
+            const contentType = response.headers.get('content-type');
             try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorData.message || errorMessage;
-              console.warn(`⚠️ [FACULTY ANALYTICS] Failed to fetch analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, errorMessage);
-            } catch (e) {
-              console.warn(`⚠️ [FACULTY ANALYTICS] Failed to fetch analytics for class ${classItem.section_course_id} (${classItem.course_code}): ${response.status} ${response.statusText}`);
+              if (contentType && contentType.includes('application/json')) {
+                errorData = await response.json();
+              } else {
+                const errorText = await response.text();
+                console.error(`❌ [FACULTY ANALYTICS] Non-JSON error response for class ${classItem.section_course_id}:`, errorText.substring(0, 200));
+                errorData = { 
+                  success: false, 
+                  error: `Server error (${response.status}): ${response.status === 502 ? 'Backend service unavailable. The server may be down or the request timed out.' : errorText.substring(0, 100)}`
+                };
+              }
+            } catch (parseError) {
+              console.error(`❌ [FACULTY ANALYTICS] Failed to parse error response for class ${classItem.section_course_id}:`, parseError);
+              errorData = { 
+                success: false, 
+                error: `Server error (${response.status}): ${response.status === 502 ? 'Backend service unavailable or request timed out.' : 'Unable to parse error response'}`
+              };
             }
+            const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+            console.warn(`⚠️ [FACULTY ANALYTICS] Failed to fetch analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, errorMessage);
             return null;
           }
 
+          // Clone response before consuming to allow error handling
+          const clonedRes = response.clone();
+          
+          // Check if response is OK (200-299)
           const contentType = response.headers.get('content-type');
           if (!contentType || !contentType.includes('application/json')) {
             console.warn(`⚠️ [FACULTY ANALYTICS] Non-JSON response for class ${classItem.section_course_id} (${classItem.course_code})`);
             return null;
           }
 
-          const result = await response.json();
+          // Clone again for error handling in JSON parsing
+          const jsonClonedRes = response.clone();
+          let result;
+          try {
+            result = await response.json();
+          } catch (jsonError) {
+            console.error(`❌ [FACULTY ANALYTICS] Error parsing JSON for class ${classItem.section_course_id}:`, jsonError);
+            // Try to read response as text to see what we got
+            try {
+              const responseText = await jsonClonedRes.text();
+              console.error(`❌ [FACULTY ANALYTICS] Response text (first 1000 chars) for class ${classItem.section_course_id}:`, responseText.substring(0, 1000));
+              // Check if response looks truncated
+              if (responseText.length > 1000 && !responseText.endsWith('}') && !responseText.endsWith(']')) {
+                console.error(`❌ [FACULTY ANALYTICS] Response appears to be truncated for class ${classItem.section_course_id}!`);
+              }
+            } catch (e) {
+              console.error(`❌ [FACULTY ANALYTICS] Could not read response as text for class ${classItem.section_course_id}:`, e);
+            }
+            return null;
+          }
+
           if (result.success && Array.isArray(result.data)) {
             // Add class info to each student record
             return {
@@ -781,9 +821,11 @@ const Analytics = () => {
           }
           return null;
         } catch (error) {
-          if (error.name !== 'AbortError') {
-            console.error(`❌ [FACULTY ANALYTICS] Error fetching analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, error);
+          if (error.name === 'AbortError') {
+            console.log(`🚫 [FACULTY ANALYTICS] Request was aborted for class ${classItem.section_course_id}`);
+            return null;
           }
+          console.error(`❌ [FACULTY ANALYTICS] Error fetching analytics for class ${classItem.section_course_id} (${classItem.course_code}):`, error);
           return null;
         }
       });
@@ -964,7 +1006,7 @@ const Analytics = () => {
       });
       setStudentEnrollmentsMap(enrollmentsMap);
 
-      // Check if clustering data is present
+      // Check if clustering data is present (using dean's logic)
       const studentsWithClusters = aggregatedStudents.filter(s => {
         const cluster = s.cluster_label;
         return cluster && 
@@ -977,19 +1019,39 @@ const Analytics = () => {
       console.log(`📊 [FACULTY ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${aggregatedStudents.length}`);
       
       if (studentsWithClusters.length === 0 && aggregatedStudents.length > 0) {
+        // Use dean's error handling logic
         const studentsWithErrors = aggregatedStudents.filter(s => 
           s.clustering_explanation && 
           s.clustering_explanation.includes('Error:')
         );
         
         let errorMessage = clusteringMeta.error;
-        if (!errorMessage && studentsWithErrors.length > 0) {
-          const firstError = studentsWithErrors[0].clustering_explanation;
-          errorMessage = `Python API error: ${firstError}`;
-        } else if (!errorMessage) {
-          errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+        if (!errorMessage) {
+          if (studentsWithErrors.length > 0) {
+            const firstError = studentsWithErrors[0].clustering_explanation;
+            errorMessage = `Python API error: ${firstError}`;
+          } else if (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null) {
+            errorMessage = 'Clustering API was called but returned no cluster labels. Check backend logs for details.';
+          } else {
+            errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+          }
         }
         
+        console.error('❌ [FACULTY ANALYTICS] No students have cluster labels!');
+        console.error('❌ [FACULTY ANALYTICS] Error:', errorMessage);
+        console.error('❌ [FACULTY ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
+        if (studentsWithErrors.length > 0) {
+          console.error(`❌ [FACULTY ANALYTICS] Found ${studentsWithErrors.length} students with clustering_explanation errors`);
+          console.error('❌ [FACULTY ANALYTICS] First error:', studentsWithErrors[0].clustering_explanation);
+        }
+        console.error('❌ [FACULTY ANALYTICS] Diagnostic steps:');
+        console.error('   1. Check backend logs for clustering errors');
+        console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
+        console.error('   3. Test clustering service: GET /api/assessments/clustering/health');
+        console.error('   4. Check Python API logs on Railway');
+        console.error('   5. Check clustering_explanation field in student data for Python API errors');
+        
+        // Set error state for UI display
         if (setErrorRef.current) {
           try {
             setErrorRef.current(`Clustering failed: ${errorMessage}. Check console for details.`);
@@ -1028,9 +1090,10 @@ const Analytics = () => {
       // Load charts after data is loaded
       setTimeout(() => setChartsLoaded(true), 200);
       
-      // Log cluster distribution
+      // Log cluster distribution (using dean's logging format)
       const clusterCounts = aggregatedStudents.reduce((acc, row) => {
         let cluster = row.cluster_label;
+        // Only count valid cluster labels (skip null/undefined/invalid)
         if (cluster && 
             cluster !== null && 
             cluster !== undefined &&
@@ -1042,6 +1105,8 @@ const Analytics = () => {
       }, {});
       console.log('📈 [FACULTY ANALYTICS] Cluster distribution:', clusterCounts);
       console.log('🔍 [FACULTY ANALYTICS] Clustering enabled status:', clusteringMeta?.enabled);
+      console.log('🔍 [FACULTY ANALYTICS] Backend platform:', clusteringMeta?.backendPlatform);
+      console.log('🔍 [FACULTY ANALYTICS] Clustering API platform:', clusteringMeta?.apiPlatform);
 
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
@@ -1050,6 +1115,7 @@ const Analytics = () => {
       setProgress(100);
       setTimeout(() => setLoading(false), 500);
       setHasFetched(true);
+      setChartsLoaded(false); // Reset charts loaded state (dean's logic)
       try {
         trackEvent('faculty_analytics_loaded', {
           success: true,
@@ -1070,6 +1136,7 @@ const Analytics = () => {
       }
       
       console.error('❌ [FACULTY ANALYTICS] Fetch error:', err);
+      // Display more specific error messages (using dean's logic)
       const errorMessage = err?.message || 'Unable to fetch analytics';
       const sessionCached = safeGetItem(`faculty_analytics_${selectedTermId || 'all'}_session`);
       const cachedData = getCachedData('analytics', `faculty_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
