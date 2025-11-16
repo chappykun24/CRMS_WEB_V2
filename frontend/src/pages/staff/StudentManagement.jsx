@@ -14,7 +14,8 @@ import {
 import studentService from '../../services/studentService'
 // Removed studentSpec import - using inline validation instead
 import api, { endpoints } from '../../utils/api'
-import { TableSkeleton, SidebarSkeleton, ImageSkeleton } from '../../components/skeletons'
+import { TableSkeleton, SidebarSkeleton } from '../../components/skeletons'
+import LazyStudentImage from '../../components/LazyStudentImage'
 import staffCacheService from '../../services/staffCacheService'
 import { safeSetItem, safeGetItem, minimizeStudentData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
 
@@ -54,6 +55,7 @@ const StudentManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [imagesReady, setImagesReady] = useState(false) // Control when to start loading images
   
   // Lock page scroll while this page is mounted
   useEffect(() => {
@@ -174,6 +176,12 @@ const StudentManagement = () => {
       console.log('📦 [STAFF STUDENTS] Using session cached students data')
       setStudents(Array.isArray(sessionCached) ? sessionCached : [])
       setLoading(false)
+      // Enable images after cached data is displayed
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => setImagesReady(true), { timeout: 300 })
+      } else {
+        setTimeout(() => setImagesReady(true), 200)
+      }
       // Continue to fetch fresh data in background
     } else {
       setLoading(true)
@@ -188,6 +196,12 @@ const StudentManagement = () => {
       setLoading(false)
       // Cache minimized data in sessionStorage for next time
       safeSetItem(sessionCacheKey, cachedData, minimizeStudentData)
+      // Enable images after cached data is displayed
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => setImagesReady(true), { timeout: 300 })
+      } else {
+        setTimeout(() => setImagesReady(true), 200)
+      }
       // Continue to fetch fresh data in background
     }
     
@@ -201,21 +215,47 @@ const StudentManagement = () => {
     
     try {
       console.log('🔄 [STAFF STUDENTS] Fetching fresh students...')
+      // Reset images ready state - prioritize text data
+      setImagesReady(false)
+      
       const data = await studentService.getAllStudents()
       
       if (data.success) {
         const studentsData = Array.isArray(data.students) ? data.students : []
         console.log(`✅ [STAFF STUDENTS] Received ${studentsData.length} students`)
-        setStudents(studentsData)
+        
+        // Set students immediately with text data (images will load lazily)
+        // Minimize data to exclude photos for faster initial load
+        const minimizedStudents = studentsData.map(s => ({
+          ...s,
+          student_photo: null // Remove photos from initial data
+        }))
+        
+        setStudents(minimizedStudents)
         setError('')
         
-        // Store minimized data in sessionStorage for instant next load
+        // Store minimized data in sessionStorage for instant next load (without photos)
         if (!sessionCached) {
-          safeSetItem(sessionCacheKey, studentsData, minimizeStudentData)
+          safeSetItem(sessionCacheKey, minimizedStudents, minimizeStudentData)
         }
         
-        // Store full data in enhanced cache
-        setCachedData('students', cacheKey, studentsData)
+        // Store full data in enhanced cache (can include photos but we minimize for speed)
+        setCachedData('students', cacheKey, minimizedStudents)
+        
+        // Delay image loading - prioritize text data display first
+        // Use requestIdleCallback to load images when browser is idle
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(() => {
+            setImagesReady(true) // Enable image loading after text data is displayed
+            console.log('📸 [STAFF STUDENTS] Images ready for lazy loading')
+          }, { timeout: 500 })
+        } else {
+          // Fallback: small delay to ensure text renders first
+          setTimeout(() => {
+            setImagesReady(true)
+            console.log('📸 [STAFF STUDENTS] Images ready for lazy loading')
+          }, 300)
+        }
       } else {
         throw new Error(data.error || 'Failed to load students')
       }
@@ -1053,8 +1093,8 @@ const StudentManagement = () => {
                             <td className="px-3 py-2 whitespace-nowrap">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-8 w-8">
-                                  <ImageSkeleton
-                                    src={student.student_photo}
+                                  <LazyStudentImage
+                                    studentId={student.student_id}
                                     alt={student.full_name}
                                     size="sm"
                                     shape="circle"
@@ -1110,8 +1150,8 @@ const StudentManagement = () => {
                   {/* Header with Edit Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <ImageSkeleton
-                        src={selectedStudent.student_photo}
+                      <LazyStudentImage
+                        studentId={selectedStudent.student_id}
                         alt={selectedStudent.full_name}
                         size="lg"
                         shape="circle"
