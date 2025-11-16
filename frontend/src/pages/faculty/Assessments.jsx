@@ -1649,6 +1649,7 @@ const Assessments = () => {
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                       Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
                                     </th>
+                                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Transmuted</th>
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Due Date</th>
                                     <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-12"></th>
@@ -1669,6 +1670,9 @@ const Assessments = () => {
                                         <div className="flex justify-center">
                                           <div className="h-4 bg-gray-200 rounded w-16 skeleton"></div>
                                         </div>
+                                      </td>
+                                      <td className="px-4 py-5">
+                                        <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
                                       </td>
                                       <td className="px-4 py-5">
                                         <div className="h-4 bg-gray-200 rounded w-12 skeleton mx-auto"></div>
@@ -1754,7 +1758,31 @@ const Assessments = () => {
                                             <span className="text-xs text-gray-500 ml-1">%</span>
                                           </td>
                                           <td className="px-4 py-4 text-center">
-                                            <span className="text-sm text-gray-500">—</span>
+                                            <span className="text-sm font-semibold text-green-600" title="Average Transmuted Score">
+                                              {(() => {
+                                                // Calculate average transmuted score for the group
+                                                let totalTransmuted = 0
+                                                let count = 0
+                                                groupAssessments.forEach(assessment => {
+                                                  const gradesCacheKey = `assessment_grades_${assessment.assessment_id}`
+                                                  const cachedGrades = safeGetItem(gradesCacheKey)
+                                                  if (cachedGrades && Object.keys(cachedGrades).length > 0) {
+                                                    Object.values(cachedGrades).forEach(gradeData => {
+                                                      if (gradeData.raw_score !== null && gradeData.raw_score !== '' && gradeData.submission_status !== 'missing') {
+                                                        const rawScore = parseFloat(gradeData.raw_score) || 0
+                                                        const latePenalty = parseFloat(gradeData.late_penalty) || 0
+                                                        const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, assessment.total_points)
+                                                        const actualScore = calculateActualScore(adjustedScore, assessment.total_points)
+                                                        const transmutedScore = calculateTransmutedScore(actualScore, assessment.weight_percentage || 0)
+                                                        totalTransmuted += transmutedScore
+                                                        count++
+                                                      }
+                                                    })
+                                                  }
+                                                })
+                                                return count > 0 ? (totalTransmuted / count).toFixed(2) : '—'
+                                              })()}
+                                            </span>
                                           </td>
                                           <td className="px-4 py-4 text-center">
                                             <span className="text-sm text-gray-500">—</span>
@@ -1809,6 +1837,36 @@ const Assessments = () => {
                                                 <div className="text-center">
                                                   <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
                                                   <span className="text-xs text-gray-500 ml-1">%</span>
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-4">
+                                                <div className="text-center">
+                                                  <span className="text-sm font-semibold text-green-600" title="Transmuted Score = (Adjusted / Max) × 62.5 + 37.5, then × (Weight / 100)">
+                                                    {(() => {
+                                                      // Calculate transmuted score from cached grades if available
+                                                      const gradesCacheKey = `assessment_grades_${assessment.assessment_id}`
+                                                      const cachedGrades = safeGetItem(gradesCacheKey)
+                                                      if (cachedGrades && Object.keys(cachedGrades).length > 0) {
+                                                        let totalTransmuted = 0
+                                                        let count = 0
+                                                        Object.values(cachedGrades).forEach(gradeData => {
+                                                          if (gradeData.raw_score !== null && gradeData.raw_score !== '' && gradeData.submission_status !== 'missing') {
+                                                            const rawScore = parseFloat(gradeData.raw_score) || 0
+                                                            const latePenalty = parseFloat(gradeData.late_penalty) || 0
+                                                            const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, assessment.total_points)
+                                                            const actualScore = calculateActualScore(adjustedScore, assessment.total_points)
+                                                            const transmutedScore = calculateTransmutedScore(actualScore, assessment.weight_percentage || 0)
+                                                            totalTransmuted += transmutedScore
+                                                            count++
+                                                          }
+                                                        })
+                                                        if (count > 0) {
+                                                          return (totalTransmuted / count).toFixed(2)
+                                                        }
+                                                      }
+                                                      return '—'
+                                                    })()}
+                                                  </span>
                                                 </div>
                                               </td>
                                               <td className="px-4 py-4">
@@ -1932,6 +1990,36 @@ const Assessments = () => {
                                             <div className="text-center">
                                               <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
                                               <span className="text-xs text-gray-500 ml-1">%</span>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-5">
+                                            <div className="text-center">
+                                              <span className="text-sm font-semibold text-green-600" title="Transmuted Score = (Adjusted / Max) × 62.5 + 37.5, then × (Weight / 100)">
+                                                {(() => {
+                                                  // Calculate transmuted score from cached grades if available
+                                                  const gradesCacheKey = `assessment_grades_${assessment.assessment_id}`
+                                                  const cachedGrades = safeGetItem(gradesCacheKey)
+                                                  if (cachedGrades && Object.keys(cachedGrades).length > 0) {
+                                                    let totalTransmuted = 0
+                                                    let count = 0
+                                                    Object.values(cachedGrades).forEach(gradeData => {
+                                                      if (gradeData.raw_score !== null && gradeData.raw_score !== '' && gradeData.submission_status !== 'missing') {
+                                                        const rawScore = parseFloat(gradeData.raw_score) || 0
+                                                        const latePenalty = parseFloat(gradeData.late_penalty) || 0
+                                                        const adjustedScore = calculateAdjustedScore(rawScore, latePenalty, assessment.total_points)
+                                                        const actualScore = calculateActualScore(adjustedScore, assessment.total_points)
+                                                        const transmutedScore = calculateTransmutedScore(actualScore, assessment.weight_percentage || 0)
+                                                        totalTransmuted += transmutedScore
+                                                        count++
+                                                      }
+                                                    })
+                                                    if (count > 0) {
+                                                      return (totalTransmuted / count).toFixed(2)
+                                                    }
+                                                  }
+                                                  return '—'
+                                                })()}
+                                              </span>
                                             </div>
                                           </td>
                                           <td className="px-4 py-5">
