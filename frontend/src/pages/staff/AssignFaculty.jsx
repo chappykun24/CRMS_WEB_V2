@@ -356,7 +356,7 @@ const AssignFaculty = () => {
           }
         }
       } catch (error) {
-        console.error('❌ [ASSIGN FACULTY] Error fetching active term:', error')
+        console.error('❌ [ASSIGN FACULTY] Error fetching active term:', error)
       }
     }
     fetchActiveTerm()
