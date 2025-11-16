@@ -208,7 +208,6 @@ const Syllabus = () => {
       console.warn('⚠️ [SYLLABUS] Selected class is not from active term, clearing selection')
       setSelectedClass(null)
       setSyllabi([])
-      setSelectedSyllabusForILO(null)
     }
   }, [activeTermId, selectedClass])
 
@@ -216,7 +215,7 @@ const Syllabus = () => {
   useEffect(() => {
     if (!selectedClass) {
       setSyllabi([])
-      setSelectedSyllabusForILO(null) // Reset selected syllabus when class changes
+ // Reset selected syllabus when class changes
       return
     }
     
