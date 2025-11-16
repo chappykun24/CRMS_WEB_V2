@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { ChartBarIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ChartBarIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/solid';
 import { TableSkeleton } from '../../components/skeletons';
 import { trackEvent } from '../../utils/analytics';
 import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } from '../../services/dataPrefetchService';
@@ -162,6 +162,7 @@ const Analytics = () => {
   const [classFilteredData, setClassFilteredData] = useState(null);
   const [loadingClassData, setLoadingClassData] = useState(false);
   const [chartsLoaded, setChartsLoaded] = useState(false);
+  const [expandedScatterPlot, setExpandedScatterPlot] = useState(null); // 'attendance' or 'submission' or null
   // Cache for student photos to prevent duplicate loads
   const studentPhotoCache = useRef(new Map());
   const loadingPhotoRef = useRef(null);
@@ -1725,7 +1726,20 @@ const Analytics = () => {
                 <div className="space-y-3">
                   {/* Scatter Plot: Attendance vs Score */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Attendance vs Score</h3>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-[10px] font-semibold text-gray-900">Attendance vs Score</h3>
+                      <button
+                        onClick={() => setExpandedScatterPlot(expandedScatterPlot === 'attendance' ? null : 'attendance')}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        title={expandedScatterPlot === 'attendance' ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedScatterPlot === 'attendance' ? (
+                          <ArrowsPointingInIcon className="w-3 h-3 text-gray-600" />
+                        ) : (
+                          <ArrowsPointingOutIcon className="w-3 h-3 text-gray-600" />
+                        )}
+                      </button>
+                    </div>
                     <ResponsiveContainer width="100%" height={250}>
                       <ScatterChart data={chartData.scatterData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -1798,7 +1812,20 @@ const Analytics = () => {
 
                   {/* Scatter Plot: Submission Rate vs Score */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Submission Rate vs Score</h3>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-[10px] font-semibold text-gray-900">Submission Rate vs Score</h3>
+                      <button
+                        onClick={() => setExpandedScatterPlot(expandedScatterPlot === 'submission' ? null : 'submission')}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        title={expandedScatterPlot === 'submission' ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedScatterPlot === 'submission' ? (
+                          <ArrowsPointingInIcon className="w-3 h-3 text-gray-600" />
+                        ) : (
+                          <ArrowsPointingOutIcon className="w-3 h-3 text-gray-600" />
+                        )}
+                      </button>
+                    </div>
                     <ResponsiveContainer width="100%" height={250}>
                       <ScatterChart data={chartData.scatterData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -1866,6 +1893,137 @@ const Analytics = () => {
                           <span className="text-[7px] text-gray-600">{cluster}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Expanded Scatter Plot Modal */}
+              {expandedScatterPlot && chartData && chartsLoaded && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4" onClick={() => setExpandedScatterPlot(null)}>
+                  <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {expandedScatterPlot === 'attendance' ? 'Attendance vs Score' : 'Submission Rate vs Score'}
+                      </h2>
+                      <button
+                        onClick={() => setExpandedScatterPlot(null)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        title="Close"
+                      >
+                        <XMarkIcon className="w-5 h-5 text-gray-600" />
+                      </button>
+                    </div>
+                    {/* Modal Content */}
+                    <div className="flex-1 p-6 overflow-auto">
+                      <ResponsiveContainer width="100%" height={600}>
+                        <ScatterChart data={chartData.scatterData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          {expandedScatterPlot === 'attendance' ? (
+                            <>
+                              <XAxis 
+                                type="number" 
+                                dataKey="attendance" 
+                                name="Attendance %" 
+                                domain={[0, 100]}
+                                label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <YAxis 
+                                type="number" 
+                                dataKey="score" 
+                                name="Score" 
+                                domain={[0, 100]}
+                                label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <ZAxis 
+                                type="number" 
+                                dataKey="submissionRate" 
+                                range={[50, 400]}
+                                name="Submission Rate %"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <XAxis 
+                                type="number" 
+                                dataKey="submissionRate" 
+                                name="Submission Rate %" 
+                                domain={[0, 100]}
+                                label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <YAxis 
+                                type="number" 
+                                dataKey="score" 
+                                name="Score" 
+                                domain={[0, 100]}
+                                label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <ZAxis 
+                                type="number" 
+                                dataKey="attendance" 
+                                range={[50, 400]}
+                                name="Attendance %"
+                              />
+                            </>
+                          )}
+                          <Tooltip 
+                            cursor={{ strokeDasharray: '3 3' }}
+                            contentStyle={{ fontSize: '12px', padding: '8px' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload[0]) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
+                                    <p className="font-semibold text-sm">{data.name}</p>
+                                    {expandedScatterPlot === 'attendance' ? (
+                                      <>
+                                        <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
+                                        <p className="text-xs">Score: {data.score.toFixed(1)}</p>
+                                        <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                        <p className="text-xs">Score: {data.score.toFixed(1)}</p>
+                                        <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
+                                      </>
+                                    )}
+                                    <p className="text-xs">Cluster: {data.cluster}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Scatter 
+                            name="Students" 
+                            data={chartData.scatterData} 
+                            fill="#10b981"
+                            shape={(props) => {
+                              const { cx, cy, payload } = props;
+                              const color = clusterColors[payload.cluster] || '#9ca3af';
+                              return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={1.5} />;
+                            }}
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                      {/* Custom Legend for Cluster Colors */}
+                      <div className="mt-4 flex flex-wrap gap-3 justify-center">
+                        {uniqueClusterLabels.map((cluster) => (
+                          <div key={cluster} className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full" 
+                              style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                            />
+                            <span className="text-sm text-gray-600">{cluster}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
