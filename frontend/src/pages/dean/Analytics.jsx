@@ -764,7 +764,6 @@ const Analytics = () => {
       .then((json) => {
         console.log('✅ [DEAN ANALYTICS] Received data:', json);
         console.log('🎯 [DEAN ANALYTICS] Clustering enabled:', json.clustering?.enabled);
-        console.log('📊 [DEAN ANALYTICS] Sample data:', json.data?.slice(0, 3));
         
         if (json.success) {
           const studentsData = json.data || [];
@@ -791,7 +790,6 @@ const Analytics = () => {
             console.error('❌ [DEAN ANALYTICS] No students have cluster labels!');
             console.error('❌ [DEAN ANALYTICS] Error:', errorMessage);
             console.error('❌ [DEAN ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
-            console.error('❌ [DEAN ANALYTICS] Sample student data:', JSON.stringify(studentsData[0], null, 2));
             console.error('❌ [DEAN ANALYTICS] Diagnostic steps:');
             console.error('   1. Check backend logs for clustering errors');
             console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
@@ -860,7 +858,6 @@ const Analytics = () => {
             return acc;
           }, {});
           console.log('📈 [DEAN ANALYTICS] Cluster distribution:', clusterCounts);
-          console.log('🔍 [DEAN ANALYTICS] Sample row with cluster:', studentsData[0]);
           console.log('🔍 [DEAN ANALYTICS] Clustering enabled status:', json.clustering?.enabled);
           console.log('🔍 [DEAN ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
           console.log('🔍 [DEAN ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);

@@ -670,8 +670,17 @@ def cluster_records(records):
     result = output.to_dict(orient='records')
     for record in result:
         for key, value in record.items():
-            if pd.isna(value):
-                record[key] = None
+            # Check if value is array/list first (pd.isna can't handle arrays)
+            if isinstance(value, (list, np.ndarray)):
+                # Arrays are valid, skip NaN check
+                continue
+            # For scalar values, check if NaN
+            try:
+                if pd.isna(value):
+                    record[key] = None
+            except (ValueError, TypeError):
+                # If pd.isna fails (e.g., on arrays), skip
+                pass
         if record.get('cluster_label') is not None:
             record['cluster_label'] = str(record['cluster_label'])
         if record.get('silhouette_score') is not None:
@@ -767,15 +776,23 @@ def cluster_students():
         """Recursively clean NaN, Infinity values from dict/list for JSON serialization"""
         if isinstance(obj, dict):
             return {k: clean_for_json(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
+        elif isinstance(obj, (list, np.ndarray)):
             return [clean_for_json(item) for item in obj]
         elif isinstance(obj, float):
             if math.isnan(obj) or math.isinf(obj):
                 return None
             return obj
-        elif pd.isna(obj):
-            return None
-        return obj
+        elif isinstance(obj, (int, str, bool)) or obj is None:
+            return obj
+        else:
+            # Try pd.isna for pandas types, but catch errors for arrays
+            try:
+                if pd.isna(obj):
+                    return None
+            except (ValueError, TypeError):
+                # pd.isna failed (likely an array), return as-is
+                pass
+            return obj
     
     cleaned_results = clean_for_json(results)
     

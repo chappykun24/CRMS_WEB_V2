@@ -1194,20 +1194,11 @@ router.get('/dean-analytics/sample', async (req, res) => {
       const clusterDistribution = clusteringService.getClusterDistribution(dataWithClusters);
       console.log('📊 [Backend] Cluster distribution from API:', clusterDistribution);
       
-      // Log sample cluster data to verify it's being applied
+      // Log cluster data verification
       if (dataWithClusters.length > 0) {
-        const sampleWithCluster = dataWithClusters.find(s => s.cluster_label);
-        const sampleWithoutCluster = dataWithClusters.find(s => !s.cluster_label);
-        console.log('🔍 [Backend] Sample student WITH cluster:', sampleWithCluster ? {
-          student_id: sampleWithCluster.student_id,
-          cluster: sampleWithCluster.cluster,
-          cluster_label: sampleWithCluster.cluster_label
-        } : 'None found');
-        console.log('🔍 [Backend] Sample student WITHOUT cluster:', sampleWithoutCluster ? {
-          student_id: sampleWithoutCluster.student_id,
-          cluster: sampleWithoutCluster.cluster,
-          cluster_label: sampleWithoutCluster.cluster_label
-        } : 'None found');
+        const studentsWithClusters = dataWithClusters.filter(s => s.cluster_label);
+        const studentsWithoutClusters = dataWithClusters.filter(s => !s.cluster_label);
+        console.log(`🔍 [Backend] Cluster verification: ${studentsWithClusters.length} with clusters, ${studentsWithoutClusters.length} without clusters`);
       }
     } else if (clusteringResult.error) {
       console.warn(`⚠️ [Backend] Clustering error: ${clusteringResult.error}`);
