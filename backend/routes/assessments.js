@@ -613,7 +613,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
     // Enhanced with detailed attendance counts and submission behavior
     // Includes section/program/department information for filtering
     const query = `
-      SELECT DISTINCT
+      SELECT
         s.student_id,
         s.full_name,
         s.student_number,
@@ -1011,7 +1011,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
             '[]'::json
           )
           FROM (
-            SELECT DISTINCT
+            SELECT
               i.ilo_id,
               i.code as ilo_code,
               i.description as ilo_description,
