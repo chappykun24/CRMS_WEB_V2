@@ -6,6 +6,7 @@ import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchDeanData } fr
 import { API_BASE_URL } from '../../utils/api';
 import deanCacheService from '../../services/deanCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
+import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
 
 // Analytics-specific skeleton components
 const AnalyticsTableSkeleton = () => (
@@ -993,41 +994,7 @@ const Analytics = () => {
       });
   }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel, selectedSpecializationId]);
 
-  const getClusterStyle = (label) => {
-    // Return null if no valid cluster label (don't show "Not Clustered" fallback)
-    if (!label || 
-        label === null || 
-        label === undefined ||
-        (typeof label === 'number' && isNaN(label)) ||
-        (typeof label === 'string' && (label.toLowerCase() === 'nan' || label.trim() === ''))) {
-      return null; // Return null instead of fallback text
-    }
-
-    const normalized = String(label).toLowerCase();
-
-    // At Risk - Red
-    if (normalized.includes('risk') || normalized.includes('at risk')) {
-      return { text: label, className: 'bg-red-100 text-red-700' };
-    }
-
-    // Needs Improvement/Needs Guidance - Orange/Yellow
-    if (normalized.includes('improvement') || normalized.includes('guidance') || normalized.includes('needs')) {
-      return { text: label, className: 'bg-orange-100 text-orange-700' };
-    }
-
-    // Average Performance/Performing Well - Blue (check before Excellent to avoid matching "performance")
-    if (normalized.includes('average') || normalized.includes('performing') || normalized.includes('track')) {
-      return { text: label, className: 'bg-blue-100 text-blue-700' };
-    }
-
-    // Excellent Performance - Green (check after Average to avoid conflicts)
-    if (normalized.includes('excellent') || normalized.includes('high')) {
-      return { text: label, className: 'bg-emerald-100 text-emerald-700' };
-    }
-
-    // Default - Gray
-    return { text: label, className: 'bg-gray-100 text-gray-600' };
-  };
+  // getClusterStyle is now imported from shared clusterUtils
 
   // Get unique clusters from data (only valid clusters, no fallback)
   const uniqueClusters = useMemo(() => {
@@ -1345,16 +1312,7 @@ const Analytics = () => {
     barSecondary: '#10b981'
   };
 
-  // Cluster color mapping for scatter plots
-  const clusterColors = {
-    'Excellent Performance': '#10b981',
-    'Average Performance': '#3b82f6',
-    'Performing Well': '#3b82f6',
-    'Needs Improvement': '#f59e0b',
-    'Needs Guidance': '#f59e0b',
-    'At Risk': '#ef4444',
-    'Needs Support': '#ef4444'
-  };
+  // clusterColors is now imported from shared clusterUtils
 
   // Get unique clusters for legend
   const uniqueClusterLabels = useMemo(() => {
@@ -1790,7 +1748,7 @@ const Analytics = () => {
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            const color = clusterColors[payload.cluster] || '#9ca3af';
+                            const color = getClusterColor(payload.cluster);
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
@@ -1802,7 +1760,7 @@ const Analytics = () => {
                         <div key={cluster} className="flex items-center gap-0.5">
                           <div 
                             className="w-2.5 h-2.5 rounded-full" 
-                            style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                            style={{ backgroundColor: getClusterColor(cluster) }}
                           />
                           <span className="text-[7px] text-gray-600">{cluster}</span>
                         </div>
@@ -1876,7 +1834,7 @@ const Analytics = () => {
                           fill="#10b981"
                           shape={(props) => {
                             const { cx, cy, payload } = props;
-                            const color = clusterColors[payload.cluster] || '#9ca3af';
+                            const color = getClusterColor(payload.cluster);
                             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
                           }}
                         />
@@ -1888,7 +1846,7 @@ const Analytics = () => {
                         <div key={cluster} className="flex items-center gap-0.5">
                           <div 
                             className="w-2.5 h-2.5 rounded-full" 
-                            style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                            style={{ backgroundColor: getClusterColor(cluster) }}
                           />
                           <span className="text-[7px] text-gray-600">{cluster}</span>
                         </div>
@@ -2006,7 +1964,7 @@ const Analytics = () => {
                             fill="#10b981"
                             shape={(props) => {
                               const { cx, cy, payload } = props;
-                              const color = clusterColors[payload.cluster] || '#9ca3af';
+                              const color = getClusterColor(payload.cluster);
                               return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={1.5} />;
                             }}
                           />
@@ -2018,7 +1976,7 @@ const Analytics = () => {
                           <div key={cluster} className="flex items-center gap-2">
                             <div 
                               className="w-4 h-4 rounded-full" 
-                              style={{ backgroundColor: clusterColors[cluster] || '#9ca3af' }}
+                              style={{ backgroundColor: getClusterColor(cluster) }}
                             />
                             <span className="text-sm text-gray-600">{cluster}</span>
                           </div>

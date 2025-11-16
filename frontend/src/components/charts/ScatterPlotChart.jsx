@@ -9,17 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts'
+import { getClusterColor } from '../../utils/clusterUtils'
 
 const ScatterPlotChart = ({ data, onNavigate }) => {
-  const clusterColors = {
-    'Excellent Performance': '#10b981',
-    'Average Performance': '#3b82f6',
-    'Performing Well': '#3b82f6',
-    'Needs Improvement': '#f59e0b',
-    'Needs Guidance': '#f59e0b',
-    'At Risk': '#ef4444',
-    'Needs Support': '#ef4444'
-  }
 
   return (
     <ResponsiveContainer width="100%" height={240}>
@@ -73,7 +65,7 @@ const ScatterPlotChart = ({ data, onNavigate }) => {
           fill="#3b82f6"
           shape={(props) => {
             const { cx, cy, payload } = props;
-            const color = clusterColors[payload.cluster] || '#9ca3af';
+            const color = getClusterColor(payload.cluster);
             return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1.5} opacity={0.7} />;
           }}
         />
