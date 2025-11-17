@@ -6,7 +6,7 @@ import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchFacultyData }
 import { API_BASE_URL } from '../../utils/api';
 import facultyCacheService from '../../services/facultyCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
-import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
+import { clusterColors, getClusterStyle, getClusterColor, getSubmissionStatusScoreStyle } from '../../utils/clusterUtils';
 import { useAuth } from '../../contexts/UnifiedAuthContext';
 
 // Analytics-specific skeleton components
@@ -1767,7 +1767,7 @@ const Analytics = () => {
                                   : 'N/A'}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                                <div className="text-xs">
+                                <div className="text-xs space-y-1">
                                   <div>{row.submission_rate !== null && row.submission_rate !== undefined 
                                     ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
                                     : 'N/A'}</div>
@@ -1776,6 +1776,16 @@ const Analytics = () => {
                                       {row.submission_ontime_count} ontime, {row.submission_late_count || 0} late, {row.submission_missing_count || 0} missing
                                     </div>
                                   )}
+                                  {row.average_submission_status_score !== null && row.average_submission_status_score !== undefined && !isNaN(row.average_submission_status_score) && (() => {
+                                    const statusStyle = getSubmissionStatusScoreStyle(row.average_submission_status_score);
+                                    return statusStyle ? (
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${statusStyle.className}`} title={`Status Score: ${statusStyle.label} (Lower is better - 0.0=all ontime, 2.0=all missing)`}>
+                                          Score: {statusStyle.text}
+                                        </span>
+                                      </div>
+                                    ) : null;
+                                  })()}
                                 </div>
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">

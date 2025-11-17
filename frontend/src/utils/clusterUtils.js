@@ -168,3 +168,45 @@ export const normalizeClusterLabel = (label) => {
   return label;
 };
 
+/**
+ * Get submission status score style (HIGHER IS BETTER)
+ * Score range: 0.0-2.0 where:
+ * - 2.0 = all ontime (BEST - green)
+ * - 1.0 = all late (moderate - yellow)
+ * - 0.0 = all missing (WORST - red)
+ * @param {number} score - The submission_status_score value
+ * @returns {Object|null} - { text: string, className: string, label: string } or null if invalid
+ */
+export const getSubmissionStatusScoreStyle = (score) => {
+  if (score === null || score === undefined || isNaN(score)) {
+    return null;
+  }
+
+  const numScore = parseFloat(score);
+  
+  // 1.5-2.0: Excellent (mostly ontime) - Green
+  if (numScore >= 1.5) {
+    return { 
+      text: numScore.toFixed(2), 
+      className: 'bg-green-100 text-green-700 font-medium',
+      label: 'Excellent' 
+    };
+  }
+  
+  // 0.5-1.5: Moderate (mix or mostly late) - Yellow/Orange
+  if (numScore >= 0.5) {
+    return { 
+      text: numScore.toFixed(2), 
+      className: 'bg-yellow-100 text-yellow-700 font-medium',
+      label: 'Moderate' 
+    };
+  }
+  
+  // 0.0-0.5: Poor (mostly missing) - Red
+  return { 
+    text: numScore.toFixed(2), 
+    className: 'bg-red-100 text-red-700 font-medium',
+    label: 'Poor' 
+  };
+};
+

@@ -6,6 +6,481 @@ The analytics clustering system groups students based on their academic performa
 
 ---
 
+## 🔄 Complete Data Flow: Database to Dashboard
+
+This section documents the actual end-to-end data flow from PostgreSQL database to React dashboard.
+
+### **Data Flow Pipeline**
+
+```
+1. User Interaction (Frontend)
+   ↓
+2. HTTP Request (REST API)
+   ↓
+3. Backend Route Handler (Express.js)
+   ↓
+4. SQL Query Execution (PostgreSQL)
+   ↓
+5. Data Aggregation & Calculation
+   ↓
+6. Clustering Service (Cache Check)
+   ↓
+7. Python Clustering API (K-Means + Elbow Method)
+   ↓
+8. Cache Storage (PostgreSQL)
+   ↓
+9. JSON Response (Backend)
+   ↓
+10. Frontend Processing (React)
+   ↓
+11. Dashboard Display (Charts & Tables)
+```
+
+---
+
+### **Step-by-Step Data Flow**
+
+#### **Step 1: Frontend Request** (`frontend/src/pages/dean/Analytics.jsx`)
+
+**Location:** `frontend/src/pages/dean/Analytics.jsx` (line ~753)
+
+**Action:**
+```javascript
+const url = `${API_BASE_URL}/assessments/dean-analytics/sample?${params}`;
+fetch(url, {
+  headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+})
+```
+
+**Query Parameters:**
+- `term_id`: Academic term filter
+- `section_id`: Section filter
+- `program_id`: Program filter
+- `department_id`: Department filter
+- `section_course_id`: Class filter (single or array)
+- `student_id`: Individual student filter
+- `so_id`, `iga_id`, `cdio_id`, `sdg_id`: Standard filters
+- `force_refresh`: Bypass cache flag
+
+**Request Example:**
+```
+GET /api/assessments/dean-analytics/sample?term_id=3&section_id=10&force_refresh=false
+```
+
+---
+
+#### **Step 2: Backend Route Handler** (`backend/routes/assessments.js`)
+
+**Location:** `backend/routes/assessments.js` (line ~492)
+
+**Endpoint:** `GET /api/assessments/dean-analytics/sample`
+
+**Processing:**
+1. Parse query parameters
+2. Build WHERE clause conditions
+3. Construct SQL query with filters
+4. Execute database query
+5. Process results
+6. Apply clustering
+7. Return JSON response
+
+**Key Functions:**
+- Parameter validation
+- Filter building
+- SQL query construction
+- Result sanitization
+
+---
+
+#### **Step 3: SQL Query Execution** (PostgreSQL Database)
+
+**Location:** `backend/routes/assessments.js` (line ~658)
+
+**Complex SQL Query Features:**
+
+1. **Student Basic Info:**
+   ```sql
+   SELECT s.student_id, s.full_name, s.student_number, ...
+   FROM students s
+   ```
+
+2. **Attendance Aggregation:**
+   ```sql
+   -- Attendance percentage
+   SELECT ROUND(
+     (COUNT(CASE WHEN al.status = 'present' THEN 1 END)::NUMERIC / 
+      NULLIF(COUNT(al.attendance_id), 0)::NUMERIC) * 100, 2
+   )
+   FROM attendance_logs al
+   ...
+   ```
+
+3. **Score Calculation (Transmuted Scores):**
+   ```sql
+   -- Final grade: SUM(transmuted_score) per course, averaged
+   WITH course_transmuted_scores AS (
+     SELECT section_course_id,
+       SUM(transmuted_score) as course_final_grade
+     FROM submissions sub
+     INNER JOIN assessments a ON sub.assessment_id = a.assessment_id
+     ...
+   )
+   SELECT AVG(course_final_grade) as average_score
+   FROM course_transmuted_scores
+   ```
+
+4. **Submission Rate Calculation:**
+   ```sql
+   -- Submission counts: ontime, late, missing
+   SELECT 
+     COUNT(CASE WHEN sub.status = 'ontime' THEN 1 END) as ontime_count,
+     COUNT(CASE WHEN sub.status = 'late' THEN 1 END) as late_count,
+     COUNT(CASE WHEN sub.status = 'missing' THEN 1 END) as missing_count
+   FROM submissions sub
+   ...
+   ```
+
+**Database Tables Accessed:**
+- `students`
+- `course_enrollments`
+- `section_courses`
+- `sections`
+- `programs`
+- `departments`
+- `attendance_logs`
+- `assessments`
+- `submissions`
+- `assessment_ilo_weights`
+- `ilo_so_mappings`, `ilo_iga_mappings`, `ilo_cdio_mappings`
+
+**Result:** Array of student objects with aggregated metrics
+
+---
+
+#### **Step 4: Data Normalization** (`backend/services/clusteringService.js`)
+
+**Location:** `backend/services/clusteringService.js` (line ~449)
+
+**Function:** `normalizeStudentData(students)`
+
+**Actions:**
+1. Convert values to proper types (numbers)
+2. Handle null/undefined values
+3. Filter invalid numbers (NaN)
+4. Structure data for clustering API
+
+**Input Example:**
+```javascript
+{
+  student_id: "123",
+  attendance_percentage: "85.5",
+  average_score: "78.3",
+  submission_rate: "0.9"
+}
+```
+
+**Output Example:**
+```javascript
+{
+  student_id: 123,
+  attendance_percentage: 85.5,
+  average_score: 78.3,
+  submission_rate: 0.9,
+  attendance_present_count: 34,
+  attendance_total_sessions: 40,
+  submission_ontime_count: 18,
+  submission_total_assessments: 20
+}
+```
+
+---
+
+#### **Step 5: Cache Check** (`backend/services/clusteringService.js`)
+
+**Location:** `backend/services/clusteringService.js` (line ~758)
+
+**Function:** `getCachedClusters()`
+
+**Process:**
+1. Query `analytics_clusters` table
+2. Check cache age (default: 24 hours)
+3. Match by `term_id`, `section_course_id`, `student_id`
+4. Check for Standard/ILO filters in `based_on` JSON
+
+**SQL Query:**
+```sql
+SELECT student_id, cluster_label, cluster_number, silhouette_score
+FROM analytics_clusters
+WHERE term_id = $1
+  AND section_course_id = $2
+  AND generated_at > $3
+  AND student_id IS NOT NULL
+```
+
+**Result:**
+- **Cache Hit:** Return cached clusters immediately (FAST PATH)
+- **Cache Miss:** Continue to API call (SLOW PATH)
+
+---
+
+#### **Step 6: Python Clustering API** (`python-cluster-api/app.py`)
+
+**Location:** `python-cluster-api/app.py` (line ~753)
+
+**Endpoint:** `POST /api/cluster`
+
+**Process:**
+
+1. **Receive Data:**
+   ```python
+   data = request.get_json()  # List of student records
+   ```
+
+2. **Feature Engineering:**
+   ```python
+   # Calculate attendance features
+   attendance_features = df.apply(calculate_attendance_features, axis=1)
+   
+   # Calculate submission features
+   submission_features = df.apply(calculate_submission_features, axis=1)
+   
+   # Calculate score features
+   score_features = df.apply(calculate_score_features, axis=1)
+   ```
+
+3. **Data Preprocessing:**
+   ```python
+   # Scale features
+   scaler = StandardScaler()
+   X_scaled = scaler.fit_transform(df_clean[features])
+   ```
+
+4. **Elbow Method (k=3-5):**
+   ```python
+   optimal_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
+     X_scaled, max_clusters=5, min_clusters=3
+   )
+   ```
+
+5. **K-Means Clustering:**
+   ```python
+   kmeans = KMeans(n_clusters=optimal_k, random_state=42)
+   clusters = kmeans.fit_predict(X_scaled)
+   ```
+
+6. **Label Assignment (Switch/Case):**
+   ```python
+   if n_clusters == 3:
+       labels = {sorted_clusters[0][0]: "Excellent Performance", ...}
+   elif n_clusters == 4:
+       labels = {sorted_clusters[0][0]: "Excellent Performance", ...}
+   elif n_clusters == 5:
+       labels = {sorted_clusters[0][0]: "Excellent Performance", ...}
+   ```
+
+**Response:**
+```json
+[
+  {
+    "student_id": 123,
+    "cluster": 0,
+    "cluster_label": "Excellent Performance",
+    "silhouette_score": 0.45
+  },
+  ...
+]
+```
+
+---
+
+#### **Step 7: Cache Storage** (`backend/services/clusteringService.js`)
+
+**Location:** `backend/services/clusteringService.js` (line ~206)
+
+**Function:** `saveClustersToCache()`
+
+**Process:**
+1. Delete old clusters for same scope
+2. Insert new cluster records
+3. Store in `analytics_clusters` table
+
+**SQL Insert:**
+```sql
+INSERT INTO analytics_clusters (
+  student_id, term_id, section_course_id,
+  cluster_label, cluster_number, based_on,
+  algorithm_used, model_version, silhouette_score, generated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+```
+
+**Cache Key Components:**
+- `student_id`
+- `term_id`
+- `section_course_id`
+- `based_on` (JSON with ILO/Standard filters)
+
+---
+
+#### **Step 8: Backend JSON Response** (`backend/routes/assessments.js`)
+
+**Location:** `backend/routes/assessments.js` (line ~1280)
+
+**Response Structure:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "student_id": 123,
+      "full_name": "John Doe",
+      "attendance_percentage": 85.5,
+      "average_score": 78.3,
+      "submission_rate": 0.9,
+      "cluster": 0,
+      "cluster_label": "Excellent Performance",
+      "silhouette_score": 0.45,
+      ...
+    }
+  ],
+  "clustering": {
+    "enabled": true,
+    "cacheUsed": false,
+    "apiCalled": true,
+    "backendPlatform": "Render",
+    "apiPlatform": "Railway"
+  }
+}
+```
+
+---
+
+#### **Step 9: Frontend Processing** (`frontend/src/pages/dean/Analytics.jsx`)
+
+**Location:** `frontend/src/pages/dean/Analytics.jsx` (line ~822)
+
+**Actions:**
+
+1. **Parse Response:**
+   ```javascript
+   const json = await response.json();
+   const studentsData = json.data || [];
+   ```
+
+2. **Validate Clusters:**
+   ```javascript
+   const studentsWithClusters = studentsData.filter(s => 
+     s.cluster_label && s.cluster_label !== null
+   );
+   ```
+
+3. **Cache Data:**
+   ```javascript
+   // Session cache (instant)
+   sessionStorage.setItem(`dean_analytics_${filterKey}_session`, json);
+   
+   // Enhanced cache (10 minutes)
+   setCachedData('analytics', cacheKey, json);
+   ```
+
+4. **Calculate Cluster Distribution:**
+   ```javascript
+   const clusterCounts = studentsData.reduce((acc, row) => {
+     const cluster = row.cluster_label;
+     if (cluster && cluster !== null) {
+       acc[cluster] = (acc[cluster] || 0) + 1;
+     }
+     return acc;
+   }, {});
+   ```
+
+---
+
+#### **Step 10: Dashboard Display** (`frontend/src/pages/dean/Analytics.jsx`)
+
+**Components:**
+
+1. **Data Table:**
+   - Student list with cluster badges
+   - Sortable columns
+   - Filterable by cluster
+
+2. **Cluster Filter Dropdown:**
+   ```javascript
+   <select onChange={handleClusterFilterChange}>
+     <option value="all">All Clusters</option>
+     <option value="Excellent Performance">Excellent Performance</option>
+     <option value="Average Performance">Average Performance</option>
+     ...
+   </select>
+   ```
+
+3. **Charts:**
+   - Scatter plots (colored by cluster)
+   - Pie charts (cluster distribution)
+   - Bar charts (performance metrics)
+
+4. **Cluster Badges:**
+   - Color-coded by performance level
+   - Tooltip with cluster explanation
+
+**Visual Display:**
+- Green: "Excellent Performance"
+- Blue: "Good Performance" / "Average Performance"
+- Yellow: "Needs Improvement"
+- Red: "At Risk"
+
+---
+
+### **Data Flow Summary Table**
+
+| Step | Component | Input | Output | Time |
+|------|-----------|-------|--------|------|
+| 1 | Frontend Request | User clicks "Load Analytics" | HTTP GET request | < 1ms |
+| 2 | Backend Route | HTTP request | SQL query parameters | < 5ms |
+| 3 | Database Query | SQL query | Raw student data | 100-500ms |
+| 4 | Data Normalization | Raw data | Normalized JSON | < 10ms |
+| 5 | Cache Check | Student IDs | Cached clusters OR continue | < 50ms |
+| 6a | Cache Hit | Cached clusters | Cluster map | < 10ms |
+| 6b | API Call | Normalized data | Cluster assignments | 500-2000ms |
+| 7 | Cache Storage | Cluster results | Database insert | < 100ms |
+| 8 | JSON Response | Complete data | HTTP response | < 10ms |
+| 9 | Frontend Processing | JSON response | React state | < 50ms |
+| 10 | Dashboard Render | React state | UI display | < 100ms |
+
+**Total Time:**
+- **Cache Hit:** ~200-700ms (FAST PATH)
+- **Cache Miss:** ~800-3000ms (SLOW PATH with clustering)
+
+---
+
+### **Caching Strategy**
+
+**Three-Level Cache:**
+
+1. **Database Cache:** `analytics_clusters` table (24 hours)
+   - Location: PostgreSQL
+   - Scope: Per term, section_course, Standard/ILO filter
+   - Invalidation: Time-based (24h) or force refresh
+
+2. **Session Cache:** `sessionStorage` (instant)
+   - Location: Browser sessionStorage
+   - Scope: Current session only
+   - Invalidation: Page refresh
+
+3. **Enhanced Cache:** `localStorage` (10 minutes)
+   - Location: Browser localStorage
+   - Scope: Per filter combination
+   - Invalidation: Time-based (10min) or force refresh
+
+**Cache Priority:**
+1. Check sessionStorage first (fastest)
+2. Check localStorage second
+3. Check database cache third
+4. Call Python API last (slowest)
+
+---
+
 ## 📋 Data Requirements
 
 ### **Minimum Required Data for Clustering**
@@ -104,11 +579,11 @@ final_score: 50.0                  # 50% default score
 # Submission defaults (prioritizing ontime)
 submission_ontime_rate: 0.6        # 60% ontime default
 submission_ontime_priority_score: 60.0  # 60% ontime priority
-submission_quality_score: 68.0     # Weighted quality score
+submission_quality_score: 1.2      # Moderate quality score (0.0-2.0 scale, ontime=2, late=1, missing=0)
 submission_rate: 0.8               # 80% submission rate
 submission_late_rate: 0.2          # 20% late
 submission_missing_rate: 0.0       # 0% missing
-submission_status_score: 0.5       # Moderate status
+submission_status_score: 1.2       # Moderate status (0.0-2.0 scale, same as quality_score)
 ```
 
 ### **Data Quality Requirements**
@@ -275,9 +750,73 @@ The Python API receives the normalized data and creates enhanced features:
    submission_ontime_rate = ontime_count / total_assessments
    submission_late_rate = late_count / total_assessments
    submission_missing_rate = missing_count / total_assessments
-   submission_quality_score = (ontime_rate × 100) + (late_rate × 20)  # Prioritizes ontime
+   submission_rate = (ontime_count + late_count) / total_assessments
+   
+   # Status Score (0.0-2.0, HIGHER IS BETTER)
+   # Uses weighted scoring: ontime=2, late=1, missing=0 (same as quality_score for consistency)
+   # Formula: (ontime_count × 2 + late_count × 1 + missing_count × 0) / total_assessments
+   # - 2.0 = all ontime (BEST)
+   # - 1.0 = all late (moderate)
+   # - 0.0 = all missing (WORST)
+   # NOTE: Same formula as quality_score - both use consistent 0, 1, 2 weights
+   submission_status_score = (ontime_count × 2.0 + late_count × 1.0 + missing_count × 0.0) / total_assessments
+   
+   # Quality Score (0.0-2.0, HIGHER IS BETTER)
+   # Uses weighted scoring: ontime=2, late=1, missing=0 (inverted from status_score)
+   # Formula: (ontime_count × 2 + late_count × 1 + missing_count × 0) / total_assessments
+   # - 2.0 = all ontime (BEST)
+   # - 1.0 = all late (moderate)
+   # - 0.0 = all missing (WORST)
+   submission_quality_score = (ontime_count × 2.0 + late_count × 1.0 + missing_count × 0.0) / total_assessments
+   
+   # Ontime Priority Score (0-100, HIGHER IS BETTER)
+   # Direct percentage of ontime submissions
    submission_ontime_priority_score = (ontime_count / total_assessments) × 100
    ```
+   
+### **Status Score and Quality Score - Same Range, Same Direction**
+
+Both scores now use the **same formula and same direction** for consistency:
+
+| Aspect | Status Score | Quality Score |
+|--------|-------------|---------------|
+| **Formula** | `(ontime × 2 + late × 1 + missing × 0) / total` | `(ontime × 2 + late × 1 + missing × 0) / total` |
+| **Range** | 0.0 - 2.0 | 0.0 - 2.0 |
+| **Direction** | **HIGHER IS BETTER** ⬆️ | **HIGHER IS BETTER** ⬆️ |
+| **Weighting** | ontime=2, late=1, missing=0 | ontime=2, late=1, missing=0 |
+| **Best Value** | 2.0 (all ontime) ✅ | 2.0 (all ontime) ✅ |
+| **Worst Value** | 0.0 (all missing) ❌ | 0.0 (all missing) ❌ |
+
+### **Why Both Scores Exist (Same Formula)**
+
+Both `submission_status_score` and `submission_quality_score` now use the **identical formula**:
+- **Same weights:** ontime=2, late=1, missing=0
+- **Same range:** 0.0-2.0
+- **Same direction:** Higher is better
+
+**Reason for Duplication:**
+- Provides redundancy in feature set
+- Allows clustering algorithm to use multiple features with same information
+- StandardScaler normalizes both, so they contribute equally to clustering
+- Having multiple similar features can help with feature stability
+
+### **Example Calculation**
+
+**Student with 10 ontime, 5 late, 5 missing (total: 20):**
+
+**Both Status Score and Quality Score:**
+```
+(10 × 2 + 5 × 1 + 5 × 0) / 20
+= (20 + 5 + 0) / 20
+= 25 / 20
+= 1.25 ✅ (Moderate - 37.5% away from best)
+```
+
+**Result:** Both scores = 1.25 (consistent values)
+
+### **Key Insight**
+
+Both scores are now **identical** - they provide the same information with the same scale and direction. This ensures consistency in the clustering features while maintaining redundancy for algorithm stability.
 
 3. **Score Features:**
    ```python
@@ -291,11 +830,15 @@ The Python API receives the normalized data and creates enhanced features:
 4. `final_score` - Academic score (ILO-weighted preferred)
 5. `submission_ontime_rate` - **PRIORITY** (highest weight)
 6. `submission_ontime_priority_score` - **PRIORITY** (high weight)
-7. `submission_quality_score` - **PRIORITY** (high weight)
+7. `submission_quality_score` - **PRIORITY** (high weight, 0.0-2.0, ontime=2, late=1, missing=0)
 8. `submission_rate` - Overall submission rate
 9. `submission_late_rate` - Late submission rate
 10. `submission_missing_rate` - Missing submission rate
-11. `submission_status_score` - Status score (0.0-2.0)
+11. `submission_status_score` - Status score (0.0-2.0, **HIGHER IS BETTER**)
+    - Uses weighted scoring: ontime=2, late=1, missing=0 (same as quality_score)
+    - 2.0 = all ontime (BEST)
+    - 1.0 = all late (moderate)
+    - 0.0 = all missing (WORST)
 
 **Note:** Features are ordered by priority - ontime submissions have higher influence on clustering.
 
@@ -314,7 +857,7 @@ Before clustering:
    attendance_percentage: 75.0 (default)
    final_score: 50.0 (default)
    submission_ontime_rate: 0.6 (default)
-   submission_quality_score: 68.0 (default)
+   submission_quality_score: 1.2 (default, 0.0-2.0 scale)
    # ... etc
    ```
 

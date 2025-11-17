@@ -84,24 +84,28 @@ def calculate_submission_features(row):
         submission_rate = 0.0
     
     # Calculate numerical status score based on status distribution
-    # Score range: 0.0 (all ontime) to 2.0 (all missing)
-    # Formula: (ontime * 0.0 + late * 1.0 + missing * 2.0) / total
+    # Score range: 0.0-2.0, HIGHER IS BETTER (normalized to match quality_score direction)
+    # Formula: (ontime × 2 + late × 1 + missing × 0) / total
     # This gives a weighted average where:
-    # - ontime = 0 (best)
+    # - ontime = 2 (best)
     # - late = 1 (moderate)
-    # - missing = 2 (worst)
+    # - missing = 0 (worst)
+    # NOTE: Same as quality_score for consistency - both use 0, 1, 2 weights with higher=better
     if total_assessments > 0:
-        submission_status_score = (ontime_count * 0.0 + late_count * 1.0 + missing_count * 2.0) / total_assessments
+        submission_status_score = (ontime_count * 2.0 + late_count * 1.0 + missing_count * 0.0) / total_assessments
     else:
-        submission_status_score = 2.0  # Worst case if no data
+        submission_status_score = 0.0  # Worst case if no data
     
-    # Calculate submission quality score (0-100 scale, higher is better)
-    # PRIORITIZES ONTIME SUBMISSIONS: ontime gets much higher weight than late
-    # Formula gives strong preference to students who submit on time
+    # Calculate submission quality score (0.0-2.0 scale, HIGHER IS BETTER)
+    # Uses weighted scoring: ontime=2, late=1, missing=0
+    # Formula: (ontime_count × 2 + late_count × 1 + missing_count × 0) / total_assessments
+    # - 2.0 = all ontime (BEST)
+    # - 1.0 = all late (moderate)
+    # - 0.0 = all missing (WORST)
     if total_assessments > 0:
-        # Prioritized quality score: ontime=100%, late=20%, missing=0%
-        # This heavily weights ontime submissions (5x more valuable than late)
-        quality_score = ((ontime_count * 100.0) + (late_count * 20.0) + (missing_count * 0.0)) / total_assessments
+        # Quality score using 0, 1, 2 weights (inverted from status_score)
+        # Higher value = better (opposite of status_score)
+        quality_score = ((ontime_count * 2.0) + (late_count * 1.0) + (missing_count * 0.0)) / total_assessments
     else:
         quality_score = 0.0
     
@@ -125,8 +129,8 @@ def calculate_submission_features(row):
         'submission_late_rate': late_rate,
         'submission_missing_rate': missing_rate,
         # Computed scores
-        'submission_status_score': submission_status_score,  # 0.0-2.0, lower is better
-        'submission_quality_score': quality_score,  # 0.0-100.0, higher is better (prioritizes ontime)
+        'submission_status_score': submission_status_score,  # 0.0-2.0, higher is better (ontime=2, late=1, missing=0)
+        'submission_quality_score': quality_score,  # 0.0-2.0, higher is better (ontime=2, late=1, missing=0)
         'submission_ontime_priority_score': ontime_priority_score  # 0.0-100.0, direct ontime percentage
     }
 
@@ -479,11 +483,11 @@ def cluster_records(records):
         # SUBMISSION FEATURES (from submission data) - ONTIME PRIORITIZED (listed first for higher weight)
         'submission_ontime_rate',          # PRIORITY: Ontime submission rate (0-1) - highest weight
         'submission_ontime_priority_score', # PRIORITY: Direct ontime percentage (0-100) - high weight
-        'submission_quality_score',        # Quality score (0-100, prioritizes ontime) - high weight
+        'submission_quality_score',        # Quality score (0.0-2.0, ontime=2, late=1, missing=0) - high weight
         'submission_rate',                 # Overall submission rate (ontime + late) / total
         'submission_late_rate',            # Late submission rate (0-1) - lower weight
         'submission_missing_rate',         # Missing submission rate (0-1)
-        'submission_status_score'          # Status score (0.0-2.0, lower is better)
+        'submission_status_score'          # Status score (0.0-2.0, higher is better, same as quality_score)
     ]
     
     # Ensure numeric types
@@ -499,11 +503,11 @@ def cluster_records(records):
     # Submission defaults - prioritizing ontime submissions
     df_clean['submission_ontime_rate'] = df_clean['submission_ontime_rate'].fillna(0.6)
     df_clean['submission_ontime_priority_score'] = df_clean['submission_ontime_priority_score'].fillna(60.0)
-    df_clean['submission_quality_score'] = df_clean['submission_quality_score'].fillna(68.0)  # Weighted: 60% ontime * 100 + 20% late * 20
+    df_clean['submission_quality_score'] = df_clean['submission_quality_score'].fillna(1.2)  # Moderate: mix of ontime/late (0.0-2.0 scale)
     df_clean['submission_rate'] = df_clean['submission_rate'].fillna(0.8)
     df_clean['submission_late_rate'] = df_clean['submission_late_rate'].fillna(0.2)
     df_clean['submission_missing_rate'] = df_clean['submission_missing_rate'].fillna(0.0)
-    df_clean['submission_status_score'] = df_clean['submission_status_score'].fillna(0.5)  # Moderate score
+    df_clean['submission_status_score'] = df_clean['submission_status_score'].fillna(1.2)  # Moderate score (0.0-2.0 scale, same as quality_score)
     
     if len(df_clean) == 0:
         output = df.copy()
@@ -620,7 +624,7 @@ def cluster_records(records):
             stats['avg_ontime_priority_score'] * 0.25 +  # Direct ontime percentage (0-100)
             stats['avg_quality_score'] * 0.15 +  # Quality score (prioritizes ontime, 0-100)
             stats['avg_submission_rate'] * 100 * 0.10 +
-            (100 - stats['avg_status_score'] * 50) * 0.05  # Lower status score = better
+            stats['avg_status_score'] * 50 * 0.05  # Higher status score = better (0.0-2.0 scale, normalized to 0-100 for scoring)
         )
         cluster_scores[cluster_id] = score
     
