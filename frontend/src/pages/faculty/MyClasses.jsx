@@ -3433,7 +3433,6 @@ const MyClasses = () => {
                               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Raw</th>
                               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Penalty</th>
                               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Adjusted</th>
-                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">%</th>
                               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weighted</th>
                             </tr>
@@ -3449,7 +3448,7 @@ const MyClasses = () => {
                                     <td className="px-4 py-3">
                                       <span className="text-sm font-bold text-blue-900">{parentCriterion}</span>
                                     </td>
-                                    <td colSpan="8" className="px-4 py-3 text-xs text-gray-600">
+                                    <td colSpan="7" className="px-4 py-3 text-xs text-gray-600">
                                       {groupGrades.length} sub-assessment{groupGrades.length !== 1 ? 's' : ''}
                                     </td>
                                   </tr>
@@ -3508,11 +3507,6 @@ const MyClasses = () => {
                                           {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
                                         </td>
                                         
-                                        {/* Percentage */}
-                                        <td className="px-4 py-3 text-center text-sm font-semibold text-blue-700">
-                                          {percentage !== null ? `${percentage.toFixed(1)}%` : '—'}
-                                        </td>
-                                        
                                         {/* Status */}
                                         <td className="px-4 py-3 text-center">
                                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -3551,9 +3545,6 @@ const MyClasses = () => {
                                     </td>
                                     <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
                                       {groupScores.totalAdjusted}
-                                    </td>
-                                    <td className="px-4 py-2 text-center text-xs font-semibold text-blue-700">
-                                      {groupScores.avgPercentage !== null ? `${groupScores.avgPercentage}%` : '—'}
                                     </td>
                                     <td className="px-4 py-2 text-center text-xs text-gray-600">—</td>
                                     <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
@@ -3617,11 +3608,6 @@ const MyClasses = () => {
                                   {/* Adjusted Score */}
                                   <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
                                     {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
-                                  </td>
-                                  
-                                  {/* Percentage */}
-                                  <td className="px-4 py-3 text-center text-sm font-semibold text-blue-700">
-                                    {percentage !== null ? `${percentage.toFixed(1)}%` : '—'}
                                   </td>
                                   
                                   {/* Status */}
