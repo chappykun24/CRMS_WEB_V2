@@ -67,3 +67,23 @@ This will create:
 - `silhouette_analysis.png` - Quality analysis  
 - `cluster_statistics.png` - Statistics dashboard
 
+## Built-in Frontend Sample
+
+Need to demo the scatter plot without calling the API?
+
+1. Open `frontend/src/data/sampleClusterVisualizationData.js`  
+   (contains hard-coded students with clusters, score/attendance, and PCA coordinates)
+
+2. Render the sample component:
+   ```jsx
+   import ClusterVisualizationSample from '../components/demo/ClusterVisualizationSample';
+   
+   const DemoPage = () => (
+     <div className="min-h-screen bg-gray-50">
+       <ClusterVisualizationSample />
+     </div>
+   );
+   ```
+
+3. Each dot already has a student name assigned, so hovering shows the tooltip immediately.
+

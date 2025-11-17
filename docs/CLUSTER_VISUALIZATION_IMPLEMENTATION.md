@@ -124,6 +124,15 @@ import ClusterVisualization from '../../components/ClusterVisualization';
 - **Legend**: Displays all cluster types
 - **Responsive**: Adapts to container width
 
+## Sample Data for Demo/Testing
+
+Need to preview the scatter plot without calling the API?
+
+1. **Sample dataset:** `frontend/src/data/sampleClusterVisualizationData.js` (students with clusters + PCA coordinates)
+2. **Demo component:** `frontend/src/components/demo/ClusterVisualizationSample.jsx`
+
+Render the demo component to see the chart with hardcoded student names; every point already has a cluster assignment, so hover tooltips work immediately.
+
 ## Customization
 
 ### Change Chart Dimensions
