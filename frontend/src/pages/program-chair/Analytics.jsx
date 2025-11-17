@@ -1469,14 +1469,19 @@ const Analytics = () => {
                         <select
                           value={selectedCluster}
                           onChange={(e) => setSelectedCluster(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm font-medium"
+                          title="Filter students by performance cluster"
                         >
                           <option value="all">All Clusters ({data.length})</option>
-                          {uniqueClusters.map(cluster => (
-                            <option key={cluster} value={cluster}>
-                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
-                            </option>
-                          ))}
+                          {uniqueClusters.map(cluster => {
+                            const clusterStyle = getClusterStyle(cluster);
+                            const count = data.filter(d => d.cluster_label === cluster).length;
+                            return (
+                              <option key={cluster} value={cluster}>
+                                {cluster} ({count} {count === 1 ? 'student' : 'students'})
+                              </option>
+                            );
+                          })}
                         </select>
                         <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
                       </div>
@@ -1539,7 +1544,14 @@ const Analytics = () => {
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
                           <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
-                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Cluster</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">
+                            <div className="flex items-center gap-1">
+                              <span>Cluster</span>
+                              <span className="text-gray-400 text-[10px] font-normal" title="Performance cluster based on attendance, scores, and submission behavior">
+                                (Performance)
+                              </span>
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -1549,7 +1561,14 @@ const Analytics = () => {
                           return (
                             <tr 
                               key={row.student_id} 
-                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                                clusterStyle ? 
+                                  (row.cluster_label?.includes('Excellent') ? 'bg-emerald-50/30' :
+                                   row.cluster_label?.includes('At Risk') ? 'bg-red-50/30' :
+                                   row.cluster_label?.includes('Needs Improvement') ? 'bg-orange-50/30' :
+                                   row.cluster_label?.includes('Average') ? 'bg-blue-50/30' : '') 
+                                : ''
+                              }`}
                               onClick={() => {
                                 setSelectedStudent(row);
                                 setIsModalOpen(true);
@@ -1594,11 +1613,14 @@ const Analytics = () => {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {clusterStyle ? (
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                <span 
+                                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className} border`}
+                                  title={`Cluster: ${clusterStyle.text}. Click to filter by this cluster.`}
+                                >
                                   {clusterStyle.text}
                                 </span>
                                 ) : (
-                                  <span className="text-gray-400 text-xs">—</span>
+                                  <span className="text-gray-400 text-xs" title="No cluster assigned">—</span>
                                 )}
                               </td>
                             </tr>

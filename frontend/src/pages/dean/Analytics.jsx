@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../utils/api';
 import deanCacheService from '../../services/deanCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
 import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
+import ClusterVisualization from '../../components/ClusterVisualization';
 
 // Analytics-specific skeleton components
 const AnalyticsTableSkeleton = () => (
@@ -1469,14 +1470,19 @@ const Analytics = () => {
                         <select
                           value={selectedCluster}
                           onChange={(e) => setSelectedCluster(e.target.value)}
-                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm font-medium"
+                          title="Filter students by performance cluster"
                         >
                           <option value="all">All Clusters ({data.length})</option>
-                          {uniqueClusters.map(cluster => (
-                            <option key={cluster} value={cluster}>
-                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
-                            </option>
-                          ))}
+                          {uniqueClusters.map(cluster => {
+                            const clusterStyle = getClusterStyle(cluster);
+                            const count = data.filter(d => d.cluster_label === cluster).length;
+                            return (
+                              <option key={cluster} value={cluster}>
+                                {cluster} ({count} {count === 1 ? 'student' : 'students'})
+                              </option>
+                            );
+                          })}
                         </select>
                         <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
                       </div>
@@ -1549,7 +1555,14 @@ const Analytics = () => {
                           return (
                             <tr 
                               key={row.student_id} 
-                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                                clusterStyle ? 
+                                  (row.cluster_label?.includes('Excellent') ? 'bg-emerald-50/30' :
+                                   row.cluster_label?.includes('At Risk') ? 'bg-red-50/30' :
+                                   row.cluster_label?.includes('Needs Improvement') ? 'bg-orange-50/30' :
+                                   row.cluster_label?.includes('Average') ? 'bg-blue-50/30' : '') 
+                                : ''
+                              }`}
                               onClick={() => {
                                 setSelectedStudent(row);
                                 setIsModalOpen(true);
@@ -1594,11 +1607,14 @@ const Analytics = () => {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {clusterStyle ? (
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                <span 
+                                  className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className} border`}
+                                  title={`Cluster: ${clusterStyle.text}. Click to filter by this cluster.`}
+                                >
                                   {clusterStyle.text}
                                 </span>
                                 ) : (
-                                  <span className="text-gray-400 text-xs">—</span>
+                                  <span className="text-gray-400 text-xs" title="No cluster assigned">—</span>
                                 )}
                               </td>
                             </tr>
@@ -2026,6 +2042,11 @@ const Analytics = () => {
               )}
               {chartData && chartsLoaded && (
                 <div className="space-y-3">
+                  {/* Cluster Visualization - 2D Scatter Plot */}
+                  {data && data.length > 0 && (
+                    <ClusterVisualization data={data} height={300} />
+                  )}
+
                   {/* Cluster Distribution Pie Chart */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
                     <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Cluster Distribution</h3>

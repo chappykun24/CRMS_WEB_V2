@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+﻿from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -12,9 +12,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Log startup
-print("🚀 [Python API] Starting Enhanced KMeans Clustering API...")
-print(f"📦 [Python API] Python version: {sys.version}")
-print(f"🌐 [Python API] Port: {os.environ.get('PORT', '10000')}")
+print("[Python API] Starting Enhanced KMeans Clustering API...")
+print(f"[Python API] Python version: {sys.version}")
+print(f"[Python API] Port: {os.environ.get('PORT', '10000')}")
 
 
 def calculate_attendance_features(row):
@@ -85,7 +85,7 @@ def calculate_submission_features(row):
     
     # Calculate numerical status score based on status distribution
     # Score range: 0.0-2.0, HIGHER IS BETTER (normalized to match quality_score direction)
-    # Formula: (ontime × 2 + late × 1 + missing × 0) / total
+    # Formula: (ontime Ã— 2 + late Ã— 1 + missing Ã— 0) / total
     # This gives a weighted average where:
     # - ontime = 2 (best)
     # - late = 1 (moderate)
@@ -98,7 +98,7 @@ def calculate_submission_features(row):
     
     # Calculate submission quality score (0.0-2.0 scale, HIGHER IS BETTER)
     # Uses weighted scoring: ontime=2, late=1, missing=0
-    # Formula: (ontime_count × 2 + late_count × 1 + missing_count × 0) / total_assessments
+    # Formula: (ontime_count Ã— 2 + late_count Ã— 1 + missing_count Ã— 0) / total_assessments
     # - 2.0 = all ontime (BEST)
     # - 1.0 = all late (moderate)
     # - 0.0 = all missing (WORST)
@@ -139,16 +139,16 @@ def calculate_score_features(row):
     """
     Calculate score features using new grading computation system.
     Uses pre-calculated transmuted scores from database which follow:
-    1. Raw Score → Adjusted Score (raw - penalty)
-    2. Adjusted Score → Actual Score: (adjusted / max) × 62.5 + 37.5 (non-zero based, min 37.5)
-    3. Actual Score → Transmuted Score: actual × (weight_percentage / 100)
+    1. Raw Score â†’ Adjusted Score (raw - penalty)
+    2. Adjusted Score â†’ Actual Score: (adjusted / max) Ã— 62.5 + 37.5 (non-zero based, min 37.5)
+    3. Actual Score â†’ Transmuted Score: actual Ã— (weight_percentage / 100)
     4. Final Grade = SUM(transmuted_score) per course, then averaged across courses
     
     NEW: Also processes assessment-level transmuted scores grouped by ILO mapping.
     This allows for ILO-specific performance analysis.
     """
     # Use pre-calculated average_score from database (sum of transmuted scores per course, averaged)
-    # This follows the new grading computation: Raw → Adjusted → Actual → Transmuted
+    # This follows the new grading computation: Raw â†’ Adjusted â†’ Actual â†’ Transmuted
     syllabus_weighted_score = float(row.get('average_score', 50.0)) if pd.notna(row.get('average_score')) else 50.0
     
     # Process assessment-level transmuted scores grouped by ILO (NEW)
@@ -312,7 +312,7 @@ def find_optimal_k_silhouette(X_scaled, max_clusters=5, min_clusters=3):
     best_k = min_clusters
     best_score = -1
     
-    print(f'\n📊 [Python API] Silhouette Method: Testing {min_clusters} to {max_clusters} clusters...')
+    print(f'\n[*] [Python API] Silhouette Method: Testing {min_clusters} to {max_clusters} clusters...')
     
     for k in k_range:
         try:
@@ -336,13 +336,13 @@ def find_optimal_k_silhouette(X_scaled, max_clusters=5, min_clusters=3):
             continue
     
     if best_score > 0:
-        print(f'\n✅ [Python API] Silhouette Method: Optimal k={best_k} (score={best_score:.4f})')
+        print(f'\n[OK] [Python API] Silhouette Method: Optimal k={best_k} (score={best_score:.4f})')
         if best_score >= 0.5:
-            print('   📈 Excellent clustering quality (score >= 0.5)')
+            print('   [*] Excellent clustering quality (score >= 0.5)')
         elif best_score >= 0.3:
-            print('   ✅ Good clustering quality (score >= 0.3)')
+            print('   [OK] Good clustering quality (score >= 0.3)')
     else:
-        print(f'\n⚠️ [Python API] Silhouette Method: Could not find optimal k, using k={best_k}')
+        print(f'\n[!] [Python API] Silhouette Method: Could not find optimal k, using k={best_k}')
     
     return best_k, best_score, scores
 
@@ -383,7 +383,7 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=5, min_clusters=3)
     k_range = range(min_clusters, max_clusters + 1)
     wcss_values = []
     
-    print(f'\n📊 [Python API] Elbow Method: Testing {min_clusters} to {max_clusters} clusters (min=3, max=5)...')
+    print(f'\n[*] [Python API] Elbow Method: Testing {min_clusters} to {max_clusters} clusters (min=3, max=5)...')
     
     for k in k_range:
         kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42, max_iter=300)
@@ -416,13 +416,13 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=5, min_clusters=3)
                 optimal_k = k_range[max_accel_idx + 1]  # +1 because acceleration calculation
                 # Ensure optimal_k is within 3-5 range
                 optimal_k = max(min(optimal_k, 5), 3)
-                print(f'\n✅ [Python API] Elbow Method: Optimal k={optimal_k} (sharpest bend at k={optimal_k})')
+                print(f'\n[OK] [Python API] Elbow Method: Optimal k={optimal_k} (sharpest bend at k={optimal_k})')
                 return optimal_k, wcss_values, list(k_range)
     
     # Fallback: use middle value if we can't find a clear elbow
     optimal_k = min_clusters + (max_clusters - min_clusters) // 2
     optimal_k = max(min(optimal_k, 5), 3)  # Ensure 3-5 range
-    print(f'\n⚠️ [Python API] Elbow Method: Could not find clear elbow, using k={optimal_k} (middle value)')
+    print(f'\n[!] [Python API] Elbow Method: Could not find clear elbow, using k={optimal_k} (middle value)')
     return optimal_k, wcss_values, list(k_range)
 
 
@@ -436,9 +436,9 @@ def validate_cluster_quality(cluster_stats, labels, total_students, silhouette_s
     # Check silhouette score
     if silhouette_score is not None:
         if silhouette_score < 0.1:
-            issues.append(f"⚠️ Poor clustering quality: Silhouette score {silhouette_score:.4f} < 0.1")
+            issues.append(f"[!] Poor clustering quality: Silhouette score {silhouette_score:.4f} < 0.1")
         elif silhouette_score < 0.3:
-            issues.append(f"⚠️ Fair clustering quality: Silhouette score {silhouette_score:.4f} < 0.3")
+            issues.append(f"[!] Fair clustering quality: Silhouette score {silhouette_score:.4f} < 0.3")
     
     # Check cluster sizes
     min_cluster_size_ratio = 0.05  # At least 5% of students
@@ -451,10 +451,10 @@ def validate_cluster_quality(cluster_stats, labels, total_students, silhouette_s
         label = labels.get(cluster_id, 'Unknown')
         
         if count < min_size:
-            issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) is too small: {count} students (minimum: {min_size})")
+            issues.append(f"[!] Cluster '{label}' (ID: {cluster_id}) is too small: {count} students (minimum: {min_size})")
         
         if count > max_size:
-            issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) is too large: {count} students ({count/total_students*100:.1f}%, maximum: {max_size_ratio*100:.0f}%)")
+            issues.append(f"[!] Cluster '{label}' (ID: {cluster_id}) is too large: {count} students ({count/total_students*100:.1f}%, maximum: {max_size_ratio*100:.0f}%)")
     
     # Validate cluster labels match performance
     for cluster_id, stats in cluster_stats.items():
@@ -465,12 +465,12 @@ def validate_cluster_quality(cluster_stats, labels, total_students, silhouette_s
         # Check "Excellent Performance" actually has high metrics
         if label == "Excellent Performance":
             if avg_score < 75 or avg_attendance < 80:
-                issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) labeled 'Excellent' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
+                issues.append(f"[!] Cluster '{label}' (ID: {cluster_id}) labeled 'Excellent' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
         
         # Check "At Risk" actually has low metrics
         if label == "At Risk":
             if avg_score > 75 or avg_attendance > 80:
-                issues.append(f"⚠️ Cluster '{label}' (ID: {cluster_id}) labeled 'At Risk' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
+                issues.append(f"[!] Cluster '{label}' (ID: {cluster_id}) labeled 'At Risk' but metrics are moderate (score: {avg_score:.1f}, attendance: {avg_attendance:.1f}%)")
     
     return issues
 
@@ -481,7 +481,7 @@ def cluster_records(records):
     
     Clustering is based on THREE primary data sources:
     1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments
-       - Formula: Raw → Adjusted → Actual → Transmuted
+       - Formula: Raw â†’ Adjusted â†’ Actual â†’ Transmuted
        - Uses: average_score, assessment_scores_by_ilo
     2. SUBMISSION DATA: Submission behavior patterns
        - Counts: ontime, late, missing submissions
@@ -497,7 +497,7 @@ def cluster_records(records):
     # Validate input data
     validation_issues = validate_clustering_data(records)
     if validation_issues:
-        print(f'\n⚠️ [Python API] Data validation issues found:')
+        print(f'\n[!] [Python API] Data validation issues found:')
         for issue in validation_issues[:10]:  # Show first 10 issues
             print(f'  {issue}')
         if len(validation_issues) > 10:
@@ -510,7 +510,7 @@ def cluster_records(records):
     if 'student_id' in df.columns:
         df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
     
-    print(f'📊 [Python API] Processing {len(df)} students')
+    print(f'[*] [Python API] Processing {len(df)} students')
     
     # Calculate enhanced features
     attendance_features = df.apply(calculate_attendance_features, axis=1)
@@ -588,7 +588,7 @@ def cluster_records(records):
         return output.to_dict(orient='records')
     
     # Check data variation and filter low-variance features
-    print(f'\n📊 [Python API] Data variation check:')
+    print(f'\n[*] [Python API] Data variation check:')
     variance_threshold = 0.01  # Minimum variance required
     valid_features = []
     
@@ -600,21 +600,21 @@ def cluster_records(records):
             print(f'  {feature}: range={feature_range:.3f}, mean={feature_mean:.3f}, variance={feature_variance:.6f}')
             
             if feature_range < 0.01:
-                print(f'    ⚠️ WARNING: Very low variation in {feature}. Clustering may not distinguish students well.')
+                print(f'    [!] WARNING: Very low variation in {feature}. Clustering may not distinguish students well.')
             
             # Filter out features with very low variance
             if feature_variance >= variance_threshold:
                 valid_features.append(feature)
             else:
-                print(f'    ⚠️ REMOVED: {feature} has variance {feature_variance:.6f} < {variance_threshold} (too low)')
+                print(f'    [!] REMOVED: {feature} has variance {feature_variance:.6f} < {variance_threshold} (too low)')
     
     # Update features list to only include valid features
     if len(valid_features) < 3:
-        print(f'\n⚠️ [Python API] Warning: Only {len(valid_features)} features have sufficient variance. Using all features anyway.')
+        print(f'\n[!] [Python API] Warning: Only {len(valid_features)} features have sufficient variance. Using all features anyway.')
         valid_features = [f for f in features if f in df_clean.columns]
     else:
         features = valid_features
-        print(f'\n✅ [Python API] Using {len(features)} features with sufficient variance: {features}')
+        print(f'\n[OK] [Python API] Using {len(features)} features with sufficient variance: {features}')
     
     # Scale features for clustering
     scaler = StandardScaler()
@@ -630,7 +630,7 @@ def cluster_records(records):
             n_clusters = 2  # Fallback: use 2 clusters if 4-5 students
         else:
             n_clusters = 1  # Not enough data
-        print(f'\n⚠️ [Python API] Insufficient data ({len(df_clean)} students), using k={n_clusters} (minimum 6 students recommended for k=3-5)')
+        print(f'\n[!] [Python API] Insufficient data ({len(df_clean)} students), using k={n_clusters} (minimum 6 students recommended for k=3-5)')
     else:
         # Use elbow method to find optimal k (3-5)
         # Need at least 2 samples per cluster, so max is limited by data size
@@ -657,12 +657,12 @@ def cluster_records(records):
             # Otherwise use elbow method
             if silhouette_best >= 0.3:
                 n_clusters = optimal_k
-                print(f'\n🎯 [Python API] Using Silhouette-optimized k={n_clusters} (score={silhouette_best:.4f})')
+                print(f'\n[*] [Python API] Using Silhouette-optimized k={n_clusters} (score={silhouette_best:.4f})')
             else:
                 n_clusters = elbow_k
-                print(f'\n🎯 [Python API] Using Elbow-optimized k={n_clusters} (Silhouette score was {silhouette_best:.4f}, too low)')
+                print(f'\n[*] [Python API] Using Elbow-optimized k={n_clusters} (Silhouette score was {silhouette_best:.4f}, too low)')
         except Exception as e:
-            print(f'\n⚠️ [Python API] Silhouette method failed: {e}, using elbow method')
+            print(f'\n[!] [Python API] Silhouette method failed: {e}, using elbow method')
             optimal_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
                 X_scaled,
                 max_clusters=max_clusters,
@@ -674,7 +674,7 @@ def cluster_records(records):
         n_clusters = min(n_clusters, min(5, len(df_clean) // 2))
         n_clusters = max(n_clusters, 3)
         
-        print(f'\n🎯 [Python API] Final k={n_clusters} clusters (range: 3-5)')
+        print(f'\n[*] [Python API] Final k={n_clusters} clusters (range: 3-5)')
     
     # Perform KMeans clustering with optimized settings for better separation
     if n_clusters > 1:
@@ -693,22 +693,22 @@ def cluster_records(records):
         try:
             if len(df_clean) >= n_clusters * 2:  # Need at least 2 samples per cluster
                 silhouette_avg = silhouette_score(X_scaled, clusters)
-                print(f'\n✅ [Python API] Silhouette Score: {silhouette_avg:.4f}')
+                print(f'\n[OK] [Python API] Silhouette Score: {silhouette_avg:.4f}')
                 if silhouette_avg > 0.5:
-                    print('   📈 Excellent clustering quality (score > 0.5)')
+                    print('   [*] Excellent clustering quality (score > 0.5)')
                 elif silhouette_avg > 0.3:
-                    print('   ✅ Good clustering quality (score > 0.3)')
+                    print('   [OK] Good clustering quality (score > 0.3)')
                 elif silhouette_avg > 0.1:
-                    print('   ⚠️ Fair clustering quality (score > 0.1)')
+                    print('   [!] Fair clustering quality (score > 0.1)')
                 else:
-                    print('   ⚠️ Poor clustering quality (score < 0.1) - clusters may not be well-separated')
+                    print('   [!] Poor clustering quality (score < 0.1) - clusters may not be well-separated')
         except Exception as e:
-            print(f'⚠️ [Python API] Could not calculate silhouette score: {e}')
+            print(f'[!] [Python API] Could not calculate silhouette score: {e}')
             silhouette_avg = None
     else:
         clusters = np.zeros(len(df_clean), dtype=int)
         silhouette_avg = None
-        print('⚠️ [Python API] Not enough data for clustering (need at least 2 students)')
+        print('[!] [Python API] Not enough data for clustering (need at least 2 students)')
     
     df_clean.loc[:, 'cluster'] = clusters
     
@@ -784,7 +784,7 @@ def cluster_records(records):
     else:
         # Fallback: for k < 3 or k > 5 (should not happen in normal flow)
         # Use k=3 labels as default
-        print(f'\n⚠️ [Python API] Warning: Unexpected cluster count k={n_clusters}, using k=3 labels')
+        print(f'\n[!] [Python API] Warning: Unexpected cluster count k={n_clusters}, using k=3 labels')
         labels = {
             sorted_clusters[0][0]: "Excellent Performance",
             sorted_clusters[1][0]: "Average Performance",
@@ -857,7 +857,7 @@ def cluster_records(records):
     df_clean.loc[:, 'silhouette_score'] = silhouette_avg
     
     # Print cluster distribution
-    print(f'\n📈 [Python API] Cluster distribution:')
+    print(f'\n[*] [Python API] Cluster distribution:')
     cluster_counts = df_clean['cluster_label'].value_counts()
     total_students = len(df_clean)
     for label, count in cluster_counts.items():
@@ -870,23 +870,23 @@ def cluster_records(records):
     # Validate cluster quality
     quality_issues = validate_cluster_quality(cluster_stats, labels, len(df_clean), silhouette_avg)
     if quality_issues:
-        print(f'\n⚠️ [Python API] Cluster quality issues:')
+        print(f'\n[!] [Python API] Cluster quality issues:')
         for issue in quality_issues:
             print(f'  {issue}')
     
     # Legacy validation (keep for backward compatibility)
     max_cluster_ratio = cluster_counts.max() / total_students if total_students > 0 else 0
     if max_cluster_ratio > 0.8:
-        print(f'⚠️ WARNING: One cluster contains {max_cluster_ratio*100:.1f}% of students.')
+        print(f'[!] WARNING: One cluster contains {max_cluster_ratio*100:.1f}% of students.')
     if len(cluster_counts) == 1:
-        print(f'⚠️ WARNING: All students are in the same cluster.')
+        print(f'[!] WARNING: All students are in the same cluster.')
     
     # Merge results back to original dataframe
     df['student_id'] = pd.to_numeric(df['student_id'], errors='coerce').astype('Int64')
     df_clean['student_id'] = pd.to_numeric(df_clean['student_id'], errors='coerce').astype('Int64')
     
     # Log merge diagnostics
-    print(f'\n🔍 [Python API] Merge diagnostics:')
+    print(f'\n[*] [Python API] Merge diagnostics:')
     print(f'   Original df student_ids: {df["student_id"].tolist()[:5]}...')
     print(f'   Clean df student_ids: {df_clean["student_id"].tolist()[:5]}...')
     print(f'   Original df shape: {df.shape}')
@@ -964,16 +964,16 @@ def cluster_records(records):
                     pass
                 else:
                     # Some other error, log it but don't fail
-                    print(f'⚠️ [Python API] Warning: Could not check NaN for key "{key}": {e}')
+                    print(f'[!] [Python API] Warning: Could not check NaN for key "{key}": {e}')
         if record.get('cluster_label') is not None:
             record['cluster_label'] = str(record['cluster_label'])
         if record.get('silhouette_score') is not None:
             record['silhouette_score'] = float(record['silhouette_score'])
     
     clustered_count = sum(1 for r in result if r.get('cluster_label') is not None)
-    print(f'\n📊 [Python API] Clustering summary: {clustered_count} students clustered')
+    print(f'\n[*] [Python API] Clustering summary: {clustered_count} students clustered')
     if silhouette_avg is not None:
-        print(f'📊 [Python API] Overall Silhouette Score: {silhouette_avg:.4f}')
+        print(f'[*] [Python API] Overall Silhouette Score: {silhouette_avg:.4f}')
     
     return result
 
@@ -989,23 +989,23 @@ def cluster_students():
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
-    print('🔍 [Python API] Received clustering request')
+    print('[*] [Python API] Received clustering request')
     data = request.get_json()
     
     if not data:
-        print('❌ [Python API] No data received in request')
+        print('[ERROR] [Python API] No data received in request')
         return jsonify({'error': 'No data provided'}), 400
     
     if not isinstance(data, list):
-        print('❌ [Python API] Invalid data format. Expected list, got:', type(data))
+        print('[ERROR] [Python API] Invalid data format. Expected list, got:', type(data))
         return jsonify({'error': 'Data must be a list of student records'}), 400
     
-    print(f'📦 [Python API] Received {len(data)} students')
+    print(f'ðŸ“¦ [Python API] Received {len(data)} students')
     
     # Log sample input data
     if len(data) > 0:
         sample = data[0]
-        print(f'📋 [Python API] Sample input: student_id={sample.get("student_id")}')
+        print(f'ðŸ“‹ [Python API] Sample input: student_id={sample.get("student_id")}')
         print(f'   Attendance: {sample.get("attendance_percentage")}% '
               f'(Present: {sample.get("attendance_present_count")}, '
               f'Absent: {sample.get("attendance_absent_count")}, '
@@ -1019,9 +1019,9 @@ def cluster_students():
     try:
         results = cluster_records(data)
     except Exception as e:
-        print(f'❌ [Python API] Error during clustering: {str(e)}')
+        print(f'[ERROR] [Python API] Error during clustering: {str(e)}')
         import traceback
-        print(f'❌ [Python API] Traceback:')
+        print(f'[ERROR] [Python API] Traceback:')
         traceback.print_exc()
         # Return error response with original student IDs but no clusters
         error_results = []
@@ -1037,19 +1037,19 @@ def cluster_students():
     
     # Log results
     clustered_count = sum(1 for r in results if r.get('cluster_label') and r.get('cluster_label') != 'Not Clustered')
-    print(f'✅ [Python API] Successfully clustered {clustered_count} out of {len(results)} students')
+    print(f'[OK] [Python API] Successfully clustered {clustered_count} out of {len(results)} students')
     
     # Extract silhouette score from results (should be same for all)
     silhouette_avg = None
     if results and results[0].get('silhouette_score') is not None:
         silhouette_avg = results[0].get('silhouette_score')
-        print(f'📊 [Python API] Silhouette Score: {silhouette_avg:.4f}')
+        print(f'[*] [Python API] Silhouette Score: {silhouette_avg:.4f}')
     
     # Log cluster distribution
     df_results = pd.DataFrame(results)
     if 'cluster_label' in df_results.columns:
         cluster_counts = df_results['cluster_label'].fillna('Not Clustered').value_counts().to_dict()
-        print(f'📈 [Python API] Cluster distribution: {cluster_counts}')
+        print(f'[*] [Python API] Cluster distribution: {cluster_counts}')
     
     # Clean NaN values for JSON
     import json
@@ -1115,3 +1115,4 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get('PORT', 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
