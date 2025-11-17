@@ -2957,7 +2957,7 @@ const Syllabus = () => {
                   </div>
                 )}
 
-                {/* Publish Section - Only show for approved syllabi */}
+                {/* Publish Section - Only show for approved syllabi (both dean and program chair approval required for publishing) */}
                 {viewingSyllabus.approval_status === 'approved' && viewingSyllabus.review_status === 'approved' && (
                   <div className="pt-4 border-t border-gray-300">
                     {isPublished ? (

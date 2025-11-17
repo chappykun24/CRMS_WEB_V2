@@ -132,9 +132,9 @@ const SyllabusReview = () => {
       })
       if (response.ok) {
         const data = await response.json()
-        // Filter for approved syllabi
+        // Filter for approved syllabi (by program chair)
         const approved = Array.isArray(data) 
-          ? data.filter(s => s.review_status === 'approved' && s.approval_status === 'approved')
+          ? data.filter(s => s.review_status === 'approved')
           : []
         setApprovedSyllabi(approved)
       }

@@ -115,13 +115,13 @@ const Home = () => {
         if (contentType && contentType.includes('application/json')) {
           syllabiData = await syllabiRes.json()
           if (Array.isArray(syllabiData)) {
-            // Count pending approvals (approved by program chair, pending dean approval)
+            // Count pending approvals (pending dean approval)
             pendingApprovals = syllabiData.filter(s => 
-              s.review_status === 'approved' && s.approval_status === 'pending'
+              s.approval_status === 'pending'
             ).length
-            // Count approved syllabi
+            // Count approved syllabi (by dean)
             approvedSyllabi = syllabiData.filter(s => 
-              s.review_status === 'approved' && s.approval_status === 'approved'
+              s.approval_status === 'approved'
             ).length
           }
         }

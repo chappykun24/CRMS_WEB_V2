@@ -642,14 +642,6 @@ router.put('/:id/review', async (req, res) => {
       return res.status(404).json({ error: 'Syllabus not found' });
     }
     
-    // If approved by program chair, set approval_status to pending for dean
-    if (review_status === 'approved') {
-      await db.query(
-        'UPDATE syllabi SET approval_status = $1 WHERE syllabus_id = $2',
-        ['pending', id]
-      );
-    }
-    
     res.json({ 
       message: `Syllabus ${review_status} by program chair`,
       syllabus: result.rows[0]
@@ -670,21 +662,12 @@ router.put('/:id/approve', async (req, res) => {
       return res.status(400).json({ error: 'Invalid approval status' });
     }
     
-    // Check if syllabus exists and validate review status
-    const checkQuery = 'SELECT review_status, approval_status FROM syllabi WHERE syllabus_id = $1';
+    // Check if syllabus exists
+    const checkQuery = 'SELECT syllabus_id FROM syllabi WHERE syllabus_id = $1';
     const checkResult = await db.query(checkQuery, [id]);
     
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'Syllabus not found' });
-    }
-    
-    const syllabus = checkResult.rows[0];
-    
-    // Validate that program chair has reviewed and approved the syllabus
-    if (syllabus.review_status !== 'approved') {
-      return res.status(400).json({ 
-        error: 'Syllabus must be reviewed and approved by program chair before dean can approve' 
-      });
     }
     
     const query = `
