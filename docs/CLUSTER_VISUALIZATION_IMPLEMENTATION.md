@@ -57,9 +57,13 @@ Each student object should have:
   student_id: 1,
   full_name: "John Doe",
   cluster_label: "Excellent Performance",  // Required
-  final_score: 85.5,                       // For X-axis
-  attendance_percentage: 92.0,             // For Y-axis
-  submission_ontime_priority_score: 88.0   // Optional
+  final_score: 85.5,                       // For Score vs Attendance
+  attendance_percentage: 92.0,             // For Score vs Attendance
+  submission_ontime_priority_score: 88.0,  // Optional
+  pca_x: -1.23,                            // NEW: PCA component 1 (optional)
+  pca_y: 0.87,                             // NEW: PCA component 2 (optional)
+  pca_component_1_variance: 0.45,          // NEW: Explained variance (optional)
+  pca_component_2_variance: 0.32           // NEW: Explained variance (optional)
 }
 ```
 

@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
 import numpy as np
 import os
 import sys
@@ -619,6 +620,36 @@ def cluster_records(records):
     # Scale features for clustering
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df_clean[features])
+
+    # Compute PCA (2 components) for visualization
+    pca = None
+    X_pca = None
+    pca_variance = None
+    try:
+        if len(df_clean) >= 2:
+            pca = PCA(n_components=2, random_state=42)
+            X_pca = pca.fit_transform(X_scaled)
+            pca_variance = pca.explained_variance_ratio_.tolist()
+            df_clean['pca_x'] = X_pca[:, 0]
+            df_clean['pca_y'] = X_pca[:, 1]
+            if pca_variance and len(pca_variance) == 2:
+                df_clean['pca_component_1_variance'] = pca_variance[0]
+                df_clean['pca_component_2_variance'] = pca_variance[1]
+            else:
+                df_clean['pca_component_1_variance'] = None
+                df_clean['pca_component_2_variance'] = None
+        else:
+            df_clean['pca_x'] = None
+            df_clean['pca_y'] = None
+            df_clean['pca_component_1_variance'] = None
+            df_clean['pca_component_2_variance'] = None
+    except Exception as e:
+        print(f'[!] [Python API] PCA computation failed: {e}')
+        df_clean['pca_x'] = None
+        df_clean['pca_y'] = None
+        df_clean['pca_component_1_variance'] = None
+        df_clean['pca_component_2_variance'] = None
+        pca_variance = None
     
     # Determine optimal number of clusters using elbow method
     # Need at least 6 students for clustering (3 clusters * 2 samples per cluster)
@@ -894,7 +925,8 @@ def cluster_records(records):
     print(f'   Clean df has cluster_label: {"cluster_label" in df_clean.columns}')
     
     output = df.merge(
-        df_clean[['student_id', 'cluster', 'cluster_label', 'silhouette_score', 'clustering_explanation']],
+        df_clean[['student_id', 'cluster', 'cluster_label', 'silhouette_score', 'clustering_explanation',
+                  'pca_x', 'pca_y', 'pca_component_1_variance', 'pca_component_2_variance']],
         on='student_id',
         how='left'
     )
