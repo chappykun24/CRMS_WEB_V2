@@ -6,6 +6,158 @@ The analytics clustering system groups students based on their academic performa
 
 ---
 
+## 📋 Data Requirements
+
+### **Minimum Required Data for Clustering**
+
+For the elbow method and clustering to work, you need the following minimum data per student:
+
+#### **1. Core Student Identifier**
+- `student_id` (REQUIRED): Unique student identifier
+
+#### **2. Attendance Data (At least one field)**
+- `attendance_percentage` OR detailed counts:
+  - `attendance_present_count` + `attendance_total_sessions`
+  - `attendance_absent_count` (optional)
+  - `attendance_late_count` (optional)
+
+#### **3. Score Data (At least one field)**
+- `average_score` (REQUIRED): Final grade using transmuted scoring formula
+- `assessment_scores_by_ilo` (optional): ILO-specific scores for filtered clustering
+
+#### **4. Submission Data (At least one field)**
+- `submission_rate` OR detailed counts:
+  - `submission_ontime_count` + `submission_total_assessments`
+  - `submission_late_count` (optional)
+  - `submission_missing_count` (optional)
+
+### **Minimum Data for Elbow Method**
+
+**Requirements:**
+- At least **2 students** (need at least 2 to form clusters)
+- At least **4 students** for elbow method to test k=2 to k=8
+- Data size determines max_clusters: `max_clusters = min(8, n_students // 2)`
+
+**Example:**
+```
+2 students  → k=2 only (no elbow method, uses k=2)
+4 students  → Tests k=2 (elbow method)
+8 students  → Tests k=2 to k=4 (max_clusters = 8 // 2 = 4)
+16 students → Tests k=2 to k=8 (full range)
+```
+
+### **Complete Data Schema**
+
+Here's the complete data structure sent to the clustering API:
+
+```javascript
+{
+  student_id: number,                    // REQUIRED
+  
+  // ATTENDANCE DATA
+  attendance_percentage: number,         // REQUIRED (or use counts below)
+  attendance_present_count: number,      // Optional (if attendance_percentage not available)
+  attendance_absent_count: number,       // Optional
+  attendance_late_count: number,         // Optional
+  attendance_total_sessions: number,     // Required if using counts
+  
+  // SCORE DATA
+  average_score: number,                 // REQUIRED
+  assessment_scores_by_ilo: [            // Optional (for ILO-filtered clustering)
+    {
+      ilo_id: number,
+      ilo_code: string,
+      assessments: [
+        {
+          assessment_id: number,
+          transmuted_score: number,
+          weight_percentage: number
+        }
+      ]
+    }
+  ],
+  
+  // SUBMISSION DATA
+  submission_rate: number,               // Optional (or use counts below)
+  submission_ontime_count: number,       // Optional (if submission_rate not available)
+  submission_late_count: number,         // Optional
+  submission_missing_count: number,      // Optional
+  submission_total_assessments: number,  // Required if using counts
+  average_submission_status_score: number // Optional (0=ontime, 1=late, 2=missing)
+}
+```
+
+### **Default Values (Missing Data Handling)**
+
+If data is missing, the system uses reasonable defaults:
+
+```python
+# Attendance defaults
+attendance_percentage: 75.0        # 75% default
+attendance_present_rate: 0.75      # 75% present
+attendance_late_rate: 0.10         # 10% late
+
+# Score defaults
+final_score: 50.0                  # 50% default score
+
+# Submission defaults (prioritizing ontime)
+submission_ontime_rate: 0.6        # 60% ontime default
+submission_ontime_priority_score: 60.0  # 60% ontime priority
+submission_quality_score: 68.0     # Weighted quality score
+submission_rate: 0.8               # 80% submission rate
+submission_late_rate: 0.2          # 20% late
+submission_missing_rate: 0.0       # 0% missing
+submission_status_score: 0.5       # Moderate status
+```
+
+### **Data Quality Requirements**
+
+**For Optimal Clustering:**
+
+1. **Minimum Variation:**
+   - Need variation in features to distinguish students
+   - If all students have same attendance/score/submission → Poor clustering
+   - System warns if feature variation < 0.01
+
+2. **Minimum Sample Size:**
+   - **2 students**: Minimum for clustering (k=2)
+   - **4 students**: Minimum for elbow method
+   - **8+ students**: Recommended for reliable clustering
+
+3. **Data Completeness:**
+   - More complete data → Better clustering quality
+   - Missing data uses defaults (may reduce accuracy)
+   - At least 50% of data fields should be populated for best results
+
+### **What Happens with Insufficient Data?**
+
+| Data Size | Elbow Method | Clustering Result |
+|-----------|--------------|-------------------|
+| 0-1 student | ❌ Not enough data | Returns "Not Clustered" |
+| 2 students | ⚠️ Uses k=2 directly | Creates 2 clusters |
+| 3 students | ⚠️ Uses k=2 directly | Creates 2 clusters (one will be small) |
+| 4-7 students | ✅ Tests k=2 to k=(n//2) | Optimal k determined |
+| 8+ students | ✅ Tests k=2 to k=8 | Full elbow method analysis |
+
+### **Database Tables Required**
+
+To collect this data, the following database tables must exist:
+
+**Required Tables:**
+- `students` - Student basic info
+- `attendance` - Attendance records
+- `assessment_grades` - Grade scores
+- `submissions` - Submission records
+- `course_enrollments` - Enrollment links
+
+**Optional Tables (for ILO filtering):**
+- `assessment_ilo_weights` - ILO mappings
+- `ilo_so_mappings` - SO standard mappings
+- `ilo_iga_mappings` - IGA standard mappings
+- `ilo_cdio_mappings` - CDIO standard mappings
+
+---
+
 ## 📊 Data Flow Pipeline
 
 ```
@@ -176,19 +328,47 @@ Before clustering:
 
 ---
 
-### **Step 6: K-Means Clustering** (`python-cluster-api/app.py`)
+### **Step 6: Optimal Cluster Selection (Elbow Method)** (`python-cluster-api/app.py`)
+
+**Elbow Method Process:**
+```python
+find_optimal_clusters_elbow_method(X_scaled, max_clusters=8, min_clusters=2)
+```
+
+**How Elbow Method Works:**
+1. **Test Multiple k Values:**
+   - Tests k values from 2 to max_clusters (default: 8)
+   - Adjusts max_clusters based on data size (need at least 2 samples per cluster)
+   - For each k, runs K-Means and calculates WCSS (Within-Cluster Sum of Squares)
+
+2. **Find Elbow Point:**
+   - Calculates rate of change (first derivative) in WCSS
+   - Calculates acceleration (second derivative) to find sharpest bend
+   - The elbow point is where the rate of decrease in WCSS changes most sharply
+   - This indicates the optimal number of clusters
+
+3. **Optimal k Selection:**
+   - Uses the k value at the sharpest elbow point
+   - Falls back to middle value if no clear elbow is found
+   - Ensures k is between 2 and max_clusters
+
+**Result:** Optimal number of clusters (k) determined automatically
+
+---
+
+### **Step 7: K-Means Clustering** (`python-cluster-api/app.py`)
 
 **Algorithm:**
 ```python
-KMeans(n_clusters=4, random_state=42)
+KMeans(n_clusters=optimal_k, random_state=42)
 clusters = kmeans.fit_predict(X_scaled)
 ```
 
 **Process:**
-1. **Determine Cluster Count:**
-   - Default: 4 clusters
+1. **Cluster Count:**
+   - Uses optimal k determined by elbow method
    - Minimum: 2 clusters (need at least 2 students)
-   - Maximum: Number of students (if < 4)
+   - Maximum: Adjusted based on data size (at least 2 samples per cluster)
 
 2. **Clustering:**
    - K-Means groups students into clusters based on similarity
@@ -204,7 +384,7 @@ clusters = kmeans.fit_predict(X_scaled)
 
 ---
 
-### **Step 7: Cluster Labeling** (`python-cluster-api/app.py`)
+### **Step 8: Cluster Labeling** (`python-cluster-api/app.py`)
 
 After clustering, each cluster is assigned a human-readable label:
 
@@ -215,25 +395,36 @@ After clustering, each cluster is assigned a human-readable label:
    - Average submission rates
    - Average ontime rate
 
-2. Compare to thresholds:
+2. Rank clusters by performance score:
    ```python
-   # Example thresholds:
-   - "At Risk": Low attendance (< 70%) AND Low score (< 60%) AND Low ontime rate (< 50%)
-   - "Needs Improvement": Moderate performance across all metrics
-   - "Average Performance": Good attendance (> 80%) OR Good score (> 70%)
-   - "Excellent Performance": High attendance (> 90%) AND High score (> 85%) AND High ontime rate (> 80%)
+   # Weighted performance score:
+   score = (
+       avg_attendance * 0.20 +
+       avg_score * 0.25 +
+       avg_ontime_priority_score * 0.25 +  # PRIORITY
+       avg_quality_score * 0.15 +  # PRIORITY
+       avg_submission_rate * 100 * 0.10 +
+       (100 - avg_status_score * 50) * 0.05
+   )
    ```
 
-3. Assign label based on cluster characteristics
+3. Assign labels based on cluster ranking and count:
+   - **2 clusters:** "Performing Well" / "Needs Support"
+   - **3 clusters:** "Excellent Performance" / "Average Performance" / "Needs Guidance"
+   - **4 clusters:** "Excellent Performance" / "Average Performance" / "Needs Improvement" / "At Risk"
+   - **5 clusters:** Adds "Good Performance" tier
+   - **6 clusters:** Adds "Below Average" tier
+   - **7 clusters:** Adds "Very Good Performance" tier
+   - **8+ clusters:** Uses tiered distribution (Top 25% / Middle 50% / Bottom 25%)
 
 **Result:** Each student gets:
-- `cluster`: Number (0, 1, 2, 3)
-- `cluster_label`: String ("At Risk", "Needs Improvement", etc.)
+- `cluster`: Number (0, 1, 2, ..., k-1) where k is determined by elbow method
+- `cluster_label`: String based on optimal k and cluster ranking
 - `silhouette_score`: Quality metric
 
 ---
 
-### **Step 8: Cache Storage** (`backend/services/clusteringService.js`)
+### **Step 9: Cache Storage** (`backend/services/clusteringService.js`)
 
 Clusters are saved to the database for future use:
 
@@ -259,7 +450,7 @@ INSERT INTO analytics_clusters (
 
 ---
 
-### **Step 9: Application to Students** (`backend/services/clusteringService.js`)
+### **Step 10: Application to Students** (`backend/services/clusteringService.js`)
 
 Clusters are merged back into student data:
 
@@ -276,7 +467,7 @@ applyClustersToStudents(students, clusterMap) {
 
 ---
 
-### **Step 10: Frontend Display** (`frontend/src/pages/dean/Analytics.jsx`)
+### **Step 11: Frontend Display** (`frontend/src/pages/dean/Analytics.jsx`)
 
 The frontend receives students with cluster data and displays:
 
@@ -294,6 +485,60 @@ The frontend receives students with cluster data and displays:
 3. **Charts:**
    - Scatter plots colored by cluster
    - Pie charts showing cluster distribution
+
+---
+
+## 🎯 Elbow Method for Optimal Cluster Selection
+
+### **Why Elbow Method?**
+
+The elbow method automatically determines the optimal number of clusters instead of using a fixed value (e.g., k=4). This provides:
+
+1. **Data-Driven Clustering:** Adapts to your specific dataset
+2. **Better Separation:** Finds the natural number of distinct groups in your data
+3. **Quality Improvement:** Often produces better silhouette scores than fixed k
+4. **Flexibility:** Works with different data sizes and distributions
+
+### **How It Works**
+
+1. **Test Multiple k Values:**
+   - Tests k from 2 to max_clusters (default: 8)
+   - Adjusted based on data size (needs at least 2 samples per cluster)
+   - For each k, calculates WCSS (Within-Cluster Sum of Squares)
+
+2. **Calculate Elbow Point:**
+   ```
+   WCSS for k=2: 1500
+   WCSS for k=3: 1000  (decrease: 500)
+   WCSS for k=4: 700   (decrease: 300) ← Elbow: sharpest change
+   WCSS for k=5: 550   (decrease: 150)
+   WCSS for k=6: 450   (decrease: 100)
+   ```
+
+3. **Find Optimal k:**
+   - Calculates rate of change (first derivative)
+   - Calculates acceleration (second derivative)
+   - Selects k where acceleration is maximum (sharpest bend)
+
+### **Example Output**
+
+```
+📊 [Python API] Elbow Method: Testing 2 to 6 clusters...
+   k=2: WCSS=1245.23
+   k=3: WCSS=892.45
+   k=4: WCSS=687.12  ← Optimal (sharpest bend)
+   k=5: WCSS=543.89
+   k=6: WCSS=456.78
+
+✅ [Python API] Elbow Method: Optimal k=4 (sharpest bend at k=4)
+🎯 [Python API] Using optimal k=4 clusters (determined by elbow method)
+```
+
+### **Limitations & Fallbacks**
+
+- **Small Datasets:** If fewer than 4 students, defaults to k=2
+- **No Clear Elbow:** Falls back to middle value if elbow is ambiguous
+- **Computational Cost:** Tests multiple k values, so takes slightly longer than fixed k
 
 ---
 
@@ -382,10 +627,18 @@ The clustering system transforms raw student data into meaningful performance gr
 
 1. **Data Collection:** SQL aggregates performance metrics
 2. **Feature Engineering:** Creates 12 numerical features
-3. **Machine Learning:** K-Means clustering groups similar students
-4. **Labeling:** Assigns human-readable labels based on cluster characteristics
-5. **Caching:** Stores results for fast retrieval
-6. **Display:** Frontend visualizes clusters with filters and charts
+3. **Optimal Cluster Selection:** Elbow method determines the best number of clusters automatically
+4. **Machine Learning:** K-Means clustering groups similar students using optimal k
+5. **Labeling:** Assigns human-readable labels based on cluster characteristics (supports variable cluster counts)
+6. **Caching:** Stores results for fast retrieval
+7. **Display:** Frontend visualizes clusters with filters and charts
+
+**Key Improvement: Elbow Method**
+- Automatically determines optimal number of clusters (k) instead of fixed k=4
+- Tests multiple k values (2 to 8, adjusted by data size)
+- Finds the "elbow point" where WCSS decreases most sharply
+- Adapts to different data sizes and distributions
+- Supports variable cluster counts (2-8+ clusters) with appropriate labels
 
 The system prioritizes **ontime submissions** and uses **ILO-aligned assessments** when filtering, providing actionable insights for identifying at-risk students and tracking learning outcomes.
 
