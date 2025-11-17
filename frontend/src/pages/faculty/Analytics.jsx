@@ -491,8 +491,13 @@ const Analytics = () => {
   // Auto-refetch when filters change (only after initial load)
   useEffect(() => {
     // Also refetch when faculty classes change
-    if (hasFetched && !isInitialTermLoadRef.current) {
-      handleFetch();
+    // Skip if already loading or if this is the initial load
+    if (hasFetched && !isInitialTermLoadRef.current && !loading && !loadingFacultyClasses) {
+      // Add a small delay to debounce rapid changes and prevent race conditions
+      const timer = setTimeout(() => {
+        handleFetch();
+      }, 100);
+      return () => clearTimeout(timer);
     }
     // Mark initial load as complete once we have a term selected
     if (selectedTermId) {
@@ -711,6 +716,13 @@ const Analytics = () => {
   const handleFetch = useCallback((forceRefresh = false) => {
     console.log('🔍 [FACULTY ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
     
+    // Prevent concurrent fetches - if already loading, abort previous and start new one
+    // (The abort controller will handle canceling the previous request)
+    if (loading && !forceRefresh) {
+      console.log('⏳ [FACULTY ANALYTICS] Fetch already in progress, aborting previous request...');
+      // The abort controller will be reset below, which will cancel the previous request
+    }
+    
     // Don't fetch if faculty has no classes assigned
     if (facultyId && facultyClassesRef.current.length === 0) {
       console.log('🚫 [FACULTY ANALYTICS] Faculty has no classes - skipping fetch');
@@ -872,6 +884,11 @@ const Analytics = () => {
       signal: abortControllerRef.current.signal
     })
       .then(async (res) => {
+        // Check if request was aborted before processing response
+        if (abortControllerRef.current?.signal.aborted) {
+          throw new DOMException('The user aborted a request.', 'AbortError');
+        }
+        
         console.log('📡 [Analytics] Response status:', res.status);
         setProgress(95);
         
@@ -884,6 +901,11 @@ const Analytics = () => {
           let errorData;
           const contentType = res.headers.get('content-type');
           try {
+            // Check if aborted before reading
+            if (abortControllerRef.current?.signal.aborted) {
+              throw new DOMException('The user aborted a request.', 'AbortError');
+            }
+            
             if (contentType && contentType.includes('application/json')) {
               errorData = await res.json();
             } else {
@@ -895,12 +917,25 @@ const Analytics = () => {
               };
             }
           } catch (parseError) {
+            // If aborted, rethrow as AbortError
+            if (parseError.name === 'AbortError' || parseError instanceof DOMException) {
+              throw parseError;
+            }
+            
             console.error('❌ [Analytics] Failed to parse error response:', parseError);
             // Try to read from cloned response
             try {
+              // Check if aborted before reading cloned response
+              if (abortControllerRef.current?.signal.aborted) {
+                throw new DOMException('The user aborted a request.', 'AbortError');
+              }
               const errorText = await clonedRes.text();
               console.error('❌ [Analytics] Error response text (first 500 chars):', errorText.substring(0, 500));
             } catch (e) {
+              // If aborted, don't log as error
+              if (e.name === 'AbortError' || e instanceof DOMException) {
+                throw e;
+              }
               console.error('❌ [Analytics] Could not read error response:', e);
             }
             errorData = { 
@@ -914,11 +949,24 @@ const Analytics = () => {
         // Clone again for error handling in JSON parsing
         const jsonClonedRes = res.clone();
         try {
+          // Check if aborted before parsing JSON
+          if (abortControllerRef.current?.signal.aborted) {
+            throw new DOMException('The user aborted a request.', 'AbortError');
+          }
           return await res.json();
         } catch (jsonError) {
+          // If aborted, rethrow as AbortError
+          if (jsonError.name === 'AbortError' || jsonError instanceof DOMException) {
+            throw jsonError;
+          }
+          
           console.error('❌ [Analytics] Error parsing JSON:', jsonError);
           // Try to read response as text to see what we got
           try {
+            // Check if aborted before reading text
+            if (abortControllerRef.current?.signal.aborted) {
+              throw new DOMException('The user aborted a request.', 'AbortError');
+            }
             const responseText = await jsonClonedRes.text();
             console.error('❌ [Analytics] Response text (first 1000 chars):', responseText.substring(0, 1000));
             // Check if response looks truncated
@@ -926,6 +974,10 @@ const Analytics = () => {
               console.error('❌ [Analytics] Response appears to be truncated!');
             }
           } catch (e) {
+            // If aborted, rethrow
+            if (e.name === 'AbortError' || e instanceof DOMException) {
+              throw e;
+            }
             console.error('❌ [Analytics] Could not read response as text:', e);
           }
           throw jsonError;
@@ -1084,7 +1136,8 @@ const Analytics = () => {
           progressIntervalRef.current = null;
         }
         
-        if (err.name === 'AbortError') {
+        // Handle abort errors gracefully (both AbortError and DOMException)
+        if (err.name === 'AbortError' || err instanceof DOMException) {
           console.log('🚫 [FACULTY ANALYTICS] Request was aborted');
           return;
         }
