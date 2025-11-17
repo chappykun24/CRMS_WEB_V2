@@ -439,7 +439,7 @@ const saveClustersToCache = async (clusters, termId, sectionCourseId = null, ilo
  * Normalize student data for clustering API
  * 
  * Clustering is based on THREE primary data sources:
- * 1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments (average_score, ilo_weighted_score, assessment_scores_by_ilo)
+ * 1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments (average_score, assessment_scores_by_ilo)
  * 2. SUBMISSION DATA: Submission behavior (ontime, late, missing counts and rates)
  * 3. ATTENDANCE DATA: Attendance patterns (present, absent, late counts and percentages)
  * 
@@ -473,9 +473,6 @@ const normalizeStudentData = (students) => {
     // ==========================================
     average_score: row.average_score !== null && row.average_score !== undefined && !isNaN(row.average_score)
       ? Number(row.average_score)  // Final grade using transmuted scores (sum of transmuted_score per course, averaged)
-      : null,
-    ilo_weighted_score: row.ilo_weighted_score !== null && row.ilo_weighted_score !== undefined && !isNaN(row.ilo_weighted_score)
-      ? Number(row.ilo_weighted_score)  // Transmuted scores with ILO boost factor applied
       : null,
     // Assessment-level transmuted scores grouped by ILO
     // Contains: {ilo_id, ilo_code, assessments: [{assessment_id, transmuted_score, weight_percentage}]}
@@ -536,7 +533,6 @@ const callClusteringAPI = async (students, timeoutMs = 30000) => {
       attendance_late_count: sample.attendance_late_count,
       attendance_total_sessions: sample.attendance_total_sessions,
       average_score: sample.average_score,
-      ilo_weighted_score: sample.ilo_weighted_score,
       submission_rate: sample.submission_rate,
       submission_ontime_count: sample.submission_ontime_count,
       submission_late_count: sample.submission_late_count,

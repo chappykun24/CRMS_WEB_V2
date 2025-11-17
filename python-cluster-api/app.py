@@ -147,10 +147,6 @@ def calculate_score_features(row):
     # This follows the new grading computation: Raw → Adjusted → Actual → Transmuted
     syllabus_weighted_score = float(row.get('average_score', 50.0)) if pd.notna(row.get('average_score')) else 50.0
     
-    # Use pre-calculated ilo_weighted_score from database (same as average_score but with ILO boost)
-    # ILO boost is applied to transmuted scores: transmuted_score × ilo_boost_factor
-    ilo_score = float(row.get('ilo_weighted_score', syllabus_weighted_score)) if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
-    
     # Process assessment-level transmuted scores grouped by ILO (NEW)
     assessment_scores_by_ilo = row.get('assessment_scores_by_ilo')
     ilo_specific_scores = {}
@@ -202,7 +198,7 @@ def calculate_score_features(row):
                         }
     
     # Calculate overall ILO-based score (average of all ILO scores if available)
-    ilo_based_final_score = ilo_score
+    ilo_based_final_score = syllabus_weighted_score
     if ilo_specific_scores:
         ilo_scores_list = [score for score in ilo_specific_scores.values() if score > 0]
         if ilo_scores_list:
@@ -211,16 +207,14 @@ def calculate_score_features(row):
             # Prefer ILO-based score if available
             final_score = ilo_based_final_score
         else:
-            final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
+            final_score = syllabus_weighted_score
     else:
-        # Use ILO-weighted score as final_score (includes syllabus weights + ILO boost)
-        # Falls back to syllabus-weighted score if ILO data unavailable
-        final_score = ilo_score if pd.notna(row.get('ilo_weighted_score')) else syllabus_weighted_score
+        # Use syllabus-weighted score as final_score
+        final_score = syllabus_weighted_score
     
     result = {
         'average_score': syllabus_weighted_score,  # Final grade using new computation (transmuted scores)
-        'ilo_weighted_score': ilo_score,  # Final grade with ILO boost applied
-        'final_score': final_score,  # Primary score for clustering (syllabus + ILO)
+        'final_score': final_score,  # Primary score for clustering (syllabus or ILO-based)
         'ilo_based_score': ilo_based_final_score  # Score calculated from ILO-specific assessments
     }
     
@@ -337,7 +331,7 @@ def cluster_records(records):
     Clustering is based on THREE primary data sources:
     1. TRANSMUTED SCORES: Pre-calculated transmuted scores from assessments
        - Formula: Raw → Adjusted → Actual → Transmuted
-       - Uses: average_score, ilo_weighted_score, assessment_scores_by_ilo
+       - Uses: average_score, assessment_scores_by_ilo
     2. SUBMISSION DATA: Submission behavior patterns
        - Counts: ontime, late, missing submissions
        - Rates: submission_rate, submission_ontime_rate, etc.
@@ -788,8 +782,7 @@ def cluster_students():
               f'(Present: {sample.get("attendance_present_count")}, '
               f'Absent: {sample.get("attendance_absent_count")}, '
               f'Late: {sample.get("attendance_late_count")})')
-        print(f'   Score: {sample.get("average_score")} '
-              f'(ILO-weighted: {sample.get("ilo_weighted_score")})')
+        print(f'   Score: {sample.get("average_score")}')
         print(f'   Submissions: Rate={sample.get("submission_rate")}, '
               f'Ontime={sample.get("submission_ontime_count")}, '
               f'Late={sample.get("submission_late_count")}, '

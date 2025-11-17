@@ -46,7 +46,6 @@ The system starts by querying the database to collect student performance metric
   - `average_score`: Final grade using transmuted scoring formula
     - Formula: `((adjusted_score / total_points) × 62.5 + 37.5) × (weight_percentage / 100)`
     - Averaged across all courses
-  - `ilo_weighted_score`: Same as average_score but with ILO boost factor (1.0-1.5x)
   - `assessment_scores_by_ilo`: JSON array of scores grouped by ILO
 
 - **Submission Behavior:**
@@ -130,7 +129,7 @@ The Python API receives the normalized data and creates enhanced features:
 
 3. **Score Features:**
    ```python
-   final_score = ilo_weighted_score if available, else average_score
+   final_score = average_score  # Uses transmuted scoring formula
    ```
 
 **Final Feature Set (12 features):**

@@ -650,7 +650,7 @@ router.get('/dean-analytics/sample', async (req, res) => {
     
     // Fetch student analytics for clustering
     // Clustering is based on THREE primary data sources:
-    // 1. TRANSMUTED SCORES: Pre-calculated transmuted scores (average_score, ilo_weighted_score, assessment_scores_by_ilo)
+    // 1. TRANSMUTED SCORES: Pre-calculated transmuted scores (average_score, assessment_scores_by_ilo)
     // 2. SUBMISSION DATA: Submission behavior (ontime, late, missing counts and rates)
     // 3. ATTENDANCE DATA: Attendance patterns (present, absent, late counts and percentages)
     // Enhanced with detailed attendance counts and submission behavior
@@ -829,105 +829,6 @@ router.get('/dean-analytics/sample', async (req, res) => {
             WHERE course_final_grade > 0
           )
         )::NUMERIC AS average_score,
-        -- ILO-weighted score: same as average_score but with ILO boost factor applied to transmuted scores
-        -- Uses new grading computation with ILO boost: transmuted_score × ilo_boost_factor
-        -- ILO boost factor: assessments with ILOs get slight boost (1.0 to 1.5x)
-        COALESCE(
-          (
-            WITH assessment_ilo_boosts AS (
-              -- Calculate ILO boost factor per assessment
-              SELECT 
-                a.assessment_id,
-                CASE 
-                  WHEN COALESCE(SUM(aiw.weight_percentage), 0) > 0
-                  THEN 1.0 + (COALESCE(SUM(aiw.weight_percentage), 0) / 200.0)  -- Max 1.5x boost
-                  ELSE 1.0
-                END as ilo_boost_factor
-              FROM assessments a
-              LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-              GROUP BY a.assessment_id
-            ),
-            course_ilo_weighted_scores AS (
-              SELECT 
-                sc_ilo.section_course_id,
-                -- Use pre-calculated transmuted_score with ILO boost, or calculate with boost
-                SUM(
-                  CASE 
-                    -- Use stored transmuted_score with ILO boost
-                    WHEN sub.transmuted_score IS NOT NULL
-                    THEN sub.transmuted_score * COALESCE(aib.ilo_boost_factor, 1.0)
-                    -- Calculate transmuted_score with ILO boost: actual_score × (weight_percentage / 100) × ilo_boost
-                    -- where actual_score = (adjusted_score / total_points) × 62.5 + 37.5
-                    WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100) * COALESCE(aib.ilo_boost_factor, 1.0)
-                    -- Fallback: use total_score
-                    WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100) * COALESCE(aib.ilo_boost_factor, 1.0)
-                    ELSE 0
-                  END
-                ) as course_ilo_weighted_score
-              FROM course_enrollments ce_ilo
-              INNER JOIN section_courses sc_ilo ON ce_ilo.section_course_id = sc_ilo.section_course_id
-              INNER JOIN assessments a ON sc_ilo.section_course_id = a.section_course_id
-              LEFT JOIN assessment_ilo_boosts aib ON a.assessment_id = aib.assessment_id
-              LEFT JOIN submissions sub ON (
-                ce_ilo.enrollment_id = sub.enrollment_id 
-                AND sub.assessment_id = a.assessment_id
-                AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
-              )
-              WHERE ce_ilo.student_id = s.student_id
-                AND ce_ilo.status = 'enrolled'
-                AND a.weight_percentage IS NOT NULL
-                AND a.weight_percentage > 0
-                ${termIdValue ? `AND sc_ilo.term_id = ${termIdValue}` : ''}
-                ${sectionCourseFilterIlo}
-                ${standardAssessmentFilter}
-              GROUP BY sc_ilo.section_course_id
-            )
-            -- Average across all courses (normalizes to 0-100 scale, but may exceed 100 due to ILO boost)
-            -- When filtering by section_course_id, just return the single course score
-            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_ilo_weighted_score)::NUMERIC, 2)
-            FROM course_ilo_weighted_scores
-            WHERE course_ilo_weighted_score > 0
-          ),
-          -- Fallback: use average_score (without ILO boost)
-          (
-            WITH course_transmuted_scores AS (
-              SELECT 
-                sc_fallback.section_course_id,
-                SUM(
-                  CASE 
-                    WHEN sub.transmuted_score IS NOT NULL
-                    THEN sub.transmuted_score
-                    WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-                    WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-                    THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-                    ELSE 0
-                  END
-                ) as course_final_grade
-              FROM course_enrollments ce_fallback
-              INNER JOIN section_courses sc_fallback ON ce_fallback.section_course_id = sc_fallback.section_course_id
-              INNER JOIN assessments a ON sc_fallback.section_course_id = a.section_course_id
-              LEFT JOIN submissions sub ON (
-                ce_fallback.enrollment_id = sub.enrollment_id 
-                AND sub.assessment_id = a.assessment_id
-                AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
-              )
-              WHERE ce_fallback.student_id = s.student_id
-                AND ce_fallback.status = 'enrolled'
-                AND a.weight_percentage IS NOT NULL
-                AND a.weight_percentage > 0
-              ${termIdValue ? `AND sc_fallback.term_id = ${termIdValue}` : ''}
-              ${sectionCourseFilterFallback}
-              ${standardAssessmentFilter}
-              GROUP BY sc_fallback.section_course_id
-            )
-            SELECT ROUND(${sectionCourseIdValue ? 'MAX' : 'AVG'}(course_final_grade)::NUMERIC, 2)
-            FROM course_transmuted_scores
-            WHERE course_final_grade > 0
-          )
-        )::NUMERIC AS ilo_weighted_score,
         -- Average submission status score: converts ontime=0, late=1, missing=2 to numerical average
         COALESCE(
           (
