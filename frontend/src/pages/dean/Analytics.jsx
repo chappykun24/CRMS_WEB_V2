@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../utils/api';
 import deanCacheService from '../../services/deanCacheService';
 import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
 import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
+import sampleClusterVisualizationData from '../../data/sampleClusterVisualizationData';
 import ClusterVisualization from '../../components/ClusterVisualization';
 
 // Analytics-specific skeleton components
@@ -155,6 +156,7 @@ const Analytics = () => {
   const [clusterMeta, setClusterMeta] = useState({ enabled: false });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCluster, setSelectedCluster] = useState('all');
+  const [useSampleClusterData, setUseSampleClusterData] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [studentPhoto, setStudentPhoto] = useState(null);
@@ -2043,10 +2045,28 @@ const Analytics = () => {
               {chartData && chartsLoaded && (
                 <div className="space-y-3">
                   {/* Cluster Visualization - 2D Scatter Plot */}
-                  {data && data.length > 0 && (
-                    <ClusterVisualization data={data} height={300} />
+                  {(useSampleClusterData || (data && data.length > 0)) && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-[10px] font-semibold text-gray-900 uppercase tracking-wide">Cluster Visualization</h3>
+                          <p className="text-[10px] text-gray-500">
+                            {useSampleClusterData ? 'Showing demo dataset (fixed 24 students).' : 'Showing live analytics data.'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setUseSampleClusterData(prev => !prev)}
+                          className="px-3 py-1 text-xs font-semibold rounded-full border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          {useSampleClusterData ? 'Use Live Data' : 'Show Sample Data'}
+                        </button>
+                      </div>
+                      <ClusterVisualization
+                        data={useSampleClusterData ? sampleClusterVisualizationData : data}
+                        height={300}
+                      />
+                    </div>
                   )}
-
                   {/* Cluster Distribution Pie Chart */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
                     <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Cluster Distribution</h3>
