@@ -34,16 +34,17 @@ For the elbow method and clustering to work, you need the following minimum data
 ### **Minimum Data for Elbow Method**
 
 **Requirements:**
-- At least **2 students** (need at least 2 to form clusters)
-- At least **4 students** for elbow method to test k=2 to k=8
-- Data size determines max_clusters: `max_clusters = min(8, n_students // 2)`
+- At least **6 students** (minimum recommended for k=3 clusters)
+- Elbow method tests **k=3 to k=5** (minimum 3, maximum 5 labels)
+- Data size determines max_clusters: `max_clusters = min(5, n_students // 2)`
+- Minimum 3 clusters, maximum 5 clusters
 
 **Example:**
 ```
-2 students  → k=2 only (no elbow method, uses k=2)
-4 students  → Tests k=2 (elbow method)
-8 students  → Tests k=2 to k=4 (max_clusters = 8 // 2 = 4)
-16 students → Tests k=2 to k=8 (full range)
+< 6 students  → Uses fallback k (not recommended)
+6 students    → Tests k=3 (minimum, max_clusters = 6 // 2 = 3)
+10 students   → Tests k=3 to k=5 (max_clusters = 10 // 2 = 5)
+16+ students  → Tests k=3 to k=5 (full range: 3-5)
 ```
 
 ### **Complete Data Schema**
@@ -133,11 +134,10 @@ submission_status_score: 0.5       # Moderate status
 
 | Data Size | Elbow Method | Clustering Result |
 |-----------|--------------|-------------------|
-| 0-1 student | ❌ Not enough data | Returns "Not Clustered" |
-| 2 students | ⚠️ Uses k=2 directly | Creates 2 clusters |
-| 3 students | ⚠️ Uses k=2 directly | Creates 2 clusters (one will be small) |
-| 4-7 students | ✅ Tests k=2 to k=(n//2) | Optimal k determined |
-| 8+ students | ✅ Tests k=2 to k=8 | Full elbow method analysis |
+| < 6 students | ⚠️ Uses fallback k (not recommended) | Limited clustering |
+| 6-9 students | ✅ Tests k=3 only | Optimal k=3 determined |
+| 10-15 students | ✅ Tests k=3 to k=4 or k=5 | Optimal k determined (range: 3-5) |
+| 16+ students | ✅ Tests k=3 to k=5 (full range) | Full elbow method analysis (range: 3-5) |
 
 ### **Database Tables Required**
 
@@ -408,14 +408,10 @@ After clustering, each cluster is assigned a human-readable label:
    )
    ```
 
-3. Assign labels based on cluster ranking and count:
-   - **2 clusters:** "Performing Well" / "Needs Support"
-   - **3 clusters:** "Excellent Performance" / "Average Performance" / "Needs Guidance"
-   - **4 clusters:** "Excellent Performance" / "Average Performance" / "Needs Improvement" / "At Risk"
-   - **5 clusters:** Adds "Good Performance" tier
-   - **6 clusters:** Adds "Below Average" tier
-   - **7 clusters:** Adds "Very Good Performance" tier
-   - **8+ clusters:** Uses tiered distribution (Top 25% / Middle 50% / Bottom 25%)
+3. Assign labels using switch/case structure (k=3, 4, or 5 only):
+   - **k=3:** "Excellent Performance" / "Average Performance" / "Needs Improvement"
+   - **k=4:** "Excellent Performance" / "Average Performance" / "Needs Improvement" / "At Risk"
+   - **k=5:** "Excellent Performance" / "Good Performance" / "Average Performance" / "Needs Improvement" / "At Risk"
 
 **Result:** Each student gets:
 - `cluster`: Number (0, 1, 2, ..., k-1) where k is determined by elbow method
@@ -502,17 +498,15 @@ The elbow method automatically determines the optimal number of clusters instead
 ### **How It Works**
 
 1. **Test Multiple k Values:**
-   - Tests k from 2 to max_clusters (default: 8)
+   - Tests k from 3 to 5 (minimum 3, maximum 5 labels)
    - Adjusted based on data size (needs at least 2 samples per cluster)
    - For each k, calculates WCSS (Within-Cluster Sum of Squares)
 
 2. **Calculate Elbow Point:**
    ```
-   WCSS for k=2: 1500
-   WCSS for k=3: 1000  (decrease: 500)
-   WCSS for k=4: 700   (decrease: 300) ← Elbow: sharpest change
+   WCSS for k=3: 1000  (decrease: 300)
+   WCSS for k=4: 700   (decrease: 200) ← Elbow: sharpest change
    WCSS for k=5: 550   (decrease: 150)
-   WCSS for k=6: 450   (decrease: 100)
    ```
 
 3. **Find Optimal k:**
@@ -523,22 +517,21 @@ The elbow method automatically determines the optimal number of clusters instead
 ### **Example Output**
 
 ```
-📊 [Python API] Elbow Method: Testing 2 to 6 clusters...
-   k=2: WCSS=1245.23
+📊 [Python API] Elbow Method: Testing 3 to 5 clusters (min=3, max=5)...
    k=3: WCSS=892.45
    k=4: WCSS=687.12  ← Optimal (sharpest bend)
    k=5: WCSS=543.89
-   k=6: WCSS=456.78
 
 ✅ [Python API] Elbow Method: Optimal k=4 (sharpest bend at k=4)
-🎯 [Python API] Using optimal k=4 clusters (determined by elbow method)
+🎯 [Python API] Using optimal k=4 clusters (determined by elbow method, range: 3-5)
 ```
 
 ### **Limitations & Fallbacks**
 
-- **Small Datasets:** If fewer than 4 students, defaults to k=2
-- **No Clear Elbow:** Falls back to middle value if elbow is ambiguous
-- **Computational Cost:** Tests multiple k values, so takes slightly longer than fixed k
+- **Small Datasets:** If fewer than 6 students, uses fallback k (not recommended, minimum 6 students)
+- **No Clear Elbow:** Falls back to middle value (k=4) if elbow is ambiguous
+- **Range Constraint:** Always stays within k=3 to k=5 range (minimum 3, maximum 5 labels)
+- **Computational Cost:** Tests k=3, 4, 5 (3 values), so takes slightly longer than fixed k
 
 ---
 
@@ -634,11 +627,12 @@ The clustering system transforms raw student data into meaningful performance gr
 7. **Display:** Frontend visualizes clusters with filters and charts
 
 **Key Improvement: Elbow Method**
-- Automatically determines optimal number of clusters (k) instead of fixed k=4
-- Tests multiple k values (2 to 8, adjusted by data size)
+- Automatically determines optimal number of clusters (k) instead of fixed k
+- Tests k values from 3 to 5 (minimum 3, maximum 5 labels)
 - Finds the "elbow point" where WCSS decreases most sharply
-- Adapts to different data sizes and distributions
-- Supports variable cluster counts (2-8+ clusters) with appropriate labels
+- Uses switch/case structure for label assignment (k=3, 4, or 5)
+- Adapts to different data sizes (minimum 6 students recommended)
+- Constrained range ensures consistent labeling (3-5 clusters only)
 
 The system prioritizes **ontime submissions** and uses **ILO-aligned assessments** when filtering, providing actionable insights for identifying at-risk students and tracking learning outcomes.
 

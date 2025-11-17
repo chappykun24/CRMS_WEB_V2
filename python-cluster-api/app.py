@@ -275,7 +275,7 @@ def validate_clustering_data(records):
     return issues
 
 
-def find_optimal_clusters_elbow_method(X_scaled, max_clusters=8, min_clusters=2):
+def find_optimal_clusters_elbow_method(X_scaled, max_clusters=5, min_clusters=3):
     """
     Determine optimal number of clusters using the elbow method.
     
@@ -286,11 +286,11 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=8, min_clusters=2)
     
     Args:
         X_scaled: Scaled feature matrix
-        max_clusters: Maximum number of clusters to test (default: 8)
-        min_clusters: Minimum number of clusters to test (default: 2)
+        max_clusters: Maximum number of clusters to test (default: 5)
+        min_clusters: Minimum number of clusters to test (default: 3)
     
     Returns:
-        optimal_k: Optimal number of clusters determined by elbow method
+        optimal_k: Optimal number of clusters determined by elbow method (3-5)
         wcss_values: List of WCSS values for each k
         k_range: Range of k values tested
     """
@@ -301,13 +301,17 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=8, min_clusters=2)
     max_clusters = min(max_clusters, n_samples // 2)
     max_clusters = max(max_clusters, min_clusters)
     
+    # Ensure we stay within 3-5 range
+    max_clusters = min(max_clusters, 5)
+    max_clusters = max(max_clusters, min_clusters)
+    
     if max_clusters < min_clusters:
         return min_clusters, [], []
     
     k_range = range(min_clusters, max_clusters + 1)
     wcss_values = []
     
-    print(f'\n📊 [Python API] Elbow Method: Testing {min_clusters} to {max_clusters} clusters...')
+    print(f'\n📊 [Python API] Elbow Method: Testing {min_clusters} to {max_clusters} clusters (min=3, max=5)...')
     
     for k in k_range:
         kmeans = KMeans(n_clusters=k, random_state=42, n_init='auto', max_iter=300)
@@ -337,13 +341,15 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=8, min_clusters=2)
             # Find k with maximum acceleration (sharpest elbow)
             if len(acceleration) > 0:
                 max_accel_idx = np.argmax(acceleration)
-                optimal_k = k_range[max_accel_idx + 1]  # +1 because acceleration starts at k=3
+                optimal_k = k_range[max_accel_idx + 1]  # +1 because acceleration calculation
+                # Ensure optimal_k is within 3-5 range
+                optimal_k = max(min(optimal_k, 5), 3)
                 print(f'\n✅ [Python API] Elbow Method: Optimal k={optimal_k} (sharpest bend at k={optimal_k})')
                 return optimal_k, wcss_values, list(k_range)
     
     # Fallback: use middle value if we can't find a clear elbow
     optimal_k = min_clusters + (max_clusters - min_clusters) // 2
-    optimal_k = max(optimal_k, min_clusters)
+    optimal_k = max(min(optimal_k, 5), 3)  # Ensure 3-5 range
     print(f'\n⚠️ [Python API] Elbow Method: Could not find clear elbow, using k={optimal_k} (middle value)')
     return optimal_k, wcss_values, list(k_range)
 
@@ -522,28 +528,35 @@ def cluster_records(records):
     X_scaled = scaler.fit_transform(df_clean[features])
     
     # Determine optimal number of clusters using elbow method
-    # Need at least 2 students for clustering
-    if len(df_clean) < 2:
-        n_clusters = 1
+    # Need at least 6 students for clustering (3 clusters * 2 samples per cluster)
+    if len(df_clean) < 6:
+        # If less than 6 students, use minimum k=3 if possible
+        if len(df_clean) >= 6:
+            n_clusters = 3
+        elif len(df_clean) >= 4:
+            n_clusters = 2  # Fallback: use 2 clusters if 4-5 students
+        else:
+            n_clusters = 1  # Not enough data
+        print(f'\n⚠️ [Python API] Insufficient data ({len(df_clean)} students), using k={n_clusters} (minimum 6 students recommended for k=3-5)')
     else:
-        # Use elbow method to find optimal k
-        # Default max_clusters: 8, but adjust based on data size
-        max_clusters = min(8, len(df_clean) // 2)  # Need at least 2 samples per cluster
-        max_clusters = max(max_clusters, 2)  # At least 2 clusters
+        # Use elbow method to find optimal k (3-5)
+        # Need at least 2 samples per cluster, so max is limited by data size
+        max_clusters = min(5, len(df_clean) // 2)  # Maximum 5 clusters
+        max_clusters = max(max_clusters, 3)  # Minimum 3 clusters
         
         optimal_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
             X_scaled, 
             max_clusters=max_clusters,
-            min_clusters=2
+            min_clusters=3  # Minimum 3 clusters
         )
         
         n_clusters = optimal_k
         
-        # Ensure n_clusters is valid for the data size
-        n_clusters = min(n_clusters, len(df_clean))
-        n_clusters = max(n_clusters, 1)
+        # Ensure n_clusters is valid for the data size and within 3-5 range
+        n_clusters = min(n_clusters, min(5, len(df_clean) // 2))
+        n_clusters = max(n_clusters, 3)
         
-        print(f'\n🎯 [Python API] Using optimal k={n_clusters} clusters (determined by elbow method)')
+        print(f'\n🎯 [Python API] Using optimal k={n_clusters} clusters (determined by elbow method, range: 3-5)')
     
     # Perform KMeans clustering
     if n_clusters > 1:
@@ -614,107 +627,44 @@ def cluster_records(records):
     # Sort clusters by score and assign labels
     sorted_clusters = sorted(cluster_scores.items(), key=lambda x: x[1], reverse=True)
     
-    # Define behavior-based labels based on number of clusters
+    # Define behavior-based labels using switch/case structure (k=3, 4, or 5 only)
     # Label distribution based on performance ranking
     labels = {}
     
-    if n_clusters == 1:
-        # When only 1 cluster, assign label based on performance metrics
-        # Calculate average performance to determine appropriate label
-        if len(cluster_stats) > 0:
-            stats = cluster_stats[0]
-            avg_score = stats.get('avg_score', 0)
-            avg_attendance = stats.get('avg_attendance_percentage', 0)
-            avg_submission_rate = stats.get('avg_submission_rate', 0) * 100
-            
-            # Determine label based on performance
-            if avg_score >= 85 and avg_attendance >= 85 and avg_submission_rate >= 90:
-                labels = {0: "Excellent Performance"}
-            elif avg_score >= 70 and avg_attendance >= 75 and avg_submission_rate >= 80:
-                labels = {0: "Average Performance"}
-            elif avg_score >= 60 and avg_attendance >= 60 and avg_submission_rate >= 70:
-                labels = {0: "Needs Improvement"}
-            else:
-                labels = {0: "At Risk"}
-        else:
-            labels = {0: "Average Performance"}  # Default fallback
-    elif n_clusters == 2:
+    # Switch/case structure for k=3, 4, 5 (minimum 3, maximum 5)
+    if n_clusters == 3:
+        # Case: 3 clusters
         labels = {
-            sorted_clusters[0][0]: "Performing Well",
-            sorted_clusters[1][0]: "Needs Support"
-        }
-    elif n_clusters == 3:
-        labels = {
-            sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "Average Performance",
-            sorted_clusters[2][0]: "Needs Guidance"
+            sorted_clusters[0][0]: "Excellent Performance",    # Highest score
+            sorted_clusters[1][0]: "Average Performance",      # Middle score
+            sorted_clusters[2][0]: "Needs Improvement"         # Lowest score
         }
     elif n_clusters == 4:
+        # Case: 4 clusters
+        labels = {
+            sorted_clusters[0][0]: "Excellent Performance",    # Highest score
+            sorted_clusters[1][0]: "Average Performance",      # Second highest
+            sorted_clusters[2][0]: "Needs Improvement",        # Second lowest
+            sorted_clusters[3][0]: "At Risk"                   # Lowest score
+        }
+    elif n_clusters == 5:
+        # Case: 5 clusters (maximum)
+        labels = {
+            sorted_clusters[0][0]: "Excellent Performance",    # Highest score
+            sorted_clusters[1][0]: "Good Performance",         # Second highest
+            sorted_clusters[2][0]: "Average Performance",      # Middle score
+            sorted_clusters[3][0]: "Needs Improvement",        # Second lowest
+            sorted_clusters[4][0]: "At Risk"                   # Lowest score
+        }
+    else:
+        # Fallback: for k < 3 or k > 5 (should not happen in normal flow)
+        # Use k=3 labels as default
+        print(f'\n⚠️ [Python API] Warning: Unexpected cluster count k={n_clusters}, using k=3 labels')
         labels = {
             sorted_clusters[0][0]: "Excellent Performance",
             sorted_clusters[1][0]: "Average Performance",
-            sorted_clusters[2][0]: "Needs Improvement",
-            sorted_clusters[3][0]: "At Risk"
-        }
-    elif n_clusters == 5:
-        labels = {
-            sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "Good Performance",
-            sorted_clusters[2][0]: "Average Performance",
-            sorted_clusters[3][0]: "Needs Improvement",
-            sorted_clusters[4][0]: "At Risk"
-        }
-    elif n_clusters == 6:
-        labels = {
-            sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "Good Performance",
-            sorted_clusters[2][0]: "Average Performance",
-            sorted_clusters[3][0]: "Below Average",
-            sorted_clusters[4][0]: "Needs Improvement",
-            sorted_clusters[5][0]: "At Risk"
-        }
-    elif n_clusters == 7:
-        labels = {
-            sorted_clusters[0][0]: "Excellent Performance",
-            sorted_clusters[1][0]: "Very Good Performance",
-            sorted_clusters[2][0]: "Good Performance",
-            sorted_clusters[3][0]: "Average Performance",
-            sorted_clusters[4][0]: "Below Average",
-            sorted_clusters[5][0]: "Needs Improvement",
-            sorted_clusters[6][0]: "At Risk"
-        }
-    else:  # n_clusters >= 8
-        # For 8+ clusters, use a more granular distribution
-        # Divide into performance tiers: Top 25%, Middle 50%, Bottom 25%
-        top_count = max(1, n_clusters // 4)
-        middle_count = max(2, n_clusters // 2)
-        bottom_count = n_clusters - top_count - middle_count
-        
-        label_templates = {
-            'top': ["Excellent Performance", "Very Good Performance", "Good Performance"],
-            'middle': ["Above Average", "Average Performance", "Below Average"],
-            'bottom': ["Needs Improvement", "At Risk", "Critical Risk"]
-        }
-        
-        idx = 0
-        
-        # Top tier
-        for i in range(top_count):
-            label_name = label_templates['top'][min(i, len(label_templates['top']) - 1)]
-            labels[sorted_clusters[idx][0]] = label_name
-            idx += 1
-        
-        # Middle tier
-        for i in range(middle_count):
-            label_name = label_templates['middle'][min(i % len(label_templates['middle']), len(label_templates['middle']) - 1)]
-            labels[sorted_clusters[idx][0]] = label_name
-            idx += 1
-        
-        # Bottom tier
-        for i in range(bottom_count):
-            label_name = label_templates['bottom'][min(i, len(label_templates['bottom']) - 1)]
-            labels[sorted_clusters[idx][0]] = label_name
-            idx += 1
+            sorted_clusters[2][0]: "Needs Improvement"
+        } if len(sorted_clusters) >= 3 else {}
     
     df_clean.loc[:, 'cluster_label'] = df_clean['cluster'].map(labels).fillna(df_clean['cluster'].astype(str))
     
