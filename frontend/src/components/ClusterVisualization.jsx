@@ -23,6 +23,12 @@ const ClusterVisualization = ({ data, height = 300 }) => {
     // Group by cluster
     const clusterGroups = {};
     
+    const toNumber = (value, defaultValue = 0) => {
+      if (value === null || value === undefined || value === '') return defaultValue;
+      const num = parseFloat(value);
+      return Number.isFinite(num) ? num : defaultValue;
+    };
+    
     data.forEach((student) => {
       if (!student.cluster_label) return;
       
@@ -31,14 +37,18 @@ const ClusterVisualization = ({ data, height = 300 }) => {
         clusterGroups[clusterLabel] = [];
       }
       
+      const score = toNumber(student.final_score ?? student.average_score ?? student.ilo_based_score);
+      const attendance = toNumber(student.attendance_percentage);
+      const submissionRate = toNumber(student.submission_ontime_priority_score);
+      
       clusterGroups[clusterLabel].push({
-        x: student.final_score || student.average_score || 0,
-        y: student.attendance_percentage || 0,
+        x: score,
+        y: attendance,
         name: student.full_name || `Student ${student.student_id}`,
         cluster: clusterLabel,
-        score: student.final_score || student.average_score || 0,
-        attendance: student.attendance_percentage || 0,
-        submissionRate: student.submission_ontime_priority_score || 0
+        score,
+        attendance,
+        submissionRate
       });
     });
 
@@ -123,10 +133,10 @@ const ClusterVisualization = ({ data, height = 300 }) => {
                       Cluster: <span className="font-medium">{data.cluster}</span>
                     </p>
                     <p className="text-xs text-gray-600">
-                      Score: {data.score.toFixed(1)}%
+                      Score: {Number.isFinite(data.score) ? data.score.toFixed(1) : 'N/A'}%
                     </p>
                     <p className="text-xs text-gray-600">
-                      Attendance: {data.attendance.toFixed(1)}%
+                      Attendance: {Number.isFinite(data.attendance) ? data.attendance.toFixed(1) : 'N/A'}%
                     </p>
                   </div>
                 );
