@@ -587,8 +587,9 @@ const Grades = () => {
                                     const score = scoreMap.get(assessment.assessment_id)
                                     // Use adjusted_score for calculations and display
                                     const adjustedScore = score?.adjusted_score ?? null
-                                    const percentage = adjustedScore !== null && assessment.total_points > 0 
-                                      ? ((adjustedScore / assessment.total_points) * 100).toFixed(1)
+                                    // Calculate weighted percentage: (score/total) * weight_percentage
+                                    const percentage = adjustedScore !== null && assessment.total_points > 0 && assessment.weight_percentage
+                                      ? ((adjustedScore / assessment.total_points) * parseFloat(assessment.weight_percentage || 0)).toFixed(2)
                                       : null
                                     
                                     return (
