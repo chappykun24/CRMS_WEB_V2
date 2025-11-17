@@ -103,8 +103,8 @@ def calculate_submission_features(row):
     # - 1.0 = all late (moderate)
     # - 0.0 = all missing (WORST)
     if total_assessments > 0:
-        # Quality score using 0, 1, 2 weights (inverted from status_score)
-        # Higher value = better (opposite of status_score)
+        # Quality score using 0, 1, 2 weights (same as status_score for consistency)
+        # Higher value = better (same as status_score)
         quality_score = ((ontime_count * 2.0) + (late_count * 1.0) + (missing_count * 0.0)) / total_assessments
     else:
         quality_score = 0.0

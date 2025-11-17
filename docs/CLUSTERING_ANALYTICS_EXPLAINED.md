@@ -762,7 +762,7 @@ The Python API receives the normalized data and creates enhanced features:
    submission_status_score = (ontime_count × 2.0 + late_count × 1.0 + missing_count × 0.0) / total_assessments
    
    # Quality Score (0.0-2.0, HIGHER IS BETTER)
-   # Uses weighted scoring: ontime=2, late=1, missing=0 (inverted from status_score)
+   # Uses weighted scoring: ontime=2, late=1, missing=0 (same as status_score for consistency)
    # Formula: (ontime_count × 2 + late_count × 1 + missing_count × 0) / total_assessments
    # - 2.0 = all ontime (BEST)
    # - 1.0 = all late (moderate)
