@@ -1657,14 +1657,12 @@ const Assessments = () => {
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
                                   <tr>
                                     <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
-                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Type</th>
                                     <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                       Points {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalPoints})</span>}
                                     </th>
                                     <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">
                                       Weight {filteredAssessments.length > 0 && <span className="text-gray-400 font-normal">({totalWeight.toFixed(2)}%)</span>}
                                     </th>
-                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1676,11 +1674,6 @@ const Assessments = () => {
                                             <div className="h-4 bg-gray-200 rounded w-40 skeleton mb-2"></div>
                                             <div className="h-3 bg-gray-100 rounded w-32 skeleton"></div>
                                           </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-5">
-                                        <div className="flex justify-center">
-                                          <div className="h-4 bg-gray-200 rounded w-16 skeleton"></div>
                                         </div>
                                       </td>
                                       <td className="px-4 py-5">
@@ -1704,10 +1697,8 @@ const Assessments = () => {
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0 z-10">
                                   <tr>
                                     <th className="px-6 py-4 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
-                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Type</th>
                                     <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Points</th>
                                     <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
-                                    <th className="px-4 py-4 text-center text-[10px] font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1727,36 +1718,6 @@ const Assessments = () => {
                                         </div>
                                       </td>
                                       <td className="px-4 py-3">
-                                        <div className="flex justify-center">
-                                          <span className="text-xs text-gray-700">
-                                            {(() => {
-                                              // If this is a sub-assessment, determine type from parent criterion
-                                              const description = assessment.description || ''
-                                              const match = description.match(/Sub-assessment from (.+)/)
-                                              if (match && match[1]) {
-                                                const parentCriterion = match[1].trim().toLowerCase()
-                                                // Determine type based on parent criterion name/abbreviation
-                                                if (parentCriterion.includes('quiz') || parentCriterion.includes('qz')) {
-                                                  return 'Quiz'
-                                                } else if (parentCriterion.includes('exam') || parentCriterion.includes('me') || parentCriterion.includes('fe')) {
-                                                  return 'Exam'
-                                                } else if (parentCriterion.includes('project') || parentCriterion.includes('fp')) {
-                                                  return 'Project'
-                                                } else if (parentCriterion.includes('lab') || parentCriterion.includes('la')) {
-                                                  return 'Lab'
-                                                } else if (parentCriterion.includes('written') || parentCriterion.includes('ps') || parentCriterion.includes('wa')) {
-                                                  return 'Assignment'
-                                                }
-                                                // Fallback to assessment's own type if criterion doesn't match
-                                                return assessment.type
-                                              }
-                                              // Not a sub-assessment, use its own type
-                                              return assessment.type
-                                            })()}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3">
                                         <div className="text-center">
                                           <span className="text-sm font-semibold text-gray-900">{assessment.total_points}</span>
                                           <span className="text-xs text-gray-500 ml-1">pts</span>
@@ -1766,13 +1727,6 @@ const Assessments = () => {
                                         <div className="text-center">
                                           <span className="text-sm font-semibold text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(2)}</span>
                                           <span className="text-xs text-gray-500 ml-1">%</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-3">
-                                        <div className="flex justify-center">
-                                          <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-medium ${getStatusColor(assessment.status)}`}>
-                                            {assessment.status}
-                                          </span>
                                         </div>
                                       </td>
                                     </tr>
