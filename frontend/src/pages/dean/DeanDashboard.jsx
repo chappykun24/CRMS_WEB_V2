@@ -37,7 +37,6 @@ const Home = () => {
   const [stats, setStats] = useState({
     pendingApprovals: 0,
     approvedSyllabi: 0,
-    editRequests: 0,
     activeTerm: null
   })
   const [scatterData, setScatterData] = useState([])
@@ -88,17 +87,9 @@ const Home = () => {
       }
       
       console.log('🔄 [DEAN] Fetching fresh dashboard stats...')
-      // Fetch syllabus and edit request data
-      const [syllabiRes, editRequestsRes, termsRes] = await Promise.all([
+      // Fetch syllabus data
+      const [syllabiRes, termsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/syllabi`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          },
-          signal: abortControllerRef.current.signal
-        }),
-        fetch(`${API_BASE_URL}/syllabi/edit-requests?role=dean`, {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -138,21 +129,6 @@ const Home = () => {
         console.error('Error parsing syllabi data:', e)
       }
 
-      // Process edit requests
-      let editRequests = 0
-      try {
-        const contentType = editRequestsRes.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const editRequestsData = await editRequestsRes.json()
-          if (Array.isArray(editRequestsData)) {
-            // Count pending edit requests
-            editRequests = editRequestsData.filter(er => er.status === 'pending').length
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing edit requests data:', e)
-      }
-
       // Process active term
       let termsData = []
       try {
@@ -170,7 +146,6 @@ const Home = () => {
       const newStats = {
         pendingApprovals,
         approvedSyllabi,
-        editRequests,
         activeTerm
       }
       
@@ -360,26 +335,6 @@ const Home = () => {
             <p className="text-2xl font-bold text-gray-900 mb-1">{(stats.approvedSyllabi || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-500">Total approved syllabi</p>
           </div>
-
-          {/* Edit Requests */}
-          <button
-            onClick={() => navigate('/dean/syllabus-approval?tab=edit-requests')}
-            className="bg-white rounded-lg shadow-sm border border-purple-200 p-4 hover:shadow-md hover:border-purple-300 transition-all text-left group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="bg-purple-100 rounded-lg p-2 group-hover:bg-purple-200 transition-colors">
-                <DocumentTextIcon className="h-5 w-5 text-purple-600" />
-              </div>
-              {stats.editRequests > 0 && (
-                <div className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {stats.editRequests} NEW
-                </div>
-              )}
-            </div>
-            <p className="text-xs font-medium text-gray-600 mb-1">Edit Requests</p>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{(stats.editRequests || 0).toLocaleString()}</p>
-            <p className="text-xs text-gray-500">Pending edit requests</p>
-          </button>
 
           {/* Active Term */}
           <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg shadow-sm border border-indigo-200 p-4">

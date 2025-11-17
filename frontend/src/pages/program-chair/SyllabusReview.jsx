@@ -22,14 +22,13 @@ const SyllabusReview = () => {
   const { user } = useAuth()
   const [syllabi, setSyllabi] = useState([])
   const [approvedSyllabi, setApprovedSyllabi] = useState([])
-  const [editRequests, setEditRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSyllabus, setSelectedSyllabus] = useState(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [reviewing, setReviewing] = useState(false)
-  const [activeTab, setActiveTab] = useState('pending') // 'pending', 'approved', 'edit-requests'
+  const [activeTab, setActiveTab] = useState('pending') // 'pending', 'approved'
   
   // ILOs and reference data for mapping tables
   const [selectedSyllabusILOs, setSelectedSyllabusILOs] = useState([])
@@ -144,59 +143,10 @@ const SyllabusReview = () => {
     }
   }, [])
 
-  const loadEditRequests = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/syllabi/edit-requests?role=program_chair`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setEditRequests(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Error loading edit requests:', error)
-    }
-  }, [])
-
-  const handleApproveEditRequest = async (editRequest, approved) => {
-    const action = approved ? 'approve' : 'reject'
-    if (!confirm(`Are you sure you want to ${action} this edit request?`)) {
-      return
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/syllabi/edit-requests/${editRequest.edit_request_id}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({
-          approved,
-          approved_by: user.user_id,
-          role: 'program_chair'
-        })
-      })
-
-      if (response.ok) {
-        alert(`Edit request ${approved ? 'approved' : 'rejected'} successfully!`)
-        loadEditRequests()
-      } else {
-        const error = await response.json()
-        alert(error.error || `Failed to ${action} edit request`)
-      }
-    } catch (error) {
-      console.error('Error approving edit request:', error)
-      alert(`Failed to ${action} edit request`)
-    }
-  }
 
   useEffect(() => {
     loadPendingSyllabi()
     loadApprovedSyllabi()
-    loadEditRequests()
     
     // Cleanup function to abort pending requests
     return () => {
@@ -204,7 +154,7 @@ const SyllabusReview = () => {
         abortControllerRef.current.abort()
       }
     }
-  }, [loadPendingSyllabi, loadApprovedSyllabi, loadEditRequests])
+  }, [loadPendingSyllabi, loadApprovedSyllabi])
 
   const handleReview = async (syllabus, reviewStatus) => {
     const statusText = reviewStatus === 'approved' ? 'approve' : reviewStatus === 'rejected' ? 'reject' : 'request revision for'
@@ -337,12 +287,6 @@ const SyllabusReview = () => {
     syllabus.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredEditRequests = (editRequests || []).filter(request =>
-    request.syllabus_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.reason?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    request.requested_by_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
   // Safe date formatting function
   const formatDate = (dateString) => {
     if (!dateString) return '—'
@@ -384,16 +328,6 @@ const SyllabusReview = () => {
               }`}
             >
               Approved Syllabuses ({approvedSyllabi.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('edit-requests')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'edit-requests'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Edit Requests ({editRequests.length})
             </button>
           </nav>
         </div>
@@ -619,83 +553,6 @@ const SyllabusReview = () => {
               </h3>
               <p className="text-gray-500">
                 {searchQuery ? 'Try a different search term' : 'No syllabuses have been approved yet.'}
-              </p>
-            </div>
-          )
-        ) : activeTab === 'edit-requests' ? (
-          /* Edit Requests Tab */
-          filteredEditRequests.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-300 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Syllabus</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested By</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredEditRequests.map((request) => (
-                      <tr key={request.edit_request_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{request.syllabus_title}</div>
-                          <div className="text-sm text-gray-500">v{request.syllabus_version}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{request.requested_by_name || 'N/A'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={request.reason}>
-                          {request.reason || 'No reason provided'}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                            {request.status || 'pending'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {formatDate(request.created_at)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            {!request.program_chair_approved && request.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleApproveEditRequest(request, true)}
-                                  className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                  title="Approve"
-                                >
-                                  <CheckCircleIcon className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleApproveEditRequest(request, false)}
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Reject"
-                                >
-                                  <XCircleIcon className="h-5 w-5" />
-                                </button>
-                              </>
-                            )}
-                            {request.program_chair_approved && (
-                              <span className="text-xs text-green-600 font-medium">Approved</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-12 text-center">
-              <DocumentTextIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchQuery ? 'No edit requests match your search' : 'No edit requests'}
-              </h3>
-              <p className="text-gray-500">
-                {searchQuery ? 'Try a different search term' : 'No edit requests are pending your approval.'}
               </p>
             </div>
           )
