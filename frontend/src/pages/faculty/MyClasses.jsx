@@ -2185,7 +2185,6 @@ const MyClasses = () => {
                   }}
                   onMore={() => console.log('More clicked')}
                   onEdit={() => handleEditClass(cls)}
-                  onArchive={() => console.log('Archive clicked')}
                 />
                 </div>
               ))}

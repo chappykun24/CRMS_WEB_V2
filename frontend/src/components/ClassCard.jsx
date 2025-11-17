@@ -17,8 +17,7 @@ const ClassCard = ({
   onAssessments,
   onSyllabus,
   onMore,
-  onEdit,
-  onArchive
+  onEdit
 }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -71,7 +70,7 @@ const ClassCard = ({
       </div>
 
       {/* Actions - render only if any handlers provided */}
-      {(onAttendance || onAssessments || onSyllabus || onMore || onEdit || onArchive) && (
+      {(onAttendance || onAssessments || onSyllabus || onMore || onEdit) && (
         <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
           {onAttendance && (
             <button
@@ -109,7 +108,7 @@ const ClassCard = ({
               <BookOpenIcon className="h-5 w-5" />
             </button>
           )}
-          {(onMore || onEdit || onArchive) && (
+          {(onMore || onEdit) && (
             <div className="relative" ref={menuRef}>
               {onMore && (
                 <button
@@ -135,14 +134,6 @@ const ClassCard = ({
                       onClick={() => { setMenuOpen(false); onEdit(); }}
                     >
                       Edit
-                    </button>
-                  )}
-                  {onArchive && (
-                    <button
-                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-50"
-                      onClick={() => { setMenuOpen(false); onArchive(); }}
-                    >
-                      Archive
                     </button>
                   )}
                 </div>
