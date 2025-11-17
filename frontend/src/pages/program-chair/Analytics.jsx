@@ -411,7 +411,7 @@ const Analytics = () => {
       isInitialTermLoadRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedStandardType, selectedStandardId]);
 
   // Load student photo when modal opens (with caching to prevent duplicate loads)
   const loadStudentPhoto = useCallback(async (studentId) => {
@@ -729,11 +729,10 @@ const Analytics = () => {
     if (setErrorRef.current) setErrorRef.current(null);
 
     // Build URL with filters
-    // Filter by active term to aggregate from all classes in the active term
     const params = new URLSearchParams();
-    // Get active term ID or use selected term
+    // Use selected term if available, otherwise fall back to active term
     const activeTerm = schoolTerms.find(t => t.is_active);
-    const termToUse = activeTerm ? activeTerm.term_id.toString() : (selectedTermId || '');
+    const termToUse = selectedTermId || (activeTerm ? activeTerm.term_id.toString() : '');
     if (termToUse) {
       params.append('term_id', termToUse);
     }

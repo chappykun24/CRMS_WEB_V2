@@ -499,7 +499,7 @@ const Analytics = () => {
       isInitialTermLoadRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, facultyClasses.length]);
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedStandardType, selectedStandardId, facultyClasses.length]);
 
   // Load student photo when modal opens (with caching to prevent duplicate loads)
   const loadStudentPhoto = useCallback(async (studentId) => {
