@@ -1,20 +1,1365 @@
-import React, { useState, useEffect } from 'react'
-import { ChartBarIcon, UsersIcon, BookOpenIcon, AcademicCapIcon, ClockIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/solid'
-// Removed SidebarContext import - using local state instead
-import { trackEvent } from '../../utils/analytics'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { ChartBarIcon, MagnifyingGlassIcon, XMarkIcon, UserCircleIcon, ArrowPathIcon, ChevronDownIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/solid';
+import { TableSkeleton } from '../../components/skeletons';
+import { trackEvent } from '../../utils/analytics';
+import { getPrefetchedAnalytics, getPrefetchedSchoolTerms, prefetchProgramChairData } from '../../services/dataPrefetchService';
+import { API_BASE_URL } from '../../utils/api';
+import programChairCacheService from '../../services/programChairCacheService';
+import { safeSetItem, safeGetItem, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils';
+import { clusterColors, getClusterStyle, getClusterColor } from '../../utils/clusterUtils';
+
+// Analytics-specific skeleton components
+const AnalyticsTableSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
+      <table className="min-w-full bg-white text-sm">
+        <thead className="bg-gray-50 sticky top-0 z-10">
+          <tr>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Grade Level</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
+            <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Cluster</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {[...Array(10)].map((_, i) => (
+            <tr key={i} className="animate-pulse">
+              <td className="px-3 py-2">
+                <div className="h-3 bg-gray-200 rounded w-32"></div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="h-3 bg-gray-200 rounded w-16"></div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="space-y-1">
+                  <div className="h-3 bg-gray-200 rounded w-12"></div>
+                  <div className="h-2 bg-gray-200 rounded w-20"></div>
+                </div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="space-y-1">
+                  <div className="h-3 bg-gray-200 rounded w-12"></div>
+                  <div className="h-2 bg-gray-200 rounded w-28"></div>
+                </div>
+              </td>
+              <td className="px-3 py-2">
+                <div className="h-5 bg-gray-200 rounded-full w-24"></div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const StatisticsCardsSkeleton = () => (
+  <div className="space-y-3">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+        <div className="h-3 bg-gray-200 rounded w-24 mb-2"></div>
+        <div className="h-8 bg-gray-200 rounded w-16"></div>
+      </div>
+    ))}
+  </div>
+);
+
+const ChartsSkeleton = () => (
+  <div className="space-y-4">
+    {[...Array(6)].map((_, i) => (
+      <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-32 mb-3"></div>
+        <div className="h-48 bg-gray-100 rounded"></div>
+      </div>
+    ))}
+  </div>
+);
+
+// Modal skeleton component
+const ModalSkeleton = () => (
+  <div className="p-6 animate-pulse">
+    {/* Student Header Skeleton */}
+    <div className="flex items-start gap-6 mb-6 pb-6 border-b border-gray-200">
+      {/* Photo Skeleton */}
+      <div className="flex-shrink-0">
+        <div className="w-24 h-24 rounded-full bg-gray-200"></div>
+      </div>
+      {/* Info Skeleton */}
+      <div className="flex-1 space-y-3">
+        <div className="h-8 bg-gray-200 rounded w-48"></div>
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-32"></div>
+          <div className="h-4 bg-gray-200 rounded w-40"></div>
+          <div className="h-6 bg-gray-200 rounded-full w-24 mt-2"></div>
+        </div>
+      </div>
+    </div>
+    
+    {/* Analytics Skeleton */}
+    <div className="space-y-6">
+      <div className="h-6 bg-gray-200 rounded w-40"></div>
+      
+      {/* Progress Bars Skeleton */}
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <div className="h-4 bg-gray-200 rounded w-12"></div>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="h-3 bg-gray-300 rounded-full" style={{ width: `${(i + 1) * 30}%` }}></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Cache helpers
+const getCachedData = createCacheGetter(programChairCacheService);
+const setCachedData = createCacheSetter(programChairCacheService);
+
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ZAxis,
+} from 'recharts';
 
 const Analytics = () => {
-  const [sidebarExpanded] = useState(true) // Default to expanded
-  const [selectedPeriod, setSelectedPeriod] = useState('current')
-  const [selectedProgram, setSelectedProgram] = useState('')
-
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [hasFetched, setHasFetched] = useState(false);
+  const [clusterMeta, setClusterMeta] = useState({ enabled: false });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCluster, setSelectedCluster] = useState('all');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [studentPhoto, setStudentPhoto] = useState(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [studentEnrollments, setStudentEnrollments] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('all');
+  const [classFilteredData, setClassFilteredData] = useState(null);
+  const [loadingClassData, setLoadingClassData] = useState(false);
+  const [chartsLoaded, setChartsLoaded] = useState(false);
+  const [expandedScatterPlot, setExpandedScatterPlot] = useState(null); // 'attendance' or 'submission' or null
+  // Cache for student photos to prevent duplicate loads
+  const studentPhotoCache = useRef(new Map());
+  const loadingPhotoRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+  const [schoolTerms, setSchoolTerms] = useState([]);
+  const [selectedTermId, setSelectedTermId] = useState(''); // Will be set to latest term, but won't filter backend
+  const [sections, setSections] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+  const [selectedSpecializationId, setSelectedSpecializationId] = useState('');
+  const [studentEnrollmentsMap, setStudentEnrollmentsMap] = useState(new Map()); // Map<student_id, specialization_ids[]>
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedYearLevel, setSelectedYearLevel] = useState('');
+  // Standard filters (SO, IGA, CDIO, SDG) - these are the primary filters
+  const [availableStandards, setAvailableStandards] = useState({ so: [], iga: [], cdio: [], sdg: [] });
+  const [selectedStandardType, setSelectedStandardType] = useState(''); // 'SO', 'IGA', 'CDIO', 'SDG', or ''
+  const [selectedStandardId, setSelectedStandardId] = useState('all');
+  const abortControllerRef = useRef(null);
+  const termsAbortControllerRef = useRef(null);
+  const progressIntervalRef = useRef(null);
+  const setErrorRef = useRef(null);
+  
+  // Keep setError ref updated - initialize immediately
+  setErrorRef.current = setError;
+  
+  // Also update in useEffect to ensure it stays current
   useEffect(() => {
-    trackEvent('pc_analytics_viewed')
-  }, [])
+    setErrorRef.current = setError;
+  }, [setError]);
 
+  // Fetch school terms with caching
+  const fetchSchoolTerms = useCallback(async () => {
+    console.log('🔍 [PROGRAM CHAIR ANALYTICS] fetchSchoolTerms starting');
+    
+    // Check sessionStorage first for instant display
+    const sessionCacheKey = 'program_chair_school_terms_session';
+    const sessionCached = safeGetItem(sessionCacheKey);
+    
+    // Check enhanced cache
+    const cacheKey = 'program_chair_school_terms';
+    const cachedData = getCachedData('terms', cacheKey, 30 * 60 * 1000); // 30 minute cache
+    
+    if (sessionCached) {
+      console.log('📦 [PROGRAM CHAIR ANALYTICS] Using session cached school terms');
+      // Sort terms to prioritize latest term
+      const sortedCached = Array.isArray(sessionCached) ? [...sessionCached].sort((a, b) => {
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
+      setSchoolTerms(sortedCached);
+      // Set active term as default (or latest if no active term)
+      const activeTerm = sortedCached.find(t => t.is_active);
+      const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm && !selectedTermId) {
+        setSelectedTermId(defaultTerm.term_id.toString());
+      }
+      // Continue to fetch fresh data in background
+    } else if (cachedData) {
+      console.log('📦 [PROGRAM CHAIR ANALYTICS] Using enhanced cached school terms');
+      // Sort terms to prioritize latest term
+      const sortedCached = Array.isArray(cachedData) ? [...cachedData].sort((a, b) => {
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
+      setSchoolTerms(sortedCached);
+      // Set active term as default (or latest if no active term)
+      const activeTerm = sortedCached.find(t => t.is_active);
+      const latestTerm = sortedCached.length > 0 ? sortedCached[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm && !selectedTermId) {
+        setSelectedTermId(defaultTerm.term_id.toString());
+      }
+      // Cache in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData);
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (termsAbortControllerRef.current) {
+      termsAbortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    termsAbortControllerRef.current = new AbortController();
+    
+    try {
+      console.log('🔄 [PROGRAM CHAIR ANALYTICS] Fetching fresh school terms...');
+      const response = await fetch(`${API_BASE_URL}/school-terms`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        signal: termsAbortControllerRef.current.signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch school terms: ${response.status}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
+      }
+      
+      const terms = await response.json();
+      console.log(`✅ [PROGRAM CHAIR ANALYTICS] Received ${Array.isArray(terms) ? terms.length : 0} school terms`);
+      
+      // Sort terms to prioritize latest term (by term_id descending, highest ID = latest)
+      const termsData = Array.isArray(terms) ? terms.sort((a, b) => {
+        // Sort by term_id descending (latest first)
+        return (b.term_id || 0) - (a.term_id || 0);
+      }) : [];
+      setSchoolTerms(termsData);
+      
+      // Set active term as default (or latest if no active term)
+      const activeTerm = termsData.find(t => t.is_active);
+      const latestTerm = termsData.length > 0 ? termsData[0] : null;
+      const defaultTerm = activeTerm || latestTerm;
+      if (defaultTerm && !selectedTermId) {
+        setSelectedTermId(defaultTerm.term_id.toString());
+      }
+      
+      // Store in sessionStorage for instant next load
+      if (!sessionCached) {
+        safeSetItem(sessionCacheKey, termsData);
+      }
+      
+      // Store full data in enhanced cache
+      setCachedData('terms', cacheKey, termsData);
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [PROGRAM CHAIR ANALYTICS] School terms request was aborted');
+        return;
+      }
+      console.error('❌ [PROGRAM CHAIR ANALYTICS] Error fetching school terms:', error);
+      // Only set error if we don't have cached data and setError is available
+      const hasCachedTerms = sessionCached || cachedData;
+      if (!hasCachedTerms && setErrorRef.current) {
+        try {
+          setErrorRef.current(error.message);
+        } catch (e) {
+          // Component may have unmounted, ignore silently
+          console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not set error state (component may have unmounted)');
+        }
+      }
+    }
+  }, []);
+
+  // Fetch sections, programs, departments, and specializations
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const [sectionsRes, programsRes, departmentsRes, specializationsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/section-courses/sections`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/programs`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/departments`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        }),
+        fetch(`${API_BASE_URL}/catalog/program-specializations`, {
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        })
+      ]);
+
+      if (sectionsRes.ok) {
+        const sectionsData = await sectionsRes.json();
+        setSections(Array.isArray(sectionsData) ? sectionsData : []);
+      }
+      if (programsRes.ok) {
+        const programsData = await programsRes.json();
+        setPrograms(Array.isArray(programsData) ? programsData : []);
+      }
+      if (departmentsRes.ok) {
+        const departmentsData = await departmentsRes.json();
+        setDepartments(Array.isArray(departmentsData) ? departmentsData : []);
+      }
+      if (specializationsRes.ok) {
+        const specializationsData = await specializationsRes.json();
+        // Filter to only show Business Analytics, Networking, and Service Management
+        const allowedSpecializations = ['Business Analytics', 'Networking', 'Service Management'];
+        const filteredSpecializations = Array.isArray(specializationsData) 
+          ? specializationsData.filter(spec => 
+              allowedSpecializations.some(allowed => 
+                spec.name?.toLowerCase().includes(allowed.toLowerCase()) ||
+                spec.abbreviation?.toLowerCase().includes(allowed.toLowerCase())
+              )
+            )
+          : [];
+        console.log('✅ [PROGRAM CHAIR ANALYTICS] Loaded specializations:', filteredSpecializations.length, filteredSpecializations);
+        setSpecializations(filteredSpecializations);
+      }
+    } catch (error) {
+      console.error('❌ [PROGRAM CHAIR ANALYTICS] Error fetching filter options:', error);
+    }
+  }, []);
+
+  // Fetch school terms on component mount
   useEffect(() => {
-    trackEvent('pc_analytics_filter_changed', { selectedPeriod, selectedProgram })
-  }, [selectedPeriod, selectedProgram])
+    fetchSchoolTerms();
+    fetchFilterOptions();
+    
+    // Prefetch data for other program chair pages in the background
+    setTimeout(() => {
+      prefetchProgramChairData();
+    }, 1000);
+    
+    // Cleanup function to abort pending requests
+    return () => {
+      if (termsAbortControllerRef.current) {
+        termsAbortControllerRef.current.abort();
+      }
+    };
+  }, [fetchSchoolTerms, fetchFilterOptions]);
+
+  // Auto-load analytics when component mounts or when school terms are loaded
+  useEffect(() => {
+    // Only auto-load on initial mount if we have school terms loaded
+    // This ensures we have the term selection available
+    if (!hasFetched && schoolTerms.length > 0 && !loading) {
+      // Small delay to ensure state is ready
+      const timer = setTimeout(() => {
+        handleFetch();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolTerms.length]);
+
+  // Track if this is the initial term selection (from active term)
+  const isInitialTermLoadRef = useRef(true);
+
+  // Auto-refetch when filters change (only after initial load)
+  useEffect(() => {
+    if (hasFetched && !isInitialTermLoadRef.current) {
+      handleFetch();
+    }
+    // Mark initial load as complete once we have a term selected
+    if (selectedTermId) {
+      isInitialTermLoadRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId]);
+
+  // Load student photo when modal opens (with caching to prevent duplicate loads)
+  const loadStudentPhoto = useCallback(async (studentId) => {
+    if (!studentId) return;
+    
+    // Check cache first
+    if (studentPhotoCache.current.has(studentId)) {
+      const cachedPhoto = studentPhotoCache.current.get(studentId);
+      setStudentPhoto(cachedPhoto);
+      setLoadingPhoto(false);
+      return;
+    }
+    
+    // Prevent duplicate concurrent loads for the same student
+    if (loadingPhotoRef.current === studentId) {
+      return;
+    }
+    
+    loadingPhotoRef.current = studentId;
+    setLoadingPhoto(true);
+    setStudentPhoto(null);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/photo`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const photoUrl = data.photo;
+        // Cache the photo URL
+        studentPhotoCache.current.set(studentId, photoUrl);
+        setStudentPhoto(photoUrl);
+      } else {
+        // Cache null to prevent retrying failed loads
+        studentPhotoCache.current.set(studentId, null);
+        setStudentPhoto(null);
+      }
+    } catch (error) {
+      console.error('❌ [PROGRAM CHAIR ANALYTICS] Error loading student photo:', error);
+      // Cache null to prevent retrying failed loads
+      studentPhotoCache.current.set(studentId, null);
+      setStudentPhoto(null);
+    } finally {
+      setLoadingPhoto(false);
+      loadingPhotoRef.current = null;
+    }
+  }, []);
+
+  // Fetch student enrollments when modal opens
+  const fetchStudentEnrollments = useCallback(async (studentId) => {
+    if (!studentId) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/enrollments`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setStudentEnrollments(result.data);
+          console.log('✅ [PROGRAM CHAIR ANALYTICS] Loaded student enrollments:', result.data.length);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [PROGRAM CHAIR ANALYTICS] Error loading student enrollments:', error);
+      setStudentEnrollments([]);
+    }
+  }, []);
+
+  // Fetch per-class analytics data for a student
+  const fetchClassAnalytics = useCallback(async (studentId, sectionCourseId) => {
+    if (!studentId || !sectionCourseId) {
+      setClassFilteredData(null);
+      return;
+    }
+    
+    setLoadingClassData(true);
+    try {
+      const params = new URLSearchParams({
+        student_id: studentId,
+        section_course_id: sectionCourseId
+      });
+      
+      const url = `${API_BASE_URL}/assessments/dean-analytics/sample?${params.toString()}`;
+      console.log('🔄 [PROGRAM CHAIR ANALYTICS] Fetching class analytics:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          const classData = result.data[0]; // Get the student's data for this class
+          console.log('✅ [PROGRAM CHAIR ANALYTICS] Loaded class-specific analytics:', {
+            student_id: studentId,
+            section_course_id: sectionCourseId,
+            data: classData
+          });
+          setClassFilteredData(classData);
+        } else {
+          console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] No class-specific data found in response:', result);
+          setClassFilteredData(null);
+        }
+      } else {
+        // Try to get error details
+        let errorMessage = `HTTP ${response.status}`;
+        let errorDetails = null;
+        let errorCode = null;
+        
+        // Read response body once - try as text first, then parse as JSON
+        try {
+          const textResponse = await response.text();
+          // Try to parse as JSON
+          try {
+            const errorData = JSON.parse(textResponse);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+            errorDetails = errorData.details;
+            errorCode = errorData.errorCode;
+          } catch (jsonError) {
+            // Not JSON, use text as error message
+            errorMessage = textResponse || errorMessage;
+            console.error('❌ [PROGRAM CHAIR ANALYTICS] Non-JSON error response:', textResponse);
+          }
+        } catch (textError) {
+          // Failed to read response body
+          console.error('❌ [PROGRAM CHAIR ANALYTICS] Failed to read error response:', textError);
+        }
+        
+        console.error('❌ [PROGRAM CHAIR ANALYTICS] Failed to fetch class analytics:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          errorCode: errorCode,
+          errorDetails: errorDetails,
+          student_id: studentId,
+          section_course_id: sectionCourseId,
+          url: url
+        });
+        
+        // If 500 error, the backend query might be failing
+        // Log additional details for debugging
+        if (response.status === 500) {
+          console.error('❌ [PROGRAM CHAIR ANALYTICS] Backend 500 error details:', {
+            error: errorMessage,
+            errorCode: errorCode,
+            errorDetails: errorDetails,
+            queryParams: {
+              student_id: studentId,
+              section_course_id: sectionCourseId
+            }
+          });
+          console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Backend error (500) - using overall data as fallback');
+          setClassFilteredData(null); // This will trigger using overall data
+        } else {
+          setClassFilteredData(null);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [PROGRAM CHAIR ANALYTICS] Error loading class analytics:', {
+        error: error.message,
+        student_id: studentId,
+        section_course_id: sectionCourseId
+      });
+      setClassFilteredData(null);
+    } finally {
+      setLoadingClassData(false);
+    }
+  }, []);
+
+  // Handle class filter change
+  const handleClassFilterChange = useCallback((sectionCourseId) => {
+    setSelectedClassId(sectionCourseId);
+    if (sectionCourseId === 'all') {
+      setClassFilteredData(null);
+    } else if (selectedStudent) {
+      fetchClassAnalytics(selectedStudent.student_id, sectionCourseId);
+    }
+  }, [selectedStudent, fetchClassAnalytics]);
+
+  // Reset filter and load photo when modal opens/closes
+  useEffect(() => {
+    if (isModalOpen && selectedStudent) {
+      // Load photo only when student changes (prevents duplicate loads)
+      loadStudentPhoto(selectedStudent.student_id);
+      fetchStudentEnrollments(selectedStudent.student_id);
+      setSelectedClassId('all');
+      setClassFilteredData(null);
+    } else {
+      setStudentEnrollments([]);
+      setSelectedClassId('all');
+      setClassFilteredData(null);
+      // Don't clear photo cache, just reset current photo state
+      setStudentPhoto(null);
+    }
+  }, [isModalOpen, selectedStudent, fetchStudentEnrollments, loadStudentPhoto]);
+
+  const handleFetch = useCallback((forceRefresh = false) => {
+    console.log('🔍 [PROGRAM CHAIR ANALYTICS] Starting fetch...', forceRefresh ? '(FORCE REFRESH)' : '');
+    
+    // Build cache key with all filters for better cache management
+    const filterKey = [
+      selectedTermId || 'all',
+      selectedSectionId || 'all',
+      selectedProgramId || 'all',
+      selectedYearLevel || 'all',
+      selectedSpecializationId || 'all',
+      selectedStandardType || 'all',
+      selectedStandardId || 'all'
+    ].join('_');
+    
+    // If force refresh, clear all caches first
+    if (forceRefresh) {
+      console.log('🔄 [PROGRAM CHAIR ANALYTICS] Force refresh - clearing caches...');
+    const sessionCacheKey = `program_chair_analytics_${filterKey}_session`;
+      const cacheKey = `program_chair_analytics_${filterKey}`;
+      
+      // Clear sessionStorage cache
+      try {
+        sessionStorage.removeItem(sessionCacheKey);
+        console.log('✅ [PROGRAM CHAIR ANALYTICS] Cleared sessionStorage cache');
+      } catch (e) {
+        console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not clear sessionStorage:', e);
+      }
+      
+      // Clear enhanced cache
+      try {
+        programChairCacheService.clear('analytics', cacheKey);
+        console.log('✅ [PROGRAM CHAIR ANALYTICS] Cleared enhanced cache');
+      } catch (e) {
+        console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not clear enhanced cache:', e);
+      }
+      
+      // Reset charts loaded state
+      setChartsLoaded(false);
+    }
+    
+    // Check sessionStorage first for instant display (skip if force refresh)
+    const sessionCacheKey = `program_chair_analytics_${filterKey}_session`;
+    const sessionCached = forceRefresh ? null : safeGetItem(sessionCacheKey);
+    
+    if (sessionCached && sessionCached.success) {
+      console.log('📦 [PROGRAM CHAIR ANALYTICS] Using session cached analytics data');
+      setData(sessionCached.data || []);
+      setClusterMeta(sessionCached.clustering || { enabled: false });
+      setHasFetched(true);
+      setLoading(false);
+      setProgress(100);
+      if (setErrorRef.current) setErrorRef.current(null);
+      // Load charts after a short delay for better UX
+      setTimeout(() => setChartsLoaded(true), 100);
+      // Continue to fetch fresh data in background
+    } else {
+      setLoading(true);
+      setProgress(0);
+    }
+    
+    // Check enhanced cache (skip if force refresh)
+    const cacheKey = `program_chair_analytics_${filterKey}`;
+    const cachedData = forceRefresh ? null : getCachedData('analytics', cacheKey, 10 * 60 * 1000); // 10 minute cache
+    if (cachedData && cachedData.success && !sessionCached) {
+      console.log('📦 [PROGRAM CHAIR ANALYTICS] Using enhanced cached analytics data');
+      setData(cachedData.data || []);
+      setClusterMeta(cachedData.clustering || { enabled: false });
+      setHasFetched(true);
+      setLoading(false);
+      setProgress(100);
+      if (setErrorRef.current) setErrorRef.current(null);
+      // Cache in sessionStorage for next time
+      safeSetItem(sessionCacheKey, cachedData);
+      // Load charts after a short delay
+      setTimeout(() => setChartsLoaded(true), 100);
+      // Continue to fetch fresh data in background
+    }
+    
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
+    // Only show loading if no cache available
+    const hasCache = sessionCached || (cachedData && cachedData.success);
+    if (!hasCache) {
+      setLoading(true);
+      setProgress(0);
+      
+      // Simulate progress updates (only if not using cache)
+      progressIntervalRef.current = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current);
+              progressIntervalRef.current = null;
+            }
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+    }
+    if (setErrorRef.current) setErrorRef.current(null);
+
+    // Build URL with filters
+    // Filter by active term to aggregate from all classes in the active term
+    const params = new URLSearchParams();
+    // Get active term ID or use selected term
+    const activeTerm = schoolTerms.find(t => t.is_active);
+    const termToUse = activeTerm ? activeTerm.term_id.toString() : (selectedTermId || '');
+    if (termToUse) {
+      params.append('term_id', termToUse);
+    }
+    if (selectedSectionId) params.append('section_id', selectedSectionId);
+    if (selectedProgramId) params.append('program_id', selectedProgramId);
+    // Add Standard filter if selected (SO, IGA, CDIO, or SDG)
+    if (selectedStandardType && selectedStandardId && selectedStandardId !== 'all') {
+      const paramName = selectedStandardType.toLowerCase() + '_id';
+      params.append(paramName, selectedStandardId);
+      console.log(`🎯 [PROGRAM CHAIR ANALYTICS] Adding ${selectedStandardType} filter:`, selectedStandardId);
+    }
+    // Note: year_level filtering is done client-side since backend doesn't support it directly
+    // Add force_refresh parameter to bypass backend cache and recompute clusters
+    if (forceRefresh) {
+      params.append('force_refresh', 'true');
+      console.log('🔄 [PROGRAM CHAIR ANALYTICS] Adding force_refresh parameter to API call');
+    }
+    const url = `${API_BASE_URL}/assessments/dean-analytics/sample${params.toString() ? '?' + params.toString() : ''}`;
+    
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      signal: abortControllerRef.current.signal
+    })
+      .then(async (res) => {
+        console.log('📡 [Analytics] Response status:', res.status);
+        setProgress(95);
+        
+        // Clone response before consuming to allow error handling
+        const clonedRes = res.clone();
+        
+        // Check if response is OK (200-299)
+        if (!res.ok) {
+          // Try to parse as JSON first, but fallback to text for HTML error pages
+          let errorData;
+          const contentType = res.headers.get('content-type');
+          try {
+            if (contentType && contentType.includes('application/json')) {
+              errorData = await res.json();
+            } else {
+              const errorText = await res.text();
+              console.error('❌ [Analytics] Non-JSON error response:', errorText.substring(0, 200));
+              errorData = { 
+                success: false, 
+                error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable. The server may be down or the request timed out.' : errorText.substring(0, 100)}`
+              };
+            }
+          } catch (parseError) {
+            console.error('❌ [Analytics] Failed to parse error response:', parseError);
+            // Try to read from cloned response
+            try {
+              const errorText = await clonedRes.text();
+              console.error('❌ [Analytics] Error response text (first 500 chars):', errorText.substring(0, 500));
+            } catch (e) {
+              console.error('❌ [Analytics] Could not read error response:', e);
+            }
+            errorData = { 
+              success: false, 
+              error: `Server error (${res.status}): ${res.status === 502 ? 'Backend service unavailable or request timed out.' : 'Unable to parse error response'}`
+            };
+          }
+          throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        // Clone again for error handling in JSON parsing
+        const jsonClonedRes = res.clone();
+        try {
+          return await res.json();
+        } catch (jsonError) {
+          console.error('❌ [Analytics] Error parsing JSON:', jsonError);
+          // Try to read response as text to see what we got
+          try {
+            const responseText = await jsonClonedRes.text();
+            console.error('❌ [Analytics] Response text (first 1000 chars):', responseText.substring(0, 1000));
+            // Check if response looks truncated
+            if (responseText.length > 1000 && !responseText.endsWith('}') && !responseText.endsWith(']')) {
+              console.error('❌ [Analytics] Response appears to be truncated!');
+            }
+          } catch (e) {
+            console.error('❌ [Analytics] Could not read response as text:', e);
+          }
+          throw jsonError;
+        }
+      })
+      .then((json) => {
+        console.log('✅ [PROGRAM CHAIR ANALYTICS] Received data:', json);
+        console.log('🎯 [PROGRAM CHAIR ANALYTICS] Clustering enabled:', json.clustering?.enabled);
+        
+        if (json.success) {
+          const studentsData = json.data || [];
+          
+          // Check if clustering data is present
+          const studentsWithClusters = studentsData.filter(s => {
+            const cluster = s.cluster_label;
+            return cluster && 
+                   cluster !== null && 
+                   cluster !== undefined &&
+                   !(typeof cluster === 'number' && isNaN(cluster)) &&
+                   !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''));
+          });
+          
+          console.log(`📊 [PROGRAM CHAIR ANALYTICS] Students with clusters: ${studentsWithClusters.length}/${studentsData.length}`);
+          
+          if (studentsWithClusters.length === 0 && studentsData.length > 0) {
+            const clusteringMeta = json.clustering || {};
+            
+            // Check for clustering_explanation errors in student data
+            const studentsWithErrors = studentsData.filter(s => 
+              s.clustering_explanation && 
+              s.clustering_explanation.includes('Error:')
+            );
+            
+            let errorMessage = clusteringMeta.error;
+            if (!errorMessage) {
+              if (studentsWithErrors.length > 0) {
+                const firstError = studentsWithErrors[0].clustering_explanation;
+                errorMessage = `Python API error: ${firstError}`;
+              } else if (clusteringMeta.enabled && !clusteringMeta.cached && clusteringMeta.silhouetteScore === null) {
+                errorMessage = 'Clustering API was called but returned no cluster labels. Check backend logs for details.';
+              } else {
+                errorMessage = 'Clustering may not be working. Check CLUSTER_SERVICE_URL configuration.';
+              }
+            }
+            
+            console.error('❌ [PROGRAM CHAIR ANALYTICS] No students have cluster labels!');
+            console.error('❌ [PROGRAM CHAIR ANALYTICS] Error:', errorMessage);
+            console.error('❌ [PROGRAM CHAIR ANALYTICS] Clustering meta:', JSON.stringify(clusteringMeta, null, 2));
+            if (studentsWithErrors.length > 0) {
+              console.error(`❌ [PROGRAM CHAIR ANALYTICS] Found ${studentsWithErrors.length} students with clustering_explanation errors`);
+              console.error('❌ [PROGRAM CHAIR ANALYTICS] First error:', studentsWithErrors[0].clustering_explanation);
+            }
+            console.error('❌ [PROGRAM CHAIR ANALYTICS] Diagnostic steps:');
+            console.error('   1. Check backend logs for clustering errors');
+            console.error('   2. Verify CLUSTER_SERVICE_URL is set correctly');
+            console.error('   3. Test clustering service: GET /api/assessments/clustering/health');
+            console.error('   4. Check Python API logs on Railway');
+            console.error('   5. Check clustering_explanation field in student data for Python API errors');
+            
+            // Set error state for UI display
+            if (setErrorRef.current) {
+              try {
+                setErrorRef.current(`Clustering failed: ${errorMessage}. Check console for details.`);
+              } catch (e) {
+                console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not set error state');
+              }
+            }
+          }
+          
+          setData(studentsData);
+          setClusterMeta(json.clustering || { enabled: false });
+          
+          // Build student enrollments map for specialization filtering
+          // Backend now includes enrolled_specializations array for each student
+          const enrollmentsMap = new Map();
+          studentsData.forEach(student => {
+            // enrolled_specializations is an array of specialization_ids from backend
+            const specializationIds = student.enrolled_specializations || [];
+            // Convert to array of integers if needed
+            const specIds = Array.isArray(specializationIds) 
+              ? specializationIds.map(id => typeof id === 'string' ? parseInt(id, 10) : id).filter(id => !isNaN(id))
+              : [];
+            enrollmentsMap.set(student.student_id, specIds);
+          });
+          setStudentEnrollmentsMap(enrollmentsMap);
+          
+          // Build cache key with all filters
+          const filterKey = [
+            selectedTermId || 'all',
+            selectedSectionId || 'all',
+            selectedProgramId || 'all',
+            selectedYearLevel || 'all',
+            selectedSpecializationId || 'all',
+            selectedStandardType || 'all',
+            selectedStandardId || 'all'
+          ].join('_');
+          
+          // Store in sessionStorage for instant next load
+          const sessionCacheKey = `program_chair_analytics_${filterKey}_session`;
+          safeSetItem(sessionCacheKey, json);
+          
+          // Store full data in enhanced cache
+          const cacheKey = `program_chair_analytics_${filterKey}`;
+          setCachedData('analytics', cacheKey, json);
+          
+          // Load charts after data is loaded
+          setTimeout(() => setChartsLoaded(true), 200);
+          
+          // Log cluster distribution with detailed logging (only count valid clusters)
+          const clusterCounts = studentsData.reduce((acc, row) => {
+            let cluster = row.cluster_label;
+            // Only count valid cluster labels (skip null/undefined/invalid)
+            if (cluster && 
+                cluster !== null && 
+                cluster !== undefined &&
+                !(typeof cluster === 'number' && isNaN(cluster)) &&
+                !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+            acc[cluster] = (acc[cluster] || 0) + 1;
+            }
+            return acc;
+          }, {});
+          console.log('📈 [PROGRAM CHAIR ANALYTICS] Cluster distribution:', clusterCounts);
+          console.log('🔍 [PROGRAM CHAIR ANALYTICS] Clustering enabled status:', json.clustering?.enabled);
+          console.log('🔍 [PROGRAM CHAIR ANALYTICS] Backend platform:', json.clustering?.backendPlatform);
+          console.log('🔍 [PROGRAM CHAIR ANALYTICS] Clustering API platform:', json.clustering?.apiPlatform);
+        } else {
+          if (setErrorRef.current) {
+            try {
+              setErrorRef.current('Failed to load analytics');
+            } catch (e) {
+              console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not set error state');
+            }
+          }
+        }
+        
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        setProgress(100);
+        setTimeout(() => setLoading(false), 500);
+        setHasFetched(true);
+        setChartsLoaded(false); // Reset charts loaded state
+        try {
+          trackEvent('program_chair_analytics_loaded', {
+            success: Boolean(json.success),
+            count: Array.isArray(json.data) ? json.data.length : 0,
+            clustering_enabled: Boolean(json?.clustering?.enabled),
+            platform: json?.clustering?.platform || 'Unknown',
+          });
+        } catch {}
+      })
+      .catch((err) => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        
+        if (err.name === 'AbortError') {
+          console.log('🚫 [PROGRAM CHAIR ANALYTICS] Request was aborted');
+          return;
+        }
+        
+        console.error('❌ [PROGRAM CHAIR ANALYTICS] Fetch error:', err);
+        // Display more specific error messages
+        const errorMessage = err?.message || 'Unable to fetch analytics';
+        const sessionCached = safeGetItem(`program_chair_analytics_${selectedTermId || 'all'}_session`);
+        const cachedData = getCachedData('analytics', `program_chair_analytics_${selectedTermId || 'all'}`, 10 * 60 * 1000);
+        if (!sessionCached && !cachedData && setErrorRef.current) {
+          try {
+            setErrorRef.current(errorMessage.includes('502') || errorMessage.includes('timeout') 
+              ? 'Backend service is unavailable or the request timed out. Please try again in a moment.'
+              : errorMessage);
+          } catch (e) {
+            console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Could not set error state (component may have unmounted)');
+          }
+        }
+        setProgress(0);
+        setLoading(false);
+        setHasFetched(true);
+        setChartsLoaded(false);
+        try {
+          trackEvent('program_chair_analytics_error', { message: String(err?.message || err) });
+        } catch {}
+      });
+  }, [selectedTermId, selectedSectionId, selectedProgramId, selectedYearLevel, selectedSpecializationId]);
+
+  // getClusterStyle is now imported from shared clusterUtils
+
+  // Get unique clusters from data (only valid clusters, no fallback)
+  const uniqueClusters = useMemo(() => {
+    const clusters = new Set();
+    data.forEach(row => {
+      const cluster = row.cluster_label;
+      // Only add valid cluster labels (skip null/undefined/invalid)
+      if (cluster && 
+          cluster !== null && 
+          cluster !== undefined &&
+          !(typeof cluster === 'number' && isNaN(cluster)) &&
+          !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+      clusters.add(cluster);
+      }
+    });
+    return Array.from(clusters).sort();
+  }, [data]);
+
+  // Helper function to format name as "Lastname, Firstname"
+  const formatName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    const lastName = parts[parts.length - 1];
+    const firstName = parts.slice(0, -1).join(' ');
+    return `${lastName}, ${firstName}`;
+  };
+
+  // Helper function to get last name for sorting
+  const getLastName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1] || '';
+  };
+
+  // Helper function to format grade level (e.g., 1 -> "1st Year", 2 -> "2nd Year")
+  const formatGradeLevel = (gradeLevel) => {
+    if (!gradeLevel || gradeLevel === null || gradeLevel === undefined) return 'N/A';
+    const level = parseInt(gradeLevel);
+    if (isNaN(level)) return 'N/A';
+    
+    const suffixes = ['th', 'st', 'nd', 'rd'];
+    const v = level % 100;
+    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+    return `${level}${suffix} Year`;
+  };
+
+  // Filter data based on search and selected cluster
+  const filteredData = useMemo(() => {
+    let filtered = data;
+
+    // Filter by cluster
+    if (selectedCluster !== 'all') {
+      filtered = filtered.filter(row => {
+        const cluster = row.cluster_label;
+        // Only match valid cluster labels
+        if (!cluster || 
+            cluster === null || 
+            cluster === undefined ||
+            (typeof cluster === 'number' && isNaN(cluster)) ||
+            (typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+          return false; // Exclude students without valid clusters
+        }
+        return cluster === selectedCluster;
+      });
+    }
+
+    // Filter by year level (1st, 2nd, 3rd, or 4th year)
+    if (selectedYearLevel) {
+      filtered = filtered.filter(row => {
+        const yearLevel = row.grade_level;
+        if (!yearLevel) return false;
+        // Convert to number if it's a string
+        const yearLevelNum = typeof yearLevel === 'string' ? parseInt(yearLevel, 10) : yearLevel;
+        return yearLevelNum.toString() === selectedYearLevel;
+      });
+    }
+
+    // Filter by specialization (based on enrolled courses)
+    if (selectedSpecializationId) {
+      filtered = filtered.filter(row => {
+        // Check if student has enrollments in courses with the selected specialization
+        const studentSpecializations = studentEnrollmentsMap.get(row.student_id);
+        if (!studentSpecializations || studentSpecializations.length === 0) {
+          return false;
+        }
+        return studentSpecializations.includes(parseInt(selectedSpecializationId, 10));
+      });
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(row =>
+        (row.full_name || '').toLowerCase().includes(query) ||
+        (row.student_number || '').toLowerCase().includes(query)
+      );
+    }
+
+    // Sort alphabetically by last name
+    filtered = [...filtered].sort((a, b) => {
+      const lastNameA = getLastName(a.full_name || '').toLowerCase();
+      const lastNameB = getLastName(b.full_name || '').toLowerCase();
+      if (lastNameA < lastNameB) return -1;
+      if (lastNameA > lastNameB) return 1;
+      // If last names are equal, sort by first name
+      const firstNameA = (a.full_name || '').split(/\s+/).slice(0, -1).join(' ').toLowerCase();
+      const firstNameB = (b.full_name || '').split(/\s+/).slice(0, -1).join(' ').toLowerCase();
+      return firstNameA.localeCompare(firstNameB);
+    });
+
+    return filtered;
+  }, [data, selectedCluster, searchQuery, selectedYearLevel, selectedSpecializationId]);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  // Fetch Standards (SO, IGA, CDIO, SDG) when term changes
+  useEffect(() => {
+    const fetchStandards = async () => {
+      if (!selectedTermId) {
+        setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+        setSelectedStandardType('');
+        setSelectedStandardId('all');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/standards/term/${selectedTermId}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const standards = await response.json();
+          setAvailableStandards(standards);
+          const totalStandards = (standards.so?.length || 0) + (standards.iga?.length || 0) + 
+                                 (standards.cdio?.length || 0) + (standards.sdg?.length || 0);
+          console.log(`✅ [PROGRAM CHAIR ANALYTICS] Loaded standards for term ${selectedTermId}:`, {
+            SO: standards.so?.length || 0,
+            IGA: standards.iga?.length || 0,
+            CDIO: standards.cdio?.length || 0,
+            SDG: standards.sdg?.length || 0,
+            total: totalStandards
+          });
+          // Reset standard filters when term changes
+          setSelectedStandardType('');
+          setSelectedStandardId('all');
+        } else {
+          console.warn('⚠️ [PROGRAM CHAIR ANALYTICS] Failed to fetch standards');
+          setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+          setSelectedStandardType('');
+          setSelectedStandardId('all');
+        }
+      } catch (error) {
+        console.error('❌ [PROGRAM CHAIR ANALYTICS] Error fetching standards:', error);
+        setAvailableStandards({ so: [], iga: [], cdio: [], sdg: [] });
+        setSelectedStandardType('');
+        setSelectedStandardId('all');
+      }
+    };
+    
+    fetchStandards();
+  }, [selectedTermId]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCluster, searchQuery, selectedTermId, selectedSectionId, selectedProgramId, selectedDepartmentId, selectedYearLevel, selectedSpecializationId, selectedStandardType, selectedStandardId]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    if (filteredData.length === 0) return null;
+    
+    const total = filteredData.length;
+    const avgAttendance = filteredData.reduce((sum, row) => sum + (parseFloat(row.attendance_percentage) || 0), 0) / total;
+    const avgScore = filteredData.reduce((sum, row) => sum + (parseFloat(row.average_score) || 0), 0) / total;
+    const avgSubmissionRate = filteredData.reduce((sum, row) => {
+      const rate = parseFloat(row.submission_rate) || 0;
+      return sum + rate;
+    }, 0) / total * 100; // Convert to percentage
+    
+    return {
+      total,
+      avgAttendance: avgAttendance.toFixed(2),
+      avgScore: avgScore.toFixed(2),
+      avgSubmissionRate: avgSubmissionRate.toFixed(1)
+    };
+  }, [filteredData]);
+
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    if (filteredData.length === 0) return null;
+
+    // Cluster distribution for pie chart (only valid clusters)
+    const clusterDistribution = {};
+    filteredData.forEach(row => {
+      const cluster = row.cluster_label;
+      // Only count valid cluster labels
+      if (cluster && 
+          cluster !== null && 
+          cluster !== undefined &&
+          !(typeof cluster === 'number' && isNaN(cluster)) &&
+          !(typeof cluster === 'string' && (cluster.toLowerCase() === 'nan' || cluster.trim() === ''))) {
+      clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
+      }
+    });
+
+    const clusterData = Object.entries(clusterDistribution).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Attendance distribution (bins: 0-20, 21-40, 41-60, 61-80, 81-100)
+    const attendanceBins = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    filteredData.forEach(row => {
+      const attendance = parseFloat(row.attendance_percentage) || 0;
+      if (attendance <= 20) attendanceBins['0-20%']++;
+      else if (attendance <= 40) attendanceBins['21-40%']++;
+      else if (attendance <= 60) attendanceBins['41-60%']++;
+      else if (attendance <= 80) attendanceBins['61-80%']++;
+      else attendanceBins['81-100%']++;
+    });
+
+    const attendanceData = Object.entries(attendanceBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    // Score distribution (bins: 0-20, 21-40, 41-60, 61-80, 81-100)
+    const scoreBins = {
+      '0-20': 0,
+      '21-40': 0,
+      '41-60': 0,
+      '61-80': 0,
+      '81-100': 0
+    };
+    filteredData.forEach(row => {
+      const score = parseFloat(row.average_score) || 0;
+      if (score <= 20) scoreBins['0-20']++;
+      else if (score <= 40) scoreBins['21-40']++;
+      else if (score <= 60) scoreBins['41-60']++;
+      else if (score <= 80) scoreBins['61-80']++;
+      else scoreBins['81-100']++;
+    });
+
+    const scoreData = Object.entries(scoreBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    // Submission rate distribution
+    const submissionBins = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    filteredData.forEach(row => {
+      const rate = (parseFloat(row.submission_rate) || 0) * 100; // Convert to percentage
+      if (rate <= 20) submissionBins['0-20%']++;
+      else if (rate <= 40) submissionBins['21-40%']++;
+      else if (rate <= 60) submissionBins['41-60%']++;
+      else if (rate <= 80) submissionBins['61-80%']++;
+      else submissionBins['81-100%']++;
+    });
+
+    const submissionData = Object.entries(submissionBins).map(([name, value]) => ({
+      name,
+      students: value
+    }));
+
+    // Scatter plot data: Attendance vs Score, colored by cluster
+    // Include all rows, but mark 0/blank attendance or score as "At Risk"
+    const scatterData = filteredData
+      .filter(row => {
+        // Include rows with valid clusters OR rows with 0/blank attendance or score
+        const hasValidCluster = row.cluster_label && 
+          row.cluster_label !== null && 
+          row.cluster_label !== undefined &&
+          !(typeof row.cluster_label === 'number' && isNaN(row.cluster_label)) &&
+          !(typeof row.cluster_label === 'string' && (row.cluster_label.toLowerCase() === 'nan' || row.cluster_label.trim() === ''));
+        
+        const attendance = parseFloat(row.attendance_percentage) || 0;
+        const score = parseFloat(row.average_score) || 0;
+        const hasZeroOrBlank = attendance === 0 || score === 0 || 
+          row.attendance_percentage === null || row.attendance_percentage === undefined ||
+          row.average_score === null || row.average_score === undefined;
+        
+        return hasValidCluster || hasZeroOrBlank;
+      })
+      .map(row => {
+        const attendance = parseFloat(row.attendance_percentage) || 0;
+        const score = parseFloat(row.average_score) || 0;
+        const hasZeroOrBlank = attendance === 0 || score === 0 || 
+          row.attendance_percentage === null || row.attendance_percentage === undefined ||
+          row.average_score === null || row.average_score === undefined;
+        
+        // If attendance or score is 0/blank, force cluster to "At Risk"
+        let cluster = row.cluster_label;
+        if (hasZeroOrBlank) {
+          cluster = 'At Risk';
+        }
+        
+        return {
+          attendance: attendance,
+          score: score,
+          submissionRate: (parseFloat(row.submission_rate) || 0) * 100,
+          cluster: cluster,
+          name: row.full_name
+        };
+      });
+
+    return {
+      clusterData,
+      attendanceData,
+      scoreData,
+      submissionData,
+      scatterData
+    };
+  }, [filteredData]);
+
+  // Color palette for charts
+  const COLORS = {
+    pie: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'],
+    bar: '#3b82f6',
+    barSecondary: '#10b981'
+  };
+
+  // clusterColors is now imported from shared clusterUtils
+
+  // Get unique clusters for legend
+  const uniqueClusterLabels = useMemo(() => {
+    const clusters = new Set();
+    if (chartData?.scatterData) {
+      chartData.scatterData.forEach(point => {
+        if (point.cluster) {
+          clusters.add(point.cluster);
+        }
+      });
+    }
+    return Array.from(clusters).sort();
+  }, [chartData]);
 
   return (
     <>
@@ -29,58 +1374,1171 @@ const Analytics = () => {
           cursor: pointer !important;
         }
       `}</style>
-      
-      <div className={`absolute top-16 bottom-0 bg-gray-50 rounded-tl-3xl overflow-hidden transition-all duration-500 ease-in-out ${
-        sidebarExpanded ? 'left-64 right-0' : 'left-20 right-0'
-      }`} style={{ marginTop: '0px' }}>
-        <div className="w-full pr-2 pl-2 transition-all duration-500 ease-in-out" style={{ marginTop: '0px' }}>
+      <div className="p-4 overflow-y-auto h-full">
 
-          {/* Header */}
-          <div className="absolute top-0 right-0 z-40 bg-gray-50 transition-all duration-500 ease-in-out left-0">
-            <div className="px-8 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">Program Analytics</h1>
-                <div className="flex items-center gap-3">
-                  <select
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+        {/* Progress Bar */}
+        {loading && (
+          <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Loading analytics...</span>
+              <span className="text-sm font-semibold text-red-600">{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-red-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {hasFetched && error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Skeleton Loading */}
+        {loading && !hasFetched && (
+          <div className="flex gap-4">
+            {/* Main Content Area - Left Side */}
+            <div className="flex-1 space-y-4">
+              {/* Filters Skeleton */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                  <div className="md:w-64 h-10 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+              
+              {/* Table Skeleton */}
+              <AnalyticsTableSkeleton />
+            </div>
+
+            {/* Right Sidebar - Statistics and Charts Skeleton */}
+            <div className="w-72 space-y-3">
+              <StatisticsCardsSkeleton />
+              <ChartsSkeleton />
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        {hasFetched && !loading && !error && (
+          <div className="flex gap-4">
+            {/* Main Content Area - Left Side */}
+            <div className="flex-1 space-y-4 min-w-0">
+              {/* Filters */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                {/* First Row: Search Bar, Student Count, Refresh Button */}
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Search Bar */}
+                  <div className="flex-1">
+                    <div className="relative">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by student name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Student Count */}
+                  <p className="text-sm text-gray-600 whitespace-nowrap">
+                    Showing {filteredData.length} of {data.length} students
+                    {(() => {
+                      // Show term if selected, otherwise show nothing
+                      if (selectedTermId) {
+                        const term = schoolTerms.find(t => t.term_id.toString() === selectedTermId);
+                        if (term) return ` (${term.school_year} - ${term.semester})`;
+                      }
+                      return '';
+                    })()}
+                  </p>
+
+                  {/* Cluster Filter */}
+                  {uniqueClusters.length > 0 && (
+                    <div className="flex-shrink-0 min-w-[200px]">
+                      <div className="relative">
+                        <select
+                          value={selectedCluster}
+                          onChange={(e) => setSelectedCluster(e.target.value)}
+                          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                        >
+                          <option value="all">All Clusters ({data.length})</option>
+                          {uniqueClusters.map(cluster => (
+                            <option key={cluster} value={cluster}>
+                              {cluster} ({data.filter(d => d.cluster_label === cluster).length})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Refresh Button */}
+                  <button
+                    onClick={() => handleFetch(true)}
+                    disabled={loading}
+                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm flex-shrink-0"
+                    title="Refresh data and recompute clusters (will update cluster labels like 'On Track' → 'Average Performance')"
                   >
-                    <option value="current">Current Semester</option>
-                    <option value="previous">Previous Semester</option>
-                    <option value="year">Academic Year</option>
-                  </select>
-                  <select
-                    value={selectedProgram}
-                    onChange={(e) => setSelectedProgram(e.target.value)}
-                    className="px-3 py-2 border rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                  >
-                    <option value="">All Programs</option>
-                    <option value="bsit">BS Information Technology</option>
-                    <option value="bscs">BS Computer Science</option>
-                    <option value="bsis">BS Information Systems</option>
-                  </select>
+                    <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Second Row: Filter Dropdowns */}
+                <div className="flex flex-wrap gap-3">
+                  {/* School Term Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <select
+                        value={selectedTermId}
+                        onChange={(e) => setSelectedTermId(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none appearance-none bg-white cursor-pointer text-sm"
+                      >
+                        {schoolTerms.map(term => (
+                          <option key={term.term_id} value={term.term_id.toString()}>
+                            {term.school_year} - {term.semester}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+
+
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
+                  {filteredData.length === 0 ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="text-center">
+                        <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No data found</h3>
+                        <p className="text-gray-500">Try adjusting your filters or search query.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="min-w-full bg-white text-sm">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Student Name</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Grade Level</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Program</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Attendance</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Score</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Submissions</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 text-xs">Cluster</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {paginatedData.map((row) => {
+                          const clusterStyle = getClusterStyle(row.cluster_label);
+
+                          return (
+                            <tr 
+                              key={row.student_id} 
+                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedStudent(row);
+                                setIsModalOpen(true);
+                                // Photo will be loaded in useEffect when modal opens
+                              }}
+                            >
+                              <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900 text-xs">{formatName(row.full_name)}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
+                                {formatGradeLevel(row.grade_level)}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
+                                {row.program_abbreviation || row.program_name || 'N/A'}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                                <div className="text-xs">
+                                  <div>{row.attendance_percentage !== null && row.attendance_percentage !== undefined 
+                                    ? `${parseFloat(row.attendance_percentage).toFixed(1)}%` 
+                                    : 'N/A'}</div>
+                                  {row.attendance_present_count !== null && row.attendance_total_sessions !== null && (
+                                    <div className="text-gray-500 text-xs">
+                                      {row.attendance_present_count}/{row.attendance_total_sessions} present
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-xs">
+                                {row.average_score !== null && row.average_score !== undefined 
+                                  ? parseFloat(row.average_score).toFixed(1) 
+                                  : 'N/A'}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                                <div className="text-xs">
+                                  <div>{row.submission_rate !== null && row.submission_rate !== undefined 
+                                    ? `${(parseFloat(row.submission_rate) * 100).toFixed(1)}%` 
+                                    : 'N/A'}</div>
+                                  {row.submission_ontime_count !== null && row.submission_total_assessments !== null && (
+                                    <div className="text-gray-500 text-xs">
+                                      {row.submission_ontime_count} ontime, {row.submission_late_count || 0} late, {row.submission_missing_count || 0} missing
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {clusterStyle ? (
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${clusterStyle.className}`}>
+                                  {clusterStyle.text}
+                                </span>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                      <div className="text-sm text-gray-700">
+                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                        <span className="font-medium">
+                          {Math.min(currentPage * itemsPerPage, filteredData.length)}
+                        </span>{' '}
+                        of <span className="font-medium">{filteredData.length}</span> results
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1 text-sm text-gray-700">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Content */}
-          <div className="pt-20 pb-6 transition-all duration-500 ease-in-out" style={{ height: 'calc(100vh - 80px)' }}>
-            <div className="px-8 h-full">
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-gray-500">
-                  <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">Analytics</h4>
-                  <p>Analytics content will be displayed here</p>
+            {/* Right Sidebar - Statistics and Charts */}
+            <div className="w-72 flex-shrink-0 space-y-3 overflow-y-auto max-h-[calc(100vh-80px)]">
+              {/* Statistics Cards - 2x2 Grid */}
+              {loading && !stats ? (
+                <StatisticsCardsSkeleton />
+              ) : stats && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-sm border border-gray-200 p-3">
+                    <p className="text-xs text-gray-500 mb-1">Total Students</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 p-3">
+                    <p className="text-xs text-blue-600 mb-1">Avg Attendance</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.avgAttendance}%</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-emerald-50 to-white rounded-lg shadow-sm border border-emerald-200 p-3">
+                    <p className="text-xs text-emerald-600 mb-1">Avg Score</p>
+                    <p className="text-2xl font-bold text-emerald-600">{stats.avgScore}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-50 to-white rounded-lg shadow-sm border border-purple-200 p-3">
+                    <p className="text-xs text-purple-600 mb-1">Avg Submission Rate</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.avgSubmissionRate}%</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Clustering Quality Score */}
+              {clusterMeta?.silhouetteScore !== null && clusterMeta?.silhouetteScore !== undefined && (
+                <div className="bg-gradient-to-br from-indigo-50 to-white rounded-lg shadow-sm border border-indigo-200 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-indigo-600 font-medium">Clustering Quality</p>
+                    <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                      parseFloat(clusterMeta.silhouetteScore) > 0.5 
+                        ? 'bg-green-100 text-green-700' 
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.3
+                        ? 'bg-blue-100 text-blue-700'
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.1
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {parseFloat(clusterMeta.silhouetteScore) > 0.5 
+                        ? 'Excellent' 
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.3
+                        ? 'Good'
+                        : parseFloat(clusterMeta.silhouetteScore) > 0.1
+                        ? 'Fair'
+                        : 'Poor'}
+                    </span>
+                  </div>
+                  <p className="text-lg font-bold text-indigo-900">
+                    {parseFloat(clusterMeta.silhouetteScore).toFixed(4)}
+                  </p>
+                  <p className="text-[10px] text-indigo-500 mt-0.5">Silhouette Score</p>
+                </div>
+              )}
+
+              {/* Note about cluster labels */}
+              {data.some(row => row.cluster_label === 'On Track') && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                  <p className="text-xs text-yellow-800">
+                    <span className="font-semibold">Note:</span> Some clusters show "On Track" from cached data. 
+                    Click the refresh button to update to "Average Performance".
+                  </p>
+                </div>
+              )}
+
+              {/* Scatter Plot Charts - Show First */}
+              {!chartsLoaded && (
+                <ChartsSkeleton />
+              )}
+              {chartData && chartsLoaded && (
+                <div className="space-y-3">
+                  {/* Scatter Plot: Attendance vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-[10px] font-semibold text-gray-900">Attendance vs Score</h3>
+                      <button
+                        onClick={() => setExpandedScatterPlot(expandedScatterPlot === 'attendance' ? null : 'attendance')}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        title={expandedScatterPlot === 'attendance' ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedScatterPlot === 'attendance' ? (
+                          <ArrowsPointingInIcon className="w-3 h-3 text-gray-600" />
+                        ) : (
+                          <ArrowsPointingOutIcon className="w-3 h-3 text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          name="Attendance %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          range={[50, 400]}
+                          name="Submission Rate %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          contentStyle={{ fontSize: '8px', padding: '4px' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-1.5 border border-gray-300 rounded shadow-lg">
+                                  <p className="font-semibold text-[8px]">{data.name}</p>
+                                  <p className="text-[8px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[8px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Cluster: {data.cluster}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#10b981"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            const color = getClusterColor(payload.cluster);
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                    {/* Custom Legend for Cluster Colors */}
+                    <div className="mt-1 flex flex-wrap gap-1.5 justify-center">
+                      {uniqueClusterLabels.map((cluster) => (
+                        <div key={cluster} className="flex items-center gap-0.5">
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full" 
+                            style={{ backgroundColor: getClusterColor(cluster) }}
+                          />
+                          <span className="text-[7px] text-gray-600">{cluster}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Scatter Plot: Submission Rate vs Score */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-[10px] font-semibold text-gray-900">Submission Rate vs Score</h3>
+                      <button
+                        onClick={() => setExpandedScatterPlot(expandedScatterPlot === 'submission' ? null : 'submission')}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        title={expandedScatterPlot === 'submission' ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedScatterPlot === 'submission' ? (
+                          <ArrowsPointingInIcon className="w-3 h-3 text-gray-600" />
+                        ) : (
+                          <ArrowsPointingOutIcon className="w-3 h-3 text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ScatterChart data={chartData.scatterData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          type="number" 
+                          dataKey="submissionRate" 
+                          name="Submission Rate %" 
+                          domain={[0, 100]}
+                          label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
+                        />
+                        <YAxis 
+                          type="number" 
+                          dataKey="score" 
+                          name="Score" 
+                          domain={[0, 100]}
+                          label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '8px' } }}
+                          tick={{ fontSize: 6 }}
+                        />
+                        <ZAxis 
+                          type="number" 
+                          dataKey="attendance" 
+                          range={[50, 400]}
+                          name="Attendance %"
+                        />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }}
+                          contentStyle={{ fontSize: '8px', padding: '4px' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-1.5 border border-gray-300 rounded shadow-lg">
+                                  <p className="font-semibold text-[8px]">{data.name}</p>
+                                  <p className="text-[8px]">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Score: {data.score.toFixed(1)}</p>
+                                  <p className="text-[8px]">Attendance: {data.attendance.toFixed(1)}%</p>
+                                  <p className="text-[8px]">Cluster: {data.cluster}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Scatter 
+                          name="Students" 
+                          data={chartData.scatterData} 
+                          fill="#10b981"
+                          shape={(props) => {
+                            const { cx, cy, payload } = props;
+                            const color = getClusterColor(payload.cluster);
+                            return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={1} />;
+                          }}
+                        />
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                    {/* Custom Legend for Cluster Colors */}
+                    <div className="mt-1 flex flex-wrap gap-1.5 justify-center">
+                      {uniqueClusterLabels.map((cluster) => (
+                        <div key={cluster} className="flex items-center gap-0.5">
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full" 
+                            style={{ backgroundColor: getClusterColor(cluster) }}
+                          />
+                          <span className="text-[7px] text-gray-600">{cluster}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Expanded Scatter Plot Modal */}
+              {expandedScatterPlot && chartData && chartsLoaded && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4" onClick={() => setExpandedScatterPlot(null)}>
+                  <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {expandedScatterPlot === 'attendance' ? 'Attendance vs Score' : 'Submission Rate vs Score'}
+                      </h2>
+                      <button
+                        onClick={() => setExpandedScatterPlot(null)}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        title="Close"
+                      >
+                        <XMarkIcon className="w-5 h-5 text-gray-600" />
+                      </button>
+                    </div>
+                    {/* Modal Content */}
+                    <div className="flex-1 p-6 overflow-auto">
+                      <ResponsiveContainer width="100%" height={600}>
+                        <ScatterChart data={chartData.scatterData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          {expandedScatterPlot === 'attendance' ? (
+                            <>
+                              <XAxis 
+                                type="number" 
+                                dataKey="attendance" 
+                                name="Attendance %" 
+                                domain={[0, 100]}
+                                label={{ value: 'Attendance %', position: 'insideBottom', offset: -5, style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <YAxis 
+                                type="number" 
+                                dataKey="score" 
+                                name="Score" 
+                                domain={[0, 100]}
+                                label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <ZAxis 
+                                type="number" 
+                                dataKey="submissionRate" 
+                                range={[50, 400]}
+                                name="Submission Rate %"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <XAxis 
+                                type="number" 
+                                dataKey="submissionRate" 
+                                name="Submission Rate %" 
+                                domain={[0, 100]}
+                                label={{ value: 'Submission Rate %', position: 'insideBottom', offset: -5, style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <YAxis 
+                                type="number" 
+                                dataKey="score" 
+                                name="Score" 
+                                domain={[0, 100]}
+                                label={{ value: 'Average Score', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                                tick={{ fontSize: 12 }}
+                              />
+                              <ZAxis 
+                                type="number" 
+                                dataKey="attendance" 
+                                range={[50, 400]}
+                                name="Attendance %"
+                              />
+                            </>
+                          )}
+                          <Tooltip 
+                            cursor={{ strokeDasharray: '3 3' }}
+                            contentStyle={{ fontSize: '12px', padding: '8px' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload[0]) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
+                                    <p className="font-semibold text-sm">{data.name}</p>
+                                    {expandedScatterPlot === 'attendance' ? (
+                                      <>
+                                        <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
+                                        <p className="text-xs">Score: {data.score.toFixed(1)}</p>
+                                        <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <p className="text-xs">Submission Rate: {data.submissionRate.toFixed(1)}%</p>
+                                        <p className="text-xs">Score: {data.score.toFixed(1)}</p>
+                                        <p className="text-xs">Attendance: {data.attendance.toFixed(1)}%</p>
+                                      </>
+                                    )}
+                                    <p className="text-xs">Cluster: {data.cluster}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Scatter 
+                            name="Students" 
+                            data={chartData.scatterData} 
+                            fill="#10b981"
+                            shape={(props) => {
+                              const { cx, cy, payload } = props;
+                              const color = getClusterColor(payload.cluster);
+                              return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={1.5} />;
+                            }}
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                      {/* Custom Legend for Cluster Colors */}
+                      <div className="mt-4 flex flex-wrap gap-3 justify-center">
+                        {uniqueClusterLabels.map((cluster) => (
+                          <div key={cluster} className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full" 
+                              style={{ backgroundColor: getClusterColor(cluster) }}
+                            />
+                            <span className="text-sm text-gray-600">{cluster}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Charts Section - Lazy Load */}
+              {!chartsLoaded && (
+                <ChartsSkeleton />
+              )}
+              {chartData && chartsLoaded && (
+                <div className="space-y-3">
+                  {/* Cluster Distribution Pie Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Cluster Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie
+                          data={chartData.clusterData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={75}
+                          fill="#8884d8"
+                          dataKey="value"
+                          style={{ fontSize: '7px' }}
+                        >
+                          {chartData.clusterData.map((entry) => (
+                            <Cell key={`cell-${entry.name}`} fill={getClusterColor(entry.name)} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Attendance Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Attendance Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartData.attendanceData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
+                        <Bar dataKey="students" fill={COLORS.bar} name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Score Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Average Score Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartData.scoreData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
+                        <Bar dataKey="students" fill={COLORS.barSecondary} name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Submission Rate Distribution Bar Chart */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+                    <h3 className="text-[10px] font-semibold text-gray-900 mb-1">Submission Rate Distribution</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={chartData.submissionData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={50} tick={{ fontSize: 6 }} />
+                        <YAxis tick={{ fontSize: 6 }} />
+                        <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
+                        <Bar dataKey="students" fill="#8b5cf6" name="Students" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Student Details Modal */}
+      {isModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
+          setIsModalOpen(false);
+          // Don't clear photo cache, just reset state
+        }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+              <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  // Don't clear photo cache, just reset state
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              </div>
+              
+              {/* Class Filter Dropdown */}
+              {studentEnrollments.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Filter by Class:</label>
+                    <div className="relative">
+                      <select
+                        value={selectedClassId}
+                        onChange={(e) => handleClassFilterChange(e.target.value)}
+                        disabled={loadingClassData}
+                        className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="all">All Classes</option>
+                        {studentEnrollments
+                          .filter((enrollment) => {
+                            // Filter by selected term - only show classes from the selected school term
+                            if (!selectedTermId) return true;
+                            // Check if enrollment has term_id and matches selected term
+                            return enrollment.term_id?.toString() === selectedTermId;
+                          })
+                          .map((enrollment) => (
+                            <option key={enrollment.section_course_id} value={enrollment.section_course_id}>
+                              {enrollment.course_code} - {enrollment.course_title} ({enrollment.section_code})
+                            </option>
+                          ))}
+                      </select>
+                      <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                    </div>
+                    {loadingClassData && (
+                      <div className="text-xs text-gray-500">Loading...</div>
+                    )}
+                  </div>
+                  {selectedClassId !== 'all' && !loadingClassData && !classFilteredData && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                        ⚠️ Showing overall data (class-specific data unavailable)
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {loadingPhoto && !studentPhoto && !studentPhotoCache.current.has(selectedStudent.student_id) ? (
+                <ModalSkeleton />
+              ) : (() => {
+                // Calculate metrics based on filter selection
+                // If a specific class is selected AND we have classFilteredData, use per-class data
+                // Otherwise, use overall data from selectedStudent
+                const calculateOverallMetrics = () => {
+                  // Per-class view - use classFilteredData if available and a class is selected
+                  if (selectedClassId !== 'all' && classFilteredData) {
+                    console.log('📊 [PROGRAM CHAIR ANALYTICS] Using per-class metrics:', {
+                      classId: selectedClassId,
+                      attendance: classFilteredData.attendance_percentage,
+                      score: classFilteredData.average_score,
+                      submission: classFilteredData.submission_rate
+                    });
+                    return {
+                      attendance_percentage: classFilteredData.attendance_percentage,
+                      average_score: classFilteredData.average_score,
+                      submission_rate: classFilteredData.submission_rate,
+                      attendance_present_count: classFilteredData.attendance_present_count,
+                      attendance_absent_count: classFilteredData.attendance_absent_count,
+                      attendance_late_count: classFilteredData.attendance_late_count,
+                      attendance_total_sessions: classFilteredData.attendance_total_sessions
+                    };
+                  }
+                  
+                  // Overall view - use selectedStudent data (already aggregated from backend)
+                  console.log('📊 [PROGRAM CHAIR ANALYTICS] Using overall metrics:', {
+                    attendance: selectedStudent.attendance_percentage,
+                    score: selectedStudent.average_score,
+                    submission: selectedStudent.submission_rate
+                  });
+                  return {
+                    attendance_percentage: selectedStudent.attendance_percentage,
+                    average_score: selectedStudent.average_score,
+                    submission_rate: selectedStudent.submission_rate,
+                    attendance_present_count: selectedStudent.attendance_present_count,
+                    attendance_absent_count: selectedStudent.attendance_absent_count,
+                    attendance_late_count: selectedStudent.attendance_late_count,
+                    attendance_total_sessions: selectedStudent.attendance_total_sessions
+                  };
+                };
+                
+                const metrics = calculateOverallMetrics();
+                // Use filtered data for display (grade level, cluster, etc.) but metrics for analytics
+                const displayData = classFilteredData || selectedStudent;
+                
+                return (
+                  <>
+              {/* Student Header Info with Final Grade */}
+              <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
+                <div className="flex items-center gap-4 flex-1">
+                  {/* Student Image - Lazy Loaded */}
+                  <div className="flex-shrink-0 relative">
+                    {loadingPhoto && !studentPhoto ? (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                        <UserCircleIcon className="w-8 h-8 text-gray-400" />
+                      </div>
+                    ) : studentPhoto ? (
+                      <img
+                        src={studentPhoto}
+                        alt={selectedStudent.full_name}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'block';
+                        }}
+                      />
+                    ) : (
+                      <UserCircleIcon className="w-16 h-16 text-gray-300" />
+                    )}
+                  </div>
+
+                  {/* Student Basic Info */}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900">{selectedStudent.full_name}</h3>
+                    <p className="text-sm text-gray-500">SR: {selectedStudent.student_number || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* Final Grade Display */}
+                {metrics.average_score !== null && metrics.average_score !== undefined && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-gray-500 uppercase">FINAL GRADE</p>
+                      <p className={`text-2xl font-bold ${
+                        parseFloat(metrics.average_score) >= 90 ? 'text-green-600' :
+                        parseFloat(metrics.average_score) >= 75 ? 'text-blue-600' :
+                        parseFloat(metrics.average_score) >= 60 ? 'text-yellow-600' :
+                        'text-orange-600'
+                      }`}>
+                        {parseFloat(metrics.average_score).toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Student Details Section */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="space-y-2">
+                  {displayData.grade_level && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Grade Level:</span>{' '}
+                      <span className="text-gray-900">{formatGradeLevel(displayData.grade_level)}</span>
+                    </p>
+                  )}
+                  {selectedStudent.contact_email && (
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Email:</span>{' '}
+                      <span className="text-gray-900">{selectedStudent.contact_email}</span>
+                    </p>
+                  )}
+                  <div className="mt-2">
+                    {(() => {
+                      const clusterStyle = getClusterStyle(displayData.cluster_label);
+                      return clusterStyle ? (
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${clusterStyle.className}`}>
+                          {clusterStyle.text}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
+
+              {/* Analytics with Progress Bars */}
+              <div className="space-y-6">
+                <h4 className="text-lg font-semibold text-gray-900">Performance Analytics</h4>
+
+                {/* Attendance Rate */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Attendance Rate</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {metrics.attendance_percentage !== null && metrics.attendance_percentage !== undefined
+                        ? `${parseFloat(metrics.attendance_percentage).toFixed(1)}%`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(metrics.attendance_percentage) || 0) >= 80
+                          ? 'bg-emerald-500'
+                          : (parseFloat(metrics.attendance_percentage) || 0) >= 60
+                          ? 'bg-blue-500'
+                          : (parseFloat(metrics.attendance_percentage) || 0) >= 40
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(Math.max(parseFloat(metrics.attendance_percentage) || 0, 0), 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Average Score */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Average Score</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {metrics.average_score !== null && metrics.average_score !== undefined
+                        ? `${parseFloat(metrics.average_score).toFixed(1)}%`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(metrics.average_score) || 0) >= 90
+                          ? 'bg-emerald-500'
+                          : (parseFloat(metrics.average_score) || 0) >= 75
+                          ? 'bg-blue-500'
+                          : (parseFloat(metrics.average_score) || 0) >= 60
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(Math.max(parseFloat(metrics.average_score) || 0, 0), 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Submission Rate */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Submission Rate</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {metrics.submission_rate !== null && metrics.submission_rate !== undefined
+                        ? `${(parseFloat(metrics.submission_rate) * 100).toFixed(1)}%`
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        (parseFloat(metrics.submission_rate) || 0) * 100 >= 80
+                          ? 'bg-emerald-500'
+                          : (parseFloat(metrics.submission_rate) || 0) * 100 >= 60
+                          ? 'bg-blue-500'
+                          : (parseFloat(metrics.submission_rate) || 0) * 100 >= 40
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(Math.max((parseFloat(metrics.submission_rate) || 0) * 100, 0), 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Attendance Information */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Detailed Attendance</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-xs text-green-600 mb-1">Present</p>
+                    <p className="text-lg font-bold text-green-700">
+                      {metrics.attendance_present_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <p className="text-xs text-red-600 mb-1">Absent</p>
+                    <p className="text-lg font-bold text-red-700">
+                      {metrics.attendance_absent_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <p className="text-xs text-yellow-600 mb-1">Late</p>
+                    <p className="text-lg font-bold text-yellow-700">
+                      {metrics.attendance_late_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-600 mb-1">Total Sessions</p>
+                    <p className="text-lg font-bold text-gray-700">
+                      {metrics.attendance_total_sessions ?? '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Submission Behavior */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Detailed Submission Behavior</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-xs text-green-600 mb-1">Ontime</p>
+                    <p className="text-lg font-bold text-green-700">
+                      {displayData.submission_ontime_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                    <p className="text-xs text-yellow-600 mb-1">Late</p>
+                    <p className="text-lg font-bold text-yellow-700">
+                      {displayData.submission_late_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <p className="text-xs text-red-600 mb-1">Missing</p>
+                    <p className="text-lg font-bold text-red-700">
+                      {displayData.submission_missing_count ?? '—'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-600 mb-1">Total Assessments</p>
+                    <p className="text-lg font-bold text-gray-700">
+                      {displayData.submission_total_assessments ?? '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section/Program/Department Info */}
+              {(displayData.section_code || displayData.program_name || displayData.department_name) && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {displayData.section_code && (
+                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <p className="text-xs text-blue-600 mb-1">Section</p>
+                        <p className="text-sm font-medium text-blue-900">{displayData.section_code}</p>
+                      </div>
+                    )}
+                    {displayData.program_name && (
+                      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                        <p className="text-xs text-purple-600 mb-1">Program</p>
+                        <p className="text-sm font-medium text-purple-900">{displayData.program_name}</p>
+                      </div>
+                    )}
+                    {displayData.department_name && (
+                      <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                        <p className="text-xs text-indigo-600 mb-1">Department</p>
+                        <p className="text-sm font-medium text-indigo-900">{displayData.department_name}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Clustering Information */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Clustering Information</h4>
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs text-gray-500 mb-1">Cluster Label</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(() => {
+                        const clusterStyle = getClusterStyle(displayData.cluster_label);
+                        return clusterStyle ? clusterStyle.text : '—';
+                      })()}
+                    </p>
+                  </div>
+                  {displayData.silhouette_score !== null && displayData.silhouette_score !== undefined && (
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <p className="text-xs text-blue-600 mb-1">Silhouette Score</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-blue-900">
+                          {parseFloat(displayData.silhouette_score).toFixed(4)}
+                        </p>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          parseFloat(displayData.silhouette_score) > 0.5 
+                            ? 'bg-green-100 text-green-700' 
+                            : parseFloat(displayData.silhouette_score) > 0.3
+                            ? 'bg-blue-100 text-blue-700'
+                            : parseFloat(displayData.silhouette_score) > 0.1
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {parseFloat(displayData.silhouette_score) > 0.5 
+                            ? 'Excellent' 
+                            : parseFloat(displayData.silhouette_score) > 0.3
+                            ? 'Good'
+                            : parseFloat(displayData.silhouette_score) > 0.1
+                            ? 'Fair'
+                            : 'Poor'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {displayData.clustering_explanation && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Cluster Explanation</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {displayData.clustering_explanation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  // Don't clear photo cache, just reset state
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
-  )
-}
+  );
+};
 
-export default Analytics
+export default Analytics;

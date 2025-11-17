@@ -12,7 +12,7 @@ import {
 // Lazy load scatterplot component
 const ScatterPlotChart = lazy(() => import('../../components/charts/ScatterPlotChart'))
 import CourseManagement from './CourseManagement'
-import Analytics from '../dean/Analytics'
+import Analytics from './Analytics'
 import SyllabusReview from './SyllabusReview'
 import Syllabus from './Syllabus'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'

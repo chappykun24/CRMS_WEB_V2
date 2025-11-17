@@ -2043,8 +2043,8 @@ const Analytics = () => {
                           dataKey="value"
                           style={{ fontSize: '7px' }}
                         >
-                          {chartData.clusterData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS.pie[index % COLORS.pie.length]} />
+                          {chartData.clusterData.map((entry) => (
+                            <Cell key={`cell-${entry.name}`} fill={getClusterColor(entry.name)} />
                           ))}
                         </Pie>
                         <Tooltip contentStyle={{ fontSize: '8px', padding: '4px' }} />
