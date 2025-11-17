@@ -261,6 +261,7 @@ router.get('/student/:enrollmentId/grades', async (req, res) => {
         a.assessment_id,
         a.title as assessment_title,
         a.type as assessment_type,
+        a.description,
         a.total_points,
         a.weight_percentage,
         a.due_date,

@@ -2504,6 +2504,11 @@ const Analytics = () => {
                             : 'Poor'}
                         </span>
                       </div>
+                      {parseFloat(displayData.silhouette_score) <= 0.3 && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                          ⚠️ Insufficient data or your data is still below the required threshold, so results shown might be inconsistent.
+                        </div>
+                      )}
                     </div>
                   )}
                   {displayData.clustering_explanation && (

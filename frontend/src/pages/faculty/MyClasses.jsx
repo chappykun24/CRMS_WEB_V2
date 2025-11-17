@@ -3353,156 +3353,336 @@ const MyClasses = () => {
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                   </div>
-                ) : studentGrades.length > 0 ? (
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Points</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Raw</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Penalty</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Adjusted</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">%</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Grade</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weighted</th>
-                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {studentGrades.map((grade) => {
-                            const adjustedScore = grade.adjusted_score ?? null
-                            const percentage = adjustedScore !== null && grade.total_points > 0 
-                              ? parseFloat(((adjustedScore / grade.total_points) * 100).toFixed(1))
-                              : null
-                            const numericGrade = convertToNumericGrade(percentage)
-                            const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
-                              ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
-                              : null
-                            
-                            return (
-                              <tr 
-                                key={grade.assessment_id}
-                                className="hover:bg-gray-50 transition-colors"
-                              >
-                                {/* Assessment Title */}
-                                <td className="px-4 py-3">
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-semibold text-gray-900">
-                                      {grade.assessment_title}
-                                    </span>
-                                    {grade.due_date && (() => {
-                                      try {
-                                        const date = new Date(grade.due_date)
-                                        if (!isNaN(date.getTime())) {
-                                          return (
-                                            <span className="text-xs text-gray-500 mt-0.5">
-                                              Due: {date.toLocaleDateString()}
+                ) : studentGrades.length > 0 ? (() => {
+                  // Group assessments by parent criterion
+                  const groupAssessmentsByParent = (grades) => {
+                    const groups = {}
+                    const ungrouped = []
+                    
+                    grades.forEach(grade => {
+                      const description = grade.description || ''
+                      const match = description.match(/Sub-assessment from (.+)/)
+                      
+                      if (match && match[1]) {
+                        const parentCriterion = match[1].trim()
+                        if (!groups[parentCriterion]) {
+                          groups[parentCriterion] = []
+                        }
+                        groups[parentCriterion].push(grade)
+                      } else {
+                        ungrouped.push(grade)
+                      }
+                    })
+                    
+                    return { groups, ungrouped }
+                  }
+                  
+                  const { groups, ungrouped } = groupAssessmentsByParent(studentGrades)
+                  
+                  // Calculate aggregated scores for a group
+                  const calculateGroupScores = (groupGrades) => {
+                    let totalRaw = 0
+                    let totalPenalty = 0
+                    let totalAdjusted = 0
+                    let totalWeighted = 0
+                    let totalWeight = 0
+                    let count = 0
+                    
+                    groupGrades.forEach(grade => {
+                      if (grade.raw_score !== null) {
+                        totalRaw += parseFloat(grade.raw_score) || 0
+                        count++
+                      }
+                      if (grade.late_penalty !== null) {
+                        totalPenalty += parseFloat(grade.late_penalty) || 0
+                      }
+                      if (grade.adjusted_score !== null) {
+                        totalAdjusted += parseFloat(grade.adjusted_score) || 0
+                      }
+                      const weight = parseFloat(grade.weight_percentage || 0)
+                      totalWeight += weight
+                      if (grade.adjusted_score !== null && grade.total_points > 0) {
+                        const percentage = (grade.adjusted_score / grade.total_points) * 100
+                        totalWeighted += (percentage * weight) / 100
+                      }
+                    })
+                    
+                    const avgPercentage = count > 0 && totalWeight > 0 ? totalWeighted : null
+                    const numericGrade = convertToNumericGrade(avgPercentage)
+                    
+                    return {
+                      totalRaw: count > 0 ? totalRaw.toFixed(1) : '—',
+                      totalPenalty: count > 0 ? totalPenalty.toFixed(1) : '—',
+                      totalAdjusted: count > 0 ? totalAdjusted.toFixed(1) : '—',
+                      avgPercentage: avgPercentage !== null ? avgPercentage.toFixed(1) : null,
+                      numericGrade,
+                      totalWeighted: totalWeighted > 0 ? totalWeighted.toFixed(2) : '—',
+                      totalWeight: totalWeight.toFixed(2)
+                    }
+                  }
+                  
+                  return (
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Assessment</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Points</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weight</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Raw</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Penalty</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Adjusted</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">%</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Grade</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Weighted</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {/* Render grouped assessments */}
+                            {Object.entries(groups).map(([parentCriterion, groupGrades]) => {
+                              const groupScores = calculateGroupScores(groupGrades)
+                              return (
+                                <React.Fragment key={`group-${parentCriterion}`}>
+                                  {/* Parent group header row */}
+                                  <tr className="bg-blue-50 border-b-2 border-blue-200">
+                                    <td className="px-4 py-3">
+                                      <span className="text-sm font-bold text-blue-900">{parentCriterion}</span>
+                                    </td>
+                                    <td colSpan="9" className="px-4 py-3 text-xs text-gray-600">
+                                      {groupGrades.length} sub-assessment{groupGrades.length !== 1 ? 's' : ''}
+                                    </td>
+                                  </tr>
+                                  {/* Sub-assessments */}
+                                  {groupGrades.map((grade) => {
+                                    const adjustedScore = grade.adjusted_score ?? null
+                                    const percentage = adjustedScore !== null && grade.total_points > 0 
+                                      ? parseFloat(((adjustedScore / grade.total_points) * 100).toFixed(1))
+                                      : null
+                                    const numericGrade = convertToNumericGrade(percentage)
+                                    const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
+                                      ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
+                                      : null
+                                    
+                                    return (
+                                      <tr 
+                                        key={grade.assessment_id}
+                                        className="hover:bg-gray-50 transition-colors bg-gray-50/50"
+                                      >
+                                        {/* Assessment Title - Indented for sub-assessment */}
+                                        <td className="px-4 py-3 pl-8">
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-700">
+                                              {grade.assessment_title}
                                             </span>
-                                          )
-                                        }
-                                      } catch (e) {}
-                                      return null
-                                    })()}
-                                    {grade.feedback && (
-                                      <span className="text-xs text-blue-600 mt-1 italic" title={grade.feedback}>
-                                        {grade.feedback.length > 50 ? `${grade.feedback.substring(0, 50)}...` : grade.feedback}
+                                            {grade.feedback && (
+                                              <span className="text-xs text-blue-600 mt-1 italic" title={grade.feedback}>
+                                                {grade.feedback.length > 50 ? `${grade.feedback.substring(0, 50)}...` : grade.feedback}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        
+                                        {/* Points */}
+                                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                          {grade.total_points}
+                                        </td>
+                                        
+                                        {/* Weight */}
+                                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                          {parseFloat(grade.weight_percentage || 0).toFixed(2)}%
+                                        </td>
+                                        
+                                        {/* Raw Score */}
+                                        <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                          {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
+                                        </td>
+                                        
+                                        {/* Penalty */}
+                                        <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                          {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
+                                        </td>
+                                        
+                                        {/* Adjusted Score */}
+                                        <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                          {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
+                                        </td>
+                                        
+                                        {/* Percentage */}
+                                        <td className="px-4 py-3 text-center text-sm font-semibold text-blue-700">
+                                          {percentage !== null ? `${percentage.toFixed(1)}%` : '—'}
+                                        </td>
+                                        
+                                        {/* Grade (Numeric) */}
+                                        <td className="px-4 py-3 text-center">
+                                          {numericGrade ? (
+                                            <span className={`text-sm font-bold ${numericGrade.status === 'PASSED' ? 'text-green-700' : 'text-red-700'}`}>
+                                              {numericGrade.numeric}
+                                            </span>
+                                          ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                          )}
+                                        </td>
+                                        
+                                        {/* Status */}
+                                        <td className="px-4 py-3 text-center">
+                                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                            grade.submission_status === 'ontime' 
+                                              ? 'bg-green-100 text-green-800'
+                                              : grade.submission_status === 'late'
+                                              ? 'bg-yellow-100 text-yellow-800'
+                                              : 'bg-red-100 text-red-800'
+                                          }`}>
+                                            {grade.submission_status === 'ontime' ? 'On Time' : 
+                                             grade.submission_status === 'late' ? 'Late' : 'Missing'}
+                                          </span>
+                                        </td>
+                                        
+                                        {/* Weighted Contribution */}
+                                        <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                          {weightedScore !== null ? `${weightedScore}%` : '—'}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                  {/* Group summary row */}
+                                  <tr className="bg-blue-100/50 border-t border-blue-300">
+                                    <td className="px-4 py-2 pl-8">
+                                      <span className="text-xs font-semibold text-blue-900">Total</span>
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs text-gray-600">—</td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                                      {groupScores.totalWeight}%
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                                      {groupScores.totalRaw}
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                                      {groupScores.totalPenalty}
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                                      {groupScores.totalAdjusted}
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-blue-700">
+                                      {groupScores.avgPercentage !== null ? `${groupScores.avgPercentage}%` : '—'}
+                                    </td>
+                                    <td className="px-4 py-2 text-center">
+                                      {groupScores.numericGrade ? (
+                                        <span className={`text-xs font-bold ${groupScores.numericGrade.status === 'PASSED' ? 'text-green-700' : 'text-red-700'}`}>
+                                          {groupScores.numericGrade.numeric}
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-gray-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-xs text-gray-600">—</td>
+                                    <td className="px-4 py-2 text-center text-xs font-semibold text-gray-700">
+                                      {groupScores.totalWeighted}%
+                                    </td>
+                                  </tr>
+                                </React.Fragment>
+                              )
+                            })}
+                            
+                            {/* Render ungrouped assessments */}
+                            {ungrouped.map((grade) => {
+                              const adjustedScore = grade.adjusted_score ?? null
+                              const percentage = adjustedScore !== null && grade.total_points > 0 
+                                ? parseFloat(((adjustedScore / grade.total_points) * 100).toFixed(1))
+                                : null
+                              const numericGrade = convertToNumericGrade(percentage)
+                              const weightedScore = adjustedScore !== null && grade.total_points > 0 && grade.weight_percentage
+                                ? ((adjustedScore / grade.total_points) * parseFloat(grade.weight_percentage)).toFixed(2)
+                                : null
+                              
+                              return (
+                                <tr 
+                                  key={grade.assessment_id}
+                                  className="hover:bg-gray-50 transition-colors"
+                                >
+                                  {/* Assessment Title */}
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-semibold text-gray-900">
+                                        {grade.assessment_title}
                                       </span>
+                                      {grade.feedback && (
+                                        <span className="text-xs text-blue-600 mt-1 italic" title={grade.feedback}>
+                                          {grade.feedback.length > 50 ? `${grade.feedback.substring(0, 50)}...` : grade.feedback}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  
+                                  {/* Points */}
+                                  <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                    {grade.total_points}
+                                  </td>
+                                  
+                                  {/* Weight */}
+                                  <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                    {parseFloat(grade.weight_percentage || 0).toFixed(2)}%
+                                  </td>
+                                  
+                                  {/* Raw Score */}
+                                  <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                    {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
+                                  </td>
+                                  
+                                  {/* Penalty */}
+                                  <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                    {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
+                                  </td>
+                                  
+                                  {/* Adjusted Score */}
+                                  <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                                    {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
+                                  </td>
+                                  
+                                  {/* Percentage */}
+                                  <td className="px-4 py-3 text-center text-sm font-semibold text-blue-700">
+                                    {percentage !== null ? `${percentage.toFixed(1)}%` : '—'}
+                                  </td>
+                                  
+                                  {/* Grade (Numeric) */}
+                                  <td className="px-4 py-3 text-center">
+                                    {numericGrade ? (
+                                      <span className={`text-sm font-bold ${numericGrade.status === 'PASSED' ? 'text-green-700' : 'text-red-700'}`}>
+                                        {numericGrade.numeric}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">—</span>
                                     )}
-                                  </div>
-                                </td>
-                                
-                                {/* Type */}
-                                <td className="px-4 py-3 text-center">
-                                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                    {grade.assessment_type}
-                                  </span>
-                                </td>
-                                
-                                {/* Points */}
-                                <td className="px-4 py-3 text-center text-sm text-gray-900">
-                                  {grade.total_points}
-                                </td>
-                                
-                                {/* Weight */}
-                                <td className="px-4 py-3 text-center text-sm text-gray-900">
-                                  {parseFloat(grade.weight_percentage || 0).toFixed(2)}%
-                                </td>
-                                
-                                {/* Raw Score */}
-                                <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
-                                  {grade.raw_score !== null ? grade.raw_score.toFixed(1) : '—'}
-                                </td>
-                                
-                                {/* Penalty */}
-                                <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
-                                  {grade.late_penalty !== null ? grade.late_penalty.toFixed(1) : '—'}
-                                </td>
-                                
-                                {/* Adjusted Score */}
-                                <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
-                                  {adjustedScore !== null ? adjustedScore.toFixed(1) : '—'}
-                                </td>
-                                
-                                {/* Percentage */}
-                                <td className="px-4 py-3 text-center text-sm font-semibold text-blue-700">
-                                  {percentage !== null ? `${percentage.toFixed(1)}%` : '—'}
-                                </td>
-                                
-                                {/* Grade (Numeric) */}
-                                <td className="px-4 py-3 text-center">
-                                  {numericGrade ? (
-                                    <span className={`text-sm font-bold ${numericGrade.status === 'PASSED' ? 'text-green-700' : 'text-red-700'}`}>
-                                      {numericGrade.numeric}
+                                  </td>
+                                  
+                                  {/* Status */}
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                      grade.submission_status === 'ontime' 
+                                        ? 'bg-green-100 text-green-800'
+                                        : grade.submission_status === 'late'
+                                        ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {grade.submission_status === 'ontime' ? 'On Time' : 
+                                       grade.submission_status === 'late' ? 'Late' : 'Missing'}
                                     </span>
-                                  ) : (
-                                    <span className="text-sm text-gray-400">—</span>
-                                  )}
-                                </td>
-                                
-                                {/* Status */}
-                                <td className="px-4 py-3 text-center">
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                                    grade.submission_status === 'ontime' 
-                                      ? 'bg-green-100 text-green-800'
-                                      : grade.submission_status === 'late'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-red-100 text-red-800'
-                                  }`}>
-                                    {grade.submission_status === 'ontime' ? 'On Time' : 
-                                     grade.submission_status === 'late' ? 'Late' : 'Missing'}
-                                  </span>
-                                </td>
-                                
-                                {/* Weighted Contribution */}
-                                <td className="px-4 py-3 text-center text-sm text-gray-900">
-                                  {weightedScore !== null ? `${weightedScore}%` : '—'}
-                                </td>
-                                
-                                {/* Date */}
-                                <td className="px-4 py-3 text-center text-xs text-gray-500">
-                                  {grade.graded_at && (() => {
-                                    try {
-                                      const date = new Date(grade.graded_at)
-                                      if (!isNaN(date.getTime())) {
-                                        return <span>{date.toLocaleDateString()}</span>
-                                      }
-                                    } catch (e) {}
-                                    return null
-                                  })()}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                                  </td>
+                                  
+                                  {/* Weighted Contribution */}
+                                  <td className="px-4 py-3 text-center text-sm text-gray-900">
+                                    {weightedScore !== null ? `${weightedScore}%` : '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ) : (
+                  )
+                })() : (
                   <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                     <p className="text-gray-500">No assessment scores available</p>
                   </div>
