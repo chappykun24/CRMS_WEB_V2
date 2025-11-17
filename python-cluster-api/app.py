@@ -279,6 +279,74 @@ def validate_clustering_data(records):
     return issues
 
 
+def find_optimal_k_silhouette(X_scaled, max_clusters=5, min_clusters=3):
+    """
+    Find optimal number of clusters using Silhouette score (better for achieving 0.5-0.7 scores).
+    
+    This method tests different k values and selects the one with the highest Silhouette score.
+    This is more reliable than elbow method for achieving well-separated clusters.
+    
+    Args:
+        X_scaled: Scaled feature matrix
+        max_clusters: Maximum number of clusters to test (default: 5)
+        min_clusters: Minimum number of clusters to test (default: 3)
+    
+    Returns:
+        optimal_k: Optimal number of clusters with highest Silhouette score
+        best_score: The best Silhouette score achieved
+        scores: Dictionary of k -> silhouette_score for all tested k values
+    """
+    n_samples = len(X_scaled)
+    
+    # Adjust max_clusters based on data size
+    max_clusters = min(max_clusters, n_samples // 2)
+    max_clusters = max(max_clusters, min_clusters)
+    max_clusters = min(max_clusters, 5)
+    max_clusters = max(max_clusters, min_clusters)
+    
+    if max_clusters < min_clusters:
+        return min_clusters, -1, {}
+    
+    k_range = range(min_clusters, max_clusters + 1)
+    scores = {}
+    best_k = min_clusters
+    best_score = -1
+    
+    print(f'\n📊 [Python API] Silhouette Method: Testing {min_clusters} to {max_clusters} clusters...')
+    
+    for k in k_range:
+        try:
+            # Use k-means++ initialization for better results
+            kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, max_iter=300, random_state=42)
+            labels = kmeans.fit_predict(X_scaled)
+            
+            # Calculate silhouette score
+            if len(X_scaled) >= k * 2:  # Need at least 2 samples per cluster
+                score = silhouette_score(X_scaled, labels)
+                scores[k] = score
+                print(f'   k={k}: Silhouette Score={score:.4f}')
+                
+                if score > best_score:
+                    best_score = score
+                    best_k = k
+            else:
+                print(f'   k={k}: Insufficient data (need at least {k*2} samples)')
+        except Exception as e:
+            print(f'   k={k}: Error - {e}')
+            continue
+    
+    if best_score > 0:
+        print(f'\n✅ [Python API] Silhouette Method: Optimal k={best_k} (score={best_score:.4f})')
+        if best_score >= 0.5:
+            print('   📈 Excellent clustering quality (score >= 0.5)')
+        elif best_score >= 0.3:
+            print('   ✅ Good clustering quality (score >= 0.3)')
+    else:
+        print(f'\n⚠️ [Python API] Silhouette Method: Could not find optimal k, using k={best_k}')
+    
+    return best_k, best_score, scores
+
+
 def find_optimal_clusters_elbow_method(X_scaled, max_clusters=5, min_clusters=3):
     """
     Determine optimal number of clusters using the elbow method.
@@ -318,7 +386,7 @@ def find_optimal_clusters_elbow_method(X_scaled, max_clusters=5, min_clusters=3)
     print(f'\n📊 [Python API] Elbow Method: Testing {min_clusters} to {max_clusters} clusters (min=3, max=5)...')
     
     for k in k_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init='auto', max_iter=300)
+        kmeans = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42, max_iter=300)
         kmeans.fit(X_scaled)
         wcss = kmeans.inertia_  # WCSS = within-cluster sum of squares
         wcss_values.append(wcss)
@@ -466,29 +534,31 @@ def cluster_records(records):
         for col in score_df.columns:
             df[col] = score_df[col].values
     
-    # Define features for clustering
+    # OPTIMIZED FEATURE SET for better Silhouette scores (0.5-0.7)
+    # Reduced from 11 to 6-7 features to reduce redundancy and improve cluster separation
     # Features are derived from THREE primary data sources:
     # 1. TRANSMUTED SCORES: final_score (calculated from transmuted scores)
     # 2. SUBMISSION DATA: submission rates and quality scores
     # 3. ATTENDANCE DATA: attendance percentages and rates
     # 
     # PRIORITIZES ONTIME SUBMISSIONS: ontime_rate and ontime_priority_score have higher influence
+    # REMOVED REDUNDANT FEATURES: submission_status_score (duplicates quality_score)
     features = [
-        # ATTENDANCE FEATURES (from attendance data)
-        'attendance_percentage',           # Overall attendance percentage
-        'attendance_present_rate',         # Present rate (0-1)
-        'attendance_late_rate',            # Late rate (0-1)
-        # TRANSMUTED SCORE FEATURES (from transmuted scores data)
-        'final_score',                     # Transmuted score (ILO-weighted if available, calculated from transmuted scores)
-        # SUBMISSION FEATURES (from submission data) - ONTIME PRIORITIZED (listed first for higher weight)
-        'submission_ontime_rate',          # PRIORITY: Ontime submission rate (0-1) - highest weight
-        'submission_ontime_priority_score', # PRIORITY: Direct ontime percentage (0-100) - high weight
-        'submission_quality_score',        # Quality score (0.0-2.0, ontime=2, late=1, missing=0) - high weight
-        'submission_rate',                 # Overall submission rate (ontime + late) / total
-        'submission_late_rate',            # Late submission rate (0-1) - lower weight
-        'submission_missing_rate',         # Missing submission rate (0-1)
-        'submission_status_score'          # Status score (0.0-2.0, higher is better, same as quality_score)
+        # CORE PERFORMANCE METRICS (most discriminative)
+        'final_score',                     # Academic performance (0-100) - PRIMARY
+        'attendance_percentage',           # Engagement metric (0-100) - PRIMARY
+        'submission_ontime_priority_score', # Timeliness (0-100) - PRIMARY
+        
+        # BEHAVIOR PATTERNS (complementary, high variance)
+        'submission_quality_score',        # Submission behavior (0.0-2.0) - HIGH WEIGHT
+        'attendance_present_rate',         # Attendance pattern (0-1) - MODERATE WEIGHT
+        
+        # OVERALL METRICS (if they add unique information)
+        'submission_rate',                 # Overall submission rate (0-1) - MODERATE WEIGHT
     ]
+    
+    # Optional: Add attendance_late_rate only if it has sufficient variance
+    # This will be checked later in variance filtering
     
     # Ensure numeric types
     for col in features:
@@ -517,15 +587,34 @@ def cluster_records(records):
         output['clustering_explanation'] = None
         return output.to_dict(orient='records')
     
-    # Check data variation
+    # Check data variation and filter low-variance features
     print(f'\n📊 [Python API] Data variation check:')
+    variance_threshold = 0.01  # Minimum variance required
+    valid_features = []
+    
     for feature in features:
         if feature in df_clean.columns:
             feature_range = df_clean[feature].max() - df_clean[feature].min()
             feature_mean = df_clean[feature].mean()
-            print(f'  {feature}: range={feature_range:.3f}, mean={feature_mean:.3f}')
+            feature_variance = df_clean[feature].var()
+            print(f'  {feature}: range={feature_range:.3f}, mean={feature_mean:.3f}, variance={feature_variance:.6f}')
+            
             if feature_range < 0.01:
                 print(f'    ⚠️ WARNING: Very low variation in {feature}. Clustering may not distinguish students well.')
+            
+            # Filter out features with very low variance
+            if feature_variance >= variance_threshold:
+                valid_features.append(feature)
+            else:
+                print(f'    ⚠️ REMOVED: {feature} has variance {feature_variance:.6f} < {variance_threshold} (too low)')
+    
+    # Update features list to only include valid features
+    if len(valid_features) < 3:
+        print(f'\n⚠️ [Python API] Warning: Only {len(valid_features)} features have sufficient variance. Using all features anyway.')
+        valid_features = [f for f in features if f in df_clean.columns]
+    else:
+        features = valid_features
+        print(f'\n✅ [Python API] Using {len(features)} features with sufficient variance: {features}')
     
     # Scale features for clustering
     scaler = StandardScaler()
@@ -548,23 +637,55 @@ def cluster_records(records):
         max_clusters = min(5, len(df_clean) // 2)  # Maximum 5 clusters
         max_clusters = max(max_clusters, 3)  # Minimum 3 clusters
         
-        optimal_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
-            X_scaled, 
-            max_clusters=max_clusters,
-            min_clusters=3  # Minimum 3 clusters
-        )
-        
-        n_clusters = optimal_k
+        # Use Silhouette-based method for better cluster separation (target: 0.5-0.7)
+        # Falls back to elbow method if Silhouette method fails
+        try:
+            optimal_k, silhouette_best, silhouette_scores = find_optimal_k_silhouette(
+                X_scaled,
+                max_clusters=max_clusters,
+                min_clusters=3
+            )
+            
+            # Also run elbow method for comparison
+            elbow_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
+                X_scaled,
+                max_clusters=max_clusters,
+                min_clusters=3
+            )
+            
+            # Prefer Silhouette-based k if it gives good score (>= 0.3)
+            # Otherwise use elbow method
+            if silhouette_best >= 0.3:
+                n_clusters = optimal_k
+                print(f'\n🎯 [Python API] Using Silhouette-optimized k={n_clusters} (score={silhouette_best:.4f})')
+            else:
+                n_clusters = elbow_k
+                print(f'\n🎯 [Python API] Using Elbow-optimized k={n_clusters} (Silhouette score was {silhouette_best:.4f}, too low)')
+        except Exception as e:
+            print(f'\n⚠️ [Python API] Silhouette method failed: {e}, using elbow method')
+            optimal_k, wcss_values, k_range = find_optimal_clusters_elbow_method(
+                X_scaled,
+                max_clusters=max_clusters,
+                min_clusters=3
+            )
+            n_clusters = optimal_k
         
         # Ensure n_clusters is valid for the data size and within 3-5 range
         n_clusters = min(n_clusters, min(5, len(df_clean) // 2))
         n_clusters = max(n_clusters, 3)
         
-        print(f'\n🎯 [Python API] Using optimal k={n_clusters} clusters (determined by elbow method, range: 3-5)')
+        print(f'\n🎯 [Python API] Final k={n_clusters} clusters (range: 3-5)')
     
-    # Perform KMeans clustering
+    # Perform KMeans clustering with optimized settings for better separation
     if n_clusters > 1:
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
+        # Use k-means++ initialization and multiple runs for better results
+        kmeans = KMeans(
+            n_clusters=n_clusters,
+            init='k-means++',      # Better initialization than random
+            n_init=10,             # Run 10 times, pick best result
+            max_iter=300,
+            random_state=42
+        )
         clusters = kmeans.fit_predict(X_scaled)
         
         # Calculate silhouette score (only if we have at least 2 clusters and 2 samples per cluster)
