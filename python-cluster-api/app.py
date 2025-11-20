@@ -140,6 +140,8 @@ def calculate_score_features(row):
     """
     Calculate score features using new grading computation system.
     Uses pre-calculated transmuted scores from database which follow:
+
+    
     1. Raw Score â†’ Adjusted Score (raw - penalty)
     2. Adjusted Score â†’ Actual Score: (adjusted / max) Ã— 62.5 + 37.5 (non-zero based, min 37.5)
     3. Actual Score â†’ Transmuted Score: actual Ã— (weight_percentage / 100)
