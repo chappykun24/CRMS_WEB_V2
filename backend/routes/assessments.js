@@ -454,6 +454,88 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
           ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
         GROUP BY i.ilo_id, i.code, i.description
       ),
+      -- Dynamically extract assessment codes from syllabus assessment_framework or assessment titles
+      assessment_codes AS (
+        SELECT DISTINCT
+          a.assessment_id,
+          a.title,
+          COALESCE(
+            -- Try to get code from syllabus assessment_framework JSON
+            (
+              SELECT (task->>'code')::text
+              FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+              CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+              WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
+                 OR (task->>'name')::text ILIKE '%' || a.title || '%'
+              LIMIT 1
+            ),
+            -- Try to get code from assessment content_data
+            (a.content_data->>'code')::text,
+            (a.content_data->>'abbreviation')::text,
+            -- Extract code dynamically from title using pattern matching
+            -- Look for patterns like "WA1", "ME1", "FE1", "LA1" etc. in title
+            (
+              SELECT UPPER(
+                SUBSTRING(
+                  a.title FROM '([A-Z]{2,4}\s*\d+)'
+                )
+              )
+              WHERE a.title ~* '[A-Z]{2,4}\s*\d+'
+            ),
+            -- Extract abbreviation from first letters of words + number
+            (
+              SELECT UPPER(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\s+([A-Z])[a-z]*\s*(\d+)', '\1\2\3'),
+                  '[^A-Z0-9]', '', 'g'
+                )
+              )
+              WHERE a.title ~* '^[A-Z][a-z]+\s+[A-Z][a-z]+\s+\d+'
+            ),
+            NULL
+          ) AS assessment_code
+        FROM assessments a
+        INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+        WHERE a.section_course_id = $1
+      ),
+      -- Get ILOs from rubrics if assessment_ilo_weights doesn't have connections
+      ilo_from_rubrics AS (
+        SELECT DISTINCT
+          r.assessment_id,
+          r.ilo_id
+        FROM rubrics r
+        INNER JOIN assessments a ON r.assessment_id = a.assessment_id
+        WHERE a.section_course_id = $1
+      ),
+      -- Get ILOs from mapping tables using assessment_tasks arrays (dynamic matching)
+      ilo_from_mappings AS (
+        SELECT DISTINCT
+          ac.assessment_id,
+          COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id,
+          -- Use assessment weight_percentage as ILO weight, or default to 0
+          COALESCE(a.weight_percentage, 0) AS ilo_weight_percentage
+        FROM assessment_codes ac
+        INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
+        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        WHERE ac.assessment_code IS NOT NULL
+          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+      ),
+      -- Combine ILO connections from assessment_ilo_weights, rubrics, and mapping tables
+      assessment_ilo_connections AS (
+        SELECT DISTINCT
+          a.assessment_id,
+          COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
+          COALESCE(aiw.weight_percentage, im.ilo_weight_percentage, 0) AS ilo_weight_percentage
+        FROM assessments a
+        LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+        LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id
+        LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id
+        WHERE a.section_course_id = $1
+          AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+      ),
       assessment_stats AS (
         SELECT
           a.assessment_id,
@@ -462,8 +544,8 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
           a.total_points,
           a.weight_percentage,
           a.due_date,
-          aiw.ilo_id,
-          aiw.weight_percentage AS ilo_weight_percentage,
+          aic.ilo_id,
+          aic.ilo_weight_percentage,
           COUNT(DISTINCT ce.student_id) AS total_students,
           COUNT(DISTINCT sub.submission_id) AS submissions_count,
           COALESCE(AVG(
@@ -487,9 +569,9 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
             END
           ), 0) AS total_score
         FROM assessments a
-        INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-        INNER JOIN ilo_combinations ic ON aiw.ilo_id = ic.ilo_id
-        INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+        INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+        INNER JOIN ilo_combinations ic ON aic.ilo_id = ic.ilo_id
+        INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
         INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
         INNER JOIN course_enrollments ce ON a.section_course_id = ce.section_course_id AND ce.status = 'enrolled'
         LEFT JOIN submissions sub ON (
@@ -501,19 +583,19 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
           AND sy.section_course_id = $1
           AND a.weight_percentage IS NOT NULL
           AND a.weight_percentage > 0
-        GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.ilo_id, aiw.weight_percentage
+        GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage
       ),
       assessment_mappings AS (
-        -- Get ALL mappings for ALL ILOs connected to each assessment
+        -- Get ALL mappings for ALL ILOs connected to each assessment (from assessment_ilo_connections)
         SELECT DISTINCT
-          aiw.assessment_id,
-          aiw.ilo_id,
+          aic.assessment_id,
+          aic.ilo_id,
           so.so_code,
           sdg.sdg_code,
           iga.iga_code,
           cdio.cdio_code
-        FROM assessment_ilo_weights aiw
-        INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+        FROM assessment_ilo_connections aic
+        INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
         INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
         LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
         LEFT JOIN student_outcomes so ON ism.so_id = so.so_id

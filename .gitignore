@@ -281,3 +281,7 @@ secrets/
 USER_ACCESSIBILITIES_AND_FEATURES.md
 db/seed_ilo_references.sql
 db/README_SEED_ILO_REFERENCES.md
+scripts/check-assessments.js
+scripts/find-ilo-id.js
+scripts/find-section-course.js
+scripts/ilo-attainment-report.js

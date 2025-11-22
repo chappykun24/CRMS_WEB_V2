@@ -131,8 +131,59 @@ async function getILOAttainmentSummary(
       FROM course_enrollments ce
       INNER JOIN students s ON ce.student_id = s.student_id
       INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
-      INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-      INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+      INNER JOIN (
+        -- Dynamically extract assessment codes and match to ILO mappings
+        SELECT DISTINCT
+          a2.assessment_id,
+          COALESCE(aiw2.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id
+        FROM assessments a2
+        LEFT JOIN assessment_ilo_weights aiw2 ON a2.assessment_id = aiw2.assessment_id
+        LEFT JOIN (
+          SELECT DISTINCT r.assessment_id, r.ilo_id
+          FROM rubrics r
+          INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
+          WHERE a3.section_course_id = $1
+        ) r ON a2.assessment_id = r.assessment_id
+        LEFT JOIN (
+          WITH assessment_codes AS (
+            SELECT DISTINCT
+              a4.assessment_id,
+              COALESCE(
+                -- Try to get code from syllabus assessment_framework JSON
+                (
+                  SELECT (task->>'code')::text
+                  FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+                  CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+                  WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
+                     OR (task->>'name')::text ILIKE '%' || a4.title || '%'
+                  LIMIT 1
+                ),
+                -- Try to get code from assessment content_data
+                (a4.content_data->>'code')::text,
+                (a4.content_data->>'abbreviation')::text,
+                -- Extract code dynamically from title using pattern matching
+                UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a4.title ~* '[A-Z]{2,4}\s*\d+',
+                NULL
+              ) AS assessment_code
+            FROM assessments a4
+            INNER JOIN syllabi sy ON a4.syllabus_id = sy.syllabus_id
+            WHERE a4.section_course_id = $1
+          )
+          SELECT DISTINCT
+            ac.assessment_id,
+            COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
+          FROM assessment_codes ac
+          LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          WHERE ac.assessment_code IS NOT NULL
+            AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+        ) im ON a2.assessment_id = im.assessment_id
+        WHERE a2.section_course_id = $1
+          AND (aiw2.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+      ) aic ON a.assessment_id = aic.assessment_id
+      INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       LEFT JOIN submissions sub ON (
         ce.enrollment_id = sub.enrollment_id 
@@ -303,7 +354,67 @@ async function getILOStudentList(
   const iloInfo = iloResult.rows[0];
   
   // Get assessments connected to this ILO (with optional SO/SDG/IGA/CDIO filter)
+  // Use the same logic as the script: extract assessment codes and match to ILO mappings
   const assessmentsQuery = `
+    WITH assessment_codes AS (
+      SELECT DISTINCT
+        a.assessment_id,
+        COALESCE(
+          -- Try to get code from syllabus assessment_framework JSON
+          (
+            SELECT (task->>'code')::text
+            FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+            CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+            WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
+               OR (task->>'name')::text ILIKE '%' || a.title || '%'
+            LIMIT 1
+          ),
+          -- Try to get code from assessment content_data
+          (a.content_data->>'code')::text,
+          (a.content_data->>'abbreviation')::text,
+          -- Extract code dynamically from title using pattern matching
+          UPPER(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a.title ~* '[A-Z]{2,4}\s*\d+',
+          NULL
+        ) AS assessment_code
+      FROM assessments a
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      WHERE a.section_course_id = $1
+    ),
+    ilo_from_rubrics AS (
+      SELECT DISTINCT
+        r.assessment_id,
+        r.ilo_id
+      FROM rubrics r
+      INNER JOIN assessments a ON r.assessment_id = a.assessment_id
+      WHERE a.section_course_id = $1
+    ),
+    ilo_from_mappings AS (
+      SELECT DISTINCT
+        ac.assessment_id,
+        COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id,
+        -- Use assessment weight_percentage as ILO weight, or default to 0
+        COALESCE(a.weight_percentage, 0) AS ilo_weight_percentage
+      FROM assessment_codes ac
+      INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
+      LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      WHERE ac.assessment_code IS NOT NULL
+        AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+    ),
+    assessment_ilo_connections AS (
+      SELECT DISTINCT
+        a.assessment_id,
+        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
+        COALESCE(aiw.weight_percentage, im.ilo_weight_percentage, 0) AS ilo_weight_percentage
+      FROM assessments a
+      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+      LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id
+      LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id
+      WHERE a.section_course_id = $1
+        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+    )
     SELECT DISTINCT
       a.assessment_id,
       a.title AS assessment_title,
@@ -311,15 +422,15 @@ async function getILOStudentList(
       a.total_points,
       a.weight_percentage,
       a.due_date,
-      aiw.weight_percentage AS ilo_weight_percentage,
+      aic.ilo_weight_percentage,
       -- Get all mappings for this assessment's ILO
       ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
       ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
       ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
       ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
     FROM assessments a
-    INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-    INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+    INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+    INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
     LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
@@ -330,14 +441,14 @@ async function getILOStudentList(
     LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE a.section_course_id = $1
-      AND aiw.ilo_id = $2
+      AND aic.ilo_id = $2
       AND sy.section_course_id = $1
       AND i.is_active = TRUE
       ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
       ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
       ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
       ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
-    GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.weight_percentage
+    GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_weight_percentage
     ORDER BY a.due_date ASC, a.title ASC
   `;
   
