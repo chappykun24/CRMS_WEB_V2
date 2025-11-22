@@ -991,55 +991,71 @@ async function getILOStudentList(
     INNER JOIN students s ON ce.student_id = s.student_id
     INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
     INNER JOIN (
-      SELECT DISTINCT
-        a2.assessment_id,
-        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
-        COALESCE(aiw.weight_percentage, a2.weight_percentage, 0) AS ilo_weight_percentage
-      FROM assessments a2
-      LEFT JOIN assessment_ilo_weights aiw ON a2.assessment_id = aiw.assessment_id
-      LEFT JOIN (
-        SELECT DISTINCT r.assessment_id, r.ilo_id
-        FROM rubrics r
-        INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
-        WHERE a3.section_course_id = $1
-      ) r ON a2.assessment_id = r.assessment_id
-      LEFT JOIN (
-        WITH assessment_codes AS (
-          SELECT DISTINCT
-            a4.assessment_id,
-            COALESCE(
-              (SELECT (task->>'code')::text
-               FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
-               CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
-               WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
-                  OR (task->>'name')::text ILIKE '%' || a4.title || '%'
-               LIMIT 1),
-              (a4.content_data->>'code')::text,
-              (a4.content_data->>'abbreviation')::text,
-              CASE 
-                WHEN a4.title ~* '[A-Z]{2,4}\s*\d+' 
-                THEN UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)'))
-                ELSE NULL
-              END,
-              NULL
-            ) AS assessment_code
-          FROM assessments a4
-          INNER JOIN syllabi sy ON a4.syllabus_id = sy.syllabus_id
-          WHERE a4.section_course_id = $1
-        )
+      -- Use the same assessment connection logic as connectedAssessmentsQuery
+      WITH ilo_syllabus AS (
+        SELECT DISTINCT syllabus_id
+        FROM ilos
+        WHERE ilo_id = $2 AND is_active = TRUE
+      ),
+      assessment_ilo_connections AS (
         SELECT DISTINCT
-          ac.assessment_id,
-          COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
-        FROM assessment_codes ac
-        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        WHERE ac.assessment_code IS NOT NULL
-          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
-      ) im ON a2.assessment_id = im.assessment_id
-      WHERE a2.section_course_id = $1
-        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+          a2.assessment_id,
+          -- Connect all assessments from the same syllabus to the target ILO ($2)
+          COALESCE(
+            CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
+            CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
+            CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
+            $2  -- Default: connect to target ILO since they're in the same syllabus
+          ) AS ilo_id,
+          COALESCE(
+            CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
+            a2.weight_percentage,
+            0
+          ) AS ilo_weight_percentage
+        FROM assessments a2
+        INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
+        INNER JOIN ilo_syllabus ils ON sy2.syllabus_id = ils.syllabus_id
+        LEFT JOIN assessment_ilo_weights aiw ON a2.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
+        LEFT JOIN (
+          SELECT DISTINCT r.assessment_id, r.ilo_id
+          FROM rubrics r
+          INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
+          WHERE a3.section_course_id = $1 AND r.ilo_id = $2
+        ) r ON a2.assessment_id = r.assessment_id
+        LEFT JOIN (
+          SELECT DISTINCT
+            ac.assessment_id,
+            COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
+          FROM assessment_codes_for_filter ac
+          LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND ism.ilo_id = $2
+          LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND isdg.ilo_id = $2
+          LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND iiga.ilo_id = $2
+          LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND icdio.ilo_id = $2
+          WHERE ac.assessment_code IS NOT NULL
+            AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2)
+        ) im ON a2.assessment_id = im.assessment_id
+        WHERE a2.section_course_id = $1
+          AND sy2.section_course_id = $1
+          AND a2.weight_percentage IS NOT NULL
+          AND a2.weight_percentage > 0
+          -- Apply filters: only include assessments that match selected mappings
+          ${hasFilters ? `AND EXISTS (
+            SELECT 1 FROM assessment_codes_for_filter acf
+            WHERE acf.assessment_id = a2.assessment_id
+              AND (
+                ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
+                ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+                ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+                ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+              )
+          )` : ''}
+      )
+      SELECT DISTINCT
+        aic.assessment_id,
+        aic.ilo_id,
+        aic.ilo_weight_percentage
+      FROM assessment_ilo_connections aic
+      WHERE aic.ilo_id = $2
     ) aic ON a.assessment_id = aic.assessment_id
     INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
@@ -1050,22 +1066,10 @@ async function getILOStudentList(
     )
       WHERE ce.section_course_id = $1
       AND ce.status = 'enrolled'
-      AND aic.ilo_id = $2
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
       AND i.is_active = TRUE
-      -- Apply same filter conditions to student scores query
-      ${hasFilters ? `AND EXISTS (
-        SELECT 1 FROM assessment_codes_for_filter acf
-        WHERE acf.assessment_id = a.assessment_id
-          AND (
-            ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
-            ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-            ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-            ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-          )
-      )` : ''}
   `;
   
   // Execute all queries
@@ -1095,6 +1099,22 @@ async function getILOStudentList(
     });
   } else {
     console.log(`[ATTAINMENT DEBUG] ⚠️ No connected assessments found! This is likely why assessments aren't showing.`);
+  }
+  
+  // Debug: Check if student scores are being found
+  if (scoresResult.rows.length > 0) {
+    const uniqueStudents = new Set(scoresResult.rows.map(r => r.student_id));
+    const uniqueAssessments = new Set(scoresResult.rows.map(r => r.assessment_id));
+    console.log(`[ATTAINMENT DEBUG] Student scores found: ${scoresResult.rows.length} records for ${uniqueStudents.size} students across ${uniqueAssessments.size} assessments`);
+    console.log(`[ATTAINMENT DEBUG] Sample score record:`, {
+      student_id: scoresResult.rows[0].student_id,
+      assessment_id: scoresResult.rows[0].assessment_id,
+      raw_score: scoresResult.rows[0].raw_score,
+      transmuted_score_calc: scoresResult.rows[0].transmuted_score_calc,
+      assessment_percentage: scoresResult.rows[0].assessment_percentage
+    });
+  } else {
+    console.log(`[ATTAINMENT DEBUG] ⚠️ No student score records found! This is why students show 0.00 scores.`);
   }
   
   // Step 4: Process results in JavaScript (simpler and more accurate)
