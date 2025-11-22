@@ -8,7 +8,9 @@ import {
   ArrowLeftIcon,
   ArrowDownTrayIcon,
   FunnelIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  ChevronDownIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/solid'
 
 const ILOAttainment = () => {
@@ -27,6 +29,7 @@ const ILOAttainment = () => {
   const [showStudents, setShowStudents] = useState(false)
   const [iloCombinations, setIloCombinations] = useState([])
   const [showCombinations, setShowCombinations] = useState(false)
+  const [expandedStudents, setExpandedStudents] = useState(new Set())
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
@@ -377,6 +380,19 @@ const ILOAttainment = () => {
   // Handle show students
   const handleShowStudents = () => {
     setShowStudents(true)
+  }
+
+  // Toggle expanded student
+  const toggleStudentExpanded = (studentId) => {
+    setExpandedStudents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId)
+      } else {
+        newSet.add(studentId)
+      }
+      return newSet
+    })
   }
 
   // Export to Excel
@@ -1232,6 +1248,9 @@ const ILOAttainment = () => {
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                               <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                                  
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Student Number
                                 </th>
@@ -1253,49 +1272,140 @@ const ILOAttainment = () => {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {rangeGroup.students.map((student) => (
-                                <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="text-sm text-gray-900">{student.student_number}</span>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-sm text-gray-900">{student.full_name}</span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="text-sm font-medium text-gray-900">{student.ilo_score?.toFixed(2) || '0.00'}</span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`text-sm font-medium ${
-                                      (student.overall_attainment_rate || 0) >= 80 ? 'text-green-600' :
-                                      (student.overall_attainment_rate || 0) >= 60 ? 'text-yellow-600' :
-                                      'text-red-600'
-                                    }`}>
-                                      {(student.overall_attainment_rate || 0).toFixed(2)}%
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                      student.attainment_status === 'attained'
-                                        ? 'bg-green-100 text-green-800 border border-green-200'
-                                        : 'bg-red-100 text-red-800 border border-red-200'
-                                    }`}>
-                                      {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                      student.performance_level === 'high'
-                                        ? 'bg-green-100 text-green-800 border border-green-200'
-                                        : student.performance_level === 'medium'
-                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                                        : 'bg-red-100 text-red-800 border border-red-200'
-                                    }`}>
-                                      {student.performance_level === 'high' ? 'High' :
-                                       student.performance_level === 'medium' ? 'Medium' : 'Low'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
+                              {rangeGroup.students.map((student) => {
+                                const isExpanded = expandedStudents.has(student.student_id)
+                                return (
+                                  <React.Fragment key={student.student_id}>
+                                    <tr className="hover:bg-gray-50 transition-colors">
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <button
+                                          onClick={() => toggleStudentExpanded(student.student_id)}
+                                          className="text-gray-500 hover:text-gray-700 transition-colors"
+                                          title={isExpanded ? 'Hide assessment scores' : 'Show assessment scores'}
+                                        >
+                                          {isExpanded ? (
+                                            <ChevronDownIcon className="h-5 w-5" />
+                                          ) : (
+                                            <ChevronRightIcon className="h-5 w-5" />
+                                          )}
+                                        </button>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="text-sm text-gray-900">{student.student_number}</span>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        <span className="text-sm text-gray-900">{student.full_name}</span>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="text-sm font-medium text-gray-900">{student.ilo_score?.toFixed(2) || '0.00'}</span>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`text-sm font-medium ${
+                                          (student.overall_attainment_rate || 0) >= 80 ? 'text-green-600' :
+                                          (student.overall_attainment_rate || 0) >= 60 ? 'text-yellow-600' :
+                                          'text-red-600'
+                                        }`}>
+                                          {(student.overall_attainment_rate || 0).toFixed(2)}%
+                                        </span>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                          student.attainment_status === 'attained'
+                                            ? 'bg-green-100 text-green-800 border border-green-200'
+                                            : 'bg-red-100 text-red-800 border border-red-200'
+                                        }`}>
+                                          {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
+                                        </span>
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                          student.performance_level === 'high'
+                                            ? 'bg-green-100 text-green-800 border border-green-200'
+                                            : student.performance_level === 'medium'
+                                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                            : 'bg-red-100 text-red-800 border border-red-200'
+                                        }`}>
+                                          {student.performance_level === 'high' ? 'High' :
+                                           student.performance_level === 'medium' ? 'Medium' : 'Low'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                    {isExpanded && student.assessment_scores && student.assessment_scores.length > 0 && (
+                                      <tr className="bg-gray-50">
+                                        <td colSpan="7" className="px-6 py-4">
+                                          <div className="bg-white rounded-lg border border-gray-200 p-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Individual Assessment Scores</h4>
+                                            <div className="overflow-x-auto">
+                                              <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
+                                                  <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      Assessment
+                                                    </th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      Score / Max Score
+                                                    </th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      Percentage
+                                                    </th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      Transmuted Score
+                                                    </th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      Weight %
+                                                    </th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                      ILO Weight %
+                                                    </th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                  {student.assessment_scores.map((assessment, idx) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                      <td className="px-4 py-2">
+                                                        <span className="text-sm text-gray-900">{assessment.assessment_title}</span>
+                                                      </td>
+                                                      <td className="px-4 py-2 whitespace-nowrap">
+                                                        <span className="text-sm font-medium text-gray-900">
+                                                          {assessment.raw_score?.toFixed(2) || '0.00'} / {assessment.max_score || 0}
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-4 py-2 whitespace-nowrap">
+                                                        <span className={`text-sm font-medium ${
+                                                          (assessment.score_percentage || 0) >= 80 ? 'text-green-600' :
+                                                          (assessment.score_percentage || 0) >= 60 ? 'text-yellow-600' :
+                                                          'text-red-600'
+                                                        }`}>
+                                                          {(assessment.score_percentage || 0).toFixed(2)}%
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-4 py-2 whitespace-nowrap">
+                                                        <span className="text-sm text-gray-700">
+                                                          {assessment.transmuted_score?.toFixed(2) || '0.00'}
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-4 py-2 whitespace-nowrap">
+                                                        <span className="text-sm text-gray-700">
+                                                          {assessment.weight_percentage?.toFixed(1) || '0.0'}%
+                                                        </span>
+                                                      </td>
+                                                      <td className="px-4 py-2 whitespace-nowrap">
+                                                        <span className="text-sm text-gray-700">
+                                                          {assessment.ilo_weight_percentage?.toFixed(1) || '0.0'}%
+                                                        </span>
+                                                      </td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                )
+                              })}
                             </tbody>
                           </table>
                         </div>

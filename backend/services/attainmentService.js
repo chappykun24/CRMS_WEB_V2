@@ -558,7 +558,7 @@ async function getILOStudentList(
     };
   });
   
-  // Get student scores for this ILO - combine all assessments and calculate overall attainment rate
+  // Get student scores for this ILO - include individual assessment scores and combine them
   const studentQuery = `
     WITH student_assessment_scores AS (
       SELECT
@@ -568,9 +568,16 @@ async function getILOStudentList(
         s.full_name,
         aic.ilo_id,
         a.assessment_id,
-        a.total_points,
+        a.title AS assessment_title,
+        a.total_points AS max_score,
         a.weight_percentage,
         aic.ilo_weight_percentage,
+        -- Raw scores from submission
+        COALESCE(sub.total_score, sub.adjusted_score, 0) AS raw_score,
+        sub.adjusted_score,
+        sub.total_score,
+        sub.transmuted_score,
+        -- Calculate transmuted score
         CASE 
           WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
           WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
@@ -578,7 +585,8 @@ async function getILOStudentList(
           WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
           THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
           ELSE NULL
-        END AS transmuted_score,
+        END AS transmuted_score_calc,
+        -- Calculate assessment percentage (score/max_score * 100)
         CASE 
           WHEN sub.transmuted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage > 0 THEN
             ((sub.transmuted_score / (a.weight_percentage / 100.0) - 37.5) / 62.5) * 100
@@ -615,38 +623,71 @@ async function getILOStudentList(
         ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
         ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
         ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = ${cdioId})` : ''}
+    ),
+    student_aggregated AS (
+      SELECT
+        student_id,
+        enrollment_id,
+        student_number,
+        full_name,
+        -- Overall ILO score: sum of all transmuted scores
+        COALESCE(
+          SUM(transmuted_score_calc) FILTER (WHERE transmuted_score_calc IS NOT NULL),
+          0
+        ) AS ilo_score,
+        -- Overall attainment rate: (all assessment scores combined) / (all max scores combined)
+        -- This matches the flowchart: Overall percentage = all assessment score combined / all max
+        COALESCE(
+          SUM(raw_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) /
+          NULLIF(
+            SUM(max_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0),
+            0
+          ) * 100,
+          0
+        ) AS overall_attainment_rate,
+        -- Count of assessments with scores
+        COUNT(DISTINCT assessment_id) FILTER (
+          WHERE transmuted_score_calc IS NOT NULL OR assessment_percentage IS NOT NULL
+        ) AS assessments_count,
+        -- Total ILO weight
+        SUM(DISTINCT COALESCE(ilo_weight_percentage, weight_percentage)) AS total_ilo_weight,
+        -- Total combined scores and max scores for reference
+        SUM(raw_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_score,
+        SUM(max_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_max
+      FROM student_assessment_scores
+      WHERE transmuted_score_calc IS NOT NULL OR assessment_percentage IS NOT NULL
+      GROUP BY student_id, enrollment_id, student_number, full_name
     )
     SELECT
-      student_id,
-      enrollment_id,
-      student_number,
-      full_name,
-      -- Overall ILO score: sum of all transmuted scores
+      sa.student_id,
+      sa.enrollment_id,
+      sa.student_number,
+      sa.full_name,
+      sa.ilo_score,
+      sa.overall_attainment_rate,
+      sa.assessments_count,
+      sa.total_ilo_weight,
+      -- Individual assessment scores as JSON array
       COALESCE(
-        SUM(transmuted_score) FILTER (WHERE transmuted_score IS NOT NULL),
-        0
-      ) AS ilo_score,
-      -- Overall attainment rate: weighted average of all assessment percentages
-      COALESCE(
-        SUM(assessment_percentage * COALESCE(ilo_weight_percentage, weight_percentage)) 
-          FILTER (WHERE assessment_percentage IS NOT NULL) /
-        NULLIF(
-          SUM(COALESCE(ilo_weight_percentage, weight_percentage)) 
-            FILTER (WHERE assessment_percentage IS NOT NULL),
-          0
-        ),
-        0
-      ) AS overall_attainment_rate,
-      -- Count of assessments with scores
-      COUNT(DISTINCT assessment_id) FILTER (
-        WHERE transmuted_score IS NOT NULL OR assessment_percentage IS NOT NULL
-      ) AS assessments_count,
-      -- Total ILO weight
-      SUM(DISTINCT COALESCE(ilo_weight_percentage, weight_percentage)) AS total_ilo_weight
-    FROM student_assessment_scores
-    WHERE transmuted_score IS NOT NULL OR assessment_percentage IS NOT NULL
-    GROUP BY student_id, enrollment_id, student_number, full_name
-    ORDER BY overall_attainment_rate DESC, full_name ASC
+        json_agg(
+          json_build_object(
+            'assessment_id', sas.assessment_id,
+            'assessment_title', sas.assessment_title,
+            'raw_score', ROUND(COALESCE(sas.raw_score, 0)::NUMERIC, 2),
+            'max_score', sas.max_score,
+            'score_percentage', ROUND(COALESCE(sas.assessment_percentage, 0)::NUMERIC, 2),
+            'transmuted_score', ROUND(COALESCE(sas.transmuted_score_calc, 0)::NUMERIC, 2),
+            'weight_percentage', sas.weight_percentage,
+            'ilo_weight_percentage', sas.ilo_weight_percentage
+          ) ORDER BY sas.assessment_id
+        ) FILTER (WHERE sas.assessment_id IS NOT NULL),
+        '[]'::json
+      ) AS assessment_scores
+    FROM student_aggregated sa
+    LEFT JOIN student_assessment_scores sas ON sa.student_id = sas.student_id
+      AND (sas.transmuted_score_calc IS NOT NULL OR sas.assessment_percentage IS NOT NULL)
+    GROUP BY sa.student_id, sa.enrollment_id, sa.student_number, sa.full_name, sa.ilo_score, sa.overall_attainment_rate, sa.assessments_count, sa.total_ilo_weight
+    ORDER BY sa.overall_attainment_rate DESC, sa.full_name ASC
   `;
   
   const studentResult = await db.query(studentQuery, [sectionCourseId, iloId]);
@@ -691,7 +732,8 @@ async function getILOStudentList(
       total_ilo_weight: parseFloat(row.total_ilo_weight || 0),
       attainment_status: attained ? 'attained' : 'not_attained',
       performance_level: performanceLevel,
-      percentage_range: percentageRange
+      percentage_range: percentageRange,
+      assessment_scores: row.assessment_scores || [] // Individual assessment scores
     };
   });
   
