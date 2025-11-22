@@ -486,11 +486,11 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
             (
               SELECT UPPER(
                 REGEXP_REPLACE(
-                  REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\s+([A-Z])[a-z]*\s*(\d+)', '\1\2\3'),
+                  REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\\s+([A-Z])[a-z]*\\s*(\\d+)', '\\\\1\\\\2\\\\3'),
                   '[^A-Z0-9]', '', 'g'
                 )
               )
-              WHERE a.title ~* '^[A-Z][a-z]+\s+[A-Z][a-z]+\s+\d+'
+              WHERE a.title ~* '^[A-Z][a-z]+\\s+[A-Z][a-z]+\\s+\\d+'
             ),
             NULL
           ) AS assessment_code
