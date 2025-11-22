@@ -448,6 +448,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
         WHERE sy.section_course_id = $1
           AND i.is_active = TRUE
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
           ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
           ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
@@ -530,6 +531,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         FROM assessments a
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         WHERE a.section_course_id = $1
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
       -- Get ILOs from rubrics if assessment_ilo_weights doesn't have connections
@@ -541,6 +543,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         INNER JOIN assessments a ON r.assessment_id = a.assessment_id
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         WHERE a.section_course_id = $1
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
       -- Get ILOs from mapping tables using assessment_tasks arrays (dynamic matching)
@@ -555,7 +558,8 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id
-        WHERE sy.approval_status = 'approved'
+        WHERE sy.review_status = 'approved'
+          AND sy.approval_status = 'approved'
         LEFT JOIN ilo_so_mappings ism ON (
           ism.ilo_id = i.ilo_id
           AND (
@@ -628,6 +632,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = i.ilo_id
         LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id AND im.ilo_id = i.ilo_id
         WHERE a.section_course_id = $1
+          AND sy_assessment.review_status = 'approved'
           AND sy_assessment.approval_status = 'approved'
       ),
       assessment_stats AS (
@@ -675,6 +680,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         )
         WHERE a.section_course_id = $1
           AND sy.section_course_id = $1
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
           AND a.weight_percentage IS NOT NULL
           AND a.weight_percentage > 0
@@ -701,6 +707,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
         LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
         WHERE sy.section_course_id = $1
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
           AND i.is_active = TRUE
       )
