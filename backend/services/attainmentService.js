@@ -454,7 +454,6 @@ async function getILOStudentList(
         ) AS ilo_id,
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
-          CASE WHEN im.ilo_id = $2 THEN im.ilo_weight_percentage ELSE NULL END,
           a.weight_percentage,
           0
         ) AS ilo_weight_percentage
@@ -825,7 +824,6 @@ async function getILOStudentList(
         ) AS ilo_id,
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
-          CASE WHEN im.ilo_id = $2 THEN im.ilo_weight_percentage ELSE NULL END,
           a.weight_percentage,
           0
         ) AS ilo_weight_percentage
