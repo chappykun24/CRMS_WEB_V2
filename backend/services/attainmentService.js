@@ -1559,25 +1559,9 @@ async function getILOStudentList(
   `;
   
   // Build parameters for student scores query
+  // NOTE: We don't add filter params (soId, sdgId, etc.) here anymore since we filter by assessment IDs
   const studentScoresParams = [sectionCourseId, iloId];
   let studentScoresParamIndex = 3;
-  
-  // Add filter parameters first (in same order as assessmentFilterParams)
-  if (soId) {
-    studentScoresParams.push(soId);
-  }
-  if (sdgId) {
-    studentScoresParams.push(sdgId);
-  }
-  if (igaId) {
-    studentScoresParams.push(igaId);
-  }
-  if (cdioId) {
-    studentScoresParams.push(cdioId);
-  }
-  
-  // Update param index after filters
-  studentScoresParamIndex = 3 + (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0);
   
   let studentScoresSyllabusCondition = '';
   let studentScoresTermCondition = '';
