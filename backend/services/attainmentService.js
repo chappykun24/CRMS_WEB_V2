@@ -561,9 +561,119 @@ async function getILOStudentList(
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
   
+  // Debug: First check if there are any assessments in the section course at all
+  const debugAssessmentsQuery = `
+    SELECT 
+      a.assessment_id,
+      a.title,
+      a.syllabus_id,
+      sy.section_course_id as sy_section_course_id,
+      a.section_course_id as a_section_course_id,
+      a.weight_percentage
+    FROM assessments a
+    INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+    WHERE a.section_course_id = $1
+      AND sy.section_course_id = $1
+    ORDER BY a.assessment_id
+    LIMIT 10
+  `;
+  
+  try {
+    const debugAssessments = await db.query(debugAssessmentsQuery, [sectionCourseId]);
+    console.log(`[ATTAINMENT DEBUG] Total assessments in section_course ${sectionCourseId}: ${debugAssessments.rows.length}`);
+    if (debugAssessments.rows.length > 0) {
+      console.log(`[ATTAINMENT DEBUG] Sample assessments:`, debugAssessments.rows.map(a => ({
+        id: a.assessment_id,
+        title: a.title,
+        syllabus_id: a.syllabus_id,
+        sy_section_course_id: a.sy_section_course_id,
+        a_section_course_id: a.a_section_course_id,
+        weight: a.weight_percentage
+      })));
+    }
+  } catch (debugError) {
+    console.error(`[ATTAINMENT DEBUG] Error checking assessments:`, debugError);
+  }
+  
+  // Debug: Check the ILO's syllabus
+  const debugILOSyllabusQuery = `
+    SELECT 
+      i.ilo_id,
+      i.code,
+      i.syllabus_id,
+      sy.section_course_id
+    FROM ilos i
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    WHERE i.ilo_id = $1
+      AND i.is_active = TRUE
+  `;
+  
+  try {
+    const debugILO = await db.query(debugILOSyllabusQuery, [iloId]);
+    console.log(`[ATTAINMENT DEBUG] ILO ${iloId} info:`, debugILO.rows[0] || 'NOT FOUND');
+  } catch (debugError) {
+    console.error(`[ATTAINMENT DEBUG] Error checking ILO:`, debugError);
+  }
+  
+  // Debug: Check assessment_ilo_connections CTE
+  const debugConnectionsQuery = `
+    WITH target_ilo_syllabus AS (
+      SELECT DISTINCT syllabus_id
+      FROM ilos
+      WHERE ilo_id = $2 AND is_active = TRUE
+    )
+    SELECT 
+      COUNT(*) as total_assessments_in_syllabus,
+      COUNT(*) FILTER (WHERE a.weight_percentage IS NOT NULL AND a.weight_percentage > 0) as valid_assessments
+    FROM assessments a
+    INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+    INNER JOIN target_ilo_syllabus tis ON sy.syllabus_id = tis.syllabus_id
+    WHERE a.section_course_id = $1
+      AND sy.section_course_id = $1
+  `;
+  
+  try {
+    const debugConnections = await db.query(debugConnectionsQuery, [sectionCourseId, iloId]);
+    console.log(`[ATTAINMENT DEBUG] Assessments in ILO's syllabus:`, debugConnections.rows[0]);
+    
+    // Also get sample assessments from the same syllabus
+    const debugSampleQuery = `
+      WITH target_ilo_syllabus AS (
+        SELECT DISTINCT syllabus_id
+        FROM ilos
+        WHERE ilo_id = $2 AND is_active = TRUE
+      )
+      SELECT 
+        a.assessment_id,
+        a.title,
+        a.weight_percentage,
+        sy.syllabus_id,
+        sy.section_course_id
+      FROM assessments a
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      INNER JOIN target_ilo_syllabus tis ON sy.syllabus_id = tis.syllabus_id
+      WHERE a.section_course_id = $1
+        AND sy.section_course_id = $1
+        AND a.weight_percentage IS NOT NULL
+        AND a.weight_percentage > 0
+      LIMIT 5
+    `;
+    const debugSample = await db.query(debugSampleQuery, [sectionCourseId, iloId]);
+    console.log(`[ATTAINMENT DEBUG] Sample assessments from ILO's syllabus:`, debugSample.rows);
+  } catch (debugError) {
+    console.error(`[ATTAINMENT DEBUG] Error checking connections:`, debugError);
+  }
+  
+  // Debug: Log the actual query being executed
+  console.log(`[ATTAINMENT DEBUG] Executing assessmentsQuery with params:`, assessmentFilterParams);
+  console.log(`[ATTAINMENT DEBUG] Filter conditions:`, assessmentFilterConditions || '(none)');
+  
   const assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
   
   console.log(`[ATTAINMENT SERVICE] Found ${assessmentsResult.rows.length} assessments for ILO ${iloId} in section_course ${sectionCourseId}`);
+  console.log(`[ATTAINMENT SERVICE] Query params:`, assessmentFilterParams);
+  console.log(`[ATTAINMENT SERVICE] Filter conditions:`, assessmentFilterConditions);
+  
   if (assessmentsResult.rows.length === 0) {
     console.log(`[ATTAINMENT SERVICE] No assessments found. Checking assessment_ilo_connections...`);
     // Debug query to see if there are any connections at all
