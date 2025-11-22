@@ -41,15 +41,19 @@ const ILOAttainment = () => {
   useEffect(() => {
     const fetchActiveTerm = async () => {
       try {
-        const response = await fetch('/api/school-terms/active')
+        const response = await fetch('/api/school-terms')
         if (response.ok) {
-          const data = await response.json()
-          if (data.term_id) {
-            setActiveTermId(data.term_id)
+          const terms = await response.json()
+          const activeTerm = Array.isArray(terms) ? terms.find(t => t.is_active) : null
+          if (activeTerm) {
+            setActiveTermId(activeTerm.term_id)
+            console.log('✅ [ILO ATTAINMENT] Active term found:', activeTerm.term_id, activeTerm.school_year, activeTerm.semester)
+          } else {
+            console.warn('⚠️ [ILO ATTAINMENT] No active term found')
           }
         }
       } catch (error) {
-        console.error('Error fetching active term:', error)
+        console.error('❌ [ILO ATTAINMENT] Error fetching active term:', error)
       }
     }
     fetchActiveTerm()
