@@ -1212,6 +1212,35 @@ async function getILOStudentList(
   `;
   
   // Step 2: Get ILO combination mappings first (separate query to get assessment_tasks)
+  // Build parameterized query with correct parameter indices
+  const iloMappingsParams = [sectionCourseId, iloId];
+  let iloMappingsParamIndex = 3;
+  let iloMappingsSoCondition = '';
+  let iloMappingsSdgCondition = '';
+  let iloMappingsIgaCondition = '';
+  let iloMappingsCdioCondition = '';
+  
+  if (soId) {
+    iloMappingsParams.push(soId);
+    iloMappingsSoCondition = `AND ism.so_id = $${iloMappingsParamIndex}`;
+    iloMappingsParamIndex++;
+  }
+  if (sdgId) {
+    iloMappingsParams.push(sdgId);
+    iloMappingsSdgCondition = `AND isdg.sdg_id = $${iloMappingsParamIndex}`;
+    iloMappingsParamIndex++;
+  }
+  if (igaId) {
+    iloMappingsParams.push(igaId);
+    iloMappingsIgaCondition = `AND iiga.iga_id = $${iloMappingsParamIndex}`;
+    iloMappingsParamIndex++;
+  }
+  if (cdioId) {
+    iloMappingsParams.push(cdioId);
+    iloMappingsCdioCondition = `AND icdio.cdio_id = $${iloMappingsParamIndex}`;
+    iloMappingsParamIndex++;
+  }
+  
   const iloMappingsQuery = `
     SELECT 
       ism.so_id,
@@ -1224,10 +1253,10 @@ async function getILOStudentList(
       icdio.assessment_tasks AS cdio_assessment_tasks
     FROM ilos i
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
-    LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id ${soId ? `AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1}` : ''}
-    LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id ${sdgId ? `AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1}` : ''}
-    LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id ${igaId ? `AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1}` : ''}
-    LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id ${cdioId ? `AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1}` : ''}
+    LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id ${iloMappingsSoCondition}
+    LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id ${iloMappingsSdgCondition}
+    LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id ${iloMappingsIgaCondition}
+    LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id ${iloMappingsCdioCondition}
     WHERE i.ilo_id = $2 
       AND i.is_active = TRUE
       AND sy.section_course_id = $1
@@ -1236,7 +1265,7 @@ async function getILOStudentList(
   `;
 
   // Execute ILO mappings query first
-  const iloMappingsResult = await db.query(iloMappingsQuery, assessmentFilterParams);
+  const iloMappingsResult = await db.query(iloMappingsQuery, iloMappingsParams);
   
   // Get the specific assessment_tasks from the selected pair (not all mappings)
   // This is the key: we only want assessments from the specific ILO-mapping pair
