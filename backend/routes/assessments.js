@@ -840,7 +840,8 @@ router.get('/ilo-attainment', async (req, res) => {
       so_id,
       sdg_id,
       iga_id,
-      cdio_id
+      cdio_id,
+      syllabus_id
     } = req.query;
 
     // Validate required parameters
@@ -860,6 +861,7 @@ router.get('/ilo-attainment', async (req, res) => {
     const sdgId = sdg_id ? parseInt(sdg_id) : null;
     const igaId = iga_id ? parseInt(iga_id) : null;
     const cdioId = cdio_id ? parseInt(cdio_id) : null;
+    const syllabusId = syllabus_id ? parseInt(syllabus_id) : null;
 
     // Validate performance filter
     if (!['all', 'high', 'low'].includes(performance_filter)) {
@@ -869,7 +871,7 @@ router.get('/ilo-attainment', async (req, res) => {
       });
     }
 
-    console.log(`[ILO ATTAINMENT] Fetching attainment data for section_course_id: ${sectionCourseId}, ilo_id: ${iloId || 'all'}`);
+    console.log(`[ILO ATTAINMENT] Fetching attainment data for section_course_id: ${sectionCourseId}, ilo_id: ${iloId || 'all'}, syllabus_id: ${syllabusId || 'auto'}`);
 
     const result = await calculateILOAttainment(
       sectionCourseId,
@@ -881,7 +883,8 @@ router.get('/ilo-attainment', async (req, res) => {
       soId,
       sdgId,
       igaId,
-      cdioId
+      cdioId,
+      syllabusId
     );
 
     res.json({

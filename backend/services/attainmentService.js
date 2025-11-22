@@ -8,6 +8,7 @@ import db from '../config/database.js';
  * @param {string} performanceFilter - "high" | "low" | "all" (default: "all")
  * @param {number} highThreshold - Threshold for "high" performance (default: 80)
  * @param {number} lowThreshold - Threshold for "low" performance (default: 75)
+ * @param {number|null} syllabusId - Optional syllabus ID to filter by (default: null, uses active term's syllabus)
  * @returns {Promise<Object>} Attainment data (summary or student list)
  */
 export async function calculateILOAttainment(
@@ -20,15 +21,28 @@ export async function calculateILOAttainment(
   soId = null,
   sdgId = null,
   igaId = null,
-  cdioId = null
+  cdioId = null,
+  syllabusId = null
 ) {
   try {
+    // Get active term
+    const activeTermQuery = `
+      SELECT term_id
+      FROM school_terms
+      WHERE is_active = TRUE
+      ORDER BY term_id DESC
+      LIMIT 1
+    `;
+    const activeTermResult = await db.query(activeTermQuery);
+    const activeTermId = activeTermResult.rows.length > 0 ? activeTermResult.rows[0].term_id : null;
+
     // Get section course and course info
     const sectionCourseQuery = `
       SELECT 
         sc.section_course_id,
         sc.section_id,
         sc.course_id,
+        sc.term_id,
         c.title AS course_title,
         c.course_code,
         s.section_code,
@@ -47,6 +61,24 @@ export async function calculateILOAttainment(
     
     const sectionCourse = sectionCourseResult.rows[0];
     
+    // If no syllabus_id provided, get the syllabus for this section course in the active term
+    let finalSyllabusId = syllabusId;
+    if (!finalSyllabusId) {
+      const syllabusQuery = `
+        SELECT syllabus_id
+        FROM syllabi
+        WHERE section_course_id = $1
+          AND review_status = 'approved'
+          AND approval_status = 'approved'
+        ORDER BY syllabus_id DESC
+        LIMIT 1
+      `;
+      const syllabusResult = await db.query(syllabusQuery, [sectionCourseId]);
+      if (syllabusResult.rows.length > 0) {
+        finalSyllabusId = syllabusResult.rows[0].syllabus_id;
+      }
+    }
+    
     if (iloId) {
       // Return student list for specific ILO with assessments
       return await getILOStudentList(
@@ -60,7 +92,9 @@ export async function calculateILOAttainment(
         soId,
         sdgId,
         igaId,
-        cdioId
+        cdioId,
+        activeTermId,
+        finalSyllabusId
       );
     } else {
       // Return summary for all ILOs (with optional filters)
@@ -73,7 +107,9 @@ export async function calculateILOAttainment(
         soId,
         sdgId,
         igaId,
-        cdioId
+        cdioId,
+        activeTermId,
+        finalSyllabusId
       );
     }
   } catch (error) {
@@ -102,8 +138,18 @@ async function getILOAttainmentSummary(
   soId = null,
   sdgId = null,
   igaId = null,
-  cdioId = null
+  cdioId = null,
+  activeTermId = null,
+  syllabusId = null
 ) {
+  // Build WHERE conditions for active term and syllabus
+  const termCondition = activeTermId ? `AND sc.term_id = ${activeTermId}` : '';
+  const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
+  const syllabusCondition2 = syllabusId ? `AND sy2.syllabus_id = ${syllabusId}` : '';
+  const syllabusCondition3 = syllabusId ? `AND sy3.syllabus_id = ${syllabusId}` : '';
+  const syllabusCondition4 = syllabusId ? `AND sy4.syllabus_id = ${syllabusId}` : '';
+  const syllabusCondition5 = syllabusId ? `AND sy5.syllabus_id = ${syllabusId}` : '';
+
   const query = `
     WITH student_ilo_scores AS (
       SELECT
@@ -130,6 +176,7 @@ async function getILOAttainmentSummary(
         ) AS ilo_score
       FROM course_enrollments ce
       INNER JOIN students s ON ce.student_id = s.student_id
+      INNER JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
       INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
       INNER JOIN (
         -- Dynamically extract assessment codes and match to ILO mappings
@@ -137,6 +184,7 @@ async function getILOAttainmentSummary(
           a2.assessment_id,
           COALESCE(aiw2.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id
         FROM assessments a2
+        INNER JOIN section_courses sc2 ON a2.section_course_id = sc2.section_course_id
         LEFT JOIN assessment_ilo_weights aiw2 ON a2.assessment_id = aiw2.assessment_id
         LEFT JOIN (
           SELECT DISTINCT r.assessment_id, r.ilo_id
@@ -146,6 +194,7 @@ async function getILOAttainmentSummary(
           WHERE a3.section_course_id = $1
             AND sy3.review_status = 'approved'
             AND sy3.approval_status = 'approved'
+            ${syllabusCondition3}
         ) r ON a2.assessment_id = r.assessment_id
         LEFT JOIN (
           WITH assessment_codes AS (
@@ -155,7 +204,7 @@ async function getILOAttainmentSummary(
                 -- Try to get code from syllabus assessment_framework JSON
                 (
                   SELECT (task->>'code')::text
-                  FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+                  FROM jsonb_array_elements(sy4.assessment_framework->'components') AS component
                   CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
                   WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
                      OR (task->>'name')::text ILIKE '%' || a4.title || '%'
@@ -173,10 +222,11 @@ async function getILOAttainmentSummary(
                 NULL
               ) AS assessment_code
             FROM assessments a4
-            INNER JOIN syllabi sy ON a4.syllabus_id = sy.syllabus_id
+            INNER JOIN syllabi sy4 ON a4.syllabus_id = sy4.syllabus_id
             WHERE a4.section_course_id = $1
-              AND sy.review_status = 'approved'
-          AND sy.approval_status = 'approved'
+              AND sy4.review_status = 'approved'
+          AND sy4.approval_status = 'approved'
+          ${syllabusCondition4}
           )
           SELECT DISTINCT
             ac.assessment_id,
@@ -193,6 +243,8 @@ async function getILOAttainmentSummary(
         WHERE a2.section_course_id = $1
           AND sy2.review_status = 'approved'
           AND sy2.approval_status = 'approved'
+          ${syllabusCondition2}
+          ${activeTermId ? `AND sc2.term_id = ${activeTermId}` : ''}
           AND (aiw2.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
       ) aic ON a.assessment_id = aic.assessment_id
       INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
@@ -210,7 +262,9 @@ async function getILOAttainmentSummary(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
+        ${syllabusCondition}
         AND a.section_course_id = $1
+        ${termCondition}
         ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
         ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
         ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
@@ -334,8 +388,13 @@ async function getILOStudentList(
   soId = null,
   sdgId = null,
   igaId = null,
-  cdioId = null
+  cdioId = null,
+  activeTermId = null,
+  syllabusId = null
 ) {
+  // Build WHERE conditions for active term and syllabus
+  const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
+  
   // First get ILO info and mappings
   const iloQuery = `
     SELECT
@@ -357,6 +416,7 @@ async function getILOStudentList(
     LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE i.ilo_id = $1 AND i.is_active = TRUE AND sy.review_status = 'approved' AND sy.approval_status = 'approved'
+      ${syllabusCondition}
     GROUP BY i.ilo_id, i.code, i.description
   `;
   
@@ -439,6 +499,7 @@ async function getILOStudentList(
       FROM assessments a
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       WHERE a.section_course_id = $1
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
     ),
     ilo_from_rubrics AS (
       SELECT DISTINCT
@@ -471,6 +532,7 @@ async function getILOStudentList(
         FROM ilos i
         INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
         WHERE i.ilo_id = $2 AND i.is_active = TRUE AND sy.review_status = 'approved' AND sy.approval_status = 'approved'
+          ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
       )
       SELECT DISTINCT
         a.assessment_id,
@@ -488,6 +550,7 @@ async function getILOStudentList(
           0
         ) AS ilo_weight_percentage
       FROM assessments a
+      INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN target_ilo_syllabus tis ON sy.syllabus_id = tis.syllabus_id
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
@@ -497,6 +560,8 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         -- Show ALL assessments from the same syllabus as the target ILO
@@ -534,6 +599,7 @@ async function getILOStudentList(
           END
         ), 0) AS total_score
       FROM assessments a
+      INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
       INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
@@ -546,6 +612,8 @@ async function getILOStudentList(
       WHERE a.section_course_id = $1
         AND aic.ilo_id = $2
         AND sy.section_course_id = $1
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
@@ -587,6 +655,7 @@ async function getILOStudentList(
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
       AND i.ilo_id = $2
+      ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
@@ -1011,6 +1080,7 @@ async function getILOStudentList(
       COALESCE(aic.ilo_weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage,
       COALESCE(ast.average_percentage, 0) AS average_percentage
     FROM assessments a
+    INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
     INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
     LEFT JOIN assessment_stats ast ON a.assessment_id = ast.assessment_id
     INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
@@ -1021,6 +1091,8 @@ async function getILOStudentList(
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
+      ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+      ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
       AND i.is_active = TRUE
     ORDER BY a.assessment_id
   `;
@@ -1039,6 +1111,7 @@ async function getILOStudentList(
         $2 AS ilo_id,
         COALESCE(aiw.weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage
       FROM assessments a
+      INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
@@ -1048,6 +1121,8 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND (aiw.ilo_id = $2 OR r.ilo_id = $2)
