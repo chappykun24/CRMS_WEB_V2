@@ -1307,30 +1307,14 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] Connect all from syllabus:`, connectAllFromSyllabus);
 
   // Step 3: Get assessments connected to this ILO combination (separate, simpler query)
-  // Build parameters for connectedAssessmentsQuery (needs syllabusId and activeTermId if provided)
+  // Build parameters for connectedAssessmentsQuery
+  // NOTE: We don't add filter params (soId, sdgId, etc.) here anymore since we filter by assessment IDs
   const connectedAssessmentsParams = [sectionCourseId, iloId];
   let connectedAssessmentsParamIndex = 3;
   let connectedAssessmentsSyllabusCondition = '';
   let connectedAssessmentsTermCondition = '';
   
-  // Add filter parameters to connectedAssessmentsParams
-  if (soId) {
-    connectedAssessmentsParams.push(soId);
-  }
-  if (sdgId) {
-    connectedAssessmentsParams.push(sdgId);
-  }
-  if (igaId) {
-    connectedAssessmentsParams.push(igaId);
-  }
-  if (cdioId) {
-    connectedAssessmentsParams.push(cdioId);
-  }
-  
-  // Update param index after filters
-  connectedAssessmentsParamIndex = 3 + (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0);
-  
-  // Store the starting index for assessment_tasks (will be set after syllabus/term params)
+  // Store the starting index for assessment IDs (will be set after syllabus/term params)
   let assessmentTasksParamStartIndex = connectedAssessmentsParamIndex;
   
   if (syllabusId) {
@@ -1345,13 +1329,6 @@ async function getILOStudentList(
     connectedAssessmentsTermCondition = `AND sc.term_id = $${connectedAssessmentsParamIndex}`;
     connectedAssessmentsParamIndex++;
     assessmentTasksParamStartIndex++;
-  }
-  
-  // Build filter conditions for connectedAssessmentsQuery (using 'ac' alias instead of 'acf')
-  let connectedAssessmentsFilterCondition = '';
-  if (hasFilters && filterConditionSQL) {
-    // Replace 'acf' with 'ac' to match the CTE alias
-    connectedAssessmentsFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac.');
   }
   
   console.log(`[ATTAINMENT DEBUG] selectedAssessmentTasks:`, selectedAssessmentTasks);
@@ -1475,8 +1452,10 @@ async function getILOStudentList(
     // Update condition to filter by assessment IDs
     if (assessmentIdsToInclude.size > 0) {
       const assessmentIdList = Array.from(assessmentIdsToInclude);
-      connectedAssessmentsParams.push(...assessmentIdList);
-      const paramPlaceholders = assessmentIdList.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}`).join(', ');
+      // Ensure all IDs are integers
+      const assessmentIdListInt = assessmentIdList.map(id => parseInt(id, 10));
+      connectedAssessmentsParams.push(...assessmentIdListInt);
+      const paramPlaceholders = assessmentIdListInt.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}::integer`).join(', ');
       assessmentTasksCondition = `a.assessment_id = ANY(ARRAY[${paramPlaceholders}])`;
     } else {
       assessmentTasksCondition = 'FALSE'; // No matching assessments
@@ -1484,10 +1463,8 @@ async function getILOStudentList(
   } else if (hasFilters && connectAllFromSyllabus) {
     // If assessment_tasks is empty/null, include all from syllabus
     assessmentTasksCondition = 'TRUE';
-  } else if (hasFilters && connectedAssessmentsFilterCondition) {
-    // Fallback to code matching
-    assessmentTasksCondition = `(${connectedAssessmentsFilterCondition})`;
   }
+  // Note: We no longer use connectedAssessmentsFilterCondition since we filter by assessment IDs
   
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsQuery params:`, connectedAssessmentsParams);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsSyllabusCondition: ${connectedAssessmentsSyllabusCondition || '(none)'}`);
