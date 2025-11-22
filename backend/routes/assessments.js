@@ -558,8 +558,6 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id
-        WHERE sy.review_status = 'approved'
-          AND sy.approval_status = 'approved'
         LEFT JOIN ilo_so_mappings ism ON (
           ism.ilo_id = i.ilo_id
           AND (
@@ -604,7 +602,9 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
             OR (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL)
           )
         )
-        WHERE (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+        WHERE sy.review_status = 'approved'
+          AND sy.approval_status = 'approved'
+          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
       ),
       -- Combine ILO connections from assessment_ilo_weights, rubrics, mapping tables, and same syllabus
       -- Connect ALL assessments from the same syllabus to ALL ILOs in that syllabus (syllabus-based connection)
