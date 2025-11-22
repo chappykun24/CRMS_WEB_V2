@@ -1274,6 +1274,28 @@ async function getILOStudentList(
   });
 
   // Step 3: Get assessments connected to this ILO combination (separate, simpler query)
+  // Build parameters for connectedAssessmentsQuery (needs syllabusId and activeTermId if provided)
+  const connectedAssessmentsParams = [sectionCourseId, iloId];
+  let connectedAssessmentsParamIndex = 3;
+  let connectedAssessmentsSyllabusCondition = '';
+  let connectedAssessmentsTermCondition = '';
+  
+  if (syllabusId) {
+    connectedAssessmentsParams.push(syllabusId);
+    connectedAssessmentsSyllabusCondition = `AND sy.syllabus_id = $${connectedAssessmentsParamIndex}`;
+    connectedAssessmentsParamIndex++;
+  }
+  
+  if (activeTermId) {
+    connectedAssessmentsParams.push(activeTermId);
+    connectedAssessmentsTermCondition = `AND sc.term_id = $${connectedAssessmentsParamIndex}`;
+    connectedAssessmentsParamIndex++;
+  }
+  
+  console.log(`[ATTAINMENT DEBUG] connectedAssessmentsQuery params:`, connectedAssessmentsParams);
+  console.log(`[ATTAINMENT DEBUG] connectedAssessmentsSyllabusCondition: ${connectedAssessmentsSyllabusCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] connectedAssessmentsTermCondition: ${connectedAssessmentsTermCondition || '(none)'}`);
+  
   const connectedAssessmentsQuery = `
     WITH ilo_syllabus AS (
       SELECT DISTINCT syllabus_id
@@ -1434,8 +1456,8 @@ async function getILOStudentList(
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
-      ${assessmentsSyllabusCondition}
-      ${assessmentsTermCondition.replace('sc.', 'sc.')}
+      ${connectedAssessmentsSyllabusCondition}
+      ${connectedAssessmentsTermCondition}
       AND i.is_active = TRUE
     ORDER BY a.assessment_id
   `;
@@ -1551,9 +1573,14 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] - connectedAssessmentsQuery`);
   console.log(`[ATTAINMENT DEBUG] - studentScoresQuery`);
   
+  console.log(`[ATTAINMENT DEBUG] Promise.all parameters:`);
+  console.log(`  - enrolledResult: [${sectionCourseId}]`);
+  console.log(`  - connectedAssessmentsResult:`, connectedAssessmentsParams);
+  console.log(`  - scoresResult:`, studentScoresParams);
+  
   const [enrolledResult, connectedAssessmentsResult, scoresResult] = await Promise.all([
     db.query(allEnrolledStudentsQuery, [sectionCourseId]),
-    db.query(connectedAssessmentsQuery, assessmentFilterParams),
+    db.query(connectedAssessmentsQuery, connectedAssessmentsParams),
     db.query(studentScoresQuery, studentScoresParams)
   ]);
   
