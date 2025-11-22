@@ -420,7 +420,7 @@ const ILOAttainment = () => {
   // Loading skeleton for classes
   if (loading && classes.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 p-3 overflow-y-auto">
+      <div className="h-full bg-gray-50 p-3 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm p-4 mb-4 animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
@@ -436,7 +436,7 @@ const ILOAttainment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 overflow-y-auto">
+    <div className="h-full bg-gray-50 p-3 overflow-y-auto">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">

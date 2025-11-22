@@ -32,7 +32,7 @@ const DashboardLayout = ({ children }) => {
             sidebarExpanded ? 'ml-64' : 'ml-20'
           }`}>
             {/* Main Content */}
-            <main className="flex-1 overflow-hidden px-3 md:px-5 pt-3 md:pt-5 pb-0 md:pb-0 bg-gray-50 rounded-tl-3xl">
+            <main className="flex-1 overflow-y-auto px-3 md:px-5 pt-3 md:pt-5 pb-0 md:pb-0 bg-gray-50 rounded-tl-3xl">
               {children}
             </main>
           </div>
