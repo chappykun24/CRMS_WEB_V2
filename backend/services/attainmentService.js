@@ -16,7 +16,11 @@ export async function calculateILOAttainment(
   iloId = null,
   performanceFilter = 'all',
   highThreshold = 80,
-  lowThreshold = 75
+  lowThreshold = 75,
+  soId = null,
+  sdgId = null,
+  igaId = null,
+  cdioId = null
 ) {
   try {
     // Get section course and course info
@@ -44,7 +48,7 @@ export async function calculateILOAttainment(
     const sectionCourse = sectionCourseResult.rows[0];
     
     if (iloId) {
-      // Return student list for specific ILO
+      // Return student list for specific ILO with assessments
       return await getILOStudentList(
         sectionCourseId,
         iloId,
@@ -52,16 +56,24 @@ export async function calculateILOAttainment(
         performanceFilter,
         highThreshold,
         lowThreshold,
-        sectionCourse
+        sectionCourse,
+        soId,
+        sdgId,
+        igaId,
+        cdioId
       );
     } else {
-      // Return summary for all ILOs
+      // Return summary for all ILOs (with optional filters)
       return await getILOAttainmentSummary(
         sectionCourseId,
         passThreshold,
         highThreshold,
         lowThreshold,
-        sectionCourse
+        sectionCourse,
+        soId,
+        sdgId,
+        igaId,
+        cdioId
       );
     }
   } catch (error) {
@@ -86,7 +98,11 @@ async function getILOAttainmentSummary(
   passThreshold,
   highThreshold,
   lowThreshold,
-  sectionCourse
+  sectionCourse,
+  soId = null,
+  sdgId = null,
+  igaId = null,
+  cdioId = null
 ) {
   const query = `
     WITH student_ilo_scores AS (
@@ -130,6 +146,10 @@ async function getILOAttainmentSummary(
         AND i.is_active = TRUE
         AND sy.section_course_id = $1
         AND a.section_course_id = $1
+        ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
+        ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
+        ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
+        ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = ${cdioId})` : ''}
       GROUP BY ce.student_id, s.student_number, s.full_name, i.ilo_id, i.code, i.description
     ),
     ilo_summary AS (
@@ -245,7 +265,11 @@ async function getILOStudentList(
   performanceFilter,
   highThreshold,
   lowThreshold,
-  sectionCourse
+  sectionCourse,
+  soId = null,
+  sdgId = null,
+  igaId = null,
+  cdioId = null
 ) {
   // First get ILO info and mappings
   const iloQuery = `
@@ -277,6 +301,75 @@ async function getILOStudentList(
   }
   
   const iloInfo = iloResult.rows[0];
+  
+  // Get assessments connected to this ILO (with optional SO/SDG/IGA/CDIO filter)
+  const assessmentsQuery = `
+    SELECT DISTINCT
+      a.assessment_id,
+      a.title AS assessment_title,
+      a.type AS assessment_type,
+      a.total_points,
+      a.weight_percentage,
+      a.due_date,
+      aiw.weight_percentage AS ilo_weight_percentage,
+      -- Get all mappings for this assessment's ILO
+      ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+      ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
+      ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+      ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
+    FROM assessments a
+    INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+    INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+    LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+    LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+    LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+    LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+    LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+    LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+    LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+    WHERE a.section_course_id = $1
+      AND aiw.ilo_id = $2
+      AND sy.section_course_id = $1
+      AND i.is_active = TRUE
+      ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
+      ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
+      ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
+      ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
+    GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.weight_percentage
+    ORDER BY a.due_date ASC, a.title ASC
+  `;
+  
+  const assessmentsResult = await db.query(assessmentsQuery, [sectionCourseId, iloId]);
+  
+  // Format assessments with mappings
+  const assessments = assessmentsResult.rows.map(row => {
+    const mappings = [];
+    if (row.so_codes && row.so_codes.length > 0) {
+      mappings.push(...row.so_codes.map(code => ({ type: 'SO', code })));
+    }
+    if (row.cdio_codes && row.cdio_codes.length > 0) {
+      mappings.push(...row.cdio_codes.map(code => ({ type: 'CDIO', code })));
+    }
+    if (row.sdg_codes && row.sdg_codes.length > 0) {
+      mappings.push(...row.sdg_codes.map(code => ({ type: 'SDG', code })));
+    }
+    if (row.iga_codes && row.iga_codes.length > 0) {
+      mappings.push(...row.iga_codes.map(code => ({ type: 'IGA', code })));
+    }
+    
+    return {
+      assessment_id: row.assessment_id,
+      title: row.assessment_title,
+      type: row.assessment_type,
+      total_points: parseFloat(row.total_points || 0),
+      weight_percentage: parseFloat(row.weight_percentage || 0),
+      ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0),
+      due_date: row.due_date,
+      mappings: mappings
+    };
+  });
   
   // Get student scores for this ILO
   const studentQuery = `
@@ -319,6 +412,10 @@ async function getILOStudentList(
       AND i.is_active = TRUE
       AND sy.section_course_id = $1
       AND a.section_course_id = $1
+      ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
+      ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
+      ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
+      ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = ${cdioId})` : ''}
     GROUP BY ce.student_id, ce.enrollment_id, s.student_number, s.full_name
     ORDER BY s.full_name
   `;
@@ -441,6 +538,8 @@ async function getILOStudentList(
     mapped_to: mappedTo,
     total_students: allStudents.length,
     attained_count: allStudents.filter(s => s.attainment_status === 'attained').length,
+    assessments: assessments,
+    assessment_count: assessments.length,
     students: filteredStudents,
     high_performance_students: highPerformanceStudents,
     low_performance_students: lowPerformanceStudents,

@@ -218,6 +218,108 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
 
 // GET /api/assessments/ilo-attainment - Get ILO attainment analytics for a specific class
 // IMPORTANT: This route must come BEFORE /:id to avoid route conflicts
+// GET /api/assessments/ilo-attainment/filters/:sectionCourseId - Get available filter options for a section course
+router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
+  try {
+    const { sectionCourseId } = req.params;
+    const sectionCourseIdInt = parseInt(sectionCourseId);
+
+    if (!sectionCourseIdInt) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid section_course_id'
+      });
+    }
+
+    // Get SOs mapped to ILOs in this section course
+    const soQuery = `
+      SELECT DISTINCT
+        so.so_id,
+        so.so_code,
+        so.description
+      FROM student_outcomes so
+      INNER JOIN ilo_so_mappings ism ON so.so_id = ism.so_id
+      INNER JOIN ilos i ON ism.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND so.is_active = TRUE
+        AND i.is_active = TRUE
+      ORDER BY so.so_code
+    `;
+
+    // Get SDGs mapped to ILOs in this section course
+    const sdgQuery = `
+      SELECT DISTINCT
+        sdg.sdg_id,
+        sdg.sdg_code,
+        sdg.description
+      FROM sdg_skills sdg
+      INNER JOIN ilo_sdg_mappings isdg ON sdg.sdg_id = isdg.sdg_id
+      INNER JOIN ilos i ON isdg.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND sdg.is_active = TRUE
+        AND i.is_active = TRUE
+      ORDER BY sdg.sdg_code
+    `;
+
+    // Get IGAs mapped to ILOs in this section course
+    const igaQuery = `
+      SELECT DISTINCT
+        iga.iga_id,
+        iga.iga_code,
+        iga.description
+      FROM institutional_graduate_attributes iga
+      INNER JOIN ilo_iga_mappings iiga ON iga.iga_id = iiga.iga_id
+      INNER JOIN ilos i ON iiga.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND iga.is_active = TRUE
+        AND i.is_active = TRUE
+      ORDER BY iga.iga_code
+    `;
+
+    // Get CDIOs mapped to ILOs in this section course
+    const cdioQuery = `
+      SELECT DISTINCT
+        cdio.cdio_id,
+        cdio.cdio_code,
+        cdio.description
+      FROM cdio_skills cdio
+      INNER JOIN ilo_cdio_mappings icdio ON cdio.cdio_id = icdio.cdio_id
+      INNER JOIN ilos i ON icdio.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND cdio.is_active = TRUE
+        AND i.is_active = TRUE
+      ORDER BY cdio.cdio_code
+    `;
+
+    const [soResult, sdgResult, igaResult, cdioResult] = await Promise.all([
+      db.query(soQuery, [sectionCourseIdInt]),
+      db.query(sdgQuery, [sectionCourseIdInt]),
+      db.query(igaQuery, [sectionCourseIdInt]),
+      db.query(cdioQuery, [sectionCourseIdInt])
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        so: soResult.rows,
+        sdg: sdgResult.rows,
+        iga: igaResult.rows,
+        cdio: cdioResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('[ILO ATTAINMENT FILTERS] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch filter options'
+    });
+  }
+});
+
 router.get('/ilo-attainment', async (req, res) => {
   try {
     const { 
@@ -226,7 +328,11 @@ router.get('/ilo-attainment', async (req, res) => {
       ilo_id,
       performance_filter = 'all',
       high_threshold = 80,
-      low_threshold = 75
+      low_threshold = 75,
+      so_id,
+      sdg_id,
+      iga_id,
+      cdio_id
     } = req.query;
 
     // Validate required parameters
@@ -242,6 +348,10 @@ router.get('/ilo-attainment', async (req, res) => {
     const iloId = ilo_id ? parseInt(ilo_id) : null;
     const highThreshold = parseFloat(high_threshold);
     const lowThreshold = parseFloat(low_threshold);
+    const soId = so_id ? parseInt(so_id) : null;
+    const sdgId = sdg_id ? parseInt(sdg_id) : null;
+    const igaId = iga_id ? parseInt(iga_id) : null;
+    const cdioId = cdio_id ? parseInt(cdio_id) : null;
 
     // Validate performance filter
     if (!['all', 'high', 'low'].includes(performance_filter)) {
@@ -259,7 +369,11 @@ router.get('/ilo-attainment', async (req, res) => {
       iloId,
       performance_filter,
       highThreshold,
-      lowThreshold
+      lowThreshold,
+      soId,
+      sdgId,
+      igaId,
+      cdioId
     );
 
     res.json({

@@ -23,12 +23,21 @@ const ILOAttainment = () => {
   const [attainmentData, setAttainmentData] = useState(null)
   const [selectedILO, setSelectedILO] = useState(null)
   const [loadingAttainment, setLoadingAttainment] = useState(false)
+  const [studentList, setStudentList] = useState([])
+  const [showStudents, setShowStudents] = useState(false)
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
   const [performanceFilter, setPerformanceFilter] = useState('all')
   const [highThreshold, setHighThreshold] = useState(80)
   const [lowThreshold, setLowThreshold] = useState(75)
+  
+  // ILO mapping filters
+  const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [] })
+  const [selectedSO, setSelectedSO] = useState('')
+  const [selectedSDG, setSelectedSDG] = useState('')
+  const [selectedIGA, setSelectedIGA] = useState('')
+  const [selectedCDIO, setSelectedCDIO] = useState('')
 
   // Refs for cleanup
   const abortControllerRef = useRef(null)
@@ -133,6 +142,30 @@ const ILOAttainment = () => {
     return classes.filter(cls => cls.term_id === activeTermId)
   }, [classes, activeTermId])
 
+  // Load filter options when class is selected
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      if (!selectedClass?.section_course_id) {
+        setFilterOptions({ so: [], sdg: [], iga: [], cdio: [] })
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/assessments/ilo-attainment/filters/${selectedClass.section_course_id}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success) {
+            setFilterOptions(result.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading filter options:', error)
+      }
+    }
+
+    loadFilterOptions()
+  }, [selectedClass?.section_course_id])
+
   // Load ILO attainment data with async fetching and error handling
   const loadAttainmentData = useCallback(async (sectionCourseId, iloId = null) => {
     if (!sectionCourseId) return
@@ -147,6 +180,7 @@ const ILOAttainment = () => {
 
     setLoadingAttainment(true)
     setError('')
+    setShowStudents(false)
 
     try {
       const params = new URLSearchParams({
@@ -159,6 +193,19 @@ const ILOAttainment = () => {
 
       if (iloId) {
         params.append('ilo_id', iloId.toString())
+      }
+      
+      if (selectedSO) {
+        params.append('so_id', selectedSO)
+      }
+      if (selectedSDG) {
+        params.append('sdg_id', selectedSDG)
+      }
+      if (selectedIGA) {
+        params.append('iga_id', selectedIGA)
+      }
+      if (selectedCDIO) {
+        params.append('cdio_id', selectedCDIO)
       }
 
       const response = await fetch(`/api/assessments/ilo-attainment?${params.toString()}`, {
@@ -176,9 +223,14 @@ const ILOAttainment = () => {
       const result = await response.json()
       
       if (result.success) {
-        setAttainmentData(result.data)
         if (iloId) {
           setSelectedILO(result.data)
+          setStudentList(result.data.students || [])
+          setShowStudents(false) // Show assessments first
+        } else {
+          setAttainmentData(result.data)
+          setSelectedILO(null)
+          setStudentList([])
         }
       } else {
         throw new Error(result.error || 'Failed to load attainment data')
@@ -193,14 +245,14 @@ const ILOAttainment = () => {
     } finally {
       setLoadingAttainment(false)
     }
-  }, [passThreshold, performanceFilter, highThreshold, lowThreshold])
+  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO])
 
-  // Load data when class is selected
+  // Load data when class is selected or filters change
   useEffect(() => {
     if (selectedClass?.section_course_id && !selectedILO) {
       loadAttainmentData(selectedClass.section_course_id)
     }
-  }, [selectedClass?.section_course_id, selectedILO])
+  }, [selectedClass?.section_course_id, selectedILO, selectedSO, selectedSDG, selectedIGA, selectedCDIO, loadAttainmentData])
 
   // Reload student list when performance filter changes (only if viewing student list)
   useEffect(() => {
@@ -229,9 +281,16 @@ const ILOAttainment = () => {
   // Handle back to summary
   const handleBackToSummary = () => {
     setSelectedILO(null)
+    setStudentList([])
+    setShowStudents(false)
     if (selectedClass?.section_course_id) {
       loadAttainmentData(selectedClass.section_course_id)
     }
+  }
+  
+  // Handle show students
+  const handleShowStudents = () => {
+    setShowStudents(true)
   }
 
   // Export to Excel
@@ -329,52 +388,126 @@ const ILOAttainment = () => {
         </div>
 
         {/* Filters */}
-        {selectedClass && !selectedILO && (
+        {selectedClass && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center space-x-2 mb-4">
               <FunnelIcon className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-4">
+              {/* ILO Mapping Filters */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pass Threshold (%)
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter by ILO Mapping
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={passThreshold}
-                  onChange={(e) => setPassThreshold(parseInt(e.target.value) || 75)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Student Outcome (SO)</label>
+                    <select
+                      value={selectedSO}
+                      onChange={(e) => setSelectedSO(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    >
+                      <option value="">All SOs</option>
+                      {filterOptions.so.map((so) => (
+                        <option key={so.so_id} value={so.so_id}>
+                          {so.so_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">SDG</label>
+                    <select
+                      value={selectedSDG}
+                      onChange={(e) => setSelectedSDG(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    >
+                      <option value="">All SDGs</option>
+                      {filterOptions.sdg.map((sdg) => (
+                        <option key={sdg.sdg_id} value={sdg.sdg_id}>
+                          {sdg.sdg_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">IGA</label>
+                    <select
+                      value={selectedIGA}
+                      onChange={(e) => setSelectedIGA(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    >
+                      <option value="">All IGAs</option>
+                      {filterOptions.iga.map((iga) => (
+                        <option key={iga.iga_id} value={iga.iga_id}>
+                          {iga.iga_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">CDIO</label>
+                    <select
+                      value={selectedCDIO}
+                      onChange={(e) => setSelectedCDIO(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    >
+                      <option value="">All CDIOs</option>
+                      {filterOptions.cdio.map((cdio) => (
+                        <option key={cdio.cdio_id} value={cdio.cdio_id}>
+                          {cdio.cdio_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  High Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={highThreshold}
-                  onChange={(e) => setHighThreshold(parseInt(e.target.value) || 80)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Low Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={lowThreshold}
-                  onChange={(e) => setLowThreshold(parseInt(e.target.value) || 75)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-              </div>
+              
+              {/* Threshold Filters */}
+              {!selectedILO && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Pass Threshold (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={passThreshold}
+                      onChange={(e) => setPassThreshold(parseInt(e.target.value) || 75)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      High Threshold (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={highThreshold}
+                      onChange={(e) => setHighThreshold(parseInt(e.target.value) || 80)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Low Threshold (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={lowThreshold}
+                      onChange={(e) => setLowThreshold(parseInt(e.target.value) || 75)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -572,7 +705,7 @@ const ILOAttainment = () => {
               )}
 
               {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                   <p className="text-sm text-gray-600 mb-1">Total Students</p>
                   <p className="text-xl font-bold text-blue-600">{selectedILO.total_students || 0}</p>
@@ -589,7 +722,91 @@ const ILOAttainment = () => {
                       : 0}%
                   </p>
                 </div>
+                <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
+                  <p className="text-sm text-gray-600 mb-1">Assessments</p>
+                  <p className="text-xl font-bold text-indigo-600">{selectedILO.assessment_count || 0}</p>
+                </div>
               </div>
+
+              {/* Assessments List */}
+              {selectedILO.assessments && selectedILO.assessments.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Assessments</h3>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Assessment Title
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Points
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Weight (%)
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              ILO Weight (%)
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Due Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Mapped To
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedILO.assessments.map((assessment) => (
+                            <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-700">{assessment.type}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.total_points}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.weight_percentage.toFixed(1)}%</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.ilo_weight_percentage.toFixed(1)}%</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-700">
+                                  {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {assessment.mappings && assessment.mappings.length > 0 ? (
+                                    assessment.mappings.map((mapping, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                                      >
+                                        {mapping.type}: {mapping.code}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-gray-400">None</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Percentage Range Distribution */}
               {selectedILO.range_distribution && (
@@ -624,47 +841,60 @@ const ILOAttainment = () => {
               )}
             </div>
 
-            {/* Performance Filter */}
+            {/* Performance Filter and Show Students Button */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-4">
-                <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
-                <button
-                  onClick={() => setPerformanceFilter('all')}
-                  className={`px-4 py-2 rounded-lg transition-colors transition ${
-                    performanceFilter === 'all'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setPerformanceFilter('high')}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    performanceFilter === 'high'
-                      ? 'bg-green-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  High Performance
-                </button>
-                <button
-                  onClick={() => setPerformanceFilter('low')}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    performanceFilter === 'low'
-                      ? 'bg-red-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Low Performance
-                </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
+                  <button
+                    onClick={() => setPerformanceFilter('all')}
+                    className={`px-4 py-2 rounded-lg transition-colors transition ${
+                      performanceFilter === 'all'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setPerformanceFilter('high')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      performanceFilter === 'high'
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    High Performance
+                  </button>
+                  <button
+                    onClick={() => setPerformanceFilter('low')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      performanceFilter === 'low'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Low Performance
+                  </button>
+                </div>
+                {!showStudents && (
+                  <button
+                    onClick={handleShowStudents}
+                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    <UserGroupIcon className="h-5 w-5" />
+                    <span>Show Students</span>
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Students Grouped by Percentage Range */}
-            {loadingAttainment ? (
-              <TableSkeleton rows={10} columns={5} />
-            ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
+            {showStudents && (
+              <>
+                {loadingAttainment ? (
+                  <TableSkeleton rows={10} columns={5} />
+                ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
               <div className="space-y-4">
                 {selectedILO.students_by_range
                   .sort((a, b) => {
@@ -770,6 +1000,8 @@ const ILOAttainment = () => {
                 <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No students found for the selected filter.</p>
               </div>
+            )}
+              </>
             )}
           </div>
         )}
