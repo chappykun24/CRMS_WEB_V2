@@ -243,6 +243,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       INNER JOIN ilos i ON ism.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         AND so.is_active = TRUE
         AND i.is_active = TRUE
       ORDER BY so.so_code
@@ -259,6 +261,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       INNER JOIN ilos i ON isdg.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         AND sdg.is_active = TRUE
         AND i.is_active = TRUE
       ORDER BY sdg.sdg_code
@@ -275,6 +279,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       INNER JOIN ilos i ON iiga.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         AND iga.is_active = TRUE
         AND i.is_active = TRUE
       ORDER BY iga.iga_code
@@ -291,6 +297,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       INNER JOIN ilos i ON icdio.ilo_id = i.ilo_id
       INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         AND cdio.is_active = TRUE
         AND i.is_active = TRUE
       ORDER BY cdio.cdio_code
@@ -317,6 +325,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
       LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
       WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         AND i.is_active = TRUE
     `;
 
@@ -358,16 +368,16 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
     const iloCombinations = iloCombinationsResult.rows.map(row => {
       const mappings = [];
       if (row.so_codes && row.so_codes.length > 0) {
-        mappings.push(...row.so_codes.map(code => `SO:${code}`));
+        mappings.push(...row.so_codes.map(code => code));
       }
       if (row.sdg_codes && row.sdg_codes.length > 0) {
-        mappings.push(...row.sdg_codes.map(code => `SDG:${code}`));
+        mappings.push(...row.sdg_codes.map(code => code));
       }
       if (row.iga_codes && row.iga_codes.length > 0) {
-        mappings.push(...row.iga_codes.map(code => `IGA:${code}`));
+        mappings.push(...row.iga_codes.map(code => code));
       }
       if (row.cdio_codes && row.cdio_codes.length > 0) {
-        mappings.push(...row.cdio_codes.map(code => `CDIO:${code}`));
+        mappings.push(...row.cdio_codes.map(code => code));
       }
       
       return {
@@ -800,7 +810,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         ilo_code: row.ilo_code,
         description: row.ilo_description,
         mappings: mappings,
-        combination: mappings.length > 0 ? mappings.map(m => `${m.type}:${m.code}`).join(', ') : 'No mappings',
+        combination: mappings.length > 0 ? mappings.map(m => m.code).join(', ') : 'No mappings',
         assessments: row.assessments || []
       };
     });
