@@ -44,7 +44,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Assessments', icon: ClipboardDocumentListIcon, href: '/faculty/assessments' },
           { name: 'Grades', icon: AcademicCapIcon, href: '/faculty/grades' },
           { name: 'Syllabus', icon: DocumentTextIcon, href: '/faculty/syllabus' },
-          { name: 'Analytics', icon: ChartBarIcon, href: '/faculty/analytics' }
+          { name: 'Analytics', icon: ChartBarIcon, href: '/faculty/analytics' },
+          { name: 'ILO Attainment', icon: AcademicCapIcon, href: '/faculty/ilo-attainment' }
         ]
       
       case 'DEAN':

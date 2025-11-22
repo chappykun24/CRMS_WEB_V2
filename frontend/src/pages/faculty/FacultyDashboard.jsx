@@ -5,6 +5,7 @@ import Assessments from './Assessments'
 import Grades from './Grades'
 import Syllabus from './Syllabus'
 import Analytics from './Analytics'
+import ILOAttainment from './ILOAttainment'
 
 const FacultyDashboard = ({ user }) => {
   // Removed bulk data prefetching - data is now fetched per section on each page
@@ -48,6 +49,7 @@ const FacultyDashboard = ({ user }) => {
       <Route path="grades" element={<Grades />} />
       <Route path="syllabus" element={<Syllabus />} />
       <Route path="analytics" element={<Analytics />} />
+      <Route path="ilo-attainment" element={<ILOAttainment />} />
       <Route path="*" element={<Navigate to="classes" replace />} />
     </Routes>
   )

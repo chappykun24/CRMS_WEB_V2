@@ -1,0 +1,381 @@
+import db from '../config/database.js';
+
+/**
+ * Calculate ILO attainment for a specific section course
+ * @param {number} sectionCourseId - The section course ID
+ * @param {number} passThreshold - Threshold for "attained" status (default: 75)
+ * @param {number|null} iloId - Optional ILO ID to filter by
+ * @param {string} performanceFilter - "high" | "low" | "all" (default: "all")
+ * @param {number} highThreshold - Threshold for "high" performance (default: 80)
+ * @param {number} lowThreshold - Threshold for "low" performance (default: 75)
+ * @returns {Promise<Object>} Attainment data (summary or student list)
+ */
+export async function calculateILOAttainment(
+  sectionCourseId,
+  passThreshold = 75,
+  iloId = null,
+  performanceFilter = 'all',
+  highThreshold = 80,
+  lowThreshold = 75
+) {
+  try {
+    // Get section course and course info
+    const sectionCourseQuery = `
+      SELECT 
+        sc.section_course_id,
+        sc.section_id,
+        sc.course_id,
+        c.title AS course_title,
+        c.course_code,
+        s.section_code,
+        s.year_level
+      FROM section_courses sc
+      INNER JOIN courses c ON sc.course_id = c.course_id
+      INNER JOIN sections s ON sc.section_id = s.section_id
+      WHERE sc.section_course_id = $1
+    `;
+    
+    const sectionCourseResult = await db.query(sectionCourseQuery, [sectionCourseId]);
+    
+    if (sectionCourseResult.rows.length === 0) {
+      throw new Error('Section course not found');
+    }
+    
+    const sectionCourse = sectionCourseResult.rows[0];
+    
+    if (iloId) {
+      // Return student list for specific ILO
+      return await getILOStudentList(
+        sectionCourseId,
+        iloId,
+        passThreshold,
+        performanceFilter,
+        highThreshold,
+        lowThreshold,
+        sectionCourse
+      );
+    } else {
+      // Return summary for all ILOs
+      return await getILOAttainmentSummary(
+        sectionCourseId,
+        passThreshold,
+        highThreshold,
+        lowThreshold,
+        sectionCourse
+      );
+    }
+  } catch (error) {
+    console.error('[ATTAINMENT SERVICE] Error calculating ILO attainment:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get ILO attainment summary for all ILOs in a section course
+ */
+async function getILOAttainmentSummary(
+  sectionCourseId,
+  passThreshold,
+  highThreshold,
+  lowThreshold,
+  sectionCourse
+) {
+  const query = `
+    WITH student_ilo_scores AS (
+      SELECT
+        ce.student_id,
+        s.student_number,
+        s.full_name,
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        -- Calculate average transmuted score for this ILO per student
+        COALESCE(
+          AVG(
+            CASE 
+              WHEN sub.transmuted_score IS NOT NULL
+              THEN sub.transmuted_score
+              WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              ELSE NULL
+            END
+          ),
+          0
+        ) AS ilo_score
+      FROM course_enrollments ce
+      INNER JOIN students s ON ce.student_id = s.student_id
+      INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
+      INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+      INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+      LEFT JOIN submissions sub ON (
+        ce.enrollment_id = sub.enrollment_id 
+        AND sub.assessment_id = a.assessment_id
+        AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+      )
+      WHERE ce.section_course_id = $1
+        AND ce.status = 'enrolled'
+        AND a.weight_percentage IS NOT NULL
+        AND a.weight_percentage > 0
+        AND i.is_active = TRUE
+      GROUP BY ce.student_id, s.student_number, s.full_name, i.ilo_id, i.code, i.description
+    ),
+    ilo_summary AS (
+      SELECT
+        ilo_id,
+        ilo_code,
+        ilo_description,
+        COUNT(DISTINCT student_id) AS total_students,
+        COUNT(DISTINCT CASE WHEN ilo_score >= $2 THEN student_id END) AS attained_count,
+        COUNT(DISTINCT CASE WHEN ilo_score >= $3 THEN student_id END) AS high_performance_count,
+        COUNT(DISTINCT CASE WHEN ilo_score < $4 AND ilo_score >= $2 THEN student_id END) AS low_performance_count,
+        AVG(ilo_score) AS average_score
+      FROM student_ilo_scores
+      GROUP BY ilo_id, ilo_code, ilo_description
+    ),
+    ilo_mappings AS (
+      SELECT
+        i.ilo_id,
+        ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+        ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
+        ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+        ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
+      FROM ilos i
+      LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+      LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+      LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+      LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+      LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+      LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+      LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+      LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+      WHERE i.ilo_id IN (SELECT DISTINCT ilo_id FROM ilo_summary)
+      GROUP BY i.ilo_id
+    )
+    SELECT
+      isum.ilo_id,
+      isum.ilo_code,
+      isum.ilo_description,
+      isum.total_students,
+      isum.attained_count,
+      ROUND((isum.attained_count::NUMERIC / NULLIF(isum.total_students, 0) * 100), 2) AS attainment_percentage,
+      isum.high_performance_count,
+      isum.low_performance_count,
+      ROUND(isum.average_score::NUMERIC, 2) AS average_score,
+      COALESCE(im.so_codes, ARRAY[]::TEXT[]) AS mapped_so_codes,
+      COALESCE(im.cdio_codes, ARRAY[]::TEXT[]) AS mapped_cdio_codes,
+      COALESCE(im.sdg_codes, ARRAY[]::TEXT[]) AS mapped_sdg_codes,
+      COALESCE(im.iga_codes, ARRAY[]::TEXT[]) AS mapped_iga_codes
+    FROM ilo_summary isum
+    LEFT JOIN ilo_mappings im ON isum.ilo_id = im.ilo_id
+    ORDER BY isum.ilo_code
+  `;
+  
+  const result = await db.query(query, [sectionCourseId, passThreshold, highThreshold, lowThreshold]);
+  
+  // Calculate overall summary
+  const totalStudents = result.rows.length > 0 ? result.rows[0].total_students : 0;
+  const overallAttainmentRate = result.rows.length > 0
+    ? result.rows.reduce((sum, row) => sum + parseFloat(row.attainment_percentage || 0), 0) / result.rows.length
+    : 0;
+  
+  // Format mapped_to array for each ILO
+  const iloAttainment = result.rows.map(row => {
+    const mappedTo = [];
+    if (row.mapped_so_codes && row.mapped_so_codes.length > 0) {
+      mappedTo.push(...row.mapped_so_codes.map(code => ({ type: 'SO', code })));
+    }
+    if (row.mapped_cdio_codes && row.mapped_cdio_codes.length > 0) {
+      mappedTo.push(...row.mapped_cdio_codes.map(code => ({ type: 'CDIO', code })));
+    }
+    if (row.mapped_sdg_codes && row.mapped_sdg_codes.length > 0) {
+      mappedTo.push(...row.mapped_sdg_codes.map(code => ({ type: 'SDG', code })));
+    }
+    if (row.mapped_iga_codes && row.mapped_iga_codes.length > 0) {
+      mappedTo.push(...row.mapped_iga_codes.map(code => ({ type: 'IGA', code })));
+    }
+    
+    return {
+      ilo_id: row.ilo_id,
+      ilo_code: row.ilo_code,
+      description: row.ilo_description,
+      total_students: row.total_students,
+      attained_count: row.attained_count,
+      attainment_percentage: parseFloat(row.attainment_percentage || 0),
+      high_performance_count: row.high_performance_count,
+      low_performance_count: row.low_performance_count,
+      average_score: parseFloat(row.average_score || 0),
+      mapped_to: mappedTo
+    };
+  });
+  
+  return {
+    section_course_id: sectionCourse.section_course_id,
+    course_title: sectionCourse.course_title,
+    course_code: sectionCourse.course_code,
+    section_code: sectionCourse.section_code,
+    ilo_attainment: iloAttainment,
+    summary: {
+      total_ilos: iloAttainment.length,
+      total_students: totalStudents,
+      overall_attainment_rate: Math.round(overallAttainmentRate * 100) / 100
+    }
+  };
+}
+
+/**
+ * Get student list for a specific ILO
+ */
+async function getILOStudentList(
+  sectionCourseId,
+  iloId,
+  passThreshold,
+  performanceFilter,
+  highThreshold,
+  lowThreshold,
+  sectionCourse
+) {
+  // First get ILO info and mappings
+  const iloQuery = `
+    SELECT
+      i.ilo_id,
+      i.code AS ilo_code,
+      i.description AS ilo_description,
+      ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+      ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
+      ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+      ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
+    FROM ilos i
+    LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+    LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+    LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+    LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+    LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+    LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+    LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+    LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+    WHERE i.ilo_id = $1 AND i.is_active = TRUE
+    GROUP BY i.ilo_id, i.code, i.description
+  `;
+  
+  const iloResult = await db.query(iloQuery, [iloId]);
+  
+  if (iloResult.rows.length === 0) {
+    throw new Error('ILO not found');
+  }
+  
+  const iloInfo = iloResult.rows[0];
+  
+  // Get student scores for this ILO
+  const studentQuery = `
+    SELECT
+      ce.student_id,
+      ce.enrollment_id,
+      s.student_number,
+      s.full_name,
+      -- Calculate average transmuted score for this ILO
+      COALESCE(
+        AVG(
+          CASE 
+            WHEN sub.transmuted_score IS NOT NULL
+            THEN sub.transmuted_score
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            ELSE NULL
+          END
+        ),
+        0
+      ) AS ilo_score
+    FROM course_enrollments ce
+    INNER JOIN students s ON ce.student_id = s.student_id
+    INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
+    INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+    LEFT JOIN submissions sub ON (
+      ce.enrollment_id = sub.enrollment_id 
+      AND sub.assessment_id = a.assessment_id
+      AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+    )
+    WHERE ce.section_course_id = $1
+      AND ce.status = 'enrolled'
+      AND aiw.ilo_id = $2
+      AND a.weight_percentage IS NOT NULL
+      AND a.weight_percentage > 0
+    GROUP BY ce.student_id, ce.enrollment_id, s.student_number, s.full_name
+    ORDER BY s.full_name
+  `;
+  
+  const studentResult = await db.query(studentQuery, [sectionCourseId, iloId]);
+  
+  // Process students and categorize
+  const allStudents = studentResult.rows.map(row => {
+    const score = parseFloat(row.ilo_score || 0);
+    const attained = score >= passThreshold;
+    let performanceLevel = 'low';
+    
+    if (score >= highThreshold) {
+      performanceLevel = 'high';
+    } else if (score >= lowThreshold) {
+      performanceLevel = 'medium';
+    }
+    
+    return {
+      student_id: row.student_id,
+      enrollment_id: row.enrollment_id,
+      student_number: row.student_number,
+      full_name: row.full_name,
+      ilo_score: Math.round(score * 100) / 100,
+      attainment_status: attained ? 'attained' : 'not_attained',
+      performance_level: performanceLevel
+    };
+  });
+  
+  // Filter by performance level
+  let filteredStudents = allStudents;
+  if (performanceFilter === 'high') {
+    filteredStudents = allStudents.filter(s => s.performance_level === 'high');
+  } else if (performanceFilter === 'low') {
+    filteredStudents = allStudents.filter(s => s.performance_level === 'low');
+  }
+  
+  const highPerformanceStudents = allStudents.filter(s => s.performance_level === 'high');
+  const lowPerformanceStudents = allStudents.filter(s => s.performance_level === 'low');
+  
+  // Format mapped_to array
+  const mappedTo = [];
+  if (iloInfo.so_codes && iloInfo.so_codes.length > 0) {
+    mappedTo.push(...iloInfo.so_codes.map(code => ({ type: 'SO', code })));
+  }
+  if (iloInfo.cdio_codes && iloInfo.cdio_codes.length > 0) {
+    mappedTo.push(...iloInfo.cdio_codes.map(code => ({ type: 'CDIO', code })));
+  }
+  if (iloInfo.sdg_codes && iloInfo.sdg_codes.length > 0) {
+    mappedTo.push(...iloInfo.sdg_codes.map(code => ({ type: 'SDG', code })));
+  }
+  if (iloInfo.iga_codes && iloInfo.iga_codes.length > 0) {
+    mappedTo.push(...iloInfo.iga_codes.map(code => ({ type: 'IGA', code })));
+  }
+  
+  return {
+    ilo_id: iloInfo.ilo_id,
+    ilo_code: iloInfo.ilo_code,
+    description: iloInfo.ilo_description,
+    section_course_id: sectionCourse.section_course_id,
+    course_title: sectionCourse.course_title,
+    course_code: sectionCourse.course_code,
+    section_code: sectionCourse.section_code,
+    mapped_to: mappedTo,
+    total_students: allStudents.length,
+    attained_count: allStudents.filter(s => s.attainment_status === 'attained').length,
+    students: filteredStudents,
+    high_performance_students: highPerformanceStudents,
+    low_performance_students: lowPerformanceStudents
+  };
+}
+
+export default {
+  calculateILOAttainment
+};
+

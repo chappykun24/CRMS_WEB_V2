@@ -6,7 +6,8 @@ import {
   ClipboardDocumentListIcon,
   TrophyIcon,
   DocumentTextIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/solid'
 
 const FacultyTopNav = () => {
@@ -18,7 +19,8 @@ const FacultyTopNav = () => {
     { key: 'assessments', label: 'Assessments', href: '/faculty/assessments', icon: ClipboardDocumentListIcon },
     { key: 'grades', label: 'Grades', href: '/faculty/grades', icon: TrophyIcon },
     { key: 'syllabus', label: 'Syllabus', href: '/faculty/syllabus', icon: DocumentTextIcon },
-    { key: 'analytics', label: 'Analytics', href: '/faculty/analytics', icon: ChartBarIcon }
+    { key: 'analytics', label: 'Analytics', href: '/faculty/analytics', icon: ChartBarIcon },
+    { key: 'ilo-attainment', label: 'ILO Attainment', href: '/faculty/ilo-attainment', icon: AcademicCapIcon }
   ]
 
   const isActive = (href) => {
