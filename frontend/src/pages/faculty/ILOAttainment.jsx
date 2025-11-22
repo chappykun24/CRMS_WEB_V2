@@ -347,6 +347,14 @@ const ILOAttainment = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [performanceFilter])
 
+  // Reload data when SO/SDG/IGA/CDIO filters change while viewing a specific ILO
+  useEffect(() => {
+    if (selectedILO?.ilo_id && selectedClass?.section_course_id && !selectedILOCombination) {
+      loadAttainmentData(selectedClass.section_course_id, selectedILO.ilo_id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

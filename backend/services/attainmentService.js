@@ -375,6 +375,7 @@ async function getILOStudentList(
   // When filters are applied, only include assessments that match the selected mappings
   const assessmentFilterParams = [sectionCourseId, iloId];
   let hasFilters = false;
+  let paramIndex = 3;
   
   if (soId) {
     assessmentFilterParams.push(soId);
@@ -392,6 +393,22 @@ async function getILOStudentList(
     assessmentFilterParams.push(cdioId);
     hasFilters = true;
   }
+  
+  // Build filter conditions array for proper OR logic
+  const filterConditions = [];
+  if (soId) {
+    filterConditions.push(`EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))`);
+  }
+  if (sdgId) {
+    filterConditions.push(`EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))`);
+  }
+  if (igaId) {
+    filterConditions.push(`EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))`);
+  }
+  if (cdioId) {
+    filterConditions.push(`EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))`);
+  }
+  const filterConditionSQL = filterConditions.join(' OR ');
   
   // Step 1: Get assessments with stats (simpler query)
   const assessmentsQuery = `
@@ -918,15 +935,10 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         -- Apply filters: only include assessments that match selected mappings
-        ${hasFilters ? `AND EXISTS (
+        ${hasFilters && filterConditionSQL ? `AND EXISTS (
           SELECT 1 FROM assessment_codes_for_filter acf
           WHERE acf.assessment_id = a.assessment_id
-            AND (
-              ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
-              ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-              ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-              ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-            )
+            AND (${filterConditionSQL})
         )` : ''}
     )
     SELECT DISTINCT
@@ -1061,15 +1073,10 @@ async function getILOStudentList(
           AND a2.weight_percentage IS NOT NULL
           AND a2.weight_percentage > 0
           -- Apply filters: only include assessments that match selected mappings
-          ${hasFilters ? `AND EXISTS (
+          ${hasFilters && filterConditionSQL ? `AND EXISTS (
             SELECT 1 FROM assessment_codes_for_filter acf
             WHERE acf.assessment_id = a2.assessment_id
-              AND (
-                ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
-                ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-                ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-                ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
-              )
+              AND (${filterConditionSQL})
           )` : ''}
       )
       SELECT DISTINCT
