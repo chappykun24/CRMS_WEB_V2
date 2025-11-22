@@ -355,6 +355,23 @@ async function getILOStudentList(
   
   // Get assessments connected to this ILO (with optional SO/SDG/IGA/CDIO filter)
   // Use the same logic as the script: extract assessment codes and match to ILO mappings
+  
+  // Build filter conditions safely
+  const filterConditions = [];
+  if (soId) {
+    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})`);
+  }
+  if (sdgId) {
+    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})`);
+  }
+  if (igaId) {
+    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})`);
+  }
+  if (cdioId) {
+    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})`);
+  }
+  const filterClause = filterConditions.join('\n        ');
+  
   const assessmentsQuery = `
     WITH assessment_codes AS (
       SELECT DISTINCT
@@ -463,11 +480,8 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
-        ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
-        ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
-        ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
-        ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
-      GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage
+        ${filterClause}
+      GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage, i.ilo_id, sy.section_course_id
     )
     SELECT DISTINCT
       ast.assessment_id,
@@ -504,10 +518,7 @@ async function getILOStudentList(
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
-      ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
-      ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
-      ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
-      ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
+      ${filterClause}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score, ast.average_percentage
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
