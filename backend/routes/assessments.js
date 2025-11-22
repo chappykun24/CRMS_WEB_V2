@@ -485,11 +485,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
               THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
               ELSE 0
             END
-          ), 0) AS total_score,
-          ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
-          ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
-          ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes,
-          ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes
+          ), 0) AS total_score
         FROM assessments a
         INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
         INNER JOIN ilo_combinations ic ON aiw.ilo_id = ic.ilo_id
@@ -501,6 +497,24 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
           AND sub.assessment_id = a.assessment_id
           AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
         )
+        WHERE a.section_course_id = $1
+          AND sy.section_course_id = $1
+          AND a.weight_percentage IS NOT NULL
+          AND a.weight_percentage > 0
+        GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.ilo_id, aiw.weight_percentage
+      ),
+      assessment_mappings AS (
+        -- Get ALL mappings for ALL ILOs connected to each assessment
+        SELECT DISTINCT
+          aiw.assessment_id,
+          aiw.ilo_id,
+          so.so_code,
+          sdg.sdg_code,
+          iga.iga_code,
+          cdio.cdio_code
+        FROM assessment_ilo_weights aiw
+        INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+        INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
         LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
         LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
         LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
@@ -509,11 +523,8 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
         LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
         LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
-        WHERE a.section_course_id = $1
-          AND sy.section_course_id = $1
-          AND a.weight_percentage IS NOT NULL
-          AND a.weight_percentage > 0
-        GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.ilo_id, aiw.weight_percentage
+        WHERE sy.section_course_id = $1
+          AND i.is_active = TRUE
       )
       SELECT
         ic.ilo_id,
@@ -543,19 +554,26 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
                 ELSE 0
               END,
               'mappings', (
-                SELECT json_agg(
+                SELECT COALESCE(json_agg(
                   json_build_object('type', mapping_type, 'code', mapping_code)
-                )
+                ) FILTER (WHERE mapping_code IS NOT NULL), '[]'::json)
                 FROM (
-                  SELECT 'SO' as mapping_type, unnest(ast.so_codes) as mapping_code
-                  UNION ALL
-                  SELECT 'SDG' as mapping_type, unnest(ast.sdg_codes) as mapping_code
-                  UNION ALL
-                  SELECT 'IGA' as mapping_type, unnest(ast.iga_codes) as mapping_code
-                  UNION ALL
-                  SELECT 'CDIO' as mapping_type, unnest(ast.cdio_codes) as mapping_code
+                  SELECT DISTINCT 'SO' as mapping_type, am.so_code as mapping_code
+                  FROM assessment_mappings am
+                  WHERE am.assessment_id = ast.assessment_id AND am.so_code IS NOT NULL
+                  UNION
+                  SELECT DISTINCT 'SDG' as mapping_type, am.sdg_code as mapping_code
+                  FROM assessment_mappings am
+                  WHERE am.assessment_id = ast.assessment_id AND am.sdg_code IS NOT NULL
+                  UNION
+                  SELECT DISTINCT 'IGA' as mapping_type, am.iga_code as mapping_code
+                  FROM assessment_mappings am
+                  WHERE am.assessment_id = ast.assessment_id AND am.iga_code IS NOT NULL
+                  UNION
+                  SELECT DISTINCT 'CDIO' as mapping_type, am.cdio_code as mapping_code
+                  FROM assessment_mappings am
+                  WHERE am.assessment_id = ast.assessment_id AND am.cdio_code IS NOT NULL
                 ) mappings
-                WHERE mapping_code IS NOT NULL
               )
             ) ORDER BY ast.due_date ASC, ast.assessment_title ASC
           ) FILTER (WHERE ast.assessment_id IS NOT NULL),

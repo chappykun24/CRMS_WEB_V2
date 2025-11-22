@@ -309,6 +309,8 @@ const ILOAttainment = () => {
         setShowCombinations(true)
         setAttainmentData(null)
         setSelectedILO(null)
+        setSelectedILOCombination('') // Clear any selected ILO combination
+        console.log(`✅ [ILO COMBINATIONS] Loaded ${result.data.length} ILO combinations with assessments`)
       } else {
         throw new Error(result.error || 'Failed to load ILO combinations')
       }
@@ -609,15 +611,26 @@ const ILOAttainment = () => {
         )}
 
         {/* ILO Combinations with Assessments View */}
-        {!loadingAttainment && showCombinations && iloCombinations.length > 0 && (
+        {!loadingAttainment && showCombinations && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">ILO Combinations</h2>
-              <p className="text-sm text-gray-600">Showing {iloCombinations.length} ILO combination{iloCombinations.length !== 1 ? 's' : ''} with their assessments</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">ILO Combinations with Assessments</h2>
+              <p className="text-sm text-gray-600">
+                {iloCombinations.length > 0 
+                  ? `Showing ${iloCombinations.length} ILO combination${iloCombinations.length !== 1 ? 's' : ''} with their assessments`
+                  : 'No ILO combinations found matching the selected filters'}
+              </p>
             </div>
 
-            {iloCombinations.map((ilo) => (
-              <div key={ilo.ilo_id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {iloCombinations.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No ILO combinations found for the selected filters.</p>
+                <p className="text-sm text-gray-500 mt-2">Try adjusting your filter selections.</p>
+              </div>
+            ) : (
+              iloCombinations.map((ilo) => (
+                <div key={ilo.ilo_id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* ILO Header */}
                 <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
                   <div className="flex items-center justify-between">
@@ -649,6 +662,13 @@ const ILOAttainment = () => {
                   </div>
                 </div>
 
+                {/* Assessments Section */}
+                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700">
+                    Assessments ({ilo.assessments?.length || 0})
+                  </h4>
+                </div>
+                
                 {/* Assessments Table */}
                 {ilo.assessments && ilo.assessments.length > 0 ? (
                   <div className="overflow-x-auto">
@@ -763,12 +783,14 @@ const ILOAttainment = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="px-6 py-12 text-center text-gray-500">
-                    <p>No assessments found for this ILO combination.</p>
+                  <div className="px-6 py-12 text-center text-gray-500 bg-gray-50">
+                    <p className="text-sm">No assessments found for this ILO combination.</p>
+                    <p className="text-xs text-gray-400 mt-1">This ILO may not have any assessments mapped to it.</p>
                   </div>
                 )}
               </div>
-            ))}
+              ))
+            )}
           </div>
         )}
 
