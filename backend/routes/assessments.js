@@ -1407,9 +1407,11 @@ router.get('/ilo-attainment', async (req, res) => {
     });
   } catch (error) {
     console.error('[ILO ATTAINMENT] Error:', error);
+    console.error('[ILO ATTAINMENT] Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch ILO attainment data'
+      error: error.message || 'Failed to fetch ILO attainment data',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

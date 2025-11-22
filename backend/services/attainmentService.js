@@ -66,6 +66,14 @@ export async function calculateILOAttainment(
     }
   } catch (error) {
     console.error('[ATTAINMENT SERVICE] Error calculating ILO attainment:', error);
+    console.error('[ATTAINMENT SERVICE] Error details:', {
+      sectionCourseId,
+      passThreshold,
+      iloId,
+      performanceFilter,
+      message: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 }
@@ -109,6 +117,7 @@ async function getILOAttainmentSummary(
       INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
       INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
       INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
       LEFT JOIN submissions sub ON (
         ce.enrollment_id = sub.enrollment_id 
         AND sub.assessment_id = a.assessment_id
@@ -119,6 +128,8 @@ async function getILOAttainmentSummary(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
+        AND sy.section_course_id = $1
+        AND a.section_course_id = $1
       GROUP BY ce.student_id, s.student_number, s.full_name, i.ilo_id, i.code, i.description
     ),
     ilo_summary AS (
@@ -293,6 +304,8 @@ async function getILOStudentList(
     INNER JOIN students s ON ce.student_id = s.student_id
     INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
     INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+    INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     LEFT JOIN submissions sub ON (
       ce.enrollment_id = sub.enrollment_id 
       AND sub.assessment_id = a.assessment_id
@@ -303,6 +316,9 @@ async function getILOStudentList(
       AND aiw.ilo_id = $2
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
+      AND i.is_active = TRUE
+      AND sy.section_course_id = $1
+      AND a.section_course_id = $1
     GROUP BY ce.student_id, ce.enrollment_id, s.student_number, s.full_name
     ORDER BY s.full_name
   `;
