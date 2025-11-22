@@ -435,16 +435,40 @@ async function getILOStudentList(
         AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
     ),
     assessment_ilo_connections AS (
+      -- Get the syllabus_id for the target ILO, then get ALL assessments from that syllabus
+      -- Since assessments are connected to the syllabus, show ALL assessments from the same syllabus
+      WITH target_ilo_syllabus AS (
+        SELECT DISTINCT syllabus_id
+        FROM ilos
+        WHERE ilo_id = $2 AND is_active = TRUE
+      )
       SELECT DISTINCT
         a.assessment_id,
-        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
-        COALESCE(aiw.weight_percentage, im.ilo_weight_percentage, 0) AS ilo_weight_percentage
+        -- Connect all assessments from the same syllabus to the target ILO ($2)
+        -- Prefer explicit connections if they match the target ILO, otherwise default to target ILO
+        COALESCE(
+          CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
+          CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
+          CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
+          $2  -- Default: connect to target ILO since they're in the same syllabus
+        ) AS ilo_id,
+        COALESCE(
+          CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
+          CASE WHEN im.ilo_id = $2 THEN im.ilo_weight_percentage ELSE NULL END,
+          a.weight_percentage,
+          0
+        ) AS ilo_weight_percentage
       FROM assessments a
-      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-      LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id
-      LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      INNER JOIN target_ilo_syllabus tis ON sy.syllabus_id = tis.syllabus_id
+      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
+      LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = $2
+      LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id AND im.ilo_id = $2
       WHERE a.section_course_id = $1
-        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+        AND sy.section_course_id = $1
+        AND a.weight_percentage IS NOT NULL
+        AND a.weight_percentage > 0
+        -- Show ALL assessments from the same syllabus as the target ILO
     ),
     assessment_stats AS (
       SELECT
@@ -656,19 +680,39 @@ async function getILOStudentList(
   // Step 2: Get assessments connected to this ILO (with filters applied)
   // Reuse the same filter params and conditions from above
   // Step 2: Get assessments connected to this ILO (simpler standalone query)
+  // Since assessments are connected to the syllabus, include ALL assessments from the same syllabus as the ILO
   const connectedAssessmentsQuery = `
-    WITH assessment_ilo_connections AS (
+    WITH ilo_syllabus AS (
+      SELECT DISTINCT syllabus_id
+      FROM ilos
+      WHERE ilo_id = $2 AND is_active = TRUE
+    ),
+    assessment_ilo_connections AS (
       SELECT DISTINCT
         a.assessment_id,
-        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
-        COALESCE(aiw.weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage
+        -- Connect all assessments from the same syllabus to the target ILO ($2)
+        -- Prefer explicit connections if they match the target ILO, otherwise default to target ILO
+        COALESCE(
+          CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
+          CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
+          CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
+          $2  -- Default: connect to target ILO since they're in the same syllabus
+        ) AS ilo_id,
+        COALESCE(
+          CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
+          CASE WHEN im.ilo_id = $2 THEN im.ilo_weight_percentage ELSE NULL END,
+          a.weight_percentage,
+          0
+        ) AS ilo_weight_percentage
       FROM assessments a
-      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
+      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
       LEFT JOIN (
         SELECT DISTINCT r.assessment_id, r.ilo_id
         FROM rubrics r
         INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
-        WHERE a2.section_course_id = $1
+        WHERE a2.section_course_id = $1 AND r.ilo_id = $2
       ) r ON a.assessment_id = r.assessment_id
       LEFT JOIN (
         WITH assessment_codes AS (
@@ -698,15 +742,18 @@ async function getILOStudentList(
           ac.assessment_id,
           COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
         FROM assessment_codes ac
-        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND ism.ilo_id = $2
+        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND isdg.ilo_id = $2
+        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND iiga.ilo_id = $2
+        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND icdio.ilo_id = $2
         WHERE ac.assessment_code IS NOT NULL
-          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+          AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2)
       ) im ON a.assessment_id = im.assessment_id
       WHERE a.section_course_id = $1
-        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+        AND sy.section_course_id = $1
+        AND a.weight_percentage IS NOT NULL
+        AND a.weight_percentage > 0
+        -- Show ALL assessments from the same syllabus as the target ILO
     )
     SELECT DISTINCT
       a.assessment_id,
