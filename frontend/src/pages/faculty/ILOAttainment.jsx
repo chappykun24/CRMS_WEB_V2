@@ -25,6 +25,8 @@ const ILOAttainment = () => {
   const [loadingAttainment, setLoadingAttainment] = useState(false)
   const [studentList, setStudentList] = useState([])
   const [showStudents, setShowStudents] = useState(false)
+  const [iloCombinations, setIloCombinations] = useState([])
+  const [showCombinations, setShowCombinations] = useState(false)
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
@@ -265,18 +267,76 @@ const ILOAttainment = () => {
     }
   }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination])
 
+  // Load ILO combinations with assessments
+  const loadILOCombinations = useCallback(async (sectionCourseId) => {
+    if (!sectionCourseId) return
+
+    if (attainmentAbortControllerRef.current) {
+      attainmentAbortControllerRef.current.abort()
+    }
+    
+    attainmentAbortControllerRef.current = new AbortController()
+
+    setLoadingAttainment(true)
+    setError('')
+
+    try {
+      const params = new URLSearchParams({
+        section_course_id: sectionCourseId.toString()
+      })
+      
+      if (selectedSO) params.append('so_id', selectedSO)
+      if (selectedSDG) params.append('sdg_id', selectedSDG)
+      if (selectedIGA) params.append('iga_id', selectedIGA)
+      if (selectedCDIO) params.append('cdio_id', selectedCDIO)
+
+      const response = await fetch(`/api/assessments/ilo-attainment/combinations?${params.toString()}`, {
+        signal: attainmentAbortControllerRef.current.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ILO combinations: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setIloCombinations(result.data)
+        setShowCombinations(true)
+        setAttainmentData(null)
+        setSelectedILO(null)
+      } else {
+        throw new Error(result.error || 'Failed to load ILO combinations')
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [ILO COMBINATIONS] Request was aborted')
+        return
+      }
+      console.error('Error loading ILO combinations:', error)
+      setError(error.message || 'Failed to load ILO combinations')
+    } finally {
+      setLoadingAttainment(false)
+    }
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+
   // Load data when class is selected or filters change
   useEffect(() => {
     if (selectedClass?.section_course_id) {
       if (selectedILOCombination) {
-        // If a specific ILO combination is selected, load that ILO's data
+        // If a specific ILO combination is selected, load that ILO's detailed data
         loadAttainmentData(selectedClass.section_course_id, parseInt(selectedILOCombination))
-      } else if (!selectedILO) {
-        // Otherwise load summary if not viewing a specific ILO
-        loadAttainmentData(selectedClass.section_course_id)
+        setShowCombinations(false)
+      } else {
+        // Otherwise load ILO combinations with assessments
+        loadILOCombinations(selectedClass.section_course_id)
       }
     }
-  }, [selectedClass?.section_course_id, selectedILO, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, loadAttainmentData])
+  }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, loadAttainmentData, loadILOCombinations])
 
   // Reload student list when performance filter changes (only if viewing student list)
   useEffect(() => {
@@ -531,7 +591,7 @@ const ILOAttainment = () => {
         )}
 
         {/* Loading State with Skeleton */}
-        {loadingAttainment && !selectedILO && (
+        {loadingAttainment && !selectedILO && !showCombinations && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
               <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
@@ -548,8 +608,172 @@ const ILOAttainment = () => {
           </div>
         )}
 
+        {/* ILO Combinations with Assessments View */}
+        {!loadingAttainment && showCombinations && iloCombinations.length > 0 && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">ILO Combinations</h2>
+              <p className="text-sm text-gray-600">Showing {iloCombinations.length} ILO combination{iloCombinations.length !== 1 ? 's' : ''} with their assessments</p>
+            </div>
+
+            {iloCombinations.map((ilo) => (
+              <div key={ilo.ilo_id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {/* ILO Header */}
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{ilo.ilo_code}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{ilo.description}</p>
+                      {ilo.mappings && ilo.mappings.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {ilo.mappings.map((mapping, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                            >
+                              {mapping.type}: {mapping.code}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedILOCombination(ilo.ilo_id.toString())
+                        setShowCombinations(false)
+                      }}
+                      className="ml-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      View Details →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Assessments Table */}
+                {ilo.assessments && ilo.assessments.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Assessment Title
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Points
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Weight (%)
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ILO Weight (%)
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Due Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Students
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Submissions
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Avg Score
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Score
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Avg %
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Mapped To
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {ilo.assessments.map((assessment) => (
+                          <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-700">{assessment.type}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{assessment.total_points}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(1)}%</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{parseFloat(assessment.ilo_weight_percentage || 0).toFixed(1)}%</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-700">
+                                {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{assessment.total_students || 0}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-900">{assessment.submissions_count || 0}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">
+                                {parseFloat(assessment.average_score || 0).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-900">
+                                {parseFloat(assessment.total_score || 0).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`text-sm font-medium ${
+                                parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
+                                parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {assessment.mappings && assessment.mappings.length > 0 ? (
+                                  assessment.mappings.map((mapping, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200"
+                                    >
+                                      {mapping.type}: {mapping.code}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-gray-400">None</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="px-6 py-12 text-center text-gray-500">
+                    <p>No assessments found for this ILO combination.</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Summary View */}
-        {!loadingAttainment && !selectedILO && attainmentData && (
+        {!loadingAttainment && !selectedILO && !showCombinations && attainmentData && (
           <div className="space-y-6">
             {/* Summary Stats */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

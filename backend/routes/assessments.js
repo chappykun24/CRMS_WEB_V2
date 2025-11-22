@@ -401,6 +401,213 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
   }
 });
 
+// GET /api/assessments/ilo-attainment/combinations - Get ILO combinations with assessments and statistics
+router.get('/ilo-attainment/combinations', async (req, res) => {
+  try {
+    const { 
+      section_course_id,
+      so_id,
+      sdg_id,
+      iga_id,
+      cdio_id
+    } = req.query;
+
+    if (!section_course_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'section_course_id is required'
+      });
+    }
+
+    const sectionCourseId = parseInt(section_course_id);
+    const soId = so_id ? parseInt(so_id) : null;
+    const sdgId = sdg_id ? parseInt(sdg_id) : null;
+    const igaId = iga_id ? parseInt(iga_id) : null;
+    const cdioId = cdio_id ? parseInt(cdio_id) : null;
+
+    // Get ILO combinations with their assessments and statistics
+    const query = `
+      WITH ilo_combinations AS (
+        SELECT DISTINCT
+          i.ilo_id,
+          i.code AS ilo_code,
+          i.description AS ilo_description,
+          ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+          ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+          ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes,
+          ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes
+        FROM ilos i
+        INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+        LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+        LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+        LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+        LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+        LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+        LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+        LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+        LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+        WHERE sy.section_course_id = $1
+          AND i.is_active = TRUE
+          ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
+          ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
+          ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
+          ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
+        GROUP BY i.ilo_id, i.code, i.description
+      ),
+      assessment_stats AS (
+        SELECT
+          a.assessment_id,
+          a.title AS assessment_title,
+          a.type AS assessment_type,
+          a.total_points,
+          a.weight_percentage,
+          a.due_date,
+          aiw.ilo_id,
+          aiw.weight_percentage AS ilo_weight_percentage,
+          COUNT(DISTINCT ce.student_id) AS total_students,
+          COUNT(DISTINCT sub.submission_id) AS submissions_count,
+          COALESCE(AVG(
+            CASE 
+              WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
+              WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              ELSE NULL
+            END
+          ), 0) AS average_score,
+          COALESCE(SUM(
+            CASE 
+              WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
+              WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+              THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+              ELSE 0
+            END
+          ), 0) AS total_score,
+          ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+          ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+          ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes,
+          ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes
+        FROM assessments a
+        INNER JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+        INNER JOIN ilo_combinations ic ON aiw.ilo_id = ic.ilo_id
+        INNER JOIN ilos i ON aiw.ilo_id = i.ilo_id
+        INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+        INNER JOIN course_enrollments ce ON a.section_course_id = ce.section_course_id AND ce.status = 'enrolled'
+        LEFT JOIN submissions sub ON (
+          ce.enrollment_id = sub.enrollment_id 
+          AND sub.assessment_id = a.assessment_id
+          AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+        )
+        LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+        LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+        LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+        LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+        LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+        LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+        LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+        LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+        WHERE a.section_course_id = $1
+          AND sy.section_course_id = $1
+          AND a.weight_percentage IS NOT NULL
+          AND a.weight_percentage > 0
+        GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aiw.ilo_id, aiw.weight_percentage
+      )
+      SELECT
+        ic.ilo_id,
+        ic.ilo_code,
+        ic.ilo_description,
+        ic.so_codes,
+        ic.sdg_codes,
+        ic.iga_codes,
+        ic.cdio_codes,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'assessment_id', ast.assessment_id,
+              'title', ast.assessment_title,
+              'type', ast.assessment_type,
+              'total_points', ast.total_points,
+              'weight_percentage', ast.weight_percentage,
+              'ilo_weight_percentage', ast.ilo_weight_percentage,
+              'due_date', ast.due_date,
+              'total_students', ast.total_students,
+              'submissions_count', ast.submissions_count,
+              'average_score', ROUND(ast.average_score::NUMERIC, 2),
+              'total_score', ROUND(ast.total_score::NUMERIC, 2),
+              'average_percentage', CASE 
+                WHEN ast.total_points > 0 AND ast.weight_percentage > 0 AND ast.average_score > 0 THEN 
+                  ROUND((((ast.average_score / (ast.weight_percentage / 100.0) - 37.5) / 62.5) * 100)::NUMERIC, 2)
+                ELSE 0
+              END,
+              'mappings', (
+                SELECT json_agg(
+                  json_build_object('type', mapping_type, 'code', mapping_code)
+                )
+                FROM (
+                  SELECT 'SO' as mapping_type, unnest(ast.so_codes) as mapping_code
+                  UNION ALL
+                  SELECT 'SDG' as mapping_type, unnest(ast.sdg_codes) as mapping_code
+                  UNION ALL
+                  SELECT 'IGA' as mapping_type, unnest(ast.iga_codes) as mapping_code
+                  UNION ALL
+                  SELECT 'CDIO' as mapping_type, unnest(ast.cdio_codes) as mapping_code
+                ) mappings
+                WHERE mapping_code IS NOT NULL
+              )
+            ) ORDER BY ast.due_date ASC, ast.assessment_title ASC
+          ) FILTER (WHERE ast.assessment_id IS NOT NULL),
+          '[]'::json
+        ) AS assessments
+      FROM ilo_combinations ic
+      LEFT JOIN assessment_stats ast ON ic.ilo_id = ast.ilo_id
+      GROUP BY ic.ilo_id, ic.ilo_code, ic.ilo_description, ic.so_codes, ic.sdg_codes, ic.iga_codes, ic.cdio_codes
+      ORDER BY ic.ilo_code
+    `;
+
+    const result = await db.query(query, [sectionCourseId]);
+
+    // Format the response
+    const iloCombinations = result.rows.map(row => {
+      const mappings = [];
+      if (row.so_codes && row.so_codes.length > 0) {
+        mappings.push(...row.so_codes.map(code => ({ type: 'SO', code })));
+      }
+      if (row.sdg_codes && row.sdg_codes.length > 0) {
+        mappings.push(...row.sdg_codes.map(code => ({ type: 'SDG', code })));
+      }
+      if (row.iga_codes && row.iga_codes.length > 0) {
+        mappings.push(...row.iga_codes.map(code => ({ type: 'IGA', code })));
+      }
+      if (row.cdio_codes && row.cdio_codes.length > 0) {
+        mappings.push(...row.cdio_codes.map(code => ({ type: 'CDIO', code })));
+      }
+
+      return {
+        ilo_id: row.ilo_id,
+        ilo_code: row.ilo_code,
+        description: row.ilo_description,
+        mappings: mappings,
+        combination: mappings.length > 0 ? mappings.map(m => `${m.type}:${m.code}`).join(', ') : 'No mappings',
+        assessments: row.assessments || []
+      };
+    });
+
+    res.json({
+      success: true,
+      data: iloCombinations
+    });
+  } catch (error) {
+    console.error('[ILO ATTAINMENT COMBINATIONS] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch ILO combinations with assessments'
+    });
+  }
+});
+
 router.get('/ilo-attainment', async (req, res) => {
   try {
     const { 
