@@ -1354,15 +1354,133 @@ async function getILOStudentList(
     connectedAssessmentsFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac.');
   }
   
-  // Build the assessment matching condition based on assessment_tasks from the pair
+  console.log(`[ATTAINMENT DEBUG] selectedAssessmentTasks:`, selectedAssessmentTasks);
+  console.log(`[ATTAINMENT DEBUG] connectAllFromSyllabus:`, connectAllFromSyllabus);
+  
+  // Step 3a: First, extract assessment codes separately (simpler query)
+  const assessmentCodesParams = [sectionCourseId];
+  let assessmentCodesParamIndex = 2;
+  let assessmentCodesSyllabusCondition = '';
+  
+  if (syllabusId) {
+    assessmentCodesParams.push(syllabusId);
+    assessmentCodesSyllabusCondition = `AND sy.syllabus_id = $${assessmentCodesParamIndex}`;
+  }
+  
+  const extractAssessmentCodesQuery = `
+    SELECT DISTINCT
+      a.assessment_id,
+      COALESCE(
+        -- Try to get code from syllabus assessment_framework JSON
+        (
+          SELECT (task->>'code')::text
+          FROM jsonb_array_elements(
+            CASE 
+              WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+              THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
+              ELSE '[]'::jsonb
+            END
+          ) AS component
+          CROSS JOIN LATERAL jsonb_array_elements(
+            CASE 
+              WHEN jsonb_typeof(component->'sub_assessments') = 'array'
+              THEN component->'sub_assessments'
+              ELSE '[]'::jsonb
+            END
+          ) AS task
+          WHERE (
+            (task->>'title')::text ILIKE '%' || a.title || '%'
+            OR (task->>'name')::text ILIKE '%' || a.title || '%'
+            OR (task->>'code')::text IS NOT NULL
+          )
+          LIMIT 1
+        ),
+        -- Try to get code directly from assessment_framework if it's a flat structure
+        (
+          SELECT key::text
+          FROM jsonb_each_text(
+            CASE 
+              WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+              THEN sy.assessment_framework
+              ELSE '{}'::jsonb
+            END
+          )
+          WHERE key ILIKE '%' || a.title || '%'
+          LIMIT 1
+        ),
+        -- Try to get code from assessment content_data
+        (a.content_data->>'code')::text,
+        (a.content_data->>'abbreviation')::text,
+        -- Extract code dynamically from title using pattern matching
+        (
+          SELECT UPPER(
+            REGEXP_REPLACE(
+              SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'),
+              '\s+', '', 'g'
+            )
+          )
+          WHERE a.title ~* '[A-Z]{2,4}\s*\d+'
+        ),
+        -- Extract abbreviation from first letters of words + number
+        (
+          SELECT UPPER(
+            REGEXP_REPLACE(
+              REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\\s+([A-Z])[a-z]*\\s*(\\d+)', '\\1\\2\\3'),
+              '[^A-Z0-9]', '', 'g'
+            )
+          )
+          WHERE a.title ~* '^[A-Z][a-z]+\\s+[A-Z][a-z]+\\s+\\d+'
+        ),
+        -- Try alternative patterns: single word + number
+        (
+          SELECT UPPER(
+            REGEXP_REPLACE(
+              SUBSTRING(a.title FROM '^([A-Z])[a-z]*\\s+(\\d+)'),
+              '\\s+', '', 'g'
+            )
+          )
+          WHERE a.title ~* '^[A-Z][a-z]+\\s+\\d+'
+        ),
+        NULL
+      ) AS assessment_code
+    FROM assessments a
+    INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+    WHERE a.section_course_id = $1
+      AND a.is_published = TRUE
+      AND sy.review_status = 'approved'
+      AND sy.approval_status = 'approved'
+      ${assessmentCodesSyllabusCondition}
+  `;
+  
+  // Execute assessment codes extraction query
+  const assessmentCodesResult = await db.query(extractAssessmentCodesQuery, assessmentCodesParams);
+  const assessmentCodesMap = new Map(assessmentCodesResult.rows.map(row => [row.assessment_id, row.assessment_code]));
+  
+  console.log(`[ATTAINMENT DEBUG] Extracted ${assessmentCodesResult.rows.length} assessment codes`);
+  
+  // Filter assessment IDs based on assessment_tasks if needed
+  let assessmentIdsToInclude = null;
   let assessmentTasksCondition = 'TRUE';
+  
   if (hasFilters && selectedAssessmentTasks && selectedAssessmentTasks.length > 0) {
-    // Add assessment_tasks to params as individual values
-    connectedAssessmentsParams.push(...selectedAssessmentTasks);
-    // Build condition: match assessment codes from syllabus with assessment_tasks array
-    // Cast each parameter to text explicitly to help PostgreSQL determine the type
-    const paramPlaceholders = selectedAssessmentTasks.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}::text`).join(', ');
-    assessmentTasksCondition = `ac.assessment_code = ANY(ARRAY[${paramPlaceholders}])`;
+    assessmentIdsToInclude = new Set();
+    const selectedTasksUpper = selectedAssessmentTasks.map(t => t.toUpperCase().trim());
+    assessmentCodesResult.rows.forEach(row => {
+      if (row.assessment_code && selectedTasksUpper.includes(row.assessment_code.toUpperCase().trim())) {
+        assessmentIdsToInclude.add(row.assessment_id);
+      }
+    });
+    console.log(`[ATTAINMENT DEBUG] Filtered to ${assessmentIdsToInclude.size} assessments matching assessment_tasks`);
+    
+    // Update condition to filter by assessment IDs
+    if (assessmentIdsToInclude.size > 0) {
+      const assessmentIdList = Array.from(assessmentIdsToInclude);
+      connectedAssessmentsParams.push(...assessmentIdList);
+      const paramPlaceholders = assessmentIdList.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}`).join(', ');
+      assessmentTasksCondition = `a.assessment_id = ANY(ARRAY[${paramPlaceholders}])`;
+    } else {
+      assessmentTasksCondition = 'FALSE'; // No matching assessments
+    }
   } else if (hasFilters && connectAllFromSyllabus) {
     // If assessment_tasks is empty/null, include all from syllabus
     assessmentTasksCondition = 'TRUE';
@@ -1375,102 +1493,17 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsSyllabusCondition: ${connectedAssessmentsSyllabusCondition || '(none)'}`);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsTermCondition: ${connectedAssessmentsTermCondition || '(none)'}`);
   console.log(`[ATTAINMENT DEBUG] assessmentTasksCondition: ${assessmentTasksCondition}`);
-  console.log(`[ATTAINMENT DEBUG] selectedAssessmentTasks:`, selectedAssessmentTasks);
-  console.log(`[ATTAINMENT DEBUG] connectAllFromSyllabus:`, connectAllFromSyllabus);
   
+  // Step 3b: Now build the simpler connected assessments query (no complex code extraction CTE)
   const connectedAssessmentsQuery = `
     WITH ilo_syllabus AS (
       SELECT DISTINCT syllabus_id
       FROM ilos
       WHERE ilo_id = $2 AND is_active = TRUE
     ),
-    assessment_codes AS (
-      SELECT DISTINCT
-        a.assessment_id,
-        COALESCE(
-          -- Try to get code from syllabus assessment_framework JSON
-          (
-            SELECT (task->>'code')::text
-            FROM jsonb_array_elements(
-              CASE 
-                WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
-                THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
-                ELSE '[]'::jsonb
-              END
-            ) AS component
-            CROSS JOIN LATERAL jsonb_array_elements(
-              CASE 
-                WHEN jsonb_typeof(component->'sub_assessments') = 'array'
-                THEN component->'sub_assessments'
-                ELSE '[]'::jsonb
-              END
-            ) AS task
-            WHERE (
-              (task->>'title')::text ILIKE '%' || a.title || '%'
-              OR (task->>'name')::text ILIKE '%' || a.title || '%'
-              OR (task->>'code')::text IS NOT NULL
-            )
-            LIMIT 1
-          ),
-          -- Try to get code directly from assessment_framework if it's a flat structure
-          (
-            SELECT key::text
-            FROM jsonb_each_text(
-              CASE 
-                WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
-                THEN sy.assessment_framework
-                ELSE '{}'::jsonb
-              END
-            )
-            WHERE key ILIKE '%' || a.title || '%'
-            LIMIT 1
-          ),
-          -- Try to get code from assessment content_data
-          (a.content_data->>'code')::text,
-          (a.content_data->>'abbreviation')::text,
-          -- Extract code dynamically from title using pattern matching
-          (
-            SELECT UPPER(
-              REGEXP_REPLACE(
-                SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'),
-                '\s+', '', 'g'
-              )
-            )
-            WHERE a.title ~* '[A-Z]{2,4}\s*\d+'
-          ),
-          -- Extract abbreviation from first letters of words + number
-          (
-            SELECT UPPER(
-              REGEXP_REPLACE(
-                REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\\s+([A-Z])[a-z]*\\s*(\\d+)', '\\1\\2\\3'),
-                '[^A-Z0-9]', '', 'g'
-              )
-            )
-            WHERE a.title ~* '^[A-Z][a-z]+\\s+[A-Z][a-z]+\\s+\\d+'
-          ),
-          -- Try alternative patterns: single word + number
-          (
-            SELECT UPPER(
-              REGEXP_REPLACE(
-                SUBSTRING(a.title FROM '^([A-Z])[a-z]*\\s+(\\d+)'),
-                '\\s+', '', 'g'
-              )
-            )
-            WHERE a.title ~* '^[A-Z][a-z]+\\s+\\d+'
-          ),
-          NULL
-        ) AS assessment_code
-      FROM assessments a
-      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
-      INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
-      WHERE a.section_course_id = $1
-        AND a.is_published = TRUE
-        AND sy.review_status = 'approved'
-        AND sy.approval_status = 'approved'
-    ),
     assessment_ilo_connections AS (
-      -- Get assessments from syllabus assessment_framework based on the ILO-mapping pair's assessment_tasks
-      -- This directly matches assessment codes from the syllabus with the assessment_tasks array
+      -- Get assessments from syllabus based on the ILO-mapping pair's assessment_tasks
+      -- Assessment codes are already extracted in a separate query
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1478,7 +1511,6 @@ async function getILOStudentList(
       FROM assessments a
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
-      LEFT JOIN assessment_codes ac ON a.assessment_id = ac.assessment_id
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
       LEFT JOIN rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = $2
       WHERE a.section_course_id = $1
@@ -1486,6 +1518,7 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
+        ${connectedAssessmentsSyllabusCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND (
@@ -1613,23 +1646,7 @@ async function getILOStudentList(
       INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
-      LEFT JOIN (
-        -- Get assessment codes for filtering
-        SELECT DISTINCT
-          a_ac.assessment_id,
-          COALESCE(
-            (a_ac.content_data->>'code')::text,
-            (a_ac.content_data->>'abbreviation')::text,
-            CASE 
-              WHEN a_ac.title ~* '[A-Z]{2,4}\s*\d+' 
-              THEN UPPER(SUBSTRING(a_ac.title FROM '([A-Z]{2,4}\s*\d+)'))
-              ELSE NULL
-            END,
-            NULL
-          ) AS assessment_code
-        FROM assessments a_ac
-        WHERE a_ac.section_course_id = $1
-      ) ac_student ON a.assessment_id = ac_student.assessment_id
+      -- Assessment codes are already extracted in a separate query, filter by IDs if needed
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
       LEFT JOIN rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = $2
       WHERE a.section_course_id = $1
