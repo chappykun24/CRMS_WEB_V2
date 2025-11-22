@@ -597,18 +597,32 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         )
         WHERE (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
       ),
-      -- Combine ILO connections from assessment_ilo_weights, rubrics, and mapping tables
+      -- Combine ILO connections from assessment_ilo_weights, rubrics, mapping tables, and same syllabus
+      -- Connect ALL assessments from the same syllabus to ALL ILOs in that syllabus (syllabus-based connection)
       assessment_ilo_connections AS (
         SELECT DISTINCT
           a.assessment_id,
-          COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
-          COALESCE(aiw.weight_percentage, im.ilo_weight_percentage, 0) AS ilo_weight_percentage
+          COALESCE(
+            -- Prefer explicit connections if they match
+            CASE WHEN aiw.ilo_id IS NOT NULL THEN aiw.ilo_id ELSE NULL END,
+            CASE WHEN r.ilo_id IS NOT NULL THEN r.ilo_id ELSE NULL END,
+            CASE WHEN im.ilo_id IS NOT NULL THEN im.ilo_id ELSE NULL END,
+            -- Default: connect to ILO since they're in the same syllabus
+            i.ilo_id
+          ) AS ilo_id,
+          COALESCE(
+            aiw.weight_percentage,
+            im.ilo_weight_percentage,
+            a.weight_percentage,
+            0
+          ) AS ilo_weight_percentage
         FROM assessments a
-        LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
-        LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id
-        LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id
+        INNER JOIN syllabi sy_assessment ON a.syllabus_id = sy_assessment.syllabus_id
+        INNER JOIN ilos i ON i.syllabus_id = sy_assessment.syllabus_id AND i.is_active = TRUE
+        LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = i.ilo_id
+        LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = i.ilo_id
+        LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id AND im.ilo_id = i.ilo_id
         WHERE a.section_course_id = $1
-          AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
       ),
       assessment_stats AS (
         SELECT
