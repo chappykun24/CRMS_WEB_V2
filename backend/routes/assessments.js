@@ -459,14 +459,43 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         SELECT DISTINCT
           a.assessment_id,
           a.title,
+          a.syllabus_id,
           COALESCE(
-            -- Try to get code from syllabus assessment_framework JSON
+            -- Try to get code from syllabus assessment_framework JSON (check multiple possible structures)
             (
               SELECT (task->>'code')::text
-              FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
-              CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
-              WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
-                 OR (task->>'name')::text ILIKE '%' || a.title || '%'
+              FROM jsonb_array_elements(
+                CASE 
+                  WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+                  THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
+                  ELSE '[]'::jsonb
+                END
+              ) AS component
+              CROSS JOIN LATERAL jsonb_array_elements(
+                CASE 
+                  WHEN jsonb_typeof(component->'sub_assessments') = 'array'
+                  THEN component->'sub_assessments'
+                  ELSE '[]'::jsonb
+                END
+              ) AS task
+              WHERE (
+                (task->>'title')::text ILIKE '%' || a.title || '%'
+                OR (task->>'name')::text ILIKE '%' || a.title || '%'
+                OR (task->>'code')::text IS NOT NULL
+              )
+              LIMIT 1
+            ),
+            -- Try to get code directly from assessment_framework if it's a flat structure
+            (
+              SELECT key::text
+              FROM jsonb_each_text(
+                CASE 
+                  WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+                  THEN sy.assessment_framework
+                  ELSE '{}'::jsonb
+                END
+              )
+              WHERE key ILIKE '%' || a.title || '%'
               LIMIT 1
             ),
             -- Try to get code from assessment content_data
@@ -476,8 +505,11 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
             -- Look for patterns like "WA1", "ME1", "FE1", "LA1" etc. in title
             (
               SELECT UPPER(
-                SUBSTRING(
-                  a.title FROM '([A-Z]{2,4}\s*\d+)'
+                REGEXP_REPLACE(
+                  SUBSTRING(
+                    a.title FROM '([A-Z]{2,4}\s*\d+)'
+                  ),
+                  '\s+', '', 'g'
                 )
               )
               WHERE a.title ~* '[A-Z]{2,4}\s*\d+'
@@ -508,6 +540,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         WHERE a.section_course_id = $1
       ),
       -- Get ILOs from mapping tables using assessment_tasks arrays (dynamic matching)
+      -- Also try case-insensitive matching and partial matching
       ilo_from_mappings AS (
         SELECT DISTINCT
           ac.assessment_id,
@@ -516,12 +549,53 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
           COALESCE(a.weight_percentage, 0) AS ilo_weight_percentage
         FROM assessment_codes ac
         INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
-        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-        WHERE ac.assessment_code IS NOT NULL
-          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+        INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+        INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id
+        LEFT JOIN ilo_so_mappings ism ON (
+          ism.ilo_id = i.ilo_id
+          AND (
+            (ac.assessment_code IS NOT NULL AND ism.assessment_tasks @> ARRAY[ac.assessment_code])
+            OR (ac.assessment_code IS NOT NULL AND EXISTS (
+              SELECT 1 FROM unnest(ism.assessment_tasks) AS task 
+              WHERE UPPER(task) = UPPER(ac.assessment_code)
+            ))
+            OR (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL)
+          )
+        )
+        LEFT JOIN ilo_sdg_mappings isdg ON (
+          isdg.ilo_id = i.ilo_id
+          AND (
+            (ac.assessment_code IS NOT NULL AND isdg.assessment_tasks @> ARRAY[ac.assessment_code])
+            OR (ac.assessment_code IS NOT NULL AND EXISTS (
+              SELECT 1 FROM unnest(isdg.assessment_tasks) AS task 
+              WHERE UPPER(task) = UPPER(ac.assessment_code)
+            ))
+            OR (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL)
+          )
+        )
+        LEFT JOIN ilo_iga_mappings iiga ON (
+          iiga.ilo_id = i.ilo_id
+          AND (
+            (ac.assessment_code IS NOT NULL AND iiga.assessment_tasks @> ARRAY[ac.assessment_code])
+            OR (ac.assessment_code IS NOT NULL AND EXISTS (
+              SELECT 1 FROM unnest(iiga.assessment_tasks) AS task 
+              WHERE UPPER(task) = UPPER(ac.assessment_code)
+            ))
+            OR (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL)
+          )
+        )
+        LEFT JOIN ilo_cdio_mappings icdio ON (
+          icdio.ilo_id = i.ilo_id
+          AND (
+            (ac.assessment_code IS NOT NULL AND icdio.assessment_tasks @> ARRAY[ac.assessment_code])
+            OR (ac.assessment_code IS NOT NULL AND EXISTS (
+              SELECT 1 FROM unnest(icdio.assessment_tasks) AS task 
+              WHERE UPPER(task) = UPPER(ac.assessment_code)
+            ))
+            OR (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL)
+          )
+        )
+        WHERE (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
       ),
       -- Combine ILO connections from assessment_ilo_weights, rubrics, and mapping tables
       assessment_ilo_connections AS (
@@ -668,6 +742,13 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
     `;
 
     const result = await db.query(query, [sectionCourseId]);
+
+    // Debug logging
+    console.log(`[ILO COMBINATIONS] Found ${result.rows.length} ILO combinations`);
+    result.rows.forEach(row => {
+      const assessmentCount = Array.isArray(row.assessments) ? row.assessments.length : 0;
+      console.log(`[ILO COMBINATIONS] ${row.ilo_code}: ${assessmentCount} assessments`);
+    });
 
     // Format the response
     const iloCombinations = result.rows.map(row => {
