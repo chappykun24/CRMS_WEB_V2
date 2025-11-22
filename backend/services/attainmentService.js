@@ -1762,27 +1762,36 @@ async function getILOStudentList(
   }));
   
   // Group scores by student
-  // IMPORTANT: Only include assessments that are in the connected assessments list
-  // This ensures scores are only computed from filtered assessments
+  // CRITICAL: Only include assessments that are in the connected assessments list (sidebar)
+  // This ensures scores are ONLY computed from the assessments shown in the sidebar
   const studentScoresMap = new Map();
+  
+  // First, initialize all students with empty assessment scores
+  enrolledResult.rows.forEach(enrolled => {
+    studentScoresMap.set(enrolled.student_id, {
+      student_id: enrolled.student_id,
+      enrollment_id: enrolled.enrollment_id,
+      student_number: enrolled.student_number,
+      full_name: enrolled.full_name,
+      assessment_scores: []
+    });
+  });
+  
+  // Then, only add scores from assessments that are in the connected assessments list (sidebar)
   scoresResult.rows.forEach(row => {
-    // Filter: Only process assessments that are in the connected assessments list
+    // STRICT FILTER: Only process assessments that are in the connected assessments list (sidebar)
     if (!connectedAssessmentIds.has(row.assessment_id)) {
-      console.log(`[ATTAINMENT DEBUG] ⚠️ Skipping assessment ${row.assessment_id} (${row.assessment_title}) - not in connected assessments list`);
-      return; // Skip this assessment as it's not in the filtered connected assessments
+      // Skip this assessment - it's not in the sidebar, so it shouldn't contribute to scores
+      return;
     }
     
-    if (!studentScoresMap.has(row.student_id)) {
-      studentScoresMap.set(row.student_id, {
-        student_id: row.student_id,
-        enrollment_id: row.enrollment_id,
-        student_number: row.student_number,
-        full_name: row.full_name,
-        assessment_scores: []
-      });
-    }
     const student = studentScoresMap.get(row.student_id);
-    // Include all assessment records, even if score is 0, so we can track which assessments exist
+    if (!student) {
+      // Student not found in enrolled list, skip
+      return;
+    }
+    
+    // Include all assessment records from connected assessments, even if score is 0
     // The transmuted_score_calc might be NULL if there's no submission, but we still want to include the assessment
     const hasScore = row.raw_score > 0 || row.adjusted_score > 0 || row.total_score > 0 || 
                      row.transmuted_score > 0 || (row.transmuted_score_calc && row.transmuted_score_calc > 0);
@@ -1802,11 +1811,59 @@ async function getILOStudentList(
     });
   });
   
+  // For each connected assessment, ensure all students have an entry (even if no submission)
+  // This ensures the sidebar and score computation are perfectly aligned
+  connectedAssessmentsResult.rows.forEach(connectedAss => {
+    enrolledResult.rows.forEach(enrolled => {
+      const student = studentScoresMap.get(enrolled.student_id);
+      if (student) {
+        // Check if this student already has a score entry for this assessment
+        const hasEntry = student.assessment_scores.some(ass => ass.assessment_id === connectedAss.assessment_id);
+        if (!hasEntry) {
+          // Add entry with 0 scores (no submission yet)
+          student.assessment_scores.push({
+            assessment_id: connectedAss.assessment_id,
+            assessment_title: connectedAss.assessment_title,
+            raw_score: 0,
+            adjusted_score: 0,
+            total_score: 0,
+            max_score: parseFloat(connectedAss.max_score || 0),
+            score_percentage: 0,
+            transmuted_score: 0,
+            weight_percentage: parseFloat(connectedAss.weight_percentage || 0),
+            ilo_weight_percentage: parseFloat(connectedAss.ilo_weight_percentage || 0),
+            has_submission: false
+          });
+        }
+      }
+    });
+  });
+  
   // Calculate overall scores for each student
+  // CRITICAL: Only use assessments from the connected assessments list (sidebar)
   const allStudentRows = enrolledResult.rows.map(enrolled => {
     const studentData = studentScoresMap.get(enrolled.student_id);
     
-    if (!studentData || studentData.assessment_scores.length === 0) {
+    if (!studentData) {
+      return {
+        student_id: enrolled.student_id,
+        enrollment_id: enrolled.enrollment_id,
+        student_number: enrolled.student_number,
+        full_name: enrolled.full_name,
+        ilo_score: 0,
+        overall_attainment_rate: 0,
+        assessments_count: 0,
+        total_ilo_weight: 0,
+        assessment_scores: []
+      };
+    }
+    
+    // FILTER: Only use assessments that are in the connected assessments list (sidebar)
+    const connectedAssessments = studentData.assessment_scores.filter(ass => 
+      connectedAssessmentIds.has(ass.assessment_id)
+    );
+    
+    if (connectedAssessments.length === 0) {
       return {
         student_id: enrolled.student_id,
         enrollment_id: enrolled.enrollment_id,
@@ -1821,25 +1878,28 @@ async function getILOStudentList(
     }
     
     // Calculate: Overall % = (All Scores Combined) / (All Max Scores Combined) × 100
-    // Only include assessments that have actual scores
-    const assessmentsWithScores = studentData.assessment_scores.filter(ass => ass.has_submission);
+    // Only include assessments that have actual scores AND are in the connected assessments list
+    const assessmentsWithScores = connectedAssessments.filter(ass => ass.has_submission);
     const totalScore = assessmentsWithScores.reduce((sum, ass) => sum + (ass.raw_score || ass.total_score || ass.adjusted_score || 0), 0);
     const totalMax = assessmentsWithScores.reduce((sum, ass) => sum + ass.max_score, 0);
     const overallRate = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
     
-    // Calculate ILO score (sum of transmuted scores) - only include assessments with scores
+    // Calculate ILO score (sum of transmuted scores) - ONLY from connected assessments with scores
     const iloScore = assessmentsWithScores.reduce((sum, ass) => sum + (ass.transmuted_score || 0), 0);
     
-    // Total ILO weight (only for assessments with scores)
+    // Total ILO weight (only for connected assessments with scores)
     const totalIloWeight = assessmentsWithScores.reduce((sum, ass) => sum + ass.ilo_weight_percentage, 0);
     
+    // Count only connected assessments
+    const assessmentsCount = connectedAssessments.length;
+    
     console.log(`[ATTAINMENT DEBUG] Student ${studentData.student_number} (${studentData.full_name}):`);
-    console.log(`  - Total assessments: ${studentData.assessment_scores.length}`);
-    console.log(`  - Assessments with scores: ${assessmentsWithScores.length}`);
+    console.log(`  - Total connected assessments: ${connectedAssessments.length}`);
+    console.log(`  - Connected assessments with scores: ${assessmentsWithScores.length}`);
     console.log(`  - Total score: ${totalScore}, Total max: ${totalMax}`);
     console.log(`  - Overall rate: ${overallRate}%`);
-    console.log(`  - ILO score: ${iloScore}`);
-    console.log(`  - Sample assessment scores:`, assessmentsWithScores.slice(0, 3).map(a => ({
+    console.log(`  - ILO score: ${iloScore} (from connected assessments only)`);
+    console.log(`  - Sample connected assessment scores:`, assessmentsWithScores.slice(0, 3).map(a => ({
       title: a.assessment_title,
       raw_score: a.raw_score,
       transmuted_score: a.transmuted_score,
@@ -1853,9 +1913,10 @@ async function getILOStudentList(
       full_name: studentData.full_name,
       ilo_score: Math.round(iloScore * 100) / 100,
       overall_attainment_rate: Math.round(overallRate * 100) / 100,
-      assessments_count: studentData.assessment_scores.length,
+      assessments_count: assessmentsCount,
       total_ilo_weight: Math.round(totalIloWeight * 100) / 100,
-      assessment_scores: studentData.assessment_scores
+      // Only return assessment scores from connected assessments (sidebar)
+      assessment_scores: connectedAssessments
     };
   });
   
