@@ -492,8 +492,7 @@ async function getILOStudentList(
       ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
       ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
     FROM assessment_stats ast
-    INNER JOIN assessment_ilo_connections aic ON ast.assessment_id = aic.assessment_id AND ast.ilo_id = aic.ilo_id
-    INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
+    INNER JOIN ilos i ON ast.ilo_id = i.ilo_id
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
     LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
@@ -505,6 +504,10 @@ async function getILOStudentList(
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
+      ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
+      ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
+      ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
+      ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score, ast.average_percentage
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
