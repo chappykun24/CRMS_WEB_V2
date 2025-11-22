@@ -786,39 +786,6 @@ async function getILOStudentList(
     }
   }
   
-  // Format assessments with mappings
-  const assessments = assessmentsResult.rows.map(row => {
-    const mappings = [];
-    if (row.so_codes && row.so_codes.length > 0) {
-      mappings.push(...row.so_codes.map(code => ({ type: 'SO', code })));
-    }
-    if (row.cdio_codes && row.cdio_codes.length > 0) {
-      mappings.push(...row.cdio_codes.map(code => ({ type: 'CDIO', code })));
-    }
-    if (row.sdg_codes && row.sdg_codes.length > 0) {
-      mappings.push(...row.sdg_codes.map(code => ({ type: 'SDG', code })));
-    }
-    if (row.iga_codes && row.iga_codes.length > 0) {
-      mappings.push(...row.iga_codes.map(code => ({ type: 'IGA', code })));
-    }
-    
-    return {
-      assessment_id: row.assessment_id,
-      title: row.assessment_title,
-      type: row.assessment_type,
-      total_points: parseFloat(row.total_points || 0),
-      weight_percentage: parseFloat(row.weight_percentage || 0),
-      ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0),
-      due_date: row.due_date,
-      total_students: parseInt(row.total_students || 0),
-      submissions_count: parseInt(row.submissions_count || 0),
-      average_score: parseFloat(row.average_score || 0),
-      total_score: parseFloat(row.total_score || 0),
-      average_percentage: parseFloat(row.average_percentage || 0),
-      mappings: mappings
-    };
-  });
-  
   // Step 1: Get all enrolled students
   const allEnrolledStudentsQuery = `
     SELECT DISTINCT
