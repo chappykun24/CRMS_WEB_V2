@@ -162,7 +162,11 @@ async function getILOAttainmentSummary(
                 (a4.content_data->>'code')::text,
                 (a4.content_data->>'abbreviation')::text,
                 -- Extract code dynamically from title using pattern matching
-                UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a4.title ~* '[A-Z]{2,4}\s*\d+',
+                CASE 
+                  WHEN a4.title ~* '[A-Z]{2,4}\s*\d+' 
+                  THEN UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)'))
+                  ELSE NULL
+                END,
                 NULL
               ) AS assessment_code
             FROM assessments a4
@@ -396,7 +400,11 @@ async function getILOStudentList(
           (a.content_data->>'code')::text,
           (a.content_data->>'abbreviation')::text,
           -- Extract code dynamically from title using pattern matching
-          UPPER(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a.title ~* '[A-Z]{2,4}\s*\d+',
+          CASE 
+            WHEN a.title ~* '[A-Z]{2,4}\s*\d+' 
+            THEN UPPER(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'))
+            ELSE NULL
+          END,
           NULL
         ) AS assessment_code
       FROM assessments a
@@ -607,7 +615,11 @@ async function getILOStudentList(
                LIMIT 1),
               (a3.content_data->>'code')::text,
               (a3.content_data->>'abbreviation')::text,
-              UPPER(SUBSTRING(a3.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a3.title ~* '[A-Z]{2,4}\s*\d+',
+              CASE 
+                WHEN a3.title ~* '[A-Z]{2,4}\s*\d+' 
+                THEN UPPER(SUBSTRING(a3.title FROM '([A-Z]{2,4}\s*\d+)'))
+                ELSE NULL
+              END,
               NULL
             ) AS assessment_code
           FROM assessments a3
@@ -712,7 +724,11 @@ async function getILOStudentList(
                LIMIT 1),
               (a4.content_data->>'code')::text,
               (a4.content_data->>'abbreviation')::text,
-              UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a4.title ~* '[A-Z]{2,4}\s*\d+',
+              CASE 
+                WHEN a4.title ~* '[A-Z]{2,4}\s*\d+' 
+                THEN UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)'))
+                ELSE NULL
+              END,
               NULL
             ) AS assessment_code
           FROM assessments a4
