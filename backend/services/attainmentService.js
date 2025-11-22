@@ -888,7 +888,9 @@ async function getILOStudentList(
         ) AS assessment_code
         FROM assessments a
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+        INNER JOIN ilo_syllabus ils_acf ON sy.syllabus_id = ils_acf.syllabus_id
         WHERE a.section_course_id = $1
+          AND a.is_published = TRUE
           AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
@@ -934,20 +936,23 @@ async function getILOStudentList(
           a.weight_percentage,
           0
         ) AS ilo_weight_percentage
-      FROM assessments a
-      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
-      INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
-      CROSS JOIN ilo_mappings_info imi
-      LEFT JOIN assessment_codes_for_filter acf ON a.assessment_id = acf.assessment_id
-      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
-      LEFT JOIN (
-        SELECT DISTINCT r.assessment_id, r.ilo_id
-        FROM rubrics r
-        INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
-        INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
-        WHERE a2.section_course_id = $1 AND r.ilo_id = $2 
-          AND sy2.review_status = 'approved' AND sy2.approval_status = 'approved'
-      ) r ON a.assessment_id = r.assessment_id
+        FROM assessments a
+        INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+        INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
+        CROSS JOIN ilo_mappings_info imi
+        LEFT JOIN assessment_codes_for_filter acf ON a.assessment_id = acf.assessment_id
+        LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
+        LEFT JOIN (
+          SELECT DISTINCT r.assessment_id, r.ilo_id
+          FROM rubrics r
+          INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
+          INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
+          WHERE a2.section_course_id = $1 
+            AND a2.is_published = TRUE
+            AND r.ilo_id = $2 
+            AND sy2.review_status = 'approved' 
+            AND sy2.approval_status = 'approved'
+        ) r ON a.assessment_id = r.assessment_id
       LEFT JOIN (
         WITH assessment_codes AS (
           SELECT DISTINCT
@@ -1087,6 +1092,7 @@ async function getILOStudentList(
       ) im ON a.assessment_id = im.assessment_id
         WHERE a.section_course_id = $1
         AND sy.section_course_id = $1
+        AND a.is_published = TRUE
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
@@ -1152,6 +1158,7 @@ async function getILOStudentList(
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     WHERE a.section_course_id = $1
       AND aic.ilo_id = $2
+      AND a.is_published = TRUE
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
@@ -1161,6 +1168,140 @@ async function getILOStudentList(
   
   // Step 3: Get student assessment scores for connected assessments (with filters applied)
   const studentScoresQuery = `
+    WITH ilo_syllabus AS (
+      SELECT DISTINCT syllabus_id
+      FROM ilos
+      WHERE ilo_id = $2 AND is_active = TRUE
+    ),
+    assessment_codes_for_filter AS (
+      SELECT DISTINCT
+        a_code.assessment_id,
+        COALESCE(
+          -- Try to get code from syllabus assessment_framework JSON (check multiple possible structures)
+          (
+            SELECT (task->>'code')::text
+            FROM jsonb_array_elements(
+              CASE 
+                WHEN jsonb_typeof(sy_code.assessment_framework) = 'object' 
+                THEN COALESCE(sy_code.assessment_framework->'components', '[]'::jsonb)
+                ELSE '[]'::jsonb
+              END
+            ) AS component
+            CROSS JOIN LATERAL jsonb_array_elements(
+              CASE 
+                WHEN jsonb_typeof(component->'sub_assessments') = 'array'
+                THEN component->'sub_assessments'
+                ELSE '[]'::jsonb
+              END
+            ) AS task
+            WHERE (
+              (task->>'title')::text ILIKE '%' || a_code.title || '%'
+              OR (task->>'name')::text ILIKE '%' || a_code.title || '%'
+              OR (task->>'code')::text IS NOT NULL
+            )
+            LIMIT 1
+          ),
+          -- Try to get code directly from assessment_framework if it's a flat structure
+          (
+            SELECT key::text
+            FROM jsonb_each_text(
+              CASE 
+                WHEN jsonb_typeof(sy_code.assessment_framework) = 'object' 
+                THEN sy_code.assessment_framework
+                ELSE '{}'::jsonb
+              END
+            )
+            WHERE key ILIKE '%' || a_code.title || '%'
+            LIMIT 1
+          ),
+          -- Try to get code from assessment content_data
+          (a_code.content_data->>'code')::text,
+          (a_code.content_data->>'abbreviation')::text,
+          -- Extract code dynamically from title using pattern matching
+          (
+            SELECT UPPER(
+              REGEXP_REPLACE(
+                SUBSTRING(a_code.title FROM '([A-Z]{2,4}\s*\d+)'),
+                '\s+', '', 'g'
+              )
+            )
+            WHERE a_code.title ~* '[A-Z]{2,4}\s*\d+'
+          ),
+          -- Extract abbreviation from first letters of words + number
+          (
+            SELECT UPPER(
+              REGEXP_REPLACE(
+                REGEXP_REPLACE(a_code.title, '^([A-Z])[a-z]*\\s+([A-Z])[a-z]*\\s*(\\d+)', '\\1\\2\\3'),
+                '[^A-Z0-9]', '', 'g'
+              )
+            )
+            WHERE a_code.title ~* '^[A-Z][a-z]+\\s+[A-Z][a-z]+\\s+\\d+'
+          ),
+          -- Try alternative patterns: single word + number
+          (
+            SELECT UPPER(
+              REGEXP_REPLACE(
+                SUBSTRING(a_code.title FROM '^([A-Z])[a-z]*\\s+(\\d+)'),
+                '\\s+', '', 'g'
+              )
+            )
+            WHERE a_code.title ~* '^[A-Z][a-z]+\\s+\\d+'
+          ),
+          NULL
+        ) AS assessment_code
+      FROM assessments a_code
+      INNER JOIN syllabi sy_code ON a_code.syllabus_id = sy_code.syllabus_id
+      INNER JOIN ilo_syllabus ils_code ON sy_code.syllabus_id = ils_code.syllabus_id
+      WHERE a_code.section_course_id = $1
+        AND a_code.is_published = TRUE
+        AND sy_code.review_status = 'approved'
+        AND sy_code.approval_status = 'approved'
+    ),
+    ilo_mappings_info AS (
+      -- Get all mappings for this ILO to determine which assessments to connect
+      SELECT 
+        $2 AS ilo_id,
+        -- Collect all assessment_tasks from all mappings for this ILO (filtered by selected SO/SDG/IGA/CDIO if provided)
+        ARRAY_AGG(DISTINCT task_code) FILTER (WHERE task_code IS NOT NULL) AS all_assessment_tasks,
+        -- Check if any mapping has NULL or empty assessment_tasks (means connect all assessments)
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM ilo_so_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+              ${soId ? `AND so_id = $${assessmentFilterParams.indexOf(soId) + 1}` : ''}
+          ) OR EXISTS (
+            SELECT 1 FROM ilo_sdg_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+              ${sdgId ? `AND sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1}` : ''}
+          ) OR EXISTS (
+            SELECT 1 FROM ilo_iga_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+              ${igaId ? `AND iga_id = $${assessmentFilterParams.indexOf(igaId) + 1}` : ''}
+          ) OR EXISTS (
+            SELECT 1 FROM ilo_cdio_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+              ${cdioId ? `AND cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1}` : ''}
+          ) THEN TRUE
+          ELSE FALSE
+        END AS connect_all_from_syllabus
+      FROM (
+        SELECT DISTINCT unnest(assessment_tasks) AS task_code
+        FROM ilo_so_mappings 
+        WHERE ilo_id = $2 AND assessment_tasks IS NOT NULL AND array_length(assessment_tasks, 1) > 0
+        ${soId ? `AND so_id = $${assessmentFilterParams.indexOf(soId) + 1}` : ''}
+        UNION ALL
+        SELECT DISTINCT unnest(assessment_tasks) AS task_code
+        FROM ilo_sdg_mappings 
+        WHERE ilo_id = $2 AND assessment_tasks IS NOT NULL AND array_length(assessment_tasks, 1) > 0
+        ${sdgId ? `AND sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1}` : ''}
+        UNION ALL
+        SELECT DISTINCT unnest(assessment_tasks) AS task_code
+        FROM ilo_iga_mappings 
+        WHERE ilo_id = $2 AND assessment_tasks IS NOT NULL AND array_length(assessment_tasks, 1) > 0
+        ${igaId ? `AND iga_id = $${assessmentFilterParams.indexOf(igaId) + 1}` : ''}
+        UNION ALL
+        SELECT DISTINCT unnest(assessment_tasks) AS task_code
+        FROM ilo_cdio_mappings 
+        WHERE ilo_id = $2 AND assessment_tasks IS NOT NULL AND array_length(assessment_tasks, 1) > 0
+        ${cdioId ? `AND cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1}` : ''}
+      ) all_tasks
+    )
     SELECT
       ce.student_id,
       ce.enrollment_id,
@@ -1194,17 +1335,7 @@ async function getILOStudentList(
           (sub.total_score / a.total_points) * 100
         ELSE NULL
       END AS assessment_percentage
-    FROM course_enrollments ce
-    INNER JOIN students s ON ce.student_id = s.student_id
-    INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
-    INNER JOIN (
-      -- Use the same assessment connection logic as connectedAssessmentsQuery
-      WITH ilo_syllabus AS (
-        SELECT DISTINCT syllabus_id
-        FROM ilos
-        WHERE ilo_id = $2 AND is_active = TRUE
-      ),
-      assessment_codes_for_filter AS (
+    assessment_ilo_connections AS (
         SELECT DISTINCT
           a_code.assessment_id,
           COALESCE(
@@ -1367,7 +1498,11 @@ async function getILOStudentList(
           FROM rubrics r
           INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
           INNER JOIN syllabi sy3 ON a3.syllabus_id = sy3.syllabus_id
-          WHERE a3.section_course_id = $1 AND r.ilo_id = $2 AND sy3.review_status = 'approved' AND sy3.approval_status = 'approved'
+          WHERE a3.section_course_id = $1 
+            AND a3.is_published = TRUE
+            AND r.ilo_id = $2 
+            AND sy3.review_status = 'approved' 
+            AND sy3.approval_status = 'approved'
         ) r ON a2.assessment_id = r.assessment_id
         LEFT JOIN (
           SELECT DISTINCT
@@ -1464,6 +1599,8 @@ async function getILOStudentList(
     )
       WHERE ce.section_course_id = $1
       AND ce.status = 'enrolled'
+      AND a.section_course_id = $1
+      AND a.is_published = TRUE
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
