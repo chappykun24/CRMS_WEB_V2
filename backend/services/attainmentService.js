@@ -63,9 +63,15 @@ export async function calculateILOAttainment(
     
     // If no syllabus_id provided, get the syllabus for this section course in the active term
     let finalSyllabusId = syllabusId;
+    let syllabusInfo = null;
     if (!finalSyllabusId) {
       const syllabusQuery = `
-        SELECT syllabus_id
+        SELECT 
+          syllabus_id,
+          section_course_id,
+          review_status,
+          approval_status,
+          created_at
         FROM syllabi
         WHERE section_course_id = $1
           AND review_status = 'approved'
@@ -76,6 +82,69 @@ export async function calculateILOAttainment(
       const syllabusResult = await db.query(syllabusQuery, [sectionCourseId]);
       if (syllabusResult.rows.length > 0) {
         finalSyllabusId = syllabusResult.rows[0].syllabus_id;
+        syllabusInfo = syllabusResult.rows[0];
+      }
+    } else {
+      // Get syllabus info for debugging
+      const syllabusInfoQuery = `
+        SELECT 
+          syllabus_id,
+          section_course_id,
+          review_status,
+          approval_status,
+          created_at
+        FROM syllabi
+        WHERE syllabus_id = $1
+      `;
+      const syllabusInfoResult = await db.query(syllabusInfoQuery, [finalSyllabusId]);
+      if (syllabusInfoResult.rows.length > 0) {
+        syllabusInfo = syllabusInfoResult.rows[0];
+      }
+    }
+
+    // Debug: Get all ILOs from the selected class's approved syllabus
+    const debugILOsQuery = `
+      SELECT 
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description,
+        i.is_active,
+        i.syllabus_id,
+        sy.section_course_id,
+        sy.review_status,
+        sy.approval_status
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        ${finalSyllabusId ? `AND sy.syllabus_id = ${finalSyllabusId}` : ''}
+      ORDER BY i.code
+    `;
+    const debugILOsResult = await db.query(debugILOsQuery, [sectionCourseId]);
+    
+    console.log(`[ATTAINMENT DEBUG] Section Course ID: ${sectionCourseId}`);
+    console.log(`[ATTAINMENT DEBUG] Active Term ID: ${activeTermId || 'N/A'}`);
+    console.log(`[ATTAINMENT DEBUG] Syllabus ID: ${finalSyllabusId || 'N/A'}`);
+    if (syllabusInfo) {
+      console.log(`[ATTAINMENT DEBUG] Syllabus Info:`, {
+        syllabus_id: syllabusInfo.syllabus_id,
+        section_course_id: syllabusInfo.section_course_id,
+        review_status: syllabusInfo.review_status,
+        approval_status: syllabusInfo.approval_status
+      });
+    }
+    console.log(`[ATTAINMENT DEBUG] Found ${debugILOsResult.rows.length} ILOs in approved syllabus:`);
+    debugILOsResult.rows.forEach((ilo, idx) => {
+      console.log(`  ${idx + 1}. ILO ID: ${ilo.ilo_id}, Code: ${ilo.ilo_code}, Active: ${ilo.is_active}, Syllabus ID: ${ilo.syllabus_id}`);
+    });
+    
+    // If ILO ID is provided, verify it exists in the approved syllabus
+    if (iloId) {
+      const iloExists = debugILOsResult.rows.find(ilo => ilo.ilo_id === iloId);
+      if (!iloExists) {
+        console.error(`[ATTAINMENT DEBUG] ILO ${iloId} not found in approved syllabus for section_course_id ${sectionCourseId}`);
+        console.error(`[ATTAINMENT DEBUG] Available ILO IDs: ${debugILOsResult.rows.map(r => r.ilo_id).join(', ') || 'NONE'}`);
       }
     }
     
@@ -192,6 +261,7 @@ async function getILOAttainmentSummary(
         INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
         INNER JOIN syllabi sy3 ON a3.syllabus_id = sy3.syllabus_id
           WHERE a3.section_course_id = $1
+            AND sy3.section_course_id = $1
             AND sy3.review_status = 'approved'
             AND sy3.approval_status = 'approved'
             ${syllabusCondition3}
@@ -224,23 +294,32 @@ async function getILOAttainmentSummary(
             FROM assessments a4
             INNER JOIN syllabi sy4 ON a4.syllabus_id = sy4.syllabus_id
             WHERE a4.section_course_id = $1
+              AND sy4.section_course_id = $1
               AND sy4.review_status = 'approved'
-          AND sy4.approval_status = 'approved'
-          ${syllabusCondition4}
+              AND sy4.approval_status = 'approved'
+              ${syllabusCondition4}
           )
           SELECT DISTINCT
             ac.assessment_id,
             COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
           FROM assessment_codes ac
-          LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-          LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-          LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-          LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          INNER JOIN assessments a_ac ON ac.assessment_id = a_ac.assessment_id
+          INNER JOIN syllabi sy_ac ON a_ac.syllabus_id = sy_ac.syllabus_id
+          INNER JOIN ilos i_ac ON i_ac.syllabus_id = sy_ac.syllabus_id AND i_ac.is_active = TRUE
+          LEFT JOIN ilo_so_mappings ism ON ism.ilo_id = i_ac.ilo_id AND ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_sdg_mappings isdg ON isdg.ilo_id = i_ac.ilo_id AND isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_iga_mappings iiga ON iiga.ilo_id = i_ac.ilo_id AND iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_cdio_mappings icdio ON icdio.ilo_id = i_ac.ilo_id AND icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
           WHERE ac.assessment_code IS NOT NULL
+            AND sy_ac.section_course_id = $1
+            AND sy_ac.review_status = 'approved'
+            AND sy_ac.approval_status = 'approved'
+            ${syllabusCondition4}
             AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
         ) im ON a2.assessment_id = im.assessment_id
         INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
         WHERE a2.section_course_id = $1
+          AND sy2.section_course_id = $1
           AND sy2.review_status = 'approved'
           AND sy2.approval_status = 'approved'
           ${syllabusCondition2}
@@ -395,7 +474,66 @@ async function getILOStudentList(
   // Build WHERE conditions for active term and syllabus
   const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
   
-  // First get ILO info and mappings
+  // First, use a separate simpler query to get ILO from the selected class's approved syllabus
+  const simpleILOQuery = `
+    SELECT
+      i.ilo_id,
+      i.code AS ilo_code,
+      i.description AS ilo_description,
+      i.syllabus_id,
+      sy.section_course_id,
+      sy.review_status,
+      sy.approval_status
+    FROM ilos i
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    WHERE i.ilo_id = $1
+      AND i.is_active = TRUE
+      AND sy.section_course_id = $2
+      AND sy.review_status = 'approved'
+      AND sy.approval_status = 'approved'
+      ${syllabusCondition}
+  `;
+  
+  const simpleILOResult = await db.query(simpleILOQuery, [iloId, sectionCourseId]);
+  
+  if (simpleILOResult.rows.length === 0) {
+    // Debug: Try without syllabus filter to see if ILO exists elsewhere
+    const debugILOQuery = `
+      SELECT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        i.syllabus_id,
+        sy.section_course_id,
+        sy.review_status,
+        sy.approval_status
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE i.ilo_id = $1
+    `;
+    const debugILOResult = await db.query(debugILOQuery, [iloId]);
+    
+    console.error(`[ATTAINMENT DEBUG] ILO ${iloId} not found in approved syllabus for section_course_id ${sectionCourseId}`);
+    if (debugILOResult.rows.length > 0) {
+      const iloData = debugILOResult.rows[0];
+      console.error(`[ATTAINMENT DEBUG] ILO exists but:`, {
+        ilo_id: iloData.ilo_id,
+        ilo_code: iloData.ilo_code,
+        syllabus_id: iloData.syllabus_id,
+        section_course_id: iloData.section_course_id,
+        review_status: iloData.review_status,
+        approval_status: iloData.approval_status,
+        matches_section_course: iloData.section_course_id === sectionCourseId,
+        is_approved: iloData.review_status === 'approved' && iloData.approval_status === 'approved'
+      });
+    } else {
+      console.error(`[ATTAINMENT DEBUG] ILO ${iloId} does not exist in database`);
+    }
+    
+    throw new Error(`ILO not found in approved syllabus for this class. ILO ID: ${iloId}, Section Course ID: ${sectionCourseId}`);
+  }
+  
+  // Now get ILO info with mappings
   const iloQuery = `
     SELECT
       i.ilo_id,
@@ -415,15 +553,19 @@ async function getILOStudentList(
     LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
     LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
-    WHERE i.ilo_id = $1 AND i.is_active = TRUE AND sy.review_status = 'approved' AND sy.approval_status = 'approved'
+    WHERE i.ilo_id = $1 
+      AND i.is_active = TRUE 
+      AND sy.section_course_id = $2
+      AND sy.review_status = 'approved' 
+      AND sy.approval_status = 'approved'
       ${syllabusCondition}
     GROUP BY i.ilo_id, i.code, i.description
   `;
   
-  const iloResult = await db.query(iloQuery, [iloId]);
+  const iloResult = await db.query(iloQuery, [iloId, sectionCourseId]);
   
   if (iloResult.rows.length === 0) {
-    throw new Error('ILO not found');
+    throw new Error(`ILO not found with mappings. ILO ID: ${iloId}, Section Course ID: ${sectionCourseId}`);
   }
   
   const iloInfo = iloResult.rows[0];
@@ -499,6 +641,9 @@ async function getILOStudentList(
       FROM assessments a
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       WHERE a.section_course_id = $1
+        AND sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
         ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
     ),
     ilo_from_rubrics AS (
@@ -507,7 +652,12 @@ async function getILOStudentList(
         r.ilo_id
       FROM rubrics r
       INNER JOIN assessments a ON r.assessment_id = a.assessment_id
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       WHERE a.section_course_id = $1
+        AND sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
     ),
     ilo_from_mappings AS (
       SELECT DISTINCT
@@ -517,11 +667,17 @@ async function getILOStudentList(
         COALESCE(a.weight_percentage, 0) AS ilo_weight_percentage
       FROM assessment_codes ac
       INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
-      LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-      LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-      LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
-      LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id AND i.is_active = TRUE
+      LEFT JOIN ilo_so_mappings ism ON ism.ilo_id = i.ilo_id AND ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_sdg_mappings isdg ON isdg.ilo_id = i.ilo_id AND isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_iga_mappings iiga ON iiga.ilo_id = i.ilo_id AND iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+      LEFT JOIN ilo_cdio_mappings icdio ON icdio.ilo_id = i.ilo_id AND icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
       WHERE ac.assessment_code IS NOT NULL
+        AND sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
         AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
     ),
     assessment_ilo_connections AS (
@@ -531,7 +687,11 @@ async function getILOStudentList(
         SELECT DISTINCT i.syllabus_id
         FROM ilos i
         INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
-        WHERE i.ilo_id = $2 AND i.is_active = TRUE AND sy.review_status = 'approved' AND sy.approval_status = 'approved'
+        WHERE i.ilo_id = $2 
+          AND i.is_active = TRUE 
+          AND sy.section_course_id = $1
+          AND sy.review_status = 'approved' 
+          AND sy.approval_status = 'approved'
           ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
       )
       SELECT DISTINCT

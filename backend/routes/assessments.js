@@ -553,6 +553,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         INNER JOIN assessments a ON r.assessment_id = a.assessment_id
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         WHERE a.section_course_id = $1
+          AND sy.section_course_id = $1
           AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
@@ -612,12 +613,14 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
             OR (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL)
           )
         )
-        WHERE sy.review_status = 'approved'
+        WHERE sy.section_course_id = $1
+          AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
           AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
       ),
       -- Combine ILO connections from assessment_ilo_weights, rubrics, mapping tables, and same syllabus
       -- Connect ALL assessments from the same syllabus to ALL ILOs in that syllabus (syllabus-based connection)
+      -- CRITICAL: Ensure ILOs only come from syllabi that belong to this specific section_course_id
       assessment_ilo_connections AS (
         SELECT DISTINCT
           a.assessment_id,
@@ -642,6 +645,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         LEFT JOIN ilo_from_rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = i.ilo_id
         LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id AND im.ilo_id = i.ilo_id
         WHERE a.section_course_id = $1
+          AND sy_assessment.section_course_id = $1
           AND sy_assessment.review_status = 'approved'
           AND sy_assessment.approval_status = 'approved'
       ),
@@ -887,17 +891,223 @@ router.get('/ilo-attainment', async (req, res) => {
       syllabusId
     );
 
+    // Get debug info for successful response
+    let debugInfo = null;
+    try {
+      const debugQuery = `
+        SELECT 
+          i.ilo_id,
+          i.code AS ilo_code,
+          i.is_active,
+          sy.syllabus_id,
+          sy.review_status,
+          sy.approval_status
+        FROM ilos i
+        INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+        WHERE sy.section_course_id = $1
+          AND sy.review_status = 'approved'
+          AND sy.approval_status = 'approved'
+        ORDER BY i.code
+      `;
+      const debugResult = await db.query(debugQuery, [sectionCourseId]);
+      debugInfo = {
+        section_course_id: sectionCourseId,
+        syllabus_id: syllabusId,
+        total_approved_ilos: debugResult.rows.length,
+        ilo_ids: debugResult.rows.map(r => r.ilo_id),
+        ilo_codes: debugResult.rows.map(r => r.ilo_code)
+      };
+    } catch (debugError) {
+      console.error('[ILO ATTAINMENT] Debug query error:', debugError);
+    }
+
     res.json({
       success: true,
-      data: result
+      data: result,
+      debug: debugInfo
     });
   } catch (error) {
     console.error('[ILO ATTAINMENT] Error:', error);
     console.error('[ILO ATTAINMENT] Error stack:', error.stack);
+    
+    // Get debug info to include in error response
+    let debugInfo = null;
+    try {
+      const sectionCourseId = parseInt(req.query.section_course_id);
+      if (sectionCourseId) {
+        const debugQuery = `
+          SELECT 
+            i.ilo_id,
+            i.code AS ilo_code,
+            i.description,
+            i.is_active,
+            i.syllabus_id,
+            sy.section_course_id,
+            sy.review_status,
+            sy.approval_status,
+            sy.syllabus_id AS sy_syllabus_id
+          FROM ilos i
+          INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+          WHERE sy.section_course_id = $1
+          ORDER BY i.code
+        `;
+        const debugResult = await db.query(debugQuery, [sectionCourseId]);
+        debugInfo = {
+          section_course_id: sectionCourseId,
+          total_ilos_found: debugResult.rows.length,
+          approved_ilos: debugResult.rows.filter(r => r.review_status === 'approved' && r.approval_status === 'approved' && r.is_active).length,
+          ilos: debugResult.rows.map(r => ({
+            ilo_id: r.ilo_id,
+            ilo_code: r.ilo_code,
+            is_active: r.is_active,
+            syllabus_id: r.syllabus_id,
+            review_status: r.review_status,
+            approval_status: r.approval_status
+          }))
+        };
+      }
+    } catch (debugError) {
+      console.error('[ILO ATTAINMENT] Debug query error:', debugError);
+    }
+    
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch ILO attainment data',
+      debug: debugInfo,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// GET /api/assessments/ilo-attainment/debug/:sectionCourseId - Debug endpoint to get ILOs from approved syllabus
+router.get('/ilo-attainment/debug/:sectionCourseId', async (req, res) => {
+  try {
+    const { sectionCourseId } = req.params;
+    const { syllabus_id } = req.query;
+    const sectionCourseIdInt = parseInt(sectionCourseId);
+    const syllabusIdInt = syllabus_id ? parseInt(syllabus_id) : null;
+
+    if (!sectionCourseIdInt) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid section_course_id'
+      });
+    }
+
+    // Get active term
+    const activeTermQuery = `
+      SELECT term_id, school_year, semester, is_active
+      FROM school_terms
+      WHERE is_active = TRUE
+      ORDER BY term_id DESC
+      LIMIT 1
+    `;
+    const activeTermResult = await db.query(activeTermQuery);
+    const activeTerm = activeTermResult.rows.length > 0 ? activeTermResult.rows[0] : null;
+
+    // Get section course info
+    const sectionCourseQuery = `
+      SELECT 
+        sc.section_course_id,
+        sc.term_id,
+        c.course_code,
+        c.title AS course_title,
+        s.section_code
+      FROM section_courses sc
+      INNER JOIN courses c ON sc.course_id = c.course_id
+      INNER JOIN sections s ON sc.section_id = s.section_id
+      WHERE sc.section_course_id = $1
+    `;
+    const sectionCourseResult = await db.query(sectionCourseQuery, [sectionCourseIdInt]);
+    const sectionCourse = sectionCourseResult.rows[0] || null;
+
+    // Get all syllabi for this section course
+    const allSyllabiQuery = `
+      SELECT 
+        syllabus_id,
+        section_course_id,
+        review_status,
+        approval_status,
+        created_at
+      FROM syllabi
+      WHERE section_course_id = $1
+      ORDER BY syllabus_id DESC
+    `;
+    const allSyllabiResult = await db.query(allSyllabiQuery, [sectionCourseIdInt]);
+
+    // Get approved syllabus
+    const approvedSyllabus = allSyllabiResult.rows.find(s => 
+      s.review_status === 'approved' && s.approval_status === 'approved'
+    ) || null;
+
+    // Get ILOs from approved syllabus (or specified syllabus)
+    const finalSyllabusId = syllabusIdInt || (approvedSyllabus ? approvedSyllabus.syllabus_id : null);
+    
+    const ilosQuery = `
+      SELECT 
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description,
+        i.is_active,
+        i.syllabus_id,
+        sy.section_course_id,
+        sy.review_status,
+        sy.approval_status
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        ${finalSyllabusId ? `AND sy.syllabus_id = ${finalSyllabusId}` : ''}
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+      ORDER BY i.code
+    `;
+    const ilosResult = await db.query(ilosQuery, [sectionCourseIdInt]);
+
+    // Get all ILOs (including inactive and from other syllabi) for comparison
+    const allILOsQuery = `
+      SELECT 
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description,
+        i.is_active,
+        i.syllabus_id,
+        sy.section_course_id,
+        sy.review_status,
+        sy.approval_status
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+      ORDER BY i.code
+    `;
+    const allILOsResult = await db.query(allILOsQuery, [sectionCourseIdInt]);
+
+    res.json({
+      success: true,
+      data: {
+        section_course: sectionCourse,
+        active_term: activeTerm,
+        all_syllabi: allSyllabiResult.rows,
+        approved_syllabus: approvedSyllabus,
+        selected_syllabus_id: finalSyllabusId,
+        approved_ilos: ilosResult.rows,
+        all_ilos: allILOsResult.rows,
+        summary: {
+          total_syllabi: allSyllabiResult.rows.length,
+          approved_syllabi: allSyllabiResult.rows.filter(s => 
+            s.review_status === 'approved' && s.approval_status === 'approved'
+          ).length,
+          total_ilos: allILOsResult.rows.length,
+          approved_active_ilos: ilosResult.rows.length,
+          inactive_ilos: allILOsResult.rows.filter(i => !i.is_active).length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[ILO ATTAINMENT DEBUG] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch debug data'
     });
   }
 });
