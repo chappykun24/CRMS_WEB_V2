@@ -37,12 +37,16 @@ const ILOAttainment = () => {
   const [lowThreshold, setLowThreshold] = useState(75)
   
   // ILO mapping filters
-  const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [] })
+  const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [], ilo_so_combinations: [], ilo_sdg_combinations: [], ilo_iga_combinations: [], ilo_cdio_combinations: [] })
   const [selectedSO, setSelectedSO] = useState('')
   const [selectedSDG, setSelectedSDG] = useState('')
   const [selectedIGA, setSelectedIGA] = useState('')
   const [selectedCDIO, setSelectedCDIO] = useState('')
   const [selectedILOCombination, setSelectedILOCombination] = useState('')
+  const [selectedILOSO, setSelectedILOSO] = useState('')
+  const [selectedILOSDG, setSelectedILOSDG] = useState('')
+  const [selectedILOIGA, setSelectedILOIGA] = useState('')
+  const [selectedILOCDIO, setSelectedILOCDIO] = useState('')
 
   // Refs for cleanup
   const abortControllerRef = useRef(null)
@@ -169,7 +173,13 @@ const ILOAttainment = () => {
         if (response.ok) {
           const result = await response.json()
           if (result.success) {
-            setFilterOptions(result.data)
+            setFilterOptions({
+              ...result.data,
+              ilo_so_combinations: result.data.ilo_so_combinations || [],
+              ilo_sdg_combinations: result.data.ilo_sdg_combinations || [],
+              ilo_iga_combinations: result.data.ilo_iga_combinations || [],
+              ilo_cdio_combinations: result.data.ilo_cdio_combinations || []
+            })
             // Reset ILO combination selection if it's no longer available
             if (selectedILOCombination && !result.data.ilo_combinations.find(ilo => ilo.ilo_id.toString() === selectedILOCombination)) {
               setSelectedILOCombination('')
@@ -226,6 +236,19 @@ const ILOAttainment = () => {
       if (selectedCDIO) {
         params.append('cdio_id', selectedCDIO)
       }
+      
+      if (selectedILOSO) {
+        params.append('ilo_so_key', selectedILOSO)
+      }
+      if (selectedILOSDG) {
+        params.append('ilo_sdg_key', selectedILOSDG)
+      }
+      if (selectedILOIGA) {
+        params.append('ilo_iga_key', selectedILOIGA)
+      }
+      if (selectedILOCDIO) {
+        params.append('ilo_cdio_key', selectedILOCDIO)
+      }
 
       const response = await fetch(`/api/assessments/ilo-attainment?${params.toString()}`, {
         signal: attainmentAbortControllerRef.current.signal,
@@ -264,7 +287,7 @@ const ILOAttainment = () => {
     } finally {
       setLoadingAttainment(false)
     }
-  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination])
+  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO])
 
   // Load ILO combinations with assessments
   const loadILOCombinations = useCallback(async (sectionCourseId) => {
@@ -323,21 +346,44 @@ const ILOAttainment = () => {
     } finally {
       setLoadingAttainment(false)
     }
-  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO])
 
   // Load data when class is selected or filters change
   useEffect(() => {
     if (selectedClass?.section_course_id) {
-      if (selectedILOCombination) {
-        // If a specific ILO combination is selected, load that ILO's detailed data
-        loadAttainmentData(selectedClass.section_course_id, parseInt(selectedILOCombination))
-        setShowCombinations(false)
+      // Check if any ILO combination filter is selected
+      const hasILOCombinationFilter = selectedILOSO || selectedILOSDG || selectedILOIGA || selectedILOCDIO || selectedILOCombination;
+      
+      if (hasILOCombinationFilter) {
+        // Extract ILO ID from combination key if present
+        let iloIdToLoad = null;
+        if (selectedILOSO) {
+          const parts = selectedILOSO.split('_');
+          iloIdToLoad = parts.length === 2 ? parseInt(parts[0]) : null;
+        } else if (selectedILOSDG) {
+          const parts = selectedILOSDG.split('_');
+          iloIdToLoad = parts.length === 2 ? parseInt(parts[0]) : null;
+        } else if (selectedILOIGA) {
+          const parts = selectedILOIGA.split('_');
+          iloIdToLoad = parts.length === 2 ? parseInt(parts[0]) : null;
+        } else if (selectedILOCDIO) {
+          const parts = selectedILOCDIO.split('_');
+          iloIdToLoad = parts.length === 2 ? parseInt(parts[0]) : null;
+        } else if (selectedILOCombination) {
+          iloIdToLoad = parseInt(selectedILOCombination);
+        }
+        
+        if (iloIdToLoad) {
+          // Load that ILO's detailed data
+          loadAttainmentData(selectedClass.section_course_id, iloIdToLoad)
+          setShowCombinations(false)
+        }
       } else {
         // Otherwise load ILO combinations with assessments
         loadILOCombinations(selectedClass.section_course_id)
       }
     }
-  }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, loadAttainmentData, loadILOCombinations])
+  }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO, loadAttainmentData, loadILOCombinations])
 
   // Reload student list when performance filter changes (only if viewing student list)
   useEffect(() => {
@@ -353,7 +399,7 @@ const ILOAttainment = () => {
       loadAttainmentData(selectedClass.section_course_id, selectedILO.ilo_id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -574,6 +620,130 @@ const ILOAttainment = () => {
                     </select>
                   </div>
                 </div>
+                
+                {/* ILO Mapping Combinations Filters */}
+                {(filterOptions.ilo_so_combinations?.length > 0 || 
+                  filterOptions.ilo_sdg_combinations?.length > 0 || 
+                  filterOptions.ilo_iga_combinations?.length > 0 || 
+                  filterOptions.ilo_cdio_combinations?.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* ILO-SO Combinations Filter */}
+                    {filterOptions.ilo_so_combinations && filterOptions.ilo_so_combinations.length > 0 && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">ILO-SO Combination</label>
+                        <select
+                          value={selectedILOSO}
+                          onChange={(e) => {
+                            setSelectedILOSO(e.target.value)
+                            setSelectedILOSDG('')
+                            setSelectedILOIGA('')
+                            setSelectedILOCDIO('')
+                            setSelectedILOCombination('')
+                            setSelectedSO('')
+                            setSelectedSDG('')
+                            setSelectedIGA('')
+                            setSelectedCDIO('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                        >
+                          <option value="">All ILO-SO Combinations</option>
+                          {filterOptions.ilo_so_combinations.map((combo) => (
+                            <option key={combo.ilo_so_key} value={combo.ilo_so_key}>
+                              {combo.combination_label} - {combo.ilo_description?.substring(0, 40)}...
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* ILO-SDG Combinations Filter */}
+                    {filterOptions.ilo_sdg_combinations && filterOptions.ilo_sdg_combinations.length > 0 && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">ILO-SDG Combination</label>
+                        <select
+                          value={selectedILOSDG}
+                          onChange={(e) => {
+                            setSelectedILOSDG(e.target.value)
+                            setSelectedILOSO('')
+                            setSelectedILOIGA('')
+                            setSelectedILOCDIO('')
+                            setSelectedILOCombination('')
+                            setSelectedSO('')
+                            setSelectedSDG('')
+                            setSelectedIGA('')
+                            setSelectedCDIO('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                        >
+                          <option value="">All ILO-SDG Combinations</option>
+                          {filterOptions.ilo_sdg_combinations.map((combo) => (
+                            <option key={combo.ilo_sdg_key} value={combo.ilo_sdg_key}>
+                              {combo.combination_label} - {combo.ilo_description?.substring(0, 40)}...
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* ILO-IGA Combinations Filter */}
+                    {filterOptions.ilo_iga_combinations && filterOptions.ilo_iga_combinations.length > 0 && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">ILO-IGA Combination</label>
+                        <select
+                          value={selectedILOIGA}
+                          onChange={(e) => {
+                            setSelectedILOIGA(e.target.value)
+                            setSelectedILOSO('')
+                            setSelectedILOSDG('')
+                            setSelectedILOCDIO('')
+                            setSelectedILOCombination('')
+                            setSelectedSO('')
+                            setSelectedSDG('')
+                            setSelectedIGA('')
+                            setSelectedCDIO('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                        >
+                          <option value="">All ILO-IGA Combinations</option>
+                          {filterOptions.ilo_iga_combinations.map((combo) => (
+                            <option key={combo.ilo_iga_key} value={combo.ilo_iga_key}>
+                              {combo.combination_label} - {combo.ilo_description?.substring(0, 40)}...
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* ILO-CDIO Combinations Filter */}
+                    {filterOptions.ilo_cdio_combinations && filterOptions.ilo_cdio_combinations.length > 0 && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">ILO-CDIO Combination</label>
+                        <select
+                          value={selectedILOCDIO}
+                          onChange={(e) => {
+                            setSelectedILOCDIO(e.target.value)
+                            setSelectedILOSO('')
+                            setSelectedILOSDG('')
+                            setSelectedILOIGA('')
+                            setSelectedILOCombination('')
+                            setSelectedSO('')
+                            setSelectedSDG('')
+                            setSelectedIGA('')
+                            setSelectedCDIO('')
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                        >
+                          <option value="">All ILO-CDIO Combinations</option>
+                          {filterOptions.ilo_cdio_combinations.map((combo) => (
+                            <option key={combo.ilo_cdio_key} value={combo.ilo_cdio_key}>
+                              {combo.combination_label} - {combo.ilo_description?.substring(0, 40)}...
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* ILO Combinations Filter */}
                 {filterOptions.ilo_combinations && filterOptions.ilo_combinations.length > 0 && (

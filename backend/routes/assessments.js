@@ -304,6 +304,98 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       ORDER BY cdio.cdio_code
     `;
 
+    // Get ILO-SO combinations (specific pairs)
+    const iloSoCombinationsQuery = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        so.so_id,
+        so.so_code,
+        so.description AS so_description,
+        CONCAT(i.code, ' - ', so.so_code) AS combination_label,
+        ism.mapping_id
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+      INNER JOIN student_outcomes so ON ism.so_id = so.so_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+        AND so.is_active = TRUE
+      ORDER BY i.code, so.so_code
+    `;
+
+    // Get ILO-SDG combinations (specific pairs)
+    const iloSdgCombinationsQuery = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        sdg.sdg_id,
+        sdg.sdg_code,
+        sdg.description AS sdg_description,
+        CONCAT(i.code, ' - ', sdg.sdg_code) AS combination_label,
+        isdg.mapping_id
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+      INNER JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+        AND sdg.is_active = TRUE
+      ORDER BY i.code, sdg.sdg_code
+    `;
+
+    // Get ILO-IGA combinations (specific pairs)
+    const iloIgaCombinationsQuery = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        iga.iga_id,
+        iga.iga_code,
+        iga.description AS iga_description,
+        CONCAT(i.code, ' - ', iga.iga_code) AS combination_label,
+        iiga.mapping_id
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+      INNER JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+        AND iga.is_active = TRUE
+      ORDER BY i.code, iga.iga_code
+    `;
+
+    // Get ILO-CDIO combinations (specific pairs)
+    const iloCdioCombinationsQuery = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        cdio.cdio_id,
+        cdio.cdio_code,
+        cdio.description AS cdio_description,
+        CONCAT(i.code, ' - ', cdio.cdio_code) AS combination_label,
+        icdio.mapping_id
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+      INNER JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+        AND cdio.is_active = TRUE
+      ORDER BY i.code, cdio.cdio_code
+    `;
+
     // Get ILO combinations based on selected filters
     let iloCombinationsQuery = `
       SELECT DISTINCT
@@ -356,11 +448,15 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
 
     iloCombinationsQuery += ` GROUP BY i.ilo_id, i.code, i.description ORDER BY i.code`;
 
-    const [soResult, sdgResult, igaResult, cdioResult, iloCombinationsResult] = await Promise.all([
+    const [soResult, sdgResult, igaResult, cdioResult, iloSoCombinationsResult, iloSdgCombinationsResult, iloIgaCombinationsResult, iloCdioCombinationsResult, iloCombinationsResult] = await Promise.all([
       db.query(soQuery, [sectionCourseIdInt]),
       db.query(sdgQuery, [sectionCourseIdInt]),
       db.query(igaQuery, [sectionCourseIdInt]),
       db.query(cdioQuery, [sectionCourseIdInt]),
+      db.query(iloSoCombinationsQuery, [sectionCourseIdInt]),
+      db.query(iloSdgCombinationsQuery, [sectionCourseIdInt]),
+      db.query(iloIgaCombinationsQuery, [sectionCourseIdInt]),
+      db.query(iloCdioCombinationsQuery, [sectionCourseIdInt]),
       db.query(iloCombinationsQuery, iloParams)
     ]);
 
@@ -392,6 +488,63 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       };
     });
 
+    // Format ILO-SO combinations
+    const iloSoCombinations = iloSoCombinationsResult.rows.map(row => ({
+      mapping_id: row.mapping_id,
+      ilo_id: row.ilo_id,
+      ilo_code: row.ilo_code,
+      ilo_description: row.ilo_description,
+      so_id: row.so_id,
+      so_code: row.so_code,
+      so_description: row.so_description,
+      combination_label: row.combination_label,
+      // Create a unique identifier for filtering
+      ilo_so_key: `${row.ilo_id}_${row.so_id}`,
+      type: 'SO'
+    }));
+
+    // Format ILO-SDG combinations
+    const iloSdgCombinations = iloSdgCombinationsResult.rows.map(row => ({
+      mapping_id: row.mapping_id,
+      ilo_id: row.ilo_id,
+      ilo_code: row.ilo_code,
+      ilo_description: row.ilo_description,
+      sdg_id: row.sdg_id,
+      sdg_code: row.sdg_code,
+      sdg_description: row.sdg_description,
+      combination_label: row.combination_label,
+      ilo_sdg_key: `${row.ilo_id}_${row.sdg_id}`,
+      type: 'SDG'
+    }));
+
+    // Format ILO-IGA combinations
+    const iloIgaCombinations = iloIgaCombinationsResult.rows.map(row => ({
+      mapping_id: row.mapping_id,
+      ilo_id: row.ilo_id,
+      ilo_code: row.ilo_code,
+      ilo_description: row.ilo_description,
+      iga_id: row.iga_id,
+      iga_code: row.iga_code,
+      iga_description: row.iga_description,
+      combination_label: row.combination_label,
+      ilo_iga_key: `${row.ilo_id}_${row.iga_id}`,
+      type: 'IGA'
+    }));
+
+    // Format ILO-CDIO combinations
+    const iloCdioCombinations = iloCdioCombinationsResult.rows.map(row => ({
+      mapping_id: row.mapping_id,
+      ilo_id: row.ilo_id,
+      ilo_code: row.ilo_code,
+      ilo_description: row.ilo_description,
+      cdio_id: row.cdio_id,
+      cdio_code: row.cdio_code,
+      cdio_description: row.cdio_description,
+      combination_label: row.combination_label,
+      ilo_cdio_key: `${row.ilo_id}_${row.cdio_id}`,
+      type: 'CDIO'
+    }));
+
     res.json({
       success: true,
       data: {
@@ -399,6 +552,10 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
         sdg: sdgResult.rows,
         iga: igaResult.rows,
         cdio: cdioResult.rows,
+        ilo_so_combinations: iloSoCombinations,
+        ilo_sdg_combinations: iloSdgCombinations,
+        ilo_iga_combinations: iloIgaCombinations,
+        ilo_cdio_combinations: iloCdioCombinations,
         ilo_combinations: iloCombinations
       }
     });
@@ -916,7 +1073,8 @@ router.get('/ilo-attainment', async (req, res) => {
       sdg_id,
       iga_id,
       cdio_id,
-      syllabus_id
+      syllabus_id,
+      ilo_so_key
     } = req.query;
 
     // Validate required parameters
@@ -932,11 +1090,43 @@ router.get('/ilo-attainment', async (req, res) => {
     const iloId = ilo_id ? parseInt(ilo_id) : null;
     const highThreshold = parseFloat(high_threshold);
     const lowThreshold = parseFloat(low_threshold);
-    const soId = so_id ? parseInt(so_id) : null;
-    const sdgId = sdg_id ? parseInt(sdg_id) : null;
-    const igaId = iga_id ? parseInt(iga_id) : null;
-    const cdioId = cdio_id ? parseInt(cdio_id) : null;
+    let soId = so_id ? parseInt(so_id) : null;
+    let sdgId = sdg_id ? parseInt(sdg_id) : null;
+    let igaId = iga_id ? parseInt(iga_id) : null;
+    let cdioId = cdio_id ? parseInt(cdio_id) : null;
     const syllabusId = syllabus_id ? parseInt(syllabus_id) : null;
+    
+    // Parse ILO combination keys if provided (format: "ilo_id_mapping_id")
+    let specificIloId = iloId; // Start with provided iloId
+    if (req.query.ilo_so_key) {
+      const parts = req.query.ilo_so_key.split('_');
+      if (parts.length === 2) {
+        specificIloId = parseInt(parts[0]);
+        soId = parseInt(parts[1]);
+        console.log(`[ILO ATTAINMENT] Filtering by ILO-SO combination: ILO ${specificIloId}, SO ${soId}`);
+      }
+    } else if (req.query.ilo_sdg_key) {
+      const parts = req.query.ilo_sdg_key.split('_');
+      if (parts.length === 2) {
+        specificIloId = parseInt(parts[0]);
+        sdgId = parseInt(parts[1]);
+        console.log(`[ILO ATTAINMENT] Filtering by ILO-SDG combination: ILO ${specificIloId}, SDG ${sdgId}`);
+      }
+    } else if (req.query.ilo_iga_key) {
+      const parts = req.query.ilo_iga_key.split('_');
+      if (parts.length === 2) {
+        specificIloId = parseInt(parts[0]);
+        igaId = parseInt(parts[1]);
+        console.log(`[ILO ATTAINMENT] Filtering by ILO-IGA combination: ILO ${specificIloId}, IGA ${igaId}`);
+      }
+    } else if (req.query.ilo_cdio_key) {
+      const parts = req.query.ilo_cdio_key.split('_');
+      if (parts.length === 2) {
+        specificIloId = parseInt(parts[0]);
+        cdioId = parseInt(parts[1]);
+        console.log(`[ILO ATTAINMENT] Filtering by ILO-CDIO combination: ILO ${specificIloId}, CDIO ${cdioId}`);
+      }
+    }
 
     // Validate performance filter
     if (!['all', 'high', 'low'].includes(performance_filter)) {
@@ -948,10 +1138,13 @@ router.get('/ilo-attainment', async (req, res) => {
 
     console.log(`[ILO ATTAINMENT] Fetching attainment data for section_course_id: ${sectionCourseId}, ilo_id: ${iloId || 'all'}, syllabus_id: ${syllabusId || 'auto'}`);
 
+    // Use specific ILO ID if combination key was provided
+    const finalIloId = specificIloId || iloId;
+    
     const result = await calculateILOAttainment(
       sectionCourseId,
       passThreshold,
-      iloId,
+      finalIloId,
       performance_filter,
       highThreshold,
       lowThreshold,

@@ -1280,21 +1280,42 @@ async function getILOStudentList(
   let connectedAssessmentsSyllabusCondition = '';
   let connectedAssessmentsTermCondition = '';
   
+  // Add filter parameters to connectedAssessmentsParams
+  if (soId) {
+    connectedAssessmentsParams.push(soId);
+  }
+  if (sdgId) {
+    connectedAssessmentsParams.push(sdgId);
+  }
+  if (igaId) {
+    connectedAssessmentsParams.push(igaId);
+  }
+  if (cdioId) {
+    connectedAssessmentsParams.push(cdioId);
+  }
+  
   if (syllabusId) {
     connectedAssessmentsParams.push(syllabusId);
-    connectedAssessmentsSyllabusCondition = `AND sy.syllabus_id = $${connectedAssessmentsParamIndex}`;
-    connectedAssessmentsParamIndex++;
+    connectedAssessmentsSyllabusCondition = `AND sy.syllabus_id = $${connectedAssessmentsParamIndex + (hasFilters ? (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0) : 0)}`;
   }
   
   if (activeTermId) {
     connectedAssessmentsParams.push(activeTermId);
-    connectedAssessmentsTermCondition = `AND sc.term_id = $${connectedAssessmentsParamIndex}`;
-    connectedAssessmentsParamIndex++;
+    const termParamIndex = connectedAssessmentsParamIndex + (hasFilters ? (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0) : 0) + (syllabusId ? 1 : 0);
+    connectedAssessmentsTermCondition = `AND sc.term_id = $${termParamIndex}`;
+  }
+  
+  // Build filter conditions for connectedAssessmentsQuery (using 'ac' alias instead of 'acf')
+  let connectedAssessmentsFilterCondition = '';
+  if (hasFilters && filterConditionSQL) {
+    // Replace 'acf' with 'ac' to match the CTE alias
+    connectedAssessmentsFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac.');
   }
   
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsQuery params:`, connectedAssessmentsParams);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsSyllabusCondition: ${connectedAssessmentsSyllabusCondition || '(none)'}`);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsTermCondition: ${connectedAssessmentsTermCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] connectedAssessmentsFilterCondition: ${connectedAssessmentsFilterCondition || '(none)'}`);
   
   const connectedAssessmentsQuery = `
     WITH ilo_syllabus AS (
@@ -1387,8 +1408,8 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
     ),
     assessment_ilo_connections AS (
-      -- Get ALL assessments from the same syllabus as the ILO (not just explicitly connected ones)
-      -- This matches the logic in studentScoresQuery to ensure consistency
+      -- Filter assessments based on the specific ILO-mapping pair's assessment_tasks if filters are provided
+      -- Otherwise, include ALL assessments from the same syllabus as the ILO
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1406,8 +1427,13 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        -- Include ALL assessments from the same syllabus, not just explicitly connected ones
-        -- This ensures the sidebar shows all assessments that could contribute to the ILO score
+        AND (
+          -- If filters are applied, only include assessments that match the specific mapping's assessment_tasks
+          ${connectedAssessmentsFilterCondition ? `(${connectedAssessmentsFilterCondition})` : 'TRUE'}
+          -- Also include assessments with explicit ILO connections (assessment_ilo_weights or rubrics)
+          OR aiw.ilo_id = $2
+          OR r.ilo_id = $2
+        )
     ),
     assessment_stats AS (
       SELECT
@@ -1464,6 +1490,24 @@ async function getILOStudentList(
   // Build parameters for student scores query
   const studentScoresParams = [sectionCourseId, iloId];
   let studentScoresParamIndex = 3;
+  
+  // Add filter parameters first (in same order as assessmentFilterParams)
+  if (soId) {
+    studentScoresParams.push(soId);
+  }
+  if (sdgId) {
+    studentScoresParams.push(sdgId);
+  }
+  if (igaId) {
+    studentScoresParams.push(igaId);
+  }
+  if (cdioId) {
+    studentScoresParams.push(cdioId);
+  }
+  
+  // Update param index after filters
+  studentScoresParamIndex = 3 + (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0);
+  
   let studentScoresSyllabusCondition = '';
   let studentScoresTermCondition = '';
   
@@ -1479,6 +1523,16 @@ async function getILOStudentList(
     studentScoresParamIndex++;
   }
   
+  // Build filter conditions for studentScoresQuery
+  let studentScoresFilterCondition = '';
+  if (hasFilters && filterConditionSQL) {
+    // Replace 'acf' with 'ac_student' to match the subquery alias
+    studentScoresFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac_student.');
+  }
+  
+  console.log(`[ATTAINMENT DEBUG] studentScoresQuery params:`, studentScoresParams);
+  console.log(`[ATTAINMENT DEBUG] studentScoresFilterCondition: ${studentScoresFilterCondition || '(none)'}`);
+  
   // Step 3: Get student assessment scores for connected assessments (with filters applied)
   // Clean starting point - get student scores for assessments from selected class, published, and selected syllabus
   const studentScoresQuery = `
@@ -1488,7 +1542,8 @@ async function getILOStudentList(
       WHERE ilo_id = $2 AND is_active = TRUE
     ),
     assessment_ilo_connections AS (
-      -- Get ALL assessments from the same syllabus as the ILO (not just explicitly connected ones)
+      -- Filter assessments based on the specific ILO-mapping pair's assessment_tasks if filters are provided
+      -- Otherwise, include ALL assessments from the same syllabus as the ILO
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1497,6 +1552,23 @@ async function getILOStudentList(
       INNER JOIN section_courses sc ON a.section_course_id = sc.section_course_id
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
+      LEFT JOIN (
+        -- Get assessment codes for filtering
+        SELECT DISTINCT
+          a_ac.assessment_id,
+          COALESCE(
+            (a_ac.content_data->>'code')::text,
+            (a_ac.content_data->>'abbreviation')::text,
+            CASE 
+              WHEN a_ac.title ~* '[A-Z]{2,4}\s*\d+' 
+              THEN UPPER(SUBSTRING(a_ac.title FROM '([A-Z]{2,4}\s*\d+)'))
+              ELSE NULL
+            END,
+            NULL
+          ) AS assessment_code
+        FROM assessments a_ac
+        WHERE a_ac.section_course_id = $1
+      ) ac_student ON a.assessment_id = ac_student.assessment_id
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
       LEFT JOIN rubrics r ON a.assessment_id = r.assessment_id AND r.ilo_id = $2
       WHERE a.section_course_id = $1
@@ -1508,8 +1580,13 @@ async function getILOStudentList(
         ${studentScoresTermCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        -- Include ALL assessments from the same syllabus, not just explicitly connected ones
-        -- This matches the logic in connectedAssessmentsQuery
+        AND (
+          -- If filters are applied, only include assessments that match the specific mapping's assessment_tasks
+          ${studentScoresFilterCondition ? `(${studentScoresFilterCondition})` : 'TRUE'}
+          -- Also include assessments with explicit ILO connections (assessment_ilo_weights or rubrics)
+          OR aiw.ilo_id = $2
+          OR r.ilo_id = $2
+        )
     )
     SELECT
       ce.student_id,
