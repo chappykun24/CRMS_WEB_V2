@@ -1238,40 +1238,44 @@ async function getILOStudentList(
   // Execute ILO mappings query first
   const iloMappingsResult = await db.query(iloMappingsQuery, assessmentFilterParams);
   
-  // Collect all assessment_tasks from the mappings
-  const allAssessmentTasks = new Set();
+  // Get the specific assessment_tasks from the selected pair (not all mappings)
+  // This is the key: we only want assessments from the specific ILO-mapping pair
+  let selectedAssessmentTasks = null;
   let connectAllFromSyllabus = false;
   
-  iloMappingsResult.rows.forEach(row => {
-    if (row.so_assessment_tasks) {
+  if (iloMappingsResult.rows.length > 0) {
+    const row = iloMappingsResult.rows[0];
+    
+    // Get assessment_tasks from the specific filter that was applied
+    if (soId && row.so_assessment_tasks) {
       if (row.so_assessment_tasks.length === 0 || row.so_assessment_tasks[0] === null) {
         connectAllFromSyllabus = true;
       } else {
-        row.so_assessment_tasks.forEach(task => allAssessmentTasks.add(task.toUpperCase().trim()));
+        selectedAssessmentTasks = row.so_assessment_tasks.map(task => task.toUpperCase().trim());
       }
-    }
-    if (row.sdg_assessment_tasks) {
+    } else if (sdgId && row.sdg_assessment_tasks) {
       if (row.sdg_assessment_tasks.length === 0 || row.sdg_assessment_tasks[0] === null) {
         connectAllFromSyllabus = true;
       } else {
-        row.sdg_assessment_tasks.forEach(task => allAssessmentTasks.add(task.toUpperCase().trim()));
+        selectedAssessmentTasks = row.sdg_assessment_tasks.map(task => task.toUpperCase().trim());
       }
-    }
-    if (row.iga_assessment_tasks) {
+    } else if (igaId && row.iga_assessment_tasks) {
       if (row.iga_assessment_tasks.length === 0 || row.iga_assessment_tasks[0] === null) {
         connectAllFromSyllabus = true;
       } else {
-        row.iga_assessment_tasks.forEach(task => allAssessmentTasks.add(task.toUpperCase().trim()));
+        selectedAssessmentTasks = row.iga_assessment_tasks.map(task => task.toUpperCase().trim());
       }
-    }
-    if (row.cdio_assessment_tasks) {
+    } else if (cdioId && row.cdio_assessment_tasks) {
       if (row.cdio_assessment_tasks.length === 0 || row.cdio_assessment_tasks[0] === null) {
         connectAllFromSyllabus = true;
       } else {
-        row.cdio_assessment_tasks.forEach(task => allAssessmentTasks.add(task.toUpperCase().trim()));
+        selectedAssessmentTasks = row.cdio_assessment_tasks.map(task => task.toUpperCase().trim());
       }
     }
-  });
+  }
+  
+  console.log(`[ATTAINMENT DEBUG] Selected assessment_tasks from pair:`, selectedAssessmentTasks);
+  console.log(`[ATTAINMENT DEBUG] Connect all from syllabus:`, connectAllFromSyllabus);
 
   // Step 3: Get assessments connected to this ILO combination (separate, simpler query)
   // Build parameters for connectedAssessmentsQuery (needs syllabusId and activeTermId if provided)
@@ -1408,8 +1412,8 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
     ),
     assessment_ilo_connections AS (
-      -- Filter assessments based on the specific ILO-mapping pair's assessment_tasks if filters are provided
-      -- Otherwise, include ALL assessments from the same syllabus as the ILO
+      -- Get assessments from syllabus assessment_framework based on the ILO-mapping pair's assessment_tasks
+      -- This directly matches assessment codes from the syllabus with the assessment_tasks array
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1428,8 +1432,8 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND (
-          -- If filters are applied, only include assessments that match the specific mapping's assessment_tasks
-          ${connectedAssessmentsFilterCondition ? `(${connectedAssessmentsFilterCondition})` : 'TRUE'}
+          -- Match assessments from syllabus based on ILO-mapping pair's assessment_tasks
+          ${assessmentTasksCondition}
           -- Also include assessments with explicit ILO connections (assessment_ilo_weights or rubrics)
           OR aiw.ilo_id = $2
           OR r.ilo_id = $2
