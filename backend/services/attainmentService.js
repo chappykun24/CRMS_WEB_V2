@@ -211,6 +211,34 @@ async function getILOAttainmentSummary(
   activeTermId = null,
   syllabusId = null
 ) {
+  // DEBUG: Verify ILOs for this section_course_id before running main query
+  const debugQuery = `
+    SELECT 
+      i.ilo_id,
+      i.code AS ilo_code,
+      i.syllabus_id,
+      sy.section_course_id,
+      sy.review_status,
+      sy.approval_status
+    FROM ilos i
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    WHERE sy.section_course_id = $1
+      AND sy.review_status = 'approved'
+      AND sy.approval_status = 'approved'
+      AND i.is_active = TRUE
+    ORDER BY i.code
+  `;
+  const debugResult = await db.query(debugQuery, [sectionCourseId]);
+  console.log(`\n[ATTAINMENT SUMMARY DEBUG] ==========================================`);
+  console.log(`[ATTAINMENT SUMMARY DEBUG] Section Course ID: ${sectionCourseId}`);
+  console.log(`[ATTAINMENT SUMMARY DEBUG] Active Term ID: ${activeTermId || 'N/A'}`);
+  console.log(`[ATTAINMENT SUMMARY DEBUG] Syllabus ID: ${syllabusId || 'AUTO'}`);
+  console.log(`[ATTAINMENT SUMMARY DEBUG] Expected ILOs for this section_course_id: ${debugResult.rows.length}`);
+  debugResult.rows.forEach((ilo, idx) => {
+    console.log(`  ${idx + 1}. ILO ID: ${ilo.ilo_id}, Code: ${ilo.ilo_code}, Syllabus ID: ${ilo.syllabus_id}`);
+  });
+  console.log(`[ATTAINMENT SUMMARY DEBUG] ==========================================\n`);
+
   // Build WHERE conditions for active term and syllabus
   const termCondition = activeTermId ? `AND sc.term_id = ${activeTermId}` : '';
   const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
@@ -402,6 +430,18 @@ async function getILOAttainmentSummary(
   `;
   
   const result = await db.query(query, [sectionCourseId, passThreshold, highThreshold, lowThreshold]);
+  
+  // DEBUG: Verify returned ILOs match expected ILOs
+  console.log(`[ATTAINMENT SUMMARY DEBUG] Query returned ${result.rows.length} ILOs`);
+  result.rows.forEach((row, idx) => {
+    const iloInDebug = debugResult.rows.find(d => d.ilo_id === row.ilo_id);
+    if (!iloInDebug) {
+      console.error(`  ⚠️  WARNING: ILO ${row.ilo_id} (${row.ilo_code}) NOT FOUND in debug query for section_course_id ${sectionCourseId}!`);
+    } else {
+      console.log(`  ${idx + 1}. ILO ID: ${row.ilo_id}, Code: ${row.ilo_code} ✓ Verified`);
+    }
+  });
+  console.log(`[ATTAINMENT SUMMARY DEBUG] ==========================================\n`);
   
   // Calculate overall summary
   const totalStudents = result.rows.length > 0 ? result.rows[0].total_students : 0;

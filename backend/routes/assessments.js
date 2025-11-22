@@ -435,6 +435,42 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
     const igaId = iga_id ? parseInt(iga_id) : null;
     const cdioId = cdio_id ? parseInt(cdio_id) : null;
 
+    // DEBUG: First verify what ILOs exist for this section_course_id
+    const debugILOsQuery = `
+      SELECT 
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description,
+        i.syllabus_id,
+        sy.section_course_id,
+        sy.review_status,
+        sy.approval_status,
+        c.course_code,
+        c.title AS course_title,
+        s.section_code
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN section_courses sc ON sy.section_course_id = sc.section_course_id
+      INNER JOIN courses c ON sc.course_id = c.course_id
+      INNER JOIN sections s ON sc.section_id = s.section_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+      ORDER BY i.code
+    `;
+    const debugILOsResult = await db.query(debugILOsQuery, [sectionCourseId]);
+    
+    console.log(`\n[ILO COMBINATIONS DEBUG] ==========================================`);
+    console.log(`[ILO COMBINATIONS DEBUG] Section Course ID: ${sectionCourseId}`);
+    console.log(`[ILO COMBINATIONS DEBUG] Found ${debugILOsResult.rows.length} ILOs for this section_course_id:`);
+    debugILOsResult.rows.forEach((ilo, idx) => {
+      console.log(`  ${idx + 1}. ILO ID: ${ilo.ilo_id}, Code: ${ilo.ilo_code}, Syllabus ID: ${ilo.syllabus_id}`);
+      console.log(`     Course: ${ilo.course_code} - ${ilo.course_title}, Section: ${ilo.section_code}`);
+      console.log(`     Review: ${ilo.review_status}, Approval: ${ilo.approval_status}`);
+    });
+    console.log(`[ILO COMBINATIONS DEBUG] ==========================================\n`);
+
     // Get ILO combinations with their assessments and statistics
     const query = `
       WITH ilo_combinations AS (
@@ -541,6 +577,7 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         FROM assessments a
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
         WHERE a.section_course_id = $1
+          AND sy.section_course_id = $1
           AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
@@ -568,7 +605,8 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         FROM assessment_codes ac
         INNER JOIN assessments a ON ac.assessment_id = a.assessment_id
         INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
-        INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id
+        INNER JOIN ilos i ON i.syllabus_id = sy.syllabus_id AND i.is_active = TRUE
+        INNER JOIN syllabi sy_ilo ON i.syllabus_id = sy_ilo.syllabus_id AND sy_ilo.section_course_id = $1
         LEFT JOIN ilo_so_mappings ism ON (
           ism.ilo_id = i.ilo_id
           AND (
@@ -616,6 +654,9 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
         WHERE sy.section_course_id = $1
           AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
+          AND sy_ilo.section_course_id = $1
+          AND sy_ilo.review_status = 'approved'
+          AND sy_ilo.approval_status = 'approved'
           AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
       ),
       -- Combine ILO connections from assessment_ilo_weights, rubrics, mapping tables, and same syllabus
@@ -786,12 +827,23 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
 
     const result = await db.query(query, [sectionCourseId]);
 
-    // Debug logging
-    console.log(`[ILO COMBINATIONS] Found ${result.rows.length} ILO combinations`);
-    result.rows.forEach(row => {
+    // Enhanced debug logging
+    console.log(`\n[ILO COMBINATIONS DEBUG] Query Results:`);
+    console.log(`[ILO COMBINATIONS DEBUG] Section Course ID used in query: ${sectionCourseId}`);
+    console.log(`[ILO COMBINATIONS DEBUG] Found ${result.rows.length} ILO combinations from query`);
+    result.rows.forEach((row, idx) => {
       const assessmentCount = Array.isArray(row.assessments) ? row.assessments.length : 0;
-      console.log(`[ILO COMBINATIONS] ${row.ilo_code}: ${assessmentCount} assessments`);
+      console.log(`  ${idx + 1}. ILO ID: ${row.ilo_id}, Code: ${row.ilo_code}, Assessments: ${assessmentCount}`);
+      
+      // Verify this ILO actually belongs to this section_course_id
+      const iloInDebug = debugILOsResult.rows.find(d => d.ilo_id === row.ilo_id);
+      if (!iloInDebug) {
+        console.error(`  ⚠️  WARNING: ILO ${row.ilo_id} (${row.ilo_code}) NOT FOUND in debug query for section_course_id ${sectionCourseId}!`);
+      } else {
+        console.log(`     ✓ Verified: Belongs to section_course_id ${iloInDebug.section_course_id}, Syllabus ID: ${iloInDebug.syllabus_id}`);
+      }
     });
+    console.log(`[ILO COMBINATIONS DEBUG] ==========================================\n`);
 
     // Format the response
     const iloCombinations = result.rows.map(row => {
@@ -821,7 +873,26 @@ router.get('/ilo-attainment/combinations', async (req, res) => {
 
     res.json({
       success: true,
-      data: iloCombinations
+      data: iloCombinations,
+      debug: {
+        section_course_id: sectionCourseId,
+        expected_ilos: debugILOsResult.rows.map(r => ({
+          ilo_id: r.ilo_id,
+          ilo_code: r.ilo_code,
+          syllabus_id: r.syllabus_id,
+          course_code: r.course_code,
+          section_code: r.section_code
+        })),
+        returned_ilos: result.rows.map(r => ({
+          ilo_id: r.ilo_id,
+          ilo_code: r.ilo_code
+        })),
+        match_count: result.rows.filter(r => 
+          debugILOsResult.rows.some(d => d.ilo_id === r.ilo_id)
+        ).length,
+        total_expected: debugILOsResult.rows.length,
+        total_returned: result.rows.length
+      }
     });
   } catch (error) {
     console.error('[ILO ATTAINMENT COMBINATIONS] Error:', error);
