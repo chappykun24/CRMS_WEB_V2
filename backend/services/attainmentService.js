@@ -1489,6 +1489,7 @@ async function getILOStudentList(
       WHERE ilo_id = $2 AND is_active = TRUE
     ),
     assessment_ilo_connections AS (
+      -- Get ALL assessments from the same syllabus as the ILO (not just explicitly connected ones)
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1508,7 +1509,8 @@ async function getILOStudentList(
         ${studentScoresTermCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        AND (aiw.ilo_id = $2 OR r.ilo_id = $2)
+        -- Include ALL assessments from the same syllabus, not just explicitly connected ones
+        -- This matches the logic in connectedAssessmentsQuery
     )
     SELECT
       ce.student_id,
@@ -1605,15 +1607,49 @@ async function getILOStudentList(
     const uniqueStudents = new Set(scoresResult.rows.map(r => r.student_id));
     const uniqueAssessments = new Set(scoresResult.rows.map(r => r.assessment_id));
     console.log(`[ATTAINMENT DEBUG] Student scores found: ${scoresResult.rows.length} records for ${uniqueStudents.size} students across ${uniqueAssessments.size} assessments`);
-    console.log(`[ATTAINMENT DEBUG] Sample score record:`, {
-      student_id: scoresResult.rows[0].student_id,
-      assessment_id: scoresResult.rows[0].assessment_id,
-      raw_score: scoresResult.rows[0].raw_score,
-      transmuted_score_calc: scoresResult.rows[0].transmuted_score_calc,
-      assessment_percentage: scoresResult.rows[0].assessment_percentage
-    });
+    
+    // Check how many have actual scores vs null/0
+    const withScores = scoresResult.rows.filter(r => (r.raw_score > 0) || (r.transmuted_score_calc && r.transmuted_score_calc > 0));
+    const withoutScores = scoresResult.rows.length - withScores.length;
+    console.log(`[ATTAINMENT DEBUG] Score breakdown: ${withScores.length} with scores, ${withoutScores} without scores`);
+    
+    if (withScores.length > 0) {
+      console.log(`[ATTAINMENT DEBUG] Sample score record WITH score:`, {
+        student_id: withScores[0].student_id,
+        assessment_id: withScores[0].assessment_id,
+        raw_score: withScores[0].raw_score,
+        adjusted_score: withScores[0].adjusted_score,
+        total_score: withScores[0].total_score,
+        transmuted_score: withScores[0].transmuted_score,
+        transmuted_score_calc: withScores[0].transmuted_score_calc,
+        assessment_percentage: withScores[0].assessment_percentage,
+        max_score: withScores[0].max_score,
+        weight_percentage: withScores[0].weight_percentage
+      });
+    }
+    
+    if (withoutScores > 0) {
+      const sampleWithout = scoresResult.rows.find(r => (!r.raw_score || r.raw_score === 0) && (!r.transmuted_score_calc || r.transmuted_score_calc === 0));
+      if (sampleWithout) {
+        console.log(`[ATTAINMENT DEBUG] Sample score record WITHOUT score:`, {
+          student_id: sampleWithout.student_id,
+          assessment_id: sampleWithout.assessment_id,
+          raw_score: sampleWithout.raw_score,
+          adjusted_score: sampleWithout.adjusted_score,
+          total_score: sampleWithout.total_score,
+          transmuted_score: sampleWithout.transmuted_score,
+          transmuted_score_calc: sampleWithout.transmuted_score_calc,
+          has_submission: sampleWithout.raw_score !== undefined || sampleWithout.adjusted_score !== undefined || sampleWithout.total_score !== undefined
+        });
+      }
+    }
   } else {
     console.log(`[ATTAINMENT DEBUG] ⚠️ No student score records found! This is why students show 0.00 scores.`);
+    console.log(`[ATTAINMENT DEBUG] Possible reasons:`);
+    console.log(`  - No assessments found in assessment_ilo_connections CTE`);
+    console.log(`  - No students enrolled in the section course`);
+    console.log(`  - Assessments are not published`);
+    console.log(`  - No submissions exist for the assessments`);
   }
   
   // Step 4: Process results in JavaScript (simpler and more accurate)
@@ -1645,18 +1681,24 @@ async function getILOStudentList(
       });
     }
     const student = studentScoresMap.get(row.student_id);
-    if (row.raw_score > 0 || row.assessment_percentage !== null) {
-      student.assessment_scores.push({
-        assessment_id: row.assessment_id,
-        assessment_title: row.assessment_title,
-        raw_score: parseFloat(row.raw_score || 0),
-        max_score: parseFloat(row.max_score || 0),
-        score_percentage: parseFloat(row.assessment_percentage || 0),
-        transmuted_score: parseFloat(row.transmuted_score_calc || 0),
-        weight_percentage: parseFloat(row.weight_percentage || 0),
-        ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0)
-      });
-    }
+    // Include all assessment records, even if score is 0, so we can track which assessments exist
+    // The transmuted_score_calc might be NULL if there's no submission, but we still want to include the assessment
+    const hasScore = row.raw_score > 0 || row.adjusted_score > 0 || row.total_score > 0 || 
+                     row.transmuted_score > 0 || (row.transmuted_score_calc && row.transmuted_score_calc > 0);
+    
+    student.assessment_scores.push({
+      assessment_id: row.assessment_id,
+      assessment_title: row.assessment_title,
+      raw_score: parseFloat(row.raw_score || 0),
+      adjusted_score: parseFloat(row.adjusted_score || 0),
+      total_score: parseFloat(row.total_score || 0),
+      max_score: parseFloat(row.max_score || 0),
+      score_percentage: parseFloat(row.assessment_percentage || 0),
+      transmuted_score: parseFloat(row.transmuted_score_calc || row.transmuted_score || 0),
+      weight_percentage: parseFloat(row.weight_percentage || 0),
+      ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0),
+      has_submission: hasScore
+    });
   });
   
   // Calculate overall scores for each student
@@ -1678,15 +1720,30 @@ async function getILOStudentList(
     }
     
     // Calculate: Overall % = (All Scores Combined) / (All Max Scores Combined) × 100
-    const totalScore = studentData.assessment_scores.reduce((sum, ass) => sum + ass.raw_score, 0);
-    const totalMax = studentData.assessment_scores.reduce((sum, ass) => sum + ass.max_score, 0);
+    // Only include assessments that have actual scores
+    const assessmentsWithScores = studentData.assessment_scores.filter(ass => ass.has_submission);
+    const totalScore = assessmentsWithScores.reduce((sum, ass) => sum + (ass.raw_score || ass.total_score || ass.adjusted_score || 0), 0);
+    const totalMax = assessmentsWithScores.reduce((sum, ass) => sum + ass.max_score, 0);
     const overallRate = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
     
-    // Calculate ILO score (sum of transmuted scores)
-    const iloScore = studentData.assessment_scores.reduce((sum, ass) => sum + ass.transmuted_score, 0);
+    // Calculate ILO score (sum of transmuted scores) - only include assessments with scores
+    const iloScore = assessmentsWithScores.reduce((sum, ass) => sum + (ass.transmuted_score || 0), 0);
     
-    // Total ILO weight
-    const totalIloWeight = studentData.assessment_scores.reduce((sum, ass) => sum + ass.ilo_weight_percentage, 0);
+    // Total ILO weight (only for assessments with scores)
+    const totalIloWeight = assessmentsWithScores.reduce((sum, ass) => sum + ass.ilo_weight_percentage, 0);
+    
+    console.log(`[ATTAINMENT DEBUG] Student ${studentData.student_number} (${studentData.full_name}):`);
+    console.log(`  - Total assessments: ${studentData.assessment_scores.length}`);
+    console.log(`  - Assessments with scores: ${assessmentsWithScores.length}`);
+    console.log(`  - Total score: ${totalScore}, Total max: ${totalMax}`);
+    console.log(`  - Overall rate: ${overallRate}%`);
+    console.log(`  - ILO score: ${iloScore}`);
+    console.log(`  - Sample assessment scores:`, assessmentsWithScores.slice(0, 3).map(a => ({
+      title: a.assessment_title,
+      raw_score: a.raw_score,
+      transmuted_score: a.transmuted_score,
+      has_submission: a.has_submission
+    })));
     
     return {
       student_id: studentData.student_id,
