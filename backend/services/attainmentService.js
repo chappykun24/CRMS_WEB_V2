@@ -556,7 +556,6 @@ async function getILOStudentList(
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
       AND i.ilo_id = $2
-      ${assessmentFilterConditions}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
@@ -666,7 +665,7 @@ async function getILOStudentList(
   
   // Debug: Log the actual query being executed
   console.log(`[ATTAINMENT DEBUG] Executing assessmentsQuery with params:`, assessmentFilterParams);
-  console.log(`[ATTAINMENT DEBUG] Filter conditions:`, assessmentFilterConditions || '(none)');
+  console.log(`[ATTAINMENT DEBUG] Filters applied:`, hasFilters ? `SO:${soId || 'none'}, SDG:${sdgId || 'none'}, IGA:${igaId || 'none'}, CDIO:${cdioId || 'none'}` : '(none)');
   
   let assessmentsResult;
   try {
