@@ -794,12 +794,6 @@ const ILOAttainment = () => {
                     ))}
                   </tbody>
                 </table>
-                {(!attainmentData.ilo_attainment || attainmentData.ilo_attainment.length === 0) && (
-                  <div className="text-center py-8 text-gray-500">
-                    <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p>No ILO attainment data available for this class.</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1166,14 +1160,6 @@ const ILOAttainment = () => {
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* No Data State */}
-        {!loadingAttainment && !selectedILO && !attainmentData && selectedClass && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No ILO attainment data available for this class.</p>
           </div>
         )}
       </div>
