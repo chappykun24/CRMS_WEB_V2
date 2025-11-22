@@ -420,13 +420,13 @@ const ILOAttainment = () => {
   // Loading skeleton for classes
   if (loading && classes.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-3 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 animate-pulse">
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-4 animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
             <div className="h-4 bg-gray-200 rounded w-96"></div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 animate-pulse">
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-4 animate-pulse">
             <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
             <div className="h-10 bg-gray-200 rounded w-full md:w-1/3"></div>
           </div>
@@ -436,10 +436,10 @@ const ILOAttainment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 overflow-y-auto">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -463,7 +463,7 @@ const ILOAttainment = () => {
         </div>
 
         {/* Class Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Class
           </label>
@@ -491,7 +491,7 @@ const ILOAttainment = () => {
 
         {/* Filters */}
         {selectedClass && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
             <div className="flex items-center space-x-2 mb-4">
               <FunnelIcon className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
@@ -611,7 +611,7 @@ const ILOAttainment = () => {
         {/* Loading State with Skeleton */}
         {loadingAttainment && !selectedILO && !showCombinations && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
               <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[1, 2, 3].map((i) => (
@@ -629,7 +629,7 @@ const ILOAttainment = () => {
         {/* ILO Combinations with Assessments View */}
         {!loadingAttainment && showCombinations && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <h2 className="text-xl font-bold text-gray-900 mb-2">ILO Combinations with Assessments</h2>
               <p className="text-sm text-gray-600">
                 {iloCombinations.length > 0 
@@ -639,7 +639,7 @@ const ILOAttainment = () => {
             </div>
 
             {iloCombinations.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
                 <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No ILO combinations found for the selected filters.</p>
                 <p className="text-sm text-gray-500 mt-2">Try adjusting your filter selections.</p>
@@ -648,7 +648,7 @@ const ILOAttainment = () => {
               iloCombinations.map((ilo) => (
                 <div key={ilo.ilo_id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* ILO Header */}
-                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900">{ilo.ilo_code}</h3>
@@ -679,7 +679,7 @@ const ILOAttainment = () => {
                 </div>
 
                 {/* Assessments Section */}
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                   <h4 className="text-sm font-semibold text-gray-700">
                     Assessments ({ilo.assessments?.length || 0})
                   </h4>
@@ -691,40 +691,40 @@ const ILOAttainment = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Assessment Title
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Type
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Total Points
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Weight (%)
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             ILO Weight (%)
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Due Date
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Students
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Submissions
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Avg Score
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Total Score
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Avg %
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Mapped To
                           </th>
                         </tr>
@@ -732,43 +732,43 @@ const ILOAttainment = () => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {ilo.assessments.map((assessment) => (
                           <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-700">{assessment.type}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-900">{assessment.total_points}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-900">{parseFloat(assessment.weight_percentage || 0).toFixed(1)}%</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-900">{parseFloat(assessment.ilo_weight_percentage || 0).toFixed(1)}%</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-700">
                                 {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-900">{assessment.total_students || 0}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-gray-900">{assessment.submissions_count || 0}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm font-medium text-gray-900">
                                 {parseFloat(assessment.average_score || 0).toFixed(2)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm font-medium text-gray-900">
                                 {parseFloat(assessment.total_score || 0).toFixed(2)}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`text-sm font-medium ${
                                 parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
                                 parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
@@ -777,7 +777,7 @@ const ILOAttainment = () => {
                                 {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
                               </span>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {assessment.mappings && assessment.mappings.length > 0 ? (
                                   assessment.mappings.map((mapping, idx) => (
@@ -799,7 +799,7 @@ const ILOAttainment = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="px-6 py-12 text-center text-gray-500 bg-gray-50">
+                  <div className="px-4 py-8 text-center text-gray-500 bg-gray-50">
                     <p className="text-sm">No assessments found for this ILO combination.</p>
                     <p className="text-xs text-gray-400 mt-1">This ILO may not have any assessments mapped to it.</p>
                   </div>
@@ -814,7 +814,7 @@ const ILOAttainment = () => {
         {!loadingAttainment && !selectedILO && !showCombinations && attainmentData && (
           <div className="space-y-6">
             {/* Summary Stats */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
@@ -836,7 +836,7 @@ const ILOAttainment = () => {
 
             {/* ILO Attainment Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">ILO Attainment</h2>
               </div>
               <div className="overflow-x-auto">
@@ -876,19 +876,19 @@ const ILOAttainment = () => {
                         onClick={() => handleILOClick(ilo)}
                         className="hover:bg-blue-50 cursor-pointer transition-colors"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{ilo.ilo_code}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <span className="text-sm text-gray-700">{ilo.description}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-gray-900">{ilo.total_students}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-gray-900">{ilo.attained_count}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`text-sm font-medium ${
                             ilo.attainment_percentage >= 80 ? 'text-green-600' :
                             ilo.attainment_percentage >= 60 ? 'text-yellow-600' :
@@ -897,13 +897,13 @@ const ILOAttainment = () => {
                             {ilo.attainment_percentage.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-green-600 font-medium">{ilo.high_performance_count}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-red-600 font-medium">{ilo.low_performance_count}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {ilo.mapped_to?.map((mapping, idx) => (
                               <span
@@ -923,7 +923,7 @@ const ILOAttainment = () => {
                   </tbody>
                 </table>
                 {(!attainmentData.ilo_attainment || attainmentData.ilo_attainment.length === 0) && (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-8 text-gray-500">
                     <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p>No ILO attainment data available for this class.</p>
                   </div>
@@ -937,7 +937,7 @@ const ILOAttainment = () => {
         {!loadingAttainment && selectedILO && (
           <div className="space-y-6">
             {/* Header with Back Button */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
                   <button
@@ -1009,40 +1009,40 @@ const ILOAttainment = () => {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Assessment Title
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Type
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Total Points
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Weight (%)
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               ILO Weight (%)
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Due Date
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Students
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Submissions
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Avg Score
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Total Score
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Avg %
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Mapped To
                             </th>
                           </tr>
@@ -1050,43 +1050,43 @@ const ILOAttainment = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {selectedILO.assessments.map((assessment) => (
                             <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-700">{assessment.type}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-900">{assessment.total_points}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-900">{assessment.weight_percentage.toFixed(1)}%</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-900">{assessment.ilo_weight_percentage.toFixed(1)}%</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-700">
                                   {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-900">{assessment.total_students || 0}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm text-gray-900">{assessment.submissions_count || 0}</span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm font-medium text-gray-900">
                                   {parseFloat(assessment.average_score || 0).toFixed(2)}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className="text-sm font-medium text-gray-900">
                                   {parseFloat(assessment.total_score || 0).toFixed(2)}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3 whitespace-nowrap">
                                 <span className={`text-sm font-medium ${
                                   parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
                                   parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
@@ -1095,7 +1095,7 @@ const ILOAttainment = () => {
                                   {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
                                 </span>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 py-3">
                                 <div className="flex flex-wrap gap-1">
                                   {assessment.mappings && assessment.mappings.length > 0 ? (
                                     assessment.mappings.map((mapping, idx) => (
@@ -1154,7 +1154,7 @@ const ILOAttainment = () => {
             </div>
 
             {/* Performance Filter and Show Students Button */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
@@ -1233,8 +1233,8 @@ const ILOAttainment = () => {
                       'bg-gray-100 border-gray-200';
                     
                     return (
-                      <div key={rangeGroup.range} className={`bg-white rounded-lg shadow-sm border-2 ${rangeColor} overflow-hidden`}>
-                        <div className={`px-6 py-3 border-b ${headerColor}`}>
+                      <div key={rangeGroup.range} className={`bg-white rounded-lg shadow-sm border-2 ${rangeColor} overflow-hidden p-3`}>
+                        <div className={`px-4 py-2 border-b ${headerColor}`}>
                           <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-gray-900">
                               {rangeGroup.range}% Score Range
@@ -1251,22 +1251,22 @@ const ILOAttainment = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                                   
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Student Number
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Full Name
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   ILO Score
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Overall %
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Attainment Status
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Performance Level
                                 </th>
                               </tr>
@@ -1277,7 +1277,7 @@ const ILOAttainment = () => {
                                 return (
                                   <React.Fragment key={student.student_id}>
                                     <tr className="hover:bg-gray-50 transition-colors">
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <button
                                           onClick={() => toggleStudentExpanded(student.student_id)}
                                           className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -1290,16 +1290,16 @@ const ILOAttainment = () => {
                                           )}
                                         </button>
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <span className="text-sm text-gray-900">{student.student_number}</span>
                                       </td>
-                                      <td className="px-6 py-4">
+                                      <td className="px-4 py-3">
                                         <span className="text-sm text-gray-900">{student.full_name}</span>
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <span className="text-sm font-medium text-gray-900">{student.ilo_score?.toFixed(2) || '0.00'}</span>
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <span className={`text-sm font-medium ${
                                           (student.overall_attainment_rate || 0) >= 80 ? 'text-green-600' :
                                           (student.overall_attainment_rate || 0) >= 60 ? 'text-yellow-600' :
@@ -1308,7 +1308,7 @@ const ILOAttainment = () => {
                                           {(student.overall_attainment_rate || 0).toFixed(2)}%
                                         </span>
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                           student.attainment_status === 'attained'
                                             ? 'bg-green-100 text-green-800 border border-green-200'
@@ -1317,7 +1317,7 @@ const ILOAttainment = () => {
                                           {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
                                         </span>
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
+                                      <td className="px-4 py-3 whitespace-nowrap">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                           student.performance_level === 'high'
                                             ? 'bg-green-100 text-green-800 border border-green-200'
@@ -1332,8 +1332,8 @@ const ILOAttainment = () => {
                                     </tr>
                                     {isExpanded && student.assessment_scores && student.assessment_scores.length > 0 && (
                                       <tr className="bg-gray-50">
-                                        <td colSpan="7" className="px-6 py-4">
-                                          <div className="bg-white rounded-lg border border-gray-200 p-4">
+                                        <td colSpan="7" className="px-4 py-3">
+                                          <div className="bg-white rounded-lg border border-gray-200 p-3">
                                             <h4 className="text-sm font-semibold text-gray-700 mb-3">Individual Assessment Scores</h4>
                                             <div className="overflow-x-auto">
                                               <table className="min-w-full divide-y divide-gray-200">
@@ -1414,7 +1414,7 @@ const ILOAttainment = () => {
                   })}
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                 <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No students found for the selected filter.</p>
               </div>
