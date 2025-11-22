@@ -354,24 +354,30 @@ async function getILOStudentList(
   const iloInfo = iloResult.rows[0];
   
   // Get assessments connected to this ILO (with optional SO/SDG/IGA/CDIO filter)
-  // Use the same logic as the script: extract assessment codes and match to ILO mappings
+  // Use separate, simpler queries for accuracy
   
-  // Build filter conditions safely
-  const filterConditions = [];
+  // Build filter conditions safely for assessments query
+  const assessmentFilterParams = [sectionCourseId, iloId];
+  let assessmentFilterConditions = '';
+  
   if (soId) {
-    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})`);
+    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = $' + assessmentFilterParams.length + ')';
+    assessmentFilterParams.push(soId);
   }
   if (sdgId) {
-    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})`);
+    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = $' + assessmentFilterParams.length + ')';
+    assessmentFilterParams.push(sdgId);
   }
   if (igaId) {
-    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})`);
+    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = $' + assessmentFilterParams.length + ')';
+    assessmentFilterParams.push(igaId);
   }
   if (cdioId) {
-    filterConditions.push(`AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})`);
+    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = $' + assessmentFilterParams.length + ')';
+    assessmentFilterParams.push(cdioId);
   }
-  const filterClause = filterConditions.join('\n        ');
   
+  // Step 1: Get assessments with stats (simpler query)
   const assessmentsQuery = `
     WITH assessment_codes AS (
       SELECT DISTINCT
@@ -480,7 +486,7 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
-        ${filterClause}
+        ${assessmentFilterConditions}
       GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage, i.ilo_id, sy.section_course_id
     )
     SELECT DISTINCT
@@ -518,12 +524,12 @@ async function getILOStudentList(
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
-      ${filterClause}
+      ${assessmentFilterConditions}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score, ast.average_percentage
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
   
-  const assessmentsResult = await db.query(assessmentsQuery, [sectionCourseId, iloId]);
+  const assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
   
   // Format assessments with mappings
   const assessments = assessmentsResult.rows.map(row => {
@@ -558,138 +564,7 @@ async function getILOStudentList(
     };
   });
   
-  // Get student scores for this ILO - include individual assessment scores and combine them
-  const studentQuery = `
-    WITH student_assessment_scores AS (
-      SELECT
-        ce.student_id,
-        ce.enrollment_id,
-        s.student_number,
-        s.full_name,
-        aic.ilo_id,
-        a.assessment_id,
-        a.title AS assessment_title,
-        a.total_points AS max_score,
-        a.weight_percentage,
-        aic.ilo_weight_percentage,
-        -- Raw scores from submission
-        COALESCE(sub.total_score, sub.adjusted_score, 0) AS raw_score,
-        sub.adjusted_score,
-        sub.total_score,
-        sub.transmuted_score,
-        -- Calculate transmuted score
-        CASE 
-          WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
-          WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-          THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-          WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-          THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-          ELSE NULL
-        END AS transmuted_score_calc,
-        -- Calculate assessment percentage (score/max_score * 100)
-        CASE 
-          WHEN sub.transmuted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage > 0 THEN
-            ((sub.transmuted_score / (a.weight_percentage / 100.0) - 37.5) / 62.5) * 100
-          WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 THEN
-            (sub.adjusted_score / a.total_points) * 100
-          WHEN sub.total_score IS NOT NULL AND a.total_points > 0 THEN
-            (sub.total_score / a.total_points) * 100
-          ELSE NULL
-        END AS assessment_percentage
-      FROM course_enrollments ce
-      INNER JOIN students s ON ce.student_id = s.student_id
-      INNER JOIN assessment_ilo_connections aic ON EXISTS (
-        SELECT 1 FROM assessments a 
-        WHERE a.assessment_id = aic.assessment_id 
-        AND a.section_course_id = ce.section_course_id
-      )
-      INNER JOIN assessments a ON aic.assessment_id = a.assessment_id
-      INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
-      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
-      LEFT JOIN submissions sub ON (
-        ce.enrollment_id = sub.enrollment_id 
-        AND sub.assessment_id = a.assessment_id
-        AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
-      )
-      WHERE ce.section_course_id = $1
-        AND ce.status = 'enrolled'
-        AND aic.ilo_id = $2
-        AND a.weight_percentage IS NOT NULL
-        AND a.weight_percentage > 0
-        AND sy.section_course_id = $1
-        AND a.section_course_id = $1
-        AND i.is_active = TRUE
-        ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
-        ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
-        ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
-        ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = ${cdioId})` : ''}
-    ),
-    student_aggregated AS (
-      SELECT
-        student_id,
-        enrollment_id,
-        student_number,
-        full_name,
-        -- Overall ILO score: sum of all transmuted scores
-        COALESCE(
-          SUM(transmuted_score_calc) FILTER (WHERE transmuted_score_calc IS NOT NULL),
-          0
-        ) AS ilo_score,
-        -- Overall attainment rate: (all assessment scores combined) / (all max scores combined)
-        -- This matches the flowchart: Overall percentage = all assessment score combined / all max
-        COALESCE(
-          SUM(raw_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) /
-          NULLIF(
-            SUM(max_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0),
-            0
-          ) * 100,
-          0
-        ) AS overall_attainment_rate,
-        -- Count of assessments with scores
-        COUNT(DISTINCT assessment_id) FILTER (
-          WHERE transmuted_score_calc IS NOT NULL OR assessment_percentage IS NOT NULL
-        ) AS assessments_count,
-        -- Total ILO weight
-        SUM(DISTINCT COALESCE(ilo_weight_percentage, weight_percentage)) AS total_ilo_weight,
-        -- Total combined scores and max scores for reference
-        SUM(raw_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_score,
-        SUM(max_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_max
-      FROM student_assessment_scores
-      GROUP BY student_id, enrollment_id, student_number, full_name
-    )
-    SELECT
-      sa.student_id,
-      sa.enrollment_id,
-      sa.student_number,
-      sa.full_name,
-      sa.ilo_score,
-      sa.overall_attainment_rate,
-      sa.assessments_count,
-      sa.total_ilo_weight,
-      -- Individual assessment scores as JSON array
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'assessment_id', sas.assessment_id,
-            'assessment_title', sas.assessment_title,
-            'raw_score', ROUND(COALESCE(sas.raw_score, 0)::NUMERIC, 2),
-            'max_score', sas.max_score,
-            'score_percentage', ROUND(COALESCE(sas.assessment_percentage, 0)::NUMERIC, 2),
-            'transmuted_score', ROUND(COALESCE(sas.transmuted_score_calc, 0)::NUMERIC, 2),
-            'weight_percentage', sas.weight_percentage,
-            'ilo_weight_percentage', sas.ilo_weight_percentage
-          ) ORDER BY sas.assessment_id
-        ) FILTER (WHERE sas.assessment_id IS NOT NULL),
-        '[]'::json
-      ) AS assessment_scores
-    FROM student_aggregated sa
-    LEFT JOIN student_assessment_scores sas ON sa.student_id = sas.student_id
-      AND (sas.transmuted_score_calc IS NOT NULL OR sas.assessment_percentage IS NOT NULL)
-    GROUP BY sa.student_id, sa.enrollment_id, sa.student_number, sa.full_name, sa.ilo_score, sa.overall_attainment_rate, sa.assessments_count, sa.total_ilo_weight
-    ORDER BY sa.overall_attainment_rate DESC, sa.full_name ASC
-  `;
-  
-  // Also get ALL enrolled students (even without scores) to ensure complete list
+  // Step 1: Get all enrolled students
   const allEnrolledStudentsQuery = `
     SELECT DISTINCT
       ce.student_id,
@@ -702,34 +577,258 @@ async function getILOStudentList(
       AND ce.status = 'enrolled'
   `;
   
-  const [studentResult, enrolledResult] = await Promise.all([
-    db.query(studentQuery, [sectionCourseId, iloId]),
-    db.query(allEnrolledStudentsQuery, [sectionCourseId])
+  // Step 2: Get assessments connected to this ILO (with filters applied)
+  // Reuse the same filter params and conditions from above
+  // Step 2: Get assessments connected to this ILO (simpler standalone query)
+  const connectedAssessmentsQuery = `
+    WITH assessment_ilo_connections AS (
+      SELECT DISTINCT
+        a.assessment_id,
+        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
+        COALESCE(aiw.weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage
+      FROM assessments a
+      LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+      LEFT JOIN (
+        SELECT DISTINCT r.assessment_id, r.ilo_id
+        FROM rubrics r
+        INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
+        WHERE a2.section_course_id = $1
+      ) r ON a.assessment_id = r.assessment_id
+      LEFT JOIN (
+        WITH assessment_codes AS (
+          SELECT DISTINCT
+            a3.assessment_id,
+            COALESCE(
+              (SELECT (task->>'code')::text
+               FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+               CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+               WHERE (task->>'title')::text ILIKE '%' || a3.title || '%'
+                  OR (task->>'name')::text ILIKE '%' || a3.title || '%'
+               LIMIT 1),
+              (a3.content_data->>'code')::text,
+              (a3.content_data->>'abbreviation')::text,
+              UPPER(SUBSTRING(a3.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a3.title ~* '[A-Z]{2,4}\s*\d+',
+              NULL
+            ) AS assessment_code
+          FROM assessments a3
+          INNER JOIN syllabi sy ON a3.syllabus_id = sy.syllabus_id
+          WHERE a3.section_course_id = $1
+        )
+        SELECT DISTINCT
+          ac.assessment_id,
+          COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
+        FROM assessment_codes ac
+        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        WHERE ac.assessment_code IS NOT NULL
+          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+      ) im ON a.assessment_id = im.assessment_id
+      WHERE a.section_course_id = $1
+        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+    )
+    SELECT DISTINCT
+      a.assessment_id,
+      a.title AS assessment_title,
+      a.total_points AS max_score,
+      a.weight_percentage,
+      COALESCE(aic.ilo_weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage
+    FROM assessments a
+    INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+    INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    WHERE a.section_course_id = $1
+      AND aic.ilo_id = $2
+      AND a.weight_percentage IS NOT NULL
+      AND a.weight_percentage > 0
+      AND sy.section_course_id = $1
+      AND i.is_active = TRUE
+      ${assessmentFilterConditions}
+    ORDER BY a.assessment_id
+  `;
+  
+  // Step 3: Get student assessment scores for connected assessments
+  const studentScoresQuery = `
+    SELECT
+      ce.student_id,
+      ce.enrollment_id,
+      s.student_number,
+      s.full_name,
+      a.assessment_id,
+      a.title AS assessment_title,
+      a.total_points AS max_score,
+      a.weight_percentage,
+      COALESCE(aic.ilo_weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage,
+      COALESCE(sub.total_score, sub.adjusted_score, 0) AS raw_score,
+      sub.adjusted_score,
+      sub.total_score,
+      sub.transmuted_score,
+      -- Calculate transmuted score
+      CASE 
+        WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
+        WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+        THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+        WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+        THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+        ELSE NULL
+      END AS transmuted_score_calc,
+      -- Calculate assessment percentage
+      CASE 
+        WHEN sub.transmuted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage > 0 THEN
+          ((sub.transmuted_score / (a.weight_percentage / 100.0) - 37.5) / 62.5) * 100
+        WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 THEN
+          (sub.adjusted_score / a.total_points) * 100
+        WHEN sub.total_score IS NOT NULL AND a.total_points > 0 THEN
+          (sub.total_score / a.total_points) * 100
+        ELSE NULL
+      END AS assessment_percentage
+    FROM course_enrollments ce
+    INNER JOIN students s ON ce.student_id = s.student_id
+    INNER JOIN assessments a ON ce.section_course_id = a.section_course_id
+    INNER JOIN (
+      SELECT DISTINCT
+        a2.assessment_id,
+        COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id,
+        COALESCE(aiw.weight_percentage, a2.weight_percentage, 0) AS ilo_weight_percentage
+      FROM assessments a2
+      LEFT JOIN assessment_ilo_weights aiw ON a2.assessment_id = aiw.assessment_id
+      LEFT JOIN (
+        SELECT DISTINCT r.assessment_id, r.ilo_id
+        FROM rubrics r
+        INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
+        WHERE a3.section_course_id = $1
+      ) r ON a2.assessment_id = r.assessment_id
+      LEFT JOIN (
+        WITH assessment_codes AS (
+          SELECT DISTINCT
+            a4.assessment_id,
+            COALESCE(
+              (SELECT (task->>'code')::text
+               FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+               CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+               WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
+                  OR (task->>'name')::text ILIKE '%' || a4.title || '%'
+               LIMIT 1),
+              (a4.content_data->>'code')::text,
+              (a4.content_data->>'abbreviation')::text,
+              UPPER(SUBSTRING(a4.title FROM '([A-Z]{2,4}\s*\d+)')) WHERE a4.title ~* '[A-Z]{2,4}\s*\d+',
+              NULL
+            ) AS assessment_code
+          FROM assessments a4
+          INNER JOIN syllabi sy ON a4.syllabus_id = sy.syllabus_id
+          WHERE a4.section_course_id = $1
+        )
+        SELECT DISTINCT
+          ac.assessment_id,
+          COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
+        FROM assessment_codes ac
+        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+        WHERE ac.assessment_code IS NOT NULL
+          AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+      ) im ON a2.assessment_id = im.assessment_id
+      WHERE a2.section_course_id = $1
+        AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+    ) aic ON a.assessment_id = aic.assessment_id
+    INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+    LEFT JOIN submissions sub ON (
+      ce.enrollment_id = sub.enrollment_id 
+      AND sub.assessment_id = a.assessment_id
+      AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+    )
+    WHERE ce.section_course_id = $1
+      AND ce.status = 'enrolled'
+      AND aic.ilo_id = $2
+      AND a.weight_percentage IS NOT NULL
+      AND a.weight_percentage > 0
+      AND sy.section_course_id = $1
+      AND i.is_active = TRUE
+      ${assessmentFilterConditions}
+  `;
+  
+  // Execute all queries
+  const [enrolledResult, connectedAssessmentsResult, scoresResult] = await Promise.all([
+    db.query(allEnrolledStudentsQuery, [sectionCourseId]),
+    db.query(connectedAssessmentsQuery, assessmentFilterParams),
+    db.query(studentScoresQuery, assessmentFilterParams)
   ]);
   
-  // Create a map of students with scores
-  const studentsWithScores = new Map();
-  studentResult.rows.forEach(row => {
-    studentsWithScores.set(row.student_id, row);
+  // Step 4: Process results in JavaScript (simpler and more accurate)
+  const assessmentMap = new Map();
+  connectedAssessmentsResult.rows.forEach(ass => {
+    assessmentMap.set(ass.assessment_id, ass);
   });
   
-  // Merge: include all enrolled students, use scores if available
-  const allStudentRows = enrolledResult.rows.map(enrolled => {
-    const withScore = studentsWithScores.get(enrolled.student_id);
-    if (withScore) {
-      return withScore;
+  // Group scores by student
+  const studentScoresMap = new Map();
+  scoresResult.rows.forEach(row => {
+    if (!studentScoresMap.has(row.student_id)) {
+      studentScoresMap.set(row.student_id, {
+        student_id: row.student_id,
+        enrollment_id: row.enrollment_id,
+        student_number: row.student_number,
+        full_name: row.full_name,
+        assessment_scores: []
+      });
     }
-    // Student with no scores - return with 0% attainment
+    const student = studentScoresMap.get(row.student_id);
+    if (row.raw_score > 0 || row.assessment_percentage !== null) {
+      student.assessment_scores.push({
+        assessment_id: row.assessment_id,
+        assessment_title: row.assessment_title,
+        raw_score: parseFloat(row.raw_score || 0),
+        max_score: parseFloat(row.max_score || 0),
+        score_percentage: parseFloat(row.assessment_percentage || 0),
+        transmuted_score: parseFloat(row.transmuted_score_calc || 0),
+        weight_percentage: parseFloat(row.weight_percentage || 0),
+        ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0)
+      });
+    }
+  });
+  
+  // Calculate overall scores for each student
+  const allStudentRows = enrolledResult.rows.map(enrolled => {
+    const studentData = studentScoresMap.get(enrolled.student_id);
+    
+    if (!studentData || studentData.assessment_scores.length === 0) {
+      return {
+        student_id: enrolled.student_id,
+        enrollment_id: enrolled.enrollment_id,
+        student_number: enrolled.student_number,
+        full_name: enrolled.full_name,
+        ilo_score: 0,
+        overall_attainment_rate: 0,
+        assessments_count: 0,
+        total_ilo_weight: 0,
+        assessment_scores: []
+      };
+    }
+    
+    // Calculate: Overall % = (All Scores Combined) / (All Max Scores Combined) × 100
+    const totalScore = studentData.assessment_scores.reduce((sum, ass) => sum + ass.raw_score, 0);
+    const totalMax = studentData.assessment_scores.reduce((sum, ass) => sum + ass.max_score, 0);
+    const overallRate = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
+    
+    // Calculate ILO score (sum of transmuted scores)
+    const iloScore = studentData.assessment_scores.reduce((sum, ass) => sum + ass.transmuted_score, 0);
+    
+    // Total ILO weight
+    const totalIloWeight = studentData.assessment_scores.reduce((sum, ass) => sum + ass.ilo_weight_percentage, 0);
+    
     return {
-      student_id: enrolled.student_id,
-      enrollment_id: enrolled.enrollment_id,
-      student_number: enrolled.student_number,
-      full_name: enrolled.full_name,
-      ilo_score: 0,
-      overall_attainment_rate: 0,
-      assessments_count: 0,
-      total_ilo_weight: 0,
-      assessment_scores: []
+      student_id: studentData.student_id,
+      enrollment_id: studentData.enrollment_id,
+      student_number: studentData.student_number,
+      full_name: studentData.full_name,
+      ilo_score: Math.round(iloScore * 100) / 100,
+      overall_attainment_rate: Math.round(overallRate * 100) / 100,
+      assessments_count: studentData.assessment_scores.length,
+      total_ilo_weight: Math.round(totalIloWeight * 100) / 100,
+      assessment_scores: studentData.assessment_scores
     };
   });
   
