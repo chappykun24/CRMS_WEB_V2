@@ -868,13 +868,13 @@ async function getILOStudentList(
       assessment_ilo_connections AS (
       SELECT DISTINCT
         a.assessment_id,
-        -- Connect all assessments from the same syllabus to the target ILO ($2)
-        -- Prefer explicit connections if they match the target ILO, otherwise default to target ILO
+        -- Only connect assessments that have explicit connections to the target ILO
+        -- Don't default to connecting all assessments from the same syllabus
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
           CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
           CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
-          $2  -- Default: connect to target ILO since they're in the same syllabus
+          NULL  -- Don't default - only connect if explicitly linked
         ) AS ilo_id,
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
@@ -889,7 +889,9 @@ async function getILOStudentList(
         SELECT DISTINCT r.assessment_id, r.ilo_id
         FROM rubrics r
         INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
-        WHERE a2.section_course_id = $1 AND r.ilo_id = $2
+        INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
+        WHERE a2.section_course_id = $1 AND r.ilo_id = $2 
+          AND sy2.review_status = 'approved' AND sy2.approval_status = 'approved'
       ) r ON a.assessment_id = r.assessment_id
       LEFT JOIN (
         WITH assessment_codes AS (
@@ -934,21 +936,52 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
+        -- Only include assessments that have an explicit connection to the target ILO
+        AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2)
         -- Apply filters: only include assessments that match selected mappings
         ${hasFilters && filterConditionSQL ? `AND EXISTS (
           SELECT 1 FROM assessment_codes_for_filter acf
           WHERE acf.assessment_id = a.assessment_id
             AND (${filterConditionSQL})
         )` : ''}
+    ),
+    assessment_stats AS (
+      SELECT
+        aic.assessment_id,
+        COUNT(DISTINCT ce.student_id) AS total_students,
+        COUNT(DISTINCT sub.submission_id) AS submissions_count,
+        COALESCE(AVG(
+          CASE 
+            WHEN sub.transmuted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage > 0 THEN
+              ((sub.transmuted_score / (a.weight_percentage / 100.0) - 37.5) / 62.5) * 100
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 THEN
+              (sub.adjusted_score / a.total_points) * 100
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 THEN
+              (sub.total_score / a.total_points) * 100
+            ELSE NULL
+          END
+        ), 0) AS average_percentage
+      FROM assessment_ilo_connections aic
+      INNER JOIN assessments a ON aic.assessment_id = a.assessment_id
+      INNER JOIN course_enrollments ce ON a.section_course_id = ce.section_course_id AND ce.status = 'enrolled'
+      LEFT JOIN submissions sub ON (
+        ce.enrollment_id = sub.enrollment_id 
+        AND sub.assessment_id = a.assessment_id
+        AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+      )
+      WHERE aic.ilo_id = $2
+      GROUP BY aic.assessment_id
     )
     SELECT DISTINCT
       a.assessment_id,
       a.title AS assessment_title,
       a.total_points AS max_score,
       a.weight_percentage,
-      COALESCE(aic.ilo_weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage
+      COALESCE(aic.ilo_weight_percentage, a.weight_percentage, 0) AS ilo_weight_percentage,
+      COALESCE(ast.average_percentage, 0) AS average_percentage
     FROM assessments a
     INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+    LEFT JOIN assessment_stats ast ON a.assessment_id = ast.assessment_id
     INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     WHERE a.section_course_id = $1
@@ -1033,12 +1066,13 @@ async function getILOStudentList(
       assessment_ilo_connections AS (
         SELECT DISTINCT
           a2.assessment_id,
-          -- Connect all assessments from the same syllabus to the target ILO ($2)
+          -- Only connect assessments that have explicit connections to the target ILO
+          -- Don't default to connecting all assessments from the same syllabus
           COALESCE(
             CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
             CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
             CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
-            $2  -- Default: connect to target ILO since they're in the same syllabus
+            NULL  -- Don't default - only connect if explicitly linked
           ) AS ilo_id,
           COALESCE(
             CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
@@ -1072,6 +1106,8 @@ async function getILOStudentList(
           AND sy2.section_course_id = $1
           AND a2.weight_percentage IS NOT NULL
           AND a2.weight_percentage > 0
+          -- Only include assessments that have an explicit connection to the target ILO
+          AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2)
           -- Apply filters: only include assessments that match selected mappings
           ${hasFilters && filterConditionSQL ? `AND EXISTS (
             SELECT 1 FROM assessment_codes_for_filter acf
@@ -1153,6 +1189,16 @@ async function getILOStudentList(
   connectedAssessmentsResult.rows.forEach(ass => {
     assessmentMap.set(ass.assessment_id, ass);
   });
+  
+  // Format assessments for response
+  const assessments = connectedAssessmentsResult.rows.map(row => ({
+    assessment_id: row.assessment_id,
+    title: row.assessment_title,
+    total_points: parseFloat(row.max_score || 0),
+    weight_percentage: parseFloat(row.weight_percentage || 0),
+    ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0),
+    average_percentage: parseFloat(row.average_percentage || 0)
+  }));
   
   // Group scores by student
   const studentScoresMap = new Map();
