@@ -931,29 +931,6 @@ async function getILOStudentList(
   
   // Step 3: Get student assessment scores for connected assessments (with filters applied)
   const studentScoresQuery = `
-    WITH assessment_codes_for_filter AS (
-      SELECT DISTINCT
-        a.assessment_id,
-        COALESCE(
-          (SELECT (task->>'code')::text
-           FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
-           CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
-           WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
-              OR (task->>'name')::text ILIKE '%' || a.title || '%'
-           LIMIT 1),
-          (a.content_data->>'code')::text,
-          (a.content_data->>'abbreviation')::text,
-          CASE 
-            WHEN a.title ~* '[A-Z]{2,4}\s*\d+' 
-            THEN UPPER(REGEXP_REPLACE(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'), '\s+', '', 'g'))
-            ELSE NULL
-          END,
-          NULL
-        ) AS assessment_code
-      FROM assessments a
-      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
-      WHERE a.section_course_id = $1
-    )
     SELECT
       ce.student_id,
       ce.enrollment_id,
@@ -996,6 +973,29 @@ async function getILOStudentList(
         SELECT DISTINCT syllabus_id
         FROM ilos
         WHERE ilo_id = $2 AND is_active = TRUE
+      ),
+      assessment_codes_for_filter AS (
+        SELECT DISTINCT
+          a_code.assessment_id,
+          COALESCE(
+            (SELECT (task->>'code')::text
+             FROM jsonb_array_elements(sy_code.assessment_framework->'components') AS component
+             CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+             WHERE (task->>'title')::text ILIKE '%' || a_code.title || '%'
+                OR (task->>'name')::text ILIKE '%' || a_code.title || '%'
+             LIMIT 1),
+            (a_code.content_data->>'code')::text,
+            (a_code.content_data->>'abbreviation')::text,
+            CASE 
+              WHEN a_code.title ~* '[A-Z]{2,4}\s*\d+' 
+              THEN UPPER(REGEXP_REPLACE(SUBSTRING(a_code.title FROM '([A-Z]{2,4}\s*\d+)'), '\s+', '', 'g'))
+              ELSE NULL
+            END,
+            NULL
+          ) AS assessment_code
+        FROM assessments a_code
+        INNER JOIN syllabi sy_code ON a_code.syllabus_id = sy_code.syllabus_id
+        WHERE a_code.section_course_id = $1
       ),
       assessment_ilo_connections AS (
         SELECT DISTINCT
