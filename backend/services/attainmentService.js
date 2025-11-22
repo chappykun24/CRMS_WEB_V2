@@ -189,7 +189,6 @@ async function getILOAttainmentSummary(
           WHERE ac.assessment_code IS NOT NULL
             AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
         ) im ON a2.assessment_id = im.assessment_id
-        FROM assessments a2
         INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
         WHERE a2.section_course_id = $1
           AND sy2.review_status = 'approved'
