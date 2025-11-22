@@ -1594,15 +1594,19 @@ async function getILOStudentList(
     studentScoresParamIndex++;
   }
   
-  // Build filter conditions for studentScoresQuery
-  let studentScoresFilterCondition = '';
-  if (hasFilters && filterConditionSQL) {
-    // Replace 'acf' with 'ac_student' to match the subquery alias
-    studentScoresFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac_student.');
+  // Store the starting index for assessment IDs (will be used in the query)
+  const studentScoresAssessmentIdsStartIndex = studentScoresParamIndex;
+  
+  // Add assessment IDs if we filtered them (preferred method - simpler)
+  if (hasFilters && assessmentIdsToInclude && assessmentIdsToInclude.size > 0) {
+    // Ensure all IDs are integers
+    const assessmentIdListInt = Array.from(assessmentIdsToInclude).map(id => parseInt(id, 10));
+    studentScoresParams.push(...assessmentIdListInt);
   }
   
   console.log(`[ATTAINMENT DEBUG] studentScoresQuery params:`, studentScoresParams);
-  console.log(`[ATTAINMENT DEBUG] studentScoresFilterCondition: ${studentScoresFilterCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] assessmentIdsToInclude:`, assessmentIdsToInclude ? Array.from(assessmentIdsToInclude) : '(none)');
+  console.log(`[ATTAINMENT DEBUG] studentScoresAssessmentIdsStartIndex:`, studentScoresAssessmentIdsStartIndex);
   
   // Step 3: Get student assessment scores for connected assessments (with filters applied)
   // Clean starting point - get student scores for assessments from selected class, published, and selected syllabus
@@ -1636,8 +1640,10 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND (
-          -- If filters are applied, only include assessments that match the specific mapping's assessment_tasks
-          ${studentScoresFilterCondition ? `(${studentScoresFilterCondition})` : 'TRUE'}
+          -- If filters are applied, filter by assessment IDs (codes already extracted)
+          ${hasFilters && assessmentIdsToInclude && assessmentIdsToInclude.size > 0 
+            ? `a.assessment_id = ANY(ARRAY[${Array.from(assessmentIdsToInclude).map((_, idx) => `$${studentScoresAssessmentIdsStartIndex + idx}::integer`).join(', ')}])`
+            : 'TRUE'}
           -- Also include assessments with explicit ILO connections (assessment_ilo_weights or rubrics)
           OR aiw.ilo_id = $2
           OR r.ilo_id = $2
