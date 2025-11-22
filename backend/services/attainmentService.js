@@ -1328,11 +1328,12 @@ async function getILOStudentList(
   // Build the assessment matching condition based on assessment_tasks from the pair
   let assessmentTasksCondition = 'TRUE';
   if (hasFilters && selectedAssessmentTasks && selectedAssessmentTasks.length > 0) {
-    // Add assessment_tasks to params
+    // Add assessment_tasks to params as individual values
     connectedAssessmentsParams.push(...selectedAssessmentTasks);
     // Build condition: match assessment codes from syllabus with assessment_tasks array
-    const paramPlaceholders = selectedAssessmentTasks.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}`).join(', ');
-    assessmentTasksCondition = `ac.assessment_code = ANY(ARRAY[${paramPlaceholders}]::text[])`;
+    // Cast each parameter to text explicitly to help PostgreSQL determine the type
+    const paramPlaceholders = selectedAssessmentTasks.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}::text`).join(', ');
+    assessmentTasksCondition = `ac.assessment_code = ANY(ARRAY[${paramPlaceholders}])`;
   } else if (hasFilters && connectAllFromSyllabus) {
     // If assessment_tasks is empty/null, include all from syllabus
     assessmentTasksCondition = 'TRUE';
