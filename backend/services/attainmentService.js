@@ -722,14 +722,12 @@ async function getILOStudentList(
   let assessmentsParamIndex = 3;
   let assessmentsSyllabusCondition = '';
   let assessmentsSyllabusCondition2 = '';
-  let assessmentsSyllabusCondition3 = '';
   let assessmentsTermCondition = '';
   
   if (syllabusId) {
     assessmentsQueryParams.push(syllabusId);
     assessmentsSyllabusCondition = `AND sy.syllabus_id = $${assessmentsParamIndex}`;
     assessmentsSyllabusCondition2 = `AND sy2.syllabus_id = $${assessmentsParamIndex}`;
-    assessmentsSyllabusCondition3 = `AND sy3.syllabus_id = $${assessmentsParamIndex}`;
     assessmentsParamIndex++;
   }
   
@@ -819,7 +817,7 @@ async function getILOStudentList(
           AND sy.section_course_id = $1
           AND sy.review_status = 'approved' 
           AND sy.approval_status = 'approved'
-          ${assessmentsSyllabusCondition3}
+          ${assessmentsSyllabusCondition}
       )
       SELECT DISTINCT
         a.assessment_id,
