@@ -216,6 +216,67 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
   }
 });
 
+// GET /api/assessments/ilo-attainment - Get ILO attainment analytics for a specific class
+// IMPORTANT: This route must come BEFORE /:id to avoid route conflicts
+router.get('/ilo-attainment', async (req, res) => {
+  try {
+    const { 
+      section_course_id, 
+      pass_threshold = 75, 
+      ilo_id,
+      performance_filter = 'all',
+      high_threshold = 80,
+      low_threshold = 75
+    } = req.query;
+
+    // Validate required parameters
+    if (!section_course_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'section_course_id is required'
+      });
+    }
+
+    const sectionCourseId = parseInt(section_course_id);
+    const passThreshold = parseFloat(pass_threshold);
+    const iloId = ilo_id ? parseInt(ilo_id) : null;
+    const highThreshold = parseFloat(high_threshold);
+    const lowThreshold = parseFloat(low_threshold);
+
+    // Validate performance filter
+    if (!['all', 'high', 'low'].includes(performance_filter)) {
+      return res.status(400).json({
+        success: false,
+        error: 'performance_filter must be "all", "high", or "low"'
+      });
+    }
+
+    console.log(`[ILO ATTAINMENT] Fetching attainment data for section_course_id: ${sectionCourseId}, ilo_id: ${iloId || 'all'}`);
+
+    const result = await calculateILOAttainment(
+      sectionCourseId,
+      passThreshold,
+      iloId,
+      performance_filter,
+      highThreshold,
+      lowThreshold
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('[ILO ATTAINMENT] Error:', error);
+    console.error('[ILO ATTAINMENT] Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch ILO attainment data',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 // GET /api/assessments/:id - Get a specific assessment with details
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
@@ -1353,66 +1414,6 @@ router.get('/dean-analytics/sample', async (req, res) => {
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
-  }
-});
-
-// GET /api/assessments/ilo-attainment - Get ILO attainment analytics for a specific class
-router.get('/ilo-attainment', async (req, res) => {
-  try {
-    const { 
-      section_course_id, 
-      pass_threshold = 75, 
-      ilo_id,
-      performance_filter = 'all',
-      high_threshold = 80,
-      low_threshold = 75
-    } = req.query;
-
-    // Validate required parameters
-    if (!section_course_id) {
-      return res.status(400).json({
-        success: false,
-        error: 'section_course_id is required'
-      });
-    }
-
-    const sectionCourseId = parseInt(section_course_id);
-    const passThreshold = parseFloat(pass_threshold);
-    const iloId = ilo_id ? parseInt(ilo_id) : null;
-    const highThreshold = parseFloat(high_threshold);
-    const lowThreshold = parseFloat(low_threshold);
-
-    // Validate performance filter
-    if (!['all', 'high', 'low'].includes(performance_filter)) {
-      return res.status(400).json({
-        success: false,
-        error: 'performance_filter must be "all", "high", or "low"'
-      });
-    }
-
-    console.log(`[ILO ATTAINMENT] Fetching attainment data for section_course_id: ${sectionCourseId}, ilo_id: ${iloId || 'all'}`);
-
-    const result = await calculateILOAttainment(
-      sectionCourseId,
-      passThreshold,
-      iloId,
-      performance_filter,
-      highThreshold,
-      lowThreshold
-    );
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    console.error('[ILO ATTAINMENT] Error:', error);
-    console.error('[ILO ATTAINMENT] Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to fetch ILO attainment data',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
   }
 });
 
