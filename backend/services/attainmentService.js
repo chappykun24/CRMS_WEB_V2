@@ -566,9 +566,21 @@ async function getILOStudentList(
   const simpleILOParams = [iloId, sectionCourseId];
   let simpleILOParamIndex = 3;
   let syllabusCondition = '';
+  
+  console.log(`[ATTAINMENT DEBUG] ==========================================`);
+  console.log(`[ATTAINMENT DEBUG] getILOStudentList called with:`);
+  console.log(`  - sectionCourseId: ${sectionCourseId}`);
+  console.log(`  - iloId: ${iloId}`);
+  console.log(`  - syllabusId: ${syllabusId || 'null'}`);
+  console.log(`  - activeTermId: ${activeTermId || 'null'}`);
+  console.log(`  - passThreshold: ${passThreshold}`);
+  console.log(`  - performanceFilter: ${performanceFilter}`);
+  console.log(`[ATTAINMENT DEBUG] ==========================================`);
+  
   if (syllabusId) {
     simpleILOParams.push(syllabusId);
     syllabusCondition = `AND sy.syllabus_id = $${simpleILOParamIndex}`;
+    console.log(`[ATTAINMENT DEBUG] Added syllabusId to simpleILOParams: $${simpleILOParamIndex} = ${syllabusId}`);
   }
   
   // First, use a separate simpler query to get ILO from the selected class's approved syllabus
@@ -591,7 +603,15 @@ async function getILOStudentList(
       ${syllabusCondition}
   `;
   
+  console.log(`[ATTAINMENT DEBUG] Executing simpleILOQuery with params:`, simpleILOParams);
+  console.log(`[ATTAINMENT DEBUG] Query:`, simpleILOQuery);
+  
   const simpleILOResult = await db.query(simpleILOQuery, simpleILOParams);
+  
+  console.log(`[ATTAINMENT DEBUG] simpleILOQuery returned ${simpleILOResult.rows.length} rows`);
+  if (simpleILOResult.rows.length > 0) {
+    console.log(`[ATTAINMENT DEBUG] ILO found:`, simpleILOResult.rows[0]);
+  }
   
   if (simpleILOResult.rows.length === 0) {
     // Debug: Try without syllabus filter to see if ILO exists elsewhere
@@ -721,21 +741,31 @@ async function getILOStudentList(
   const assessmentsQueryParams = [sectionCourseId, iloId];
   let assessmentsParamIndex = 3;
   let assessmentsSyllabusCondition = '';
-  let assessmentsSyllabusCondition2 = '';
   let assessmentsTermCondition = '';
+  
+  console.log(`[ATTAINMENT DEBUG] Building assessments query parameters:`);
+  console.log(`  - sectionCourseId: ${sectionCourseId}`);
+  console.log(`  - iloId: ${iloId}`);
+  console.log(`  - syllabusId: ${syllabusId || 'null'}`);
+  console.log(`  - activeTermId: ${activeTermId || 'null'}`);
   
   if (syllabusId) {
     assessmentsQueryParams.push(syllabusId);
     assessmentsSyllabusCondition = `AND sy.syllabus_id = $${assessmentsParamIndex}`;
-    assessmentsSyllabusCondition2 = `AND sy2.syllabus_id = $${assessmentsParamIndex}`;
+    console.log(`  - Added syllabusId to params: $${assessmentsParamIndex} = ${syllabusId}`);
     assessmentsParamIndex++;
   }
   
   if (activeTermId) {
     assessmentsQueryParams.push(activeTermId);
     assessmentsTermCondition = `AND sc.term_id = $${assessmentsParamIndex}`;
+    console.log(`  - Added activeTermId to params: $${assessmentsParamIndex} = ${activeTermId}`);
     assessmentsParamIndex++;
   }
+  
+  console.log(`[ATTAINMENT DEBUG] Final query params:`, assessmentsQueryParams);
+  console.log(`[ATTAINMENT DEBUG] Syllabus condition: ${assessmentsSyllabusCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] Term condition: ${assessmentsTermCondition || '(none)'}`);
   
   // Step 1: Get assessments with stats (simpler query)
   const assessmentsQuery = `
@@ -845,7 +875,7 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${assessmentsSyllabusCondition2}
+        ${assessmentsSyllabusCondition}
         ${assessmentsTermCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
@@ -897,7 +927,7 @@ async function getILOStudentList(
       WHERE a.section_course_id = $1
         AND aic.ilo_id = $2
         AND sy.section_course_id = $1
-        ${assessmentsSyllabusCondition2}
+        ${assessmentsSyllabusCondition}
         ${assessmentsTermCondition.replace('sc.', 'sc.')}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
@@ -940,7 +970,7 @@ async function getILOStudentList(
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
       AND i.ilo_id = $2
-      ${assessmentsSyllabusCondition2}
+      ${assessmentsSyllabusCondition}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
@@ -1049,8 +1079,15 @@ async function getILOStudentList(
   }
   
   // Debug: Log the actual query being executed
-  console.log(`[ATTAINMENT DEBUG] Executing assessmentsQuery with params:`, assessmentFilterParams);
+  console.log(`[ATTAINMENT DEBUG] ==========================================`);
+  console.log(`[ATTAINMENT DEBUG] Executing assessmentsQuery`);
+  console.log(`[ATTAINMENT DEBUG] Query params:`, assessmentsQueryParams);
   console.log(`[ATTAINMENT DEBUG] Filters applied:`, hasFilters ? `SO:${soId || 'none'}, SDG:${sdgId || 'none'}, IGA:${igaId || 'none'}, CDIO:${cdioId || 'none'}` : '(none)');
+  console.log(`[ATTAINMENT DEBUG] Syllabus condition: ${assessmentsSyllabusCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] Term condition: ${assessmentsTermCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] Query length: ${assessmentsQuery.length} characters`);
+  console.log(`[ATTAINMENT DEBUG] Query preview (first 1000 chars):`, assessmentsQuery.substring(0, 1000));
+  console.log(`[ATTAINMENT DEBUG] ==========================================`);
   
   let assessmentsResult;
   try {
@@ -1066,10 +1103,31 @@ async function getILOStudentList(
         type: assessmentsResult.rows[0].assessment_type,
         total_points: assessmentsResult.rows[0].total_points
       });
+    } else {
+      console.log(`[ATTAINMENT SERVICE] ⚠️ No assessments found. This might indicate:`);
+      console.log(`  - No assessments exist for this ILO`);
+      console.log(`  - Assessments are not published`);
+      console.log(`  - Assessments don't match the syllabus filter`);
+      console.log(`  - Assessments don't match the term filter`);
     }
   } catch (queryError) {
     console.error(`[ATTAINMENT SERVICE] ❌ Query execution failed:`, queryError);
-    console.error(`[ATTAINMENT SERVICE] Query:`, assessmentsQuery.substring(0, 500) + '...');
+    console.error(`[ATTAINMENT SERVICE] Error message:`, queryError.message);
+    console.error(`[ATTAINMENT SERVICE] Error code:`, queryError.code);
+    console.error(`[ATTAINMENT SERVICE] Error position:`, queryError.position);
+    console.error(`[ATTAINMENT SERVICE] Query params used:`, assessmentsQueryParams);
+    console.error(`[ATTAINMENT SERVICE] Query (first 2000 chars):`, assessmentsQuery.substring(0, 2000));
+    console.error(`[ATTAINMENT SERVICE] Full query length:`, assessmentsQuery.length);
+    
+    // Try to identify the problematic part of the query
+    if (queryError.position) {
+      const errorPos = parseInt(queryError.position);
+      const startPos = Math.max(0, errorPos - 200);
+      const endPos = Math.min(assessmentsQuery.length, errorPos + 200);
+      console.error(`[ATTAINMENT SERVICE] Query around error position ${errorPos}:`);
+      console.error(assessmentsQuery.substring(startPos, endPos));
+    }
+    
     throw queryError;
   }
   
@@ -1376,7 +1434,7 @@ async function getILOStudentList(
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
-      ${assessmentsSyllabusCondition2}
+      ${assessmentsSyllabusCondition}
       ${assessmentsTermCondition.replace('sc.', 'sc.')}
       AND i.is_active = TRUE
     ORDER BY a.assessment_id
