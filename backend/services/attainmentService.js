@@ -414,22 +414,85 @@ async function getILOStudentList(
       LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id
       WHERE a.section_course_id = $1
         AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+    ),
+    assessment_stats AS (
+      SELECT
+        a.assessment_id,
+        a.title AS assessment_title,
+        a.type AS assessment_type,
+        a.total_points,
+        a.weight_percentage,
+        a.due_date,
+        aic.ilo_id,
+        aic.ilo_weight_percentage,
+        COUNT(DISTINCT ce.student_id) AS total_students,
+        COUNT(DISTINCT sub.submission_id) AS submissions_count,
+        COALESCE(AVG(
+          CASE 
+            WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            ELSE NULL
+          END
+        ), 0) AS average_score,
+        COALESCE(SUM(
+          CASE 
+            WHEN sub.transmuted_score IS NOT NULL THEN sub.transmuted_score
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
+            THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
+            ELSE 0
+          END
+        ), 0) AS total_score
+      FROM assessments a
+      INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+      INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      INNER JOIN course_enrollments ce ON a.section_course_id = ce.section_course_id AND ce.status = 'enrolled'
+      LEFT JOIN submissions sub ON (
+        ce.enrollment_id = sub.enrollment_id 
+        AND sub.assessment_id = a.assessment_id
+        AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+      )
+      WHERE a.section_course_id = $1
+        AND aic.ilo_id = $2
+        AND sy.section_course_id = $1
+        AND a.weight_percentage IS NOT NULL
+        AND a.weight_percentage > 0
+        AND i.is_active = TRUE
+        ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
+        ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
+        ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
+        ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
+      GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage
     )
     SELECT DISTINCT
-      a.assessment_id,
-      a.title AS assessment_title,
-      a.type AS assessment_type,
-      a.total_points,
-      a.weight_percentage,
-      a.due_date,
-      aic.ilo_weight_percentage,
+      ast.assessment_id,
+      ast.assessment_title,
+      ast.assessment_type,
+      ast.total_points,
+      ast.weight_percentage,
+      ast.due_date,
+      ast.ilo_weight_percentage,
+      ast.total_students,
+      ast.submissions_count,
+      ROUND(ast.average_score::NUMERIC, 2) AS average_score,
+      ROUND(ast.total_score::NUMERIC, 2) AS total_score,
+      CASE 
+        WHEN ast.total_points > 0 AND ast.weight_percentage > 0 AND ast.average_score > 0 THEN 
+          ROUND((((ast.average_score / (ast.weight_percentage / 100.0) - 37.5) / 62.5) * 100)::NUMERIC, 2)
+        ELSE 0
+      END AS average_percentage,
       -- Get all mappings for this assessment's ILO
       ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
       ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
       ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
       ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
-    FROM assessments a
-    INNER JOIN assessment_ilo_connections aic ON a.assessment_id = aic.assessment_id
+    FROM assessment_stats ast
+    INNER JOIN assessment_ilo_connections aic ON ast.assessment_id = aic.assessment_id AND ast.ilo_id = aic.ilo_id
     INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
     INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
@@ -440,16 +503,10 @@ async function getILOStudentList(
     LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
     LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
-    WHERE a.section_course_id = $1
-      AND aic.ilo_id = $2
-      AND sy.section_course_id = $1
+    WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
-      ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = ${soId})` : ''}
-      ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = ${sdgId})` : ''}
-      ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = ${igaId})` : ''}
-      ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = ${cdioId})` : ''}
-    GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_weight_percentage
-    ORDER BY a.due_date ASC, a.title ASC
+    GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score, ast.average_percentage
+    ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
   
   const assessmentsResult = await db.query(assessmentsQuery, [sectionCourseId, iloId]);
@@ -478,6 +535,11 @@ async function getILOStudentList(
       weight_percentage: parseFloat(row.weight_percentage || 0),
       ilo_weight_percentage: parseFloat(row.ilo_weight_percentage || 0),
       due_date: row.due_date,
+      total_students: parseInt(row.total_students || 0),
+      submissions_count: parseInt(row.submissions_count || 0),
+      average_score: parseFloat(row.average_score || 0),
+      total_score: parseFloat(row.total_score || 0),
+      average_percentage: parseFloat(row.average_percentage || 0),
       mappings: mappings
     };
   });

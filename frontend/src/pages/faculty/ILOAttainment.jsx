@@ -1012,6 +1012,21 @@ const ILOAttainment = () => {
                               Due Date
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Students
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Submissions
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Avg Score
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Score
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Avg %
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Mapped To
                             </th>
                           </tr>
@@ -1037,6 +1052,31 @@ const ILOAttainment = () => {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="text-sm text-gray-700">
                                   {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.total_students || 0}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.submissions_count || 0}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {parseFloat(assessment.average_score || 0).toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {parseFloat(assessment.total_score || 0).toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`text-sm font-medium ${
+                                  parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
+                                  parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
                                 </span>
                               </td>
                               <td className="px-6 py-4">
@@ -1202,6 +1242,9 @@ const ILOAttainment = () => {
                                   ILO Score
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Overall %
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Attainment Status
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1219,7 +1262,16 @@ const ILOAttainment = () => {
                                     <span className="text-sm text-gray-900">{student.full_name}</span>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="text-sm font-medium text-gray-900">{student.ilo_score.toFixed(2)}</span>
+                                    <span className="text-sm font-medium text-gray-900">{student.ilo_score?.toFixed(2) || '0.00'}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`text-sm font-medium ${
+                                      (student.overall_attainment_rate || 0) >= 80 ? 'text-green-600' :
+                                      (student.overall_attainment_rate || 0) >= 60 ? 'text-yellow-600' :
+                                      'text-red-600'
+                                    }`}>
+                                      {(student.overall_attainment_rate || 0).toFixed(2)}%
+                                    </span>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
