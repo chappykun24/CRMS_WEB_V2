@@ -832,16 +832,33 @@ async function getILOStudentList(
           AND sy.review_status = 'approved'
           AND sy.approval_status = 'approved'
       ),
+      ilo_mappings_check AS (
+        -- Check if ILO has mappings with NULL or empty assessment_tasks (means connect all assessments)
+        SELECT 
+          $2 AS ilo_id,
+          CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM ilo_so_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_sdg_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_iga_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_cdio_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) THEN TRUE
+            ELSE FALSE
+          END AS connect_all_from_syllabus
+      ),
       assessment_ilo_connections AS (
       SELECT DISTINCT
         a.assessment_id,
-        -- Only connect assessments that have explicit connections to the target ILO
-        -- Don't default to connecting all assessments from the same syllabus
+        -- Connect assessments based on explicit connections OR if mappings have NULL/empty assessment_tasks
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
           CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
           CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
-          NULL  -- Don't default - only connect if explicitly linked
+          -- If mappings exist but assessment_tasks is NULL/empty, connect all from same syllabus
+          CASE WHEN imc.connect_all_from_syllabus THEN $2 ELSE NULL END
         ) AS ilo_id,
         COALESCE(
           CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
@@ -851,6 +868,7 @@ async function getILOStudentList(
       FROM assessments a
       INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
       INNER JOIN ilo_syllabus ils ON sy.syllabus_id = ils.syllabus_id
+      CROSS JOIN ilo_mappings_check imc
       LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
       LEFT JOIN (
         SELECT DISTINCT r.assessment_id, r.ilo_id
@@ -890,12 +908,30 @@ async function getILOStudentList(
           ac.assessment_id,
           COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
         FROM assessment_codes ac
-        LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND ism.ilo_id = $2
-        LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND isdg.ilo_id = $2
-        LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND iiga.ilo_id = $2
-        LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND icdio.ilo_id = $2
-        WHERE ac.assessment_code IS NOT NULL
-          AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2)
+        LEFT JOIN ilo_so_mappings ism ON (
+          (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[ac.assessment_code])
+          AND ac.assessment_code IS NOT NULL 
+          AND ism.ilo_id = $2
+        )
+        LEFT JOIN ilo_sdg_mappings isdg ON (
+          (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[ac.assessment_code])
+          AND ac.assessment_code IS NOT NULL 
+          AND isdg.ilo_id = $2
+        )
+        LEFT JOIN ilo_iga_mappings iiga ON (
+          (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[ac.assessment_code])
+          AND ac.assessment_code IS NOT NULL 
+          AND iiga.ilo_id = $2
+        )
+        LEFT JOIN ilo_cdio_mappings icdio ON (
+          (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[ac.assessment_code])
+          AND ac.assessment_code IS NOT NULL 
+          AND icdio.ilo_id = $2
+        )
+        WHERE (
+          (ac.assessment_code IS NOT NULL AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2))
+          OR (ac.assessment_code IS NULL AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2))
+        )
       ) im ON a.assessment_id = im.assessment_id
       WHERE a.section_course_id = $1
         AND sy.section_course_id = $1
@@ -903,8 +939,8 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        -- Only include assessments that have an explicit connection to the target ILO
-        AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2)
+        -- Include assessments that have explicit connections OR if mappings connect all from syllabus
+        AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2 OR imc.connect_all_from_syllabus)
         -- Apply filters: only include assessments that match selected mappings
         ${hasFilters && filterConditionSQL ? `AND EXISTS (
           SELECT 1 FROM assessment_codes_for_filter acf
@@ -1030,16 +1066,33 @@ async function getILOStudentList(
           AND sy_code.review_status = 'approved'
           AND sy_code.approval_status = 'approved'
       ),
+      ilo_mappings_check AS (
+        -- Check if ILO has mappings with NULL or empty assessment_tasks (means connect all assessments)
+        SELECT 
+          $2 AS ilo_id,
+          CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM ilo_so_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_sdg_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_iga_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) OR EXISTS (
+              SELECT 1 FROM ilo_cdio_mappings WHERE ilo_id = $2 AND (assessment_tasks IS NULL OR array_length(assessment_tasks, 1) IS NULL)
+            ) THEN TRUE
+            ELSE FALSE
+          END AS connect_all_from_syllabus
+      ),
       assessment_ilo_connections AS (
         SELECT DISTINCT
           a2.assessment_id,
-          -- Only connect assessments that have explicit connections to the target ILO
-          -- Don't default to connecting all assessments from the same syllabus
+          -- Connect assessments based on explicit connections OR if mappings have NULL/empty assessment_tasks
           COALESCE(
             CASE WHEN aiw.ilo_id = $2 THEN aiw.ilo_id ELSE NULL END,
             CASE WHEN r.ilo_id = $2 THEN r.ilo_id ELSE NULL END,
             CASE WHEN im.ilo_id = $2 THEN im.ilo_id ELSE NULL END,
-            NULL  -- Don't default - only connect if explicitly linked
+            -- If mappings exist but assessment_tasks is NULL/empty, connect all from same syllabus
+            CASE WHEN imc.connect_all_from_syllabus THEN $2 ELSE NULL END
           ) AS ilo_id,
           COALESCE(
             CASE WHEN aiw.ilo_id = $2 THEN aiw.weight_percentage ELSE NULL END,
@@ -1049,6 +1102,7 @@ async function getILOStudentList(
         FROM assessments a2
         INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
         INNER JOIN ilo_syllabus ils ON sy2.syllabus_id = ils.syllabus_id
+        CROSS JOIN ilo_mappings_check imc
         LEFT JOIN assessment_ilo_weights aiw ON a2.assessment_id = aiw.assessment_id AND aiw.ilo_id = $2
         LEFT JOIN (
           SELECT DISTINCT r.assessment_id, r.ilo_id
@@ -1062,19 +1116,37 @@ async function getILOStudentList(
             ac.assessment_id,
             COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
           FROM assessment_codes_for_filter ac
-          LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND ism.ilo_id = $2
-          LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND isdg.ilo_id = $2
-          LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND iiga.ilo_id = $2
-          LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL AND icdio.ilo_id = $2
-          WHERE ac.assessment_code IS NOT NULL
-            AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2)
+          LEFT JOIN ilo_so_mappings ism ON (
+            (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[ac.assessment_code])
+            AND ac.assessment_code IS NOT NULL 
+            AND ism.ilo_id = $2
+          )
+          LEFT JOIN ilo_sdg_mappings isdg ON (
+            (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[ac.assessment_code])
+            AND ac.assessment_code IS NOT NULL 
+            AND isdg.ilo_id = $2
+          )
+          LEFT JOIN ilo_iga_mappings iiga ON (
+            (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[ac.assessment_code])
+            AND ac.assessment_code IS NOT NULL 
+            AND iiga.ilo_id = $2
+          )
+          LEFT JOIN ilo_cdio_mappings icdio ON (
+            (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[ac.assessment_code])
+            AND ac.assessment_code IS NOT NULL 
+            AND icdio.ilo_id = $2
+          )
+          WHERE (
+            (ac.assessment_code IS NOT NULL AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2))
+            OR (ac.assessment_code IS NULL AND (ism.ilo_id = $2 OR isdg.ilo_id = $2 OR iiga.ilo_id = $2 OR icdio.ilo_id = $2))
+          )
         ) im ON a2.assessment_id = im.assessment_id
         WHERE a2.section_course_id = $1
           AND sy2.section_course_id = $1
           AND a2.weight_percentage IS NOT NULL
           AND a2.weight_percentage > 0
-          -- Only include assessments that have an explicit connection to the target ILO
-          AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2)
+          -- Include assessments that have explicit connections OR if mappings connect all from syllabus
+          AND (aiw.ilo_id = $2 OR r.ilo_id = $2 OR im.ilo_id = $2 OR imc.connect_all_from_syllabus)
           -- Apply filters: only include assessments that match selected mappings
           ${hasFilters && filterConditionSQL ? `AND EXISTS (
             SELECT 1 FROM assessment_codes_for_filter acf
