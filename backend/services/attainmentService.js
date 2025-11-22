@@ -325,16 +325,32 @@ async function getILOStudentList(
   
   const studentResult = await db.query(studentQuery, [sectionCourseId, iloId]);
   
-  // Process students and categorize
+  // Process students and categorize by percentage ranges
   const allStudents = studentResult.rows.map(row => {
     const score = parseFloat(row.ilo_score || 0);
     const attained = score >= passThreshold;
     let performanceLevel = 'low';
+    let percentageRange = '0-49';
     
-    if (score >= highThreshold) {
+    // Determine percentage range
+    if (score >= 90) {
+      percentageRange = '90-100';
       performanceLevel = 'high';
-    } else if (score >= lowThreshold) {
+    } else if (score >= 80) {
+      percentageRange = '80-89';
+      performanceLevel = 'high';
+    } else if (score >= 70) {
+      percentageRange = '70-79';
       performanceLevel = 'medium';
+    } else if (score >= 60) {
+      percentageRange = '60-69';
+      performanceLevel = 'medium';
+    } else if (score >= 50) {
+      percentageRange = '50-59';
+      performanceLevel = 'low';
+    } else {
+      percentageRange = '0-49';
+      performanceLevel = 'low';
     }
     
     return {
@@ -344,17 +360,57 @@ async function getILOStudentList(
       full_name: row.full_name,
       ilo_score: Math.round(score * 100) / 100,
       attainment_status: attained ? 'attained' : 'not_attained',
-      performance_level: performanceLevel
+      performance_level: performanceLevel,
+      percentage_range: percentageRange
     };
   });
   
-  // Filter by performance level
+  // Filter by performance level first
   let filteredStudents = allStudents;
   if (performanceFilter === 'high') {
     filteredStudents = allStudents.filter(s => s.performance_level === 'high');
   } else if (performanceFilter === 'low') {
     filteredStudents = allStudents.filter(s => s.performance_level === 'low');
   }
+  
+  // Group filtered students by percentage range
+  const studentsByRange = {
+    '90-100': [],
+    '80-89': [],
+    '70-79': [],
+    '60-69': [],
+    '50-59': [],
+    '0-49': []
+  };
+  
+  filteredStudents.forEach(student => {
+    if (studentsByRange[student.percentage_range]) {
+      studentsByRange[student.percentage_range].push(student);
+    }
+  });
+  
+  // Calculate counts per range (from filtered students)
+  const rangeCounts = Object.entries(studentsByRange).map(([range, students]) => ({
+    range,
+    count: students.length,
+    students: students
+  })).filter(item => item.count > 0);
+  
+  // Also group all students (for range distribution stats)
+  const allStudentsByRange = {
+    '90-100': [],
+    '80-89': [],
+    '70-79': [],
+    '60-69': [],
+    '50-59': [],
+    '0-49': []
+  };
+  
+  allStudents.forEach(student => {
+    if (allStudentsByRange[student.percentage_range]) {
+      allStudentsByRange[student.percentage_range].push(student);
+    }
+  });
   
   const highPerformanceStudents = allStudents.filter(s => s.performance_level === 'high');
   const lowPerformanceStudents = allStudents.filter(s => s.performance_level === 'low');
@@ -387,7 +443,16 @@ async function getILOStudentList(
     attained_count: allStudents.filter(s => s.attainment_status === 'attained').length,
     students: filteredStudents,
     high_performance_students: highPerformanceStudents,
-    low_performance_students: lowPerformanceStudents
+    low_performance_students: lowPerformanceStudents,
+    students_by_range: rangeCounts,
+    range_distribution: {
+      '90-100': allStudentsByRange['90-100'].length,
+      '80-89': allStudentsByRange['80-89'].length,
+      '70-79': allStudentsByRange['70-79'].length,
+      '60-69': allStudentsByRange['60-69'].length,
+      '50-59': allStudentsByRange['50-59'].length,
+      '0-49': allStudentsByRange['0-49'].length
+    }
   };
 }
 

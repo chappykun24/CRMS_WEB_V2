@@ -590,6 +590,38 @@ const ILOAttainment = () => {
                   </p>
                 </div>
               </div>
+
+              {/* Percentage Range Distribution */}
+              {selectedILO.range_distribution && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Distribution by Score Range</h3>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                    {Object.entries(selectedILO.range_distribution)
+                      .sort((a, b) => {
+                        const aStart = parseInt(a[0].split('-')[0]);
+                        const bStart = parseInt(b[0].split('-')[0]);
+                        return bStart - aStart; // Sort descending (90-100 first)
+                      })
+                      .map(([range, count]) => {
+                        const [min, max] = range.split('-').map(Number);
+                        const colorClass = 
+                          min >= 90 ? 'bg-green-100 border-green-300 text-green-800' :
+                          min >= 80 ? 'bg-blue-100 border-blue-300 text-blue-800' :
+                          min >= 70 ? 'bg-yellow-100 border-yellow-300 text-yellow-800' :
+                          min >= 60 ? 'bg-orange-100 border-orange-300 text-orange-800' :
+                          min >= 50 ? 'bg-red-100 border-red-300 text-red-800' :
+                          'bg-gray-100 border-gray-300 text-gray-800';
+                        
+                        return (
+                          <div key={range} className={`p-2 rounded-lg border text-center ${colorClass}`}>
+                            <p className="text-xs font-medium">{range}%</p>
+                            <p className="text-lg font-bold">{count}</p>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Performance Filter */}
@@ -629,79 +661,114 @@ const ILOAttainment = () => {
               </div>
             </div>
 
-            {/* Student List Table */}
+            {/* Students Grouped by Percentage Range */}
             {loadingAttainment ? (
               <TableSkeleton rows={10} columns={5} />
+            ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
+              <div className="space-y-4">
+                {selectedILO.students_by_range
+                  .sort((a, b) => {
+                    const aStart = parseInt(a.range.split('-')[0]);
+                    const bStart = parseInt(b.range.split('-')[0]);
+                    return bStart - aStart; // Sort descending (90-100 first)
+                  })
+                  .map((rangeGroup) => {
+                    const [min, max] = rangeGroup.range.split('-').map(Number);
+                    const rangeColor = 
+                      min >= 90 ? 'border-green-300 bg-green-50' :
+                      min >= 80 ? 'border-blue-300 bg-blue-50' :
+                      min >= 70 ? 'border-yellow-300 bg-yellow-50' :
+                      min >= 60 ? 'border-orange-300 bg-orange-50' :
+                      min >= 50 ? 'border-red-300 bg-red-50' :
+                      'border-gray-300 bg-gray-50';
+                    
+                    const headerColor = 
+                      min >= 90 ? 'bg-green-100 border-green-200' :
+                      min >= 80 ? 'bg-blue-100 border-blue-200' :
+                      min >= 70 ? 'bg-yellow-100 border-yellow-200' :
+                      min >= 60 ? 'bg-orange-100 border-orange-200' :
+                      min >= 50 ? 'bg-red-100 border-red-200' :
+                      'bg-gray-100 border-gray-200';
+                    
+                    return (
+                      <div key={rangeGroup.range} className={`bg-white rounded-lg shadow-sm border-2 ${rangeColor} overflow-hidden`}>
+                        <div className={`px-6 py-3 border-b ${headerColor}`}>
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {rangeGroup.range}% Score Range
+                            </h3>
+                            <span className="text-sm font-medium text-gray-700">
+                              {rangeGroup.count} {rangeGroup.count === 1 ? 'Student' : 'Students'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Student Number
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Full Name
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  ILO Score
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Attainment Status
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Performance Level
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {rangeGroup.students.map((student) => (
+                                <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="text-sm text-gray-900">{student.student_number}</span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="text-sm text-gray-900">{student.full_name}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="text-sm font-medium text-gray-900">{student.ilo_score.toFixed(2)}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      student.attainment_status === 'attained'
+                                        ? 'bg-green-100 text-green-800 border border-green-200'
+                                        : 'bg-red-100 text-red-800 border border-red-200'
+                                    }`}>
+                                      {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      student.performance_level === 'high'
+                                        ? 'bg-green-100 text-green-800 border border-green-200'
+                                        : student.performance_level === 'medium'
+                                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                        : 'bg-red-100 text-red-800 border border-red-200'
+                                    }`}>
+                                      {student.performance_level === 'high' ? 'High' :
+                                       student.performance_level === 'medium' ? 'Medium' : 'Low'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                  <h2 className="text-lg font-semibold text-gray-900">Student List</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student Number
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Full Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ILO Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Attainment Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Performance Level
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedILO.students?.map((student) => (
-                        <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-900">{student.student_number}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-900">{student.full_name}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-medium text-gray-900">{student.ilo_score.toFixed(2)}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.attainment_status === 'attained'
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
-                            }`}>
-                              {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.performance_level === 'high'
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : student.performance_level === 'medium'
-                                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
-                            }`}>
-                              {student.performance_level === 'high' ? 'High' :
-                               student.performance_level === 'medium' ? 'Medium' : 'Low'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(!selectedILO.students || selectedILO.students.length === 0) && (
-                    <div className="text-center py-12 text-gray-500">
-                      <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p>No students found for the selected filter.</p>
-                    </div>
-                  )}
-                </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No students found for the selected filter.</p>
               </div>
             )}
           </div>
