@@ -655,7 +655,6 @@ async function getILOStudentList(
         SUM(raw_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_score,
         SUM(max_score) FILTER (WHERE raw_score IS NOT NULL AND raw_score > 0) AS total_combined_max
       FROM student_assessment_scores
-      WHERE transmuted_score_calc IS NOT NULL OR assessment_percentage IS NOT NULL
       GROUP BY student_id, enrollment_id, student_number, full_name
     )
     SELECT
@@ -690,10 +689,52 @@ async function getILOStudentList(
     ORDER BY sa.overall_attainment_rate DESC, sa.full_name ASC
   `;
   
-  const studentResult = await db.query(studentQuery, [sectionCourseId, iloId]);
+  // Also get ALL enrolled students (even without scores) to ensure complete list
+  const allEnrolledStudentsQuery = `
+    SELECT DISTINCT
+      ce.student_id,
+      ce.enrollment_id,
+      s.student_number,
+      s.full_name
+    FROM course_enrollments ce
+    INNER JOIN students s ON ce.student_id = s.student_id
+    WHERE ce.section_course_id = $1
+      AND ce.status = 'enrolled'
+  `;
+  
+  const [studentResult, enrolledResult] = await Promise.all([
+    db.query(studentQuery, [sectionCourseId, iloId]),
+    db.query(allEnrolledStudentsQuery, [sectionCourseId])
+  ]);
+  
+  // Create a map of students with scores
+  const studentsWithScores = new Map();
+  studentResult.rows.forEach(row => {
+    studentsWithScores.set(row.student_id, row);
+  });
+  
+  // Merge: include all enrolled students, use scores if available
+  const allStudentRows = enrolledResult.rows.map(enrolled => {
+    const withScore = studentsWithScores.get(enrolled.student_id);
+    if (withScore) {
+      return withScore;
+    }
+    // Student with no scores - return with 0% attainment
+    return {
+      student_id: enrolled.student_id,
+      enrollment_id: enrolled.enrollment_id,
+      student_number: enrolled.student_number,
+      full_name: enrolled.full_name,
+      ilo_score: 0,
+      overall_attainment_rate: 0,
+      assessments_count: 0,
+      total_ilo_weight: 0,
+      assessment_scores: []
+    };
+  });
   
   // Process students and categorize by percentage ranges using overall attainment rate
-  const allStudents = studentResult.rows.map(row => {
+  const allStudents = allStudentRows.map(row => {
     const overallRate = parseFloat(row.overall_attainment_rate || 0);
     const score = parseFloat(row.ilo_score || 0);
     const attained = overallRate >= passThreshold;
