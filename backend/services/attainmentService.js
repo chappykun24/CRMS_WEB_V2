@@ -668,11 +668,26 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] Executing assessmentsQuery with params:`, assessmentFilterParams);
   console.log(`[ATTAINMENT DEBUG] Filter conditions:`, assessmentFilterConditions || '(none)');
   
-  const assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
-  
-  console.log(`[ATTAINMENT SERVICE] Found ${assessmentsResult.rows.length} assessments for ILO ${iloId} in section_course ${sectionCourseId}`);
-  console.log(`[ATTAINMENT SERVICE] Query params:`, assessmentFilterParams);
-  console.log(`[ATTAINMENT SERVICE] Filter conditions:`, assessmentFilterConditions);
+  let assessmentsResult;
+  try {
+    assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
+    
+    console.log(`[ATTAINMENT SERVICE] ✅ Query executed successfully`);
+    console.log(`[ATTAINMENT SERVICE] Found ${assessmentsResult.rows.length} assessments for ILO ${iloId} in section_course ${sectionCourseId}`);
+    
+    if (assessmentsResult.rows.length > 0) {
+      console.log(`[ATTAINMENT SERVICE] Sample assessment:`, {
+        id: assessmentsResult.rows[0].assessment_id,
+        title: assessmentsResult.rows[0].assessment_title,
+        type: assessmentsResult.rows[0].assessment_type,
+        total_points: assessmentsResult.rows[0].total_points
+      });
+    }
+  } catch (queryError) {
+    console.error(`[ATTAINMENT SERVICE] ❌ Query execution failed:`, queryError);
+    console.error(`[ATTAINMENT SERVICE] Query:`, assessmentsQuery.substring(0, 500) + '...');
+    throw queryError;
+  }
   
   if (assessmentsResult.rows.length === 0) {
     console.log(`[ATTAINMENT SERVICE] No assessments found. Checking assessment_ilo_connections...`);
@@ -992,11 +1007,33 @@ async function getILOStudentList(
   `;
   
   // Execute all queries
+  // Debug: Log before executing queries
+  console.log(`[ATTAINMENT DEBUG] Executing parallel queries for ILO ${iloId}:`);
+  console.log(`[ATTAINMENT DEBUG] - enrolledResult query`);
+  console.log(`[ATTAINMENT DEBUG] - connectedAssessmentsQuery`);
+  console.log(`[ATTAINMENT DEBUG] - studentScoresQuery`);
+  
   const [enrolledResult, connectedAssessmentsResult, scoresResult] = await Promise.all([
     db.query(allEnrolledStudentsQuery, [sectionCourseId]),
     db.query(connectedAssessmentsQuery, assessmentFilterParams),
     db.query(studentScoresQuery, assessmentFilterParams)
   ]);
+  
+  console.log(`[ATTAINMENT DEBUG] ✅ All parallel queries completed:`);
+  console.log(`[ATTAINMENT DEBUG] - enrolledResult: ${enrolledResult.rows.length} students`);
+  console.log(`[ATTAINMENT DEBUG] - connectedAssessmentsResult: ${connectedAssessmentsResult.rows.length} assessments`);
+  console.log(`[ATTAINMENT DEBUG] - scoresResult: ${scoresResult.rows.length} score records`);
+  
+  if (connectedAssessmentsResult.rows.length > 0) {
+    console.log(`[ATTAINMENT DEBUG] Sample connected assessment:`, {
+      id: connectedAssessmentsResult.rows[0].assessment_id,
+      title: connectedAssessmentsResult.rows[0].assessment_title,
+      max_score: connectedAssessmentsResult.rows[0].max_score,
+      weight_percentage: connectedAssessmentsResult.rows[0].weight_percentage
+    });
+  } else {
+    console.log(`[ATTAINMENT DEBUG] ⚠️ No connected assessments found! This is likely why assessments aren't showing.`);
+  }
   
   // Step 4: Process results in JavaScript (simpler and more accurate)
   const assessmentMap = new Map();
