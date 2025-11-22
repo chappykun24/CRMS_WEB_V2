@@ -140,9 +140,11 @@ async function getILOAttainmentSummary(
         LEFT JOIN assessment_ilo_weights aiw2 ON a2.assessment_id = aiw2.assessment_id
         LEFT JOIN (
           SELECT DISTINCT r.assessment_id, r.ilo_id
-          FROM rubrics r
-          INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
+        FROM rubrics r
+        INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
+        INNER JOIN syllabi sy3 ON a3.syllabus_id = sy3.syllabus_id
           WHERE a3.section_course_id = $1
+            AND sy3.approval_status = 'approved'
         ) r ON a2.assessment_id = r.assessment_id
         LEFT JOIN (
           WITH assessment_codes AS (
@@ -172,6 +174,7 @@ async function getILOAttainmentSummary(
             FROM assessments a4
             INNER JOIN syllabi sy ON a4.syllabus_id = sy.syllabus_id
             WHERE a4.section_course_id = $1
+              AND sy.approval_status = 'approved'
           )
           SELECT DISTINCT
             ac.assessment_id,
@@ -184,7 +187,10 @@ async function getILOAttainmentSummary(
           WHERE ac.assessment_code IS NOT NULL
             AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
         ) im ON a2.assessment_id = im.assessment_id
+        FROM assessments a2
+        INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
         WHERE a2.section_course_id = $1
+          AND sy2.approval_status = 'approved'
           AND (aiw2.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
       ) aic ON a.assessment_id = aic.assessment_id
       INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
@@ -200,6 +206,7 @@ async function getILOAttainmentSummary(
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
         AND sy.section_course_id = $1
+        AND sy.approval_status = 'approved'
         AND a.section_course_id = $1
         ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
         ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
@@ -337,6 +344,7 @@ async function getILOStudentList(
       ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
       ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
     FROM ilos i
+    INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
     LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
     LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
     LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
@@ -345,7 +353,7 @@ async function getILOStudentList(
     LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
     LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
-    WHERE i.ilo_id = $1 AND i.is_active = TRUE
+    WHERE i.ilo_id = $1 AND i.is_active = TRUE AND sy.approval_status = 'approved'
     GROUP BY i.ilo_id, i.code, i.description
   `;
   
@@ -439,9 +447,10 @@ async function getILOStudentList(
       -- Get the syllabus_id for the target ILO, then get ALL assessments from that syllabus
       -- Since assessments are connected to the syllabus, show ALL assessments from the same syllabus
       WITH target_ilo_syllabus AS (
-        SELECT DISTINCT syllabus_id
-        FROM ilos
-        WHERE ilo_id = $2 AND is_active = TRUE
+        SELECT DISTINCT i.syllabus_id
+        FROM ilos i
+        INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+        WHERE i.ilo_id = $2 AND i.is_active = TRUE AND sy.approval_status = 'approved'
       )
       SELECT DISTINCT
         a.assessment_id,
@@ -466,6 +475,7 @@ async function getILOStudentList(
       LEFT JOIN ilo_from_mappings im ON a.assessment_id = im.assessment_id AND im.ilo_id = $2
       WHERE a.section_course_id = $1
         AND sy.section_course_id = $1
+        AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         -- Show ALL assessments from the same syllabus as the target ILO
@@ -828,11 +838,12 @@ async function getILOStudentList(
           END,
           NULL
         ) AS assessment_code
-      FROM assessments a
-      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
-      WHERE a.section_course_id = $1
-    ),
-    assessment_ilo_connections AS (
+        FROM assessments a
+        INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+        WHERE a.section_course_id = $1
+          AND sy.approval_status = 'approved'
+      ),
+      assessment_ilo_connections AS (
       SELECT DISTINCT
         a.assessment_id,
         -- Connect all assessments from the same syllabus to the target ILO ($2)
@@ -881,6 +892,7 @@ async function getILOStudentList(
           FROM assessments a3
           INNER JOIN syllabi sy ON a3.syllabus_id = sy.syllabus_id
           WHERE a3.section_course_id = $1
+            AND sy.approval_status = 'approved'
         )
         SELECT DISTINCT
           ac.assessment_id,
@@ -895,6 +907,7 @@ async function getILOStudentList(
       ) im ON a.assessment_id = im.assessment_id
       WHERE a.section_course_id = $1
         AND sy.section_course_id = $1
+        AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         -- Apply filters: only include assessments that match selected mappings
@@ -995,6 +1008,7 @@ async function getILOStudentList(
         FROM assessments a_code
         INNER JOIN syllabi sy_code ON a_code.syllabus_id = sy_code.syllabus_id
         WHERE a_code.section_course_id = $1
+          AND sy_code.approval_status = 'approved'
       ),
       assessment_ilo_connections AS (
         SELECT DISTINCT
@@ -1019,7 +1033,8 @@ async function getILOStudentList(
           SELECT DISTINCT r.assessment_id, r.ilo_id
           FROM rubrics r
           INNER JOIN assessments a3 ON r.assessment_id = a3.assessment_id
-          WHERE a3.section_course_id = $1 AND r.ilo_id = $2
+          INNER JOIN syllabi sy3 ON a3.syllabus_id = sy3.syllabus_id
+          WHERE a3.section_course_id = $1 AND r.ilo_id = $2 AND sy3.approval_status = 'approved'
         ) r ON a2.assessment_id = r.assessment_id
         LEFT JOIN (
           SELECT DISTINCT
@@ -1068,6 +1083,7 @@ async function getILOStudentList(
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
+      AND sy.approval_status = 'approved'
       AND i.is_active = TRUE
   `;
   
