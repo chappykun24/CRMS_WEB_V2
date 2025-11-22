@@ -1298,15 +1298,24 @@ async function getILOStudentList(
     connectedAssessmentsParams.push(cdioId);
   }
   
+  // Update param index after filters
+  connectedAssessmentsParamIndex = 3 + (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0);
+  
+  // Store the starting index for assessment_tasks (will be set after syllabus/term params)
+  let assessmentTasksParamStartIndex = connectedAssessmentsParamIndex;
+  
   if (syllabusId) {
     connectedAssessmentsParams.push(syllabusId);
-    connectedAssessmentsSyllabusCondition = `AND sy.syllabus_id = $${connectedAssessmentsParamIndex + (hasFilters ? (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0) : 0)}`;
+    connectedAssessmentsSyllabusCondition = `AND sy.syllabus_id = $${connectedAssessmentsParamIndex}`;
+    connectedAssessmentsParamIndex++;
+    assessmentTasksParamStartIndex++;
   }
   
   if (activeTermId) {
     connectedAssessmentsParams.push(activeTermId);
-    const termParamIndex = connectedAssessmentsParamIndex + (hasFilters ? (soId ? 1 : 0) + (sdgId ? 1 : 0) + (igaId ? 1 : 0) + (cdioId ? 1 : 0) : 0) + (syllabusId ? 1 : 0);
-    connectedAssessmentsTermCondition = `AND sc.term_id = $${termParamIndex}`;
+    connectedAssessmentsTermCondition = `AND sc.term_id = $${connectedAssessmentsParamIndex}`;
+    connectedAssessmentsParamIndex++;
+    assessmentTasksParamStartIndex++;
   }
   
   // Build filter conditions for connectedAssessmentsQuery (using 'ac' alias instead of 'acf')
@@ -1316,10 +1325,28 @@ async function getILOStudentList(
     connectedAssessmentsFilterCondition = filterConditionSQL.replace(/acf\./g, 'ac.');
   }
   
+  // Build the assessment matching condition based on assessment_tasks from the pair
+  let assessmentTasksCondition = 'TRUE';
+  if (hasFilters && selectedAssessmentTasks && selectedAssessmentTasks.length > 0) {
+    // Add assessment_tasks to params
+    connectedAssessmentsParams.push(...selectedAssessmentTasks);
+    // Build condition: match assessment codes from syllabus with assessment_tasks array
+    const paramPlaceholders = selectedAssessmentTasks.map((_, idx) => `$${assessmentTasksParamStartIndex + idx}`).join(', ');
+    assessmentTasksCondition = `ac.assessment_code = ANY(ARRAY[${paramPlaceholders}]::text[])`;
+  } else if (hasFilters && connectAllFromSyllabus) {
+    // If assessment_tasks is empty/null, include all from syllabus
+    assessmentTasksCondition = 'TRUE';
+  } else if (hasFilters && connectedAssessmentsFilterCondition) {
+    // Fallback to code matching
+    assessmentTasksCondition = `(${connectedAssessmentsFilterCondition})`;
+  }
+  
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsQuery params:`, connectedAssessmentsParams);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsSyllabusCondition: ${connectedAssessmentsSyllabusCondition || '(none)'}`);
   console.log(`[ATTAINMENT DEBUG] connectedAssessmentsTermCondition: ${connectedAssessmentsTermCondition || '(none)'}`);
-  console.log(`[ATTAINMENT DEBUG] connectedAssessmentsFilterCondition: ${connectedAssessmentsFilterCondition || '(none)'}`);
+  console.log(`[ATTAINMENT DEBUG] assessmentTasksCondition: ${assessmentTasksCondition}`);
+  console.log(`[ATTAINMENT DEBUG] selectedAssessmentTasks:`, selectedAssessmentTasks);
+  console.log(`[ATTAINMENT DEBUG] connectAllFromSyllabus:`, connectAllFromSyllabus);
   
   const connectedAssessmentsQuery = `
     WITH ilo_syllabus AS (
