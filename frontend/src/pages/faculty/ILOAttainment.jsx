@@ -937,7 +937,7 @@ const ILOAttainment = () => {
         {!loadingAttainment && selectedILO && (
           <div className="space-y-6">
             {/* Header with Back Button */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
                   <button
@@ -999,215 +999,68 @@ const ILOAttainment = () => {
                   <p className="text-xl font-bold text-indigo-600">{selectedILO.assessment_count || 0}</p>
                 </div>
               </div>
+            </div>
 
-              {/* Assessments List */}
-              {selectedILO.assessments && selectedILO.assessments.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Assessments</h3>
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Assessment Title
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Total Points
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Weight (%)
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              ILO Weight (%)
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Due Date
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Students
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Submissions
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Avg Score
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Total Score
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Avg %
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Mapped To
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {selectedILO.assessments.map((assessment) => (
-                            <tr key={assessment.assessment_id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-700">{assessment.type}</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-900">{assessment.total_points}</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-900">{assessment.weight_percentage.toFixed(1)}%</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-900">{assessment.ilo_weight_percentage.toFixed(1)}%</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-700">
-                                  {assessment.due_date ? new Date(assessment.due_date).toLocaleDateString() : 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-900">{assessment.total_students || 0}</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-900">{assessment.submissions_count || 0}</span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {parseFloat(assessment.average_score || 0).toFixed(2)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {parseFloat(assessment.total_score || 0).toFixed(2)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className={`text-sm font-medium ${
-                                  parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
-                                  parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex flex-wrap gap-1">
-                                  {assessment.mappings && assessment.mappings.length > 0 ? (
-                                    assessment.mappings.map((mapping, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
-                                      >
-                                        {mapping.type}: {mapping.code}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-xs text-gray-400">None</span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+            {/* Main Content with Sidebar Layout */}
+            <div className="flex gap-6">
+              {/* Main Content Area - Student Results */}
+              <div className="flex-1 space-y-6">
+
+                {/* Performance Filter and Show Students Button */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
+                      <button
+                        onClick={() => setPerformanceFilter('all')}
+                        className={`px-4 py-2 rounded-lg transition-colors transition ${
+                          performanceFilter === 'all'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setPerformanceFilter('high')}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          performanceFilter === 'high'
+                            ? 'bg-green-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        High Performance
+                      </button>
+                      <button
+                        onClick={() => setPerformanceFilter('low')}
+                        className={`px-4 py-2 rounded-lg transition-colors ${
+                          performanceFilter === 'low'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Low Performance
+                      </button>
                     </div>
+                    {!showStudents && (
+                      <button
+                        onClick={handleShowStudents}
+                        className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                      >
+                        <UserGroupIcon className="h-5 w-5" />
+                        <span>Show Students</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Percentage Range Distribution */}
-              {selectedILO.range_distribution && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Distribution by Score Range</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                    {Object.entries(selectedILO.range_distribution)
-                      .sort((a, b) => {
-                        const aStart = parseInt(a[0].split('-')[0]);
-                        const bStart = parseInt(b[0].split('-')[0]);
-                        return bStart - aStart; // Sort descending (90-100 first)
-                      })
-                      .map(([range, count]) => {
-                        const [min, max] = range.split('-').map(Number);
-                        const colorClass = 
-                          min >= 90 ? 'bg-green-100 border-green-300 text-green-800' :
-                          min >= 80 ? 'bg-blue-100 border-blue-300 text-blue-800' :
-                          min >= 70 ? 'bg-yellow-100 border-yellow-300 text-yellow-800' :
-                          min >= 60 ? 'bg-orange-100 border-orange-300 text-orange-800' :
-                          min >= 50 ? 'bg-red-100 border-red-300 text-red-800' :
-                          'bg-gray-100 border-gray-300 text-gray-800';
-                        
-                        return (
-                          <div key={range} className={`p-2 rounded-lg border text-center ${colorClass}`}>
-                            <p className="text-xs font-medium">{range}%</p>
-                            <p className="text-lg font-bold">{count}</p>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Performance Filter and Show Students Button */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
-                  <button
-                    onClick={() => setPerformanceFilter('all')}
-                    className={`px-4 py-2 rounded-lg transition-colors transition ${
-                      performanceFilter === 'all'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setPerformanceFilter('high')}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      performanceFilter === 'high'
-                        ? 'bg-green-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    High Performance
-                  </button>
-                  <button
-                    onClick={() => setPerformanceFilter('low')}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      performanceFilter === 'low'
-                        ? 'bg-red-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    Low Performance
-                  </button>
-                </div>
-                {!showStudents && (
-                  <button
-                    onClick={handleShowStudents}
-                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                  >
-                    <UserGroupIcon className="h-5 w-5" />
-                    <span>Show Students</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Students Grouped by Percentage Range */}
-            {showStudents && (
-              <>
-                {loadingAttainment ? (
-                  <TableSkeleton rows={10} columns={5} />
-                ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
-              <div className="space-y-4">
+                {/* Students Grouped by Percentage Range */}
+                {showStudents && (
+                  <>
+                    {loadingAttainment ? (
+                      <TableSkeleton rows={10} columns={5} />
+                    ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
+                      <div className="space-y-4">
                 {selectedILO.students_by_range
                   .sort((a, b) => {
                     const aStart = parseInt(a.range.split('-')[0]);
@@ -1412,15 +1265,115 @@ const ILOAttainment = () => {
                       </div>
                     );
                   })}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                        <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">No students found for the selected filter.</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No students found for the selected filter.</p>
-              </div>
-            )}
-              </>
-            )}
+
+              {/* Right Sidebar - Connected Assessments */}
+              {selectedILO.assessments && selectedILO.assessments.length > 0 && (
+                <div className="w-80 flex-shrink-0">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Assessments</h3>
+                    
+                    {/* Simplified Assessments Table */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Assessment
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Points
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              %
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedILO.assessments.map((assessment) => (
+                            <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">
+                                <span className="text-sm font-medium text-gray-900">{assessment.title}</span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className="text-sm text-gray-900">{assessment.total_points}</span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className={`text-sm font-medium ${
+                                  parseFloat(assessment.average_percentage || 0) >= 80 ? 'text-green-600' :
+                                  parseFloat(assessment.average_percentage || 0) >= 60 ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>
+                                  {parseFloat(assessment.average_percentage || 0).toFixed(1)}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Overall Grade and Percentage */}
+                    {selectedILO.assessments && selectedILO.assessments.length > 0 && (() => {
+                      const totalPoints = selectedILO.assessments.reduce((sum, a) => sum + (parseFloat(a.total_points) || 0), 0);
+                      const avgPercentage = selectedILO.assessments.length > 0
+                        ? selectedILO.assessments.reduce((sum, a) => sum + (parseFloat(a.average_percentage) || 0), 0) / selectedILO.assessments.length
+                        : 0;
+                      
+                      // Calculate overall grade based on average percentage
+                      const getGrade = (percentage) => {
+                        if (percentage >= 97) return 'A+';
+                        if (percentage >= 93) return 'A';
+                        if (percentage >= 90) return 'A-';
+                        if (percentage >= 87) return 'B+';
+                        if (percentage >= 83) return 'B';
+                        if (percentage >= 80) return 'B-';
+                        if (percentage >= 77) return 'C+';
+                        if (percentage >= 73) return 'C';
+                        if (percentage >= 70) return 'C-';
+                        if (percentage >= 67) return 'D+';
+                        if (percentage >= 63) return 'D';
+                        if (percentage >= 60) return 'D-';
+                        return 'F';
+                      };
+
+                      const overallGrade = getGrade(avgPercentage);
+                      const gradeColor = avgPercentage >= 80 ? 'text-green-600' : avgPercentage >= 60 ? 'text-yellow-600' : 'text-red-600';
+
+                      return (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Overall Grade:</span>
+                              <span className={`text-lg font-bold ${gradeColor}`}>{overallGrade}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Overall Percentage:</span>
+                              <span className={`text-lg font-bold ${gradeColor}`}>
+                                {avgPercentage.toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Total Points:</span>
+                              <span className="text-sm text-gray-900">{totalPoints}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
