@@ -1667,6 +1667,18 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] - connectedAssessmentsResult: ${connectedAssessmentsResult.rows.length} assessments`);
   console.log(`[ATTAINMENT DEBUG] - scoresResult: ${scoresResult.rows.length} score records`);
   
+  // Verify that scores are only from connected assessments
+  if (scoresResult.rows.length > 0 && connectedAssessmentsResult.rows.length > 0) {
+    const connectedAssessmentIds = new Set(connectedAssessmentsResult.rows.map(a => a.assessment_id));
+    const scoreAssessmentIds = new Set(scoresResult.rows.map(s => s.assessment_id));
+    const unmatchedAssessments = Array.from(scoreAssessmentIds).filter(id => !connectedAssessmentIds.has(id));
+    if (unmatchedAssessments.length > 0) {
+      console.log(`[ATTAINMENT DEBUG] ⚠️ WARNING: Found ${unmatchedAssessments.length} assessments in scores that are NOT in connected assessments:`, unmatchedAssessments);
+    } else {
+      console.log(`[ATTAINMENT DEBUG] ✅ All score records are from connected assessments (filtered correctly)`);
+    }
+  }
+  
   if (connectedAssessmentsResult.rows.length > 0) {
     console.log(`[ATTAINMENT DEBUG] Sample connected assessment:`, {
       id: connectedAssessmentsResult.rows[0].assessment_id,
@@ -1729,6 +1741,11 @@ async function getILOStudentList(
   }
   
   // Step 4: Process results in JavaScript (simpler and more accurate)
+  // Create a set of connected assessment IDs to ensure we only use filtered assessments
+  const connectedAssessmentIds = new Set(connectedAssessmentsResult.rows.map(ass => ass.assessment_id));
+  
+  console.log(`[ATTAINMENT DEBUG] Connected assessment IDs (${connectedAssessmentIds.size}):`, Array.from(connectedAssessmentIds).slice(0, 10));
+  
   const assessmentMap = new Map();
   connectedAssessmentsResult.rows.forEach(ass => {
     assessmentMap.set(ass.assessment_id, ass);
@@ -1745,8 +1762,16 @@ async function getILOStudentList(
   }));
   
   // Group scores by student
+  // IMPORTANT: Only include assessments that are in the connected assessments list
+  // This ensures scores are only computed from filtered assessments
   const studentScoresMap = new Map();
   scoresResult.rows.forEach(row => {
+    // Filter: Only process assessments that are in the connected assessments list
+    if (!connectedAssessmentIds.has(row.assessment_id)) {
+      console.log(`[ATTAINMENT DEBUG] ⚠️ Skipping assessment ${row.assessment_id} (${row.assessment_title}) - not in connected assessments list`);
+      return; // Skip this assessment as it's not in the filtered connected assessments
+    }
+    
     if (!studentScoresMap.has(row.student_id)) {
       studentScoresMap.set(row.student_id, {
         student_id: row.student_id,
