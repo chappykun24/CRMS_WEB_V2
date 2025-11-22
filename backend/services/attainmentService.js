@@ -1387,6 +1387,8 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
     ),
     assessment_ilo_connections AS (
+      -- Get ALL assessments from the same syllabus as the ILO (not just explicitly connected ones)
+      -- This matches the logic in studentScoresQuery to ensure consistency
       SELECT DISTINCT
         a.assessment_id,
         $2 AS ilo_id,
@@ -1404,11 +1406,8 @@ async function getILOStudentList(
         AND sy.approval_status = 'approved'
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        AND (
-          aiw.ilo_id = $2 
-          OR r.ilo_id = $2
-          ${connectAllFromSyllabus ? 'OR TRUE' : allAssessmentTasks.size > 0 ? `OR (ac.assessment_code IS NOT NULL AND UPPER(TRIM(ac.assessment_code)) IN (${Array.from(allAssessmentTasks).map(t => `'${t.replace(/'/g, "''")}'`).join(', ')}))` : 'OR FALSE'}
-        )
+        -- Include ALL assessments from the same syllabus, not just explicitly connected ones
+        -- This ensures the sidebar shows all assessments that could contribute to the ILO score
     ),
     assessment_stats AS (
       SELECT
