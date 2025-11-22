@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
+import { TableSkeleton } from '../../components/skeletons'
 import {
   AcademicCapIcon,
   ChartBarIcon,
-  UserGroupIcon,
   ArrowLeftIcon,
   ArrowDownTrayIcon,
-  FunnelIcon
+  FunnelIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/solid'
 
 const ILOAttainment = () => {
@@ -29,6 +30,13 @@ const ILOAttainment = () => {
   const [highThreshold, setHighThreshold] = useState(80)
   const [lowThreshold, setLowThreshold] = useState(75)
 
+  // Refs for cleanup
+  const abortControllerRef = useRef(null)
+  const attainmentAbortControllerRef = useRef(null)
+
+  // Normalize faculty ID
+  const facultyId = user?.user_id ?? user?.id
+
   // Load active term
   useEffect(() => {
     const fetchActiveTerm = async () => {
@@ -47,41 +55,73 @@ const ILOAttainment = () => {
     fetchActiveTerm()
   }, [])
 
-  // Load faculty classes
+  // Load faculty classes with caching and async fetching
   useEffect(() => {
     const loadClasses = async () => {
-      if (!user?.user_id) return
+      if (!facultyId) return
       
-      const cacheKey = `classes_${user.user_id}`
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      
+      // Create new abort controller
+      abortControllerRef.current = new AbortController()
+      
+      const cacheKey = `classes_${facultyId}`
       const cached = safeGetItem(cacheKey)
       let classesData = []
       
+      // Show cached data immediately if available
       if (cached) {
         classesData = Array.isArray(cached) ? cached : []
         setClasses(classesData)
         setLoading(false)
+      } else {
+        setLoading(true)
       }
       
+      // Fetch fresh data in background
       try {
-        const response = await fetch(`/api/section-courses/faculty/${user.user_id}`)
-        if (response.ok) {
-          const data = await response.json()
-          classesData = Array.isArray(data) ? data : []
-          setClasses(classesData)
-          safeSetItem(cacheKey, classesData, minimizeClassData)
-        } else {
-          if (!cached) setError('Failed to load classes')
+        const response = await fetch(`/api/section-courses/faculty/${facultyId}`, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load classes: ${response.status}`)
         }
+        
+        const data = await response.json()
+        classesData = Array.isArray(data) ? data : []
+        setClasses(classesData)
+        safeSetItem(cacheKey, classesData, minimizeClassData)
       } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('🚫 [ILO ATTAINMENT] Classes request was aborted')
+          return
+        }
         console.error('Error loading classes:', error)
-        if (!cached) setError('Failed to load classes')
+        if (!cached) {
+          setError('Failed to load classes')
+        }
       } finally {
         setLoading(false)
       }
     }
     
     loadClasses()
-  }, [user])
+    
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [facultyId])
 
   // Filter classes by active term
   const filteredClasses = useMemo(() => {
@@ -89,9 +129,17 @@ const ILOAttainment = () => {
     return classes.filter(cls => cls.term_id === activeTermId)
   }, [classes, activeTermId])
 
-  // Load ILO attainment data
+  // Load ILO attainment data with async fetching and error handling
   const loadAttainmentData = useCallback(async (sectionCourseId, iloId = null) => {
     if (!sectionCourseId) return
+
+    // Cancel previous request if still pending
+    if (attainmentAbortControllerRef.current) {
+      attainmentAbortControllerRef.current.abort()
+    }
+    
+    // Create new abort controller
+    attainmentAbortControllerRef.current = new AbortController()
 
     setLoadingAttainment(true)
     setError('')
@@ -109,10 +157,16 @@ const ILOAttainment = () => {
         params.append('ilo_id', iloId.toString())
       }
 
-      const response = await fetch(`/api/assessments/ilo-attainment?${params.toString()}`)
+      const response = await fetch(`/api/assessments/ilo-attainment?${params.toString()}`, {
+        signal: attainmentAbortControllerRef.current.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
       
       if (!response.ok) {
-        throw new Error('Failed to fetch ILO attainment data')
+        throw new Error(`Failed to fetch ILO attainment data: ${response.status}`)
       }
 
       const result = await response.json()
@@ -126,8 +180,12 @@ const ILOAttainment = () => {
         throw new Error(result.error || 'Failed to load attainment data')
       }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🚫 [ILO ATTAINMENT] Attainment request was aborted')
+        return
+      }
       console.error('Error loading attainment data:', error)
-      setError(error.message)
+      setError(error.message || 'Failed to load attainment data')
     } finally {
       setLoadingAttainment(false)
     }
@@ -135,11 +193,27 @@ const ILOAttainment = () => {
 
   // Load data when class is selected
   useEffect(() => {
-    if (selectedClass?.section_course_id) {
-      setSelectedILO(null)
+    if (selectedClass?.section_course_id && !selectedILO) {
       loadAttainmentData(selectedClass.section_course_id)
     }
-  }, [selectedClass, loadAttainmentData])
+  }, [selectedClass?.section_course_id, selectedILO])
+
+  // Reload student list when performance filter changes (only if viewing student list)
+  useEffect(() => {
+    if (selectedILO?.ilo_id && selectedClass?.section_course_id) {
+      loadAttainmentData(selectedClass.section_course_id, selectedILO.ilo_id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [performanceFilter])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (attainmentAbortControllerRef.current) {
+        attainmentAbortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   // Handle ILO click to show student list
   const handleILOClick = (ilo) => {
@@ -178,12 +252,19 @@ const ILOAttainment = () => {
     }
   }
 
-  if (loading) {
+  // Loading skeleton for classes
+  if (loading && classes.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading classes...</p>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-96"></div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded w-full md:w-1/3"></div>
+          </div>
         </div>
       </div>
     )
@@ -193,19 +274,21 @@ const ILOAttainment = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <AcademicCapIcon className="h-8 w-8 text-blue-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <AcademicCapIcon className="h-6 w-6 text-blue-600" />
+              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">ILO Attainment Analytics</h1>
-                <p className="text-sm text-gray-500">View student performance on ILO-mapped assessments</p>
+                <p className="text-sm text-gray-500 mt-1">View student performance on ILO-mapped assessments</p>
               </div>
             </div>
             {selectedClass && (
               <button
                 onClick={handleExportExcel}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
               >
                 <ArrowDownTrayIcon className="h-5 w-5" />
                 <span>Export to Excel</span>
@@ -215,7 +298,7 @@ const ILOAttainment = () => {
         </div>
 
         {/* Class Selection */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select Class
           </label>
@@ -226,7 +309,8 @@ const ILOAttainment = () => {
               const cls = filteredClasses.find(c => c.section_course_id === classId)
               setSelectedClass(cls || null)
             }}
-            className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            disabled={loading}
           >
             <option value="">-- Select a class --</option>
             {filteredClasses.map((cls) => (
@@ -235,11 +319,14 @@ const ILOAttainment = () => {
               </option>
             ))}
           </select>
+          {filteredClasses.length === 0 && !loading && (
+            <p className="mt-2 text-sm text-gray-500">No classes available for the active term.</p>
+          )}
         </div>
 
         {/* Filters */}
         {selectedClass && !selectedILO && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center space-x-2 mb-4">
               <FunnelIcon className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
@@ -255,7 +342,7 @@ const ILOAttainment = () => {
                   max="100"
                   value={passThreshold}
                   onChange={(e) => setPassThreshold(parseInt(e.target.value) || 75)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
@@ -268,7 +355,7 @@ const ILOAttainment = () => {
                   max="100"
                   value={highThreshold}
                   onChange={(e) => setHighThreshold(parseInt(e.target.value) || 80)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
@@ -281,7 +368,7 @@ const ILOAttainment = () => {
                   max="100"
                   value={lowThreshold}
                   onChange={(e) => setLowThreshold(parseInt(e.target.value) || 75)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
             </div>
@@ -291,15 +378,26 @@ const ILOAttainment = () => {
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            {error}
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
-        {/* Loading State */}
-        {loadingAttainment && (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading attainment data...</p>
+        {/* Loading State with Skeleton */}
+        {loadingAttainment && !selectedILO && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-gray-50 p-4 rounded-lg">
+                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <TableSkeleton rows={8} columns={8} />
           </div>
         )}
 
@@ -307,20 +405,20 @@ const ILOAttainment = () => {
         {!loadingAttainment && !selectedILO && attainmentData && (
           <div className="space-y-6">
             {/* Summary Stats */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Total ILOs</p>
-                  <p className="text-2xl font-bold text-blue-600">{attainmentData.summary?.total_ilos || 0}</p>
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm text-gray-600 mb-1">Total ILOs</p>
+                  <p className="text-3xl font-bold text-blue-600">{attainmentData.summary?.total_ilos || 0}</p>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Students</p>
-                  <p className="text-2xl font-bold text-green-600">{attainmentData.summary?.total_students || 0}</p>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                  <p className="text-sm text-gray-600 mb-1">Total Students</p>
+                  <p className="text-3xl font-bold text-green-600">{attainmentData.summary?.total_students || 0}</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Overall Attainment Rate</p>
-                  <p className="text-2xl font-bold text-purple-600">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                  <p className="text-sm text-gray-600 mb-1">Overall Attainment Rate</p>
+                  <p className="text-3xl font-bold text-purple-600">
                     {attainmentData.summary?.overall_attainment_rate?.toFixed(1) || 0}%
                   </p>
                 </div>
@@ -328,8 +426,8 @@ const ILOAttainment = () => {
             </div>
 
             {/* ILO Attainment Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">ILO Attainment</h2>
               </div>
               <div className="overflow-x-auto">
@@ -367,7 +465,7 @@ const ILOAttainment = () => {
                       <tr
                         key={ilo.ilo_id}
                         onClick={() => handleILOClick(ilo)}
-                        className="hover:bg-blue-50 cursor-pointer transition"
+                        className="hover:bg-blue-50 cursor-pointer transition-colors"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900">{ilo.ilo_code}</span>
@@ -401,7 +499,7 @@ const ILOAttainment = () => {
                             {ilo.mapped_to?.map((mapping, idx) => (
                               <span
                                 key={idx}
-                                className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
                               >
                                 {mapping.type}: {mapping.code}
                               </span>
@@ -417,7 +515,8 @@ const ILOAttainment = () => {
                 </table>
                 {(!attainmentData.ilo_attainment || attainmentData.ilo_attainment.length === 0) && (
                   <div className="text-center py-12 text-gray-500">
-                    No ILO attainment data available for this class.
+                    <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p>No ILO attainment data available for this class.</p>
                   </div>
                 )}
               </div>
@@ -429,12 +528,12 @@ const ILOAttainment = () => {
         {!loadingAttainment && selectedILO && (
           <div className="space-y-6">
             {/* Header with Back Button */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
                   <button
                     onClick={handleBackToSummary}
-                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition"
+                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     <ArrowLeftIcon className="h-5 w-5" />
                     <span>Back to Summary</span>
@@ -446,7 +545,7 @@ const ILOAttainment = () => {
                 </div>
                 <button
                   onClick={handleExportExcel}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
                 >
                   <ArrowDownTrayIcon className="h-5 w-5" />
                   <span>Export to Excel</span>
@@ -455,12 +554,12 @@ const ILOAttainment = () => {
               
               {/* Mapped To */}
               {selectedILO.mapped_to && selectedILO.mapped_to.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="text-sm text-gray-600">Mapped to:</span>
+                <div className="mb-4 flex flex-wrap gap-2 items-center">
+                  <span className="text-sm text-gray-600 font-medium">Mapped to:</span>
                   {selectedILO.mapped_to.map((mapping, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
                     >
                       {mapping.type}: {mapping.code}
                     </span>
@@ -469,17 +568,17 @@ const ILOAttainment = () => {
               )}
 
               {/* Stats */}
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Students</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="text-sm text-gray-600 mb-1">Total Students</p>
                   <p className="text-xl font-bold text-blue-600">{selectedILO.total_students || 0}</p>
                 </div>
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600">Attained</p>
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <p className="text-sm text-gray-600 mb-1">Attained</p>
                   <p className="text-xl font-bold text-green-600">{selectedILO.attained_count || 0}</p>
                 </div>
-                <div className="bg-purple-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600">Attainment Rate</p>
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                  <p className="text-sm text-gray-600 mb-1">Attainment Rate</p>
                   <p className="text-xl font-bold text-purple-600">
                     {selectedILO.total_students > 0
                       ? ((selectedILO.attained_count / selectedILO.total_students) * 100).toFixed(1)
@@ -490,14 +589,14 @@ const ILOAttainment = () => {
             </div>
 
             {/* Performance Filter */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center space-x-4">
                 <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
                 <button
                   onClick={() => setPerformanceFilter('all')}
-                  className={`px-4 py-2 rounded-lg transition ${
+                  className={`px-4 py-2 rounded-lg transition-colors transition ${
                     performanceFilter === 'all'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -505,9 +604,9 @@ const ILOAttainment = () => {
                 </button>
                 <button
                   onClick={() => setPerformanceFilter('high')}
-                  className={`px-4 py-2 rounded-lg transition ${
+                  className={`px-4 py-2 rounded-lg transition-colors ${
                     performanceFilter === 'high'
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-green-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -515,9 +614,9 @@ const ILOAttainment = () => {
                 </button>
                 <button
                   onClick={() => setPerformanceFilter('low')}
-                  className={`px-4 py-2 rounded-lg transition ${
+                  className={`px-4 py-2 rounded-lg transition-colors ${
                     performanceFilter === 'low'
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-red-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -527,81 +626,86 @@ const ILOAttainment = () => {
             </div>
 
             {/* Student List Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Student List</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student Number
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Full Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ILO Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Attainment Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Performance Level
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {selectedILO.students?.map((student) => (
-                      <tr key={student.student_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900">{student.student_number}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-900">{student.full_name}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-gray-900">{student.ilo_score.toFixed(2)}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            student.attainment_status === 'attained'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            student.performance_level === 'high'
-                              ? 'bg-green-100 text-green-800'
-                              : student.performance_level === 'medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {student.performance_level === 'high' ? 'High' :
-                             student.performance_level === 'medium' ? 'Medium' : 'Low'}
-                          </span>
-                        </td>
+            {loadingAttainment ? (
+              <TableSkeleton rows={10} columns={5} />
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                  <h2 className="text-lg font-semibold text-gray-900">Student List</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Student Number
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Full Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ILO Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Attainment Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Performance Level
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(!selectedILO.students || selectedILO.students.length === 0) && (
-                  <div className="text-center py-12 text-gray-500">
-                    No students found for the selected filter.
-                  </div>
-                )}
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {selectedILO.students?.map((student) => (
+                        <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-900">{student.student_number}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900">{student.full_name}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm font-medium text-gray-900">{student.ilo_score.toFixed(2)}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              student.attainment_status === 'attained'
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              student.performance_level === 'high'
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : student.performance_level === 'medium'
+                                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {student.performance_level === 'high' ? 'High' :
+                               student.performance_level === 'medium' ? 'Medium' : 'Low'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {(!selectedILO.students || selectedILO.students.length === 0) && (
+                    <div className="text-center py-12 text-gray-500">
+                      <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p>No students found for the selected filter.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* No Data State */}
         {!loadingAttainment && !selectedILO && !attainmentData && selectedClass && (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">No ILO attainment data available for this class.</p>
           </div>
@@ -612,4 +716,3 @@ const ILOAttainment = () => {
 }
 
 export default ILOAttainment
-
