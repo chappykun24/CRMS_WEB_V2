@@ -102,7 +102,13 @@ export async function calculateILOAttainment(
       }
     }
 
-    // Debug: Get all ILOs from the selected class's approved syllabus
+    // Debug: Get all ILOs from the selected class's approved syllabus (parameterized)
+    const debugILOsParams = [sectionCourseId];
+    let debugILOsSyllabusCondition = '';
+    if (finalSyllabusId) {
+      debugILOsParams.push(finalSyllabusId);
+      debugILOsSyllabusCondition = `AND sy.syllabus_id = $2`;
+    }
     const debugILOsQuery = `
       SELECT 
         i.ilo_id,
@@ -118,10 +124,10 @@ export async function calculateILOAttainment(
       WHERE sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${finalSyllabusId ? `AND sy.syllabus_id = ${finalSyllabusId}` : ''}
+        ${debugILOsSyllabusCondition}
       ORDER BY i.code
     `;
-    const debugILOsResult = await db.query(debugILOsQuery, [sectionCourseId]);
+    const debugILOsResult = await db.query(debugILOsQuery, debugILOsParams);
     
     console.log(`[ATTAINMENT DEBUG] Section Course ID: ${sectionCourseId}`);
     console.log(`[ATTAINMENT DEBUG] Active Term ID: ${activeTermId || 'N/A'}`);
@@ -239,13 +245,58 @@ async function getILOAttainmentSummary(
   });
   console.log(`[ATTAINMENT SUMMARY DEBUG] ==========================================\n`);
 
-  // Build WHERE conditions for active term and syllabus
-  const termCondition = activeTermId ? `AND sc.term_id = ${activeTermId}` : '';
-  const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
-  const syllabusCondition2 = syllabusId ? `AND sy2.syllabus_id = ${syllabusId}` : '';
-  const syllabusCondition3 = syllabusId ? `AND sy3.syllabus_id = ${syllabusId}` : '';
-  const syllabusCondition4 = syllabusId ? `AND sy4.syllabus_id = ${syllabusId}` : '';
-  const syllabusCondition5 = syllabusId ? `AND sy5.syllabus_id = ${syllabusId}` : '';
+  // Build parameterized query with dynamic parameters
+  const queryParams = [sectionCourseId, passThreshold, highThreshold, lowThreshold];
+  let paramIndex = 5; // Start after the first 4 parameters
+  
+  // Build WHERE conditions with parameterized placeholders
+  let termCondition = '';
+  if (activeTermId) {
+    queryParams.push(activeTermId);
+    termCondition = `AND sc.term_id = $${paramIndex}`;
+    paramIndex++;
+  }
+  
+  let syllabusCondition = '';
+  let syllabusCondition2 = '';
+  let syllabusCondition3 = '';
+  let syllabusCondition4 = '';
+  let syllabusCondition5 = '';
+  if (syllabusId) {
+    queryParams.push(syllabusId);
+    syllabusCondition = `AND sy.syllabus_id = $${paramIndex}`;
+    syllabusCondition2 = `AND sy2.syllabus_id = $${paramIndex}`;
+    syllabusCondition3 = `AND sy3.syllabus_id = $${paramIndex}`;
+    syllabusCondition4 = `AND sy4.syllabus_id = $${paramIndex}`;
+    syllabusCondition5 = `AND sy5.syllabus_id = $${paramIndex}`;
+    paramIndex++;
+  }
+  
+  // Add filter parameters
+  let soCondition = '';
+  let sdgCondition = '';
+  let igaCondition = '';
+  let cdioCondition = '';
+  if (soId) {
+    queryParams.push(soId);
+    soCondition = `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = $${paramIndex})`;
+    paramIndex++;
+  }
+  if (sdgId) {
+    queryParams.push(sdgId);
+    sdgCondition = `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = $${paramIndex})`;
+    paramIndex++;
+  }
+  if (igaId) {
+    queryParams.push(igaId);
+    igaCondition = `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = $${paramIndex})`;
+    paramIndex++;
+  }
+  if (cdioId) {
+    queryParams.push(cdioId);
+    cdioCondition = `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = $${paramIndex})`;
+    paramIndex++;
+  }
 
   const query = `
     WITH student_ilo_scores AS (
@@ -351,7 +402,7 @@ async function getILOAttainmentSummary(
           AND sy2.review_status = 'approved'
           AND sy2.approval_status = 'approved'
           ${syllabusCondition2}
-          ${activeTermId ? `AND sc2.term_id = ${activeTermId}` : ''}
+          ${termCondition.replace('sc.', 'sc2.')}
           AND (aiw2.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
       ) aic ON a.assessment_id = aic.assessment_id
       INNER JOIN ilos i ON aic.ilo_id = i.ilo_id
@@ -372,10 +423,10 @@ async function getILOAttainmentSummary(
         ${syllabusCondition}
         AND a.section_course_id = $1
         ${termCondition}
-        ${soId ? `AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = ${soId})` : ''}
-        ${sdgId ? `AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = ${sdgId})` : ''}
-        ${igaId ? `AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = ${igaId})` : ''}
-        ${cdioId ? `AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = ${cdioId})` : ''}
+        ${soCondition}
+        ${sdgCondition}
+        ${igaCondition}
+        ${cdioCondition}
       GROUP BY ce.student_id, s.student_number, s.full_name, i.ilo_id, i.code, i.description
     ),
     ilo_summary AS (
@@ -429,7 +480,7 @@ async function getILOAttainmentSummary(
     ORDER BY isum.ilo_code
   `;
   
-  const result = await db.query(query, [sectionCourseId, passThreshold, highThreshold, lowThreshold]);
+  const result = await db.query(query, queryParams);
   
   // DEBUG: Verify returned ILOs match expected ILOs
   console.log(`[ATTAINMENT SUMMARY DEBUG] Query returned ${result.rows.length} ILOs`);
@@ -511,8 +562,14 @@ async function getILOStudentList(
   activeTermId = null,
   syllabusId = null
 ) {
-  // Build WHERE conditions for active term and syllabus
-  const syllabusCondition = syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : '';
+  // Build parameterized query parameters
+  const simpleILOParams = [iloId, sectionCourseId];
+  let simpleILOParamIndex = 3;
+  let syllabusCondition = '';
+  if (syllabusId) {
+    simpleILOParams.push(syllabusId);
+    syllabusCondition = `AND sy.syllabus_id = $${simpleILOParamIndex}`;
+  }
   
   // First, use a separate simpler query to get ILO from the selected class's approved syllabus
   const simpleILOQuery = `
@@ -534,7 +591,7 @@ async function getILOStudentList(
       ${syllabusCondition}
   `;
   
-  const simpleILOResult = await db.query(simpleILOQuery, [iloId, sectionCourseId]);
+  const simpleILOResult = await db.query(simpleILOQuery, simpleILOParams);
   
   if (simpleILOResult.rows.length === 0) {
     // Debug: Try without syllabus filter to see if ILO exists elsewhere
@@ -574,6 +631,14 @@ async function getILOStudentList(
   }
   
   // Now get ILO info with mappings
+  const iloQueryParams = [iloId, sectionCourseId];
+  let iloQueryParamIndex = 3;
+  let iloQuerySyllabusCondition = '';
+  if (syllabusId) {
+    iloQueryParams.push(syllabusId);
+    iloQuerySyllabusCondition = `AND sy.syllabus_id = $${iloQueryParamIndex}`;
+  }
+  
   const iloQuery = `
     SELECT
       i.ilo_id,
@@ -598,11 +663,11 @@ async function getILOStudentList(
       AND sy.section_course_id = $2
       AND sy.review_status = 'approved' 
       AND sy.approval_status = 'approved'
-      ${syllabusCondition}
+      ${iloQuerySyllabusCondition}
     GROUP BY i.ilo_id, i.code, i.description
   `;
   
-  const iloResult = await db.query(iloQuery, [iloId, sectionCourseId]);
+  const iloResult = await db.query(iloQuery, iloQueryParams);
   
   if (iloResult.rows.length === 0) {
     throw new Error(`ILO not found with mappings. ILO ID: ${iloId}, Section Course ID: ${sectionCourseId}`);
@@ -652,6 +717,28 @@ async function getILOStudentList(
   }
   const filterConditionSQL = filterConditions.join(' OR ');
   
+  // Build parameterized query parameters for assessments query
+  const assessmentsQueryParams = [sectionCourseId, iloId];
+  let assessmentsParamIndex = 3;
+  let assessmentsSyllabusCondition = '';
+  let assessmentsSyllabusCondition2 = '';
+  let assessmentsSyllabusCondition3 = '';
+  let assessmentsTermCondition = '';
+  
+  if (syllabusId) {
+    assessmentsQueryParams.push(syllabusId);
+    assessmentsSyllabusCondition = `AND sy.syllabus_id = $${assessmentsParamIndex}`;
+    assessmentsSyllabusCondition2 = `AND sy2.syllabus_id = $${assessmentsParamIndex}`;
+    assessmentsSyllabusCondition3 = `AND sy3.syllabus_id = $${assessmentsParamIndex}`;
+    assessmentsParamIndex++;
+  }
+  
+  if (activeTermId) {
+    assessmentsQueryParams.push(activeTermId);
+    assessmentsTermCondition = `AND sc.term_id = $${assessmentsParamIndex}`;
+    assessmentsParamIndex++;
+  }
+  
   // Step 1: Get assessments with stats (simpler query)
   const assessmentsQuery = `
     WITH assessment_codes AS (
@@ -684,7 +771,7 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${assessmentsSyllabusCondition}
     ),
     ilo_from_rubrics AS (
       SELECT DISTINCT
@@ -697,7 +784,7 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${assessmentsSyllabusCondition}
     ),
     ilo_from_mappings AS (
       SELECT DISTINCT
@@ -717,7 +804,7 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+        ${assessmentsSyllabusCondition}
         AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
     ),
     assessment_ilo_connections AS (
@@ -732,7 +819,7 @@ async function getILOStudentList(
           AND sy.section_course_id = $1
           AND sy.review_status = 'approved' 
           AND sy.approval_status = 'approved'
-          ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+          ${assessmentsSyllabusCondition3}
       )
       SELECT DISTINCT
         a.assessment_id,
@@ -760,8 +847,8 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
-        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
+        ${assessmentsSyllabusCondition2}
+        ${assessmentsTermCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         -- Show ALL assessments from the same syllabus as the target ILO
@@ -812,8 +899,8 @@ async function getILOStudentList(
       WHERE a.section_course_id = $1
         AND aic.ilo_id = $2
         AND sy.section_course_id = $1
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
-        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
+        ${assessmentsSyllabusCondition2}
+        ${assessmentsTermCondition.replace('sc.', 'sc.')}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
@@ -855,7 +942,7 @@ async function getILOStudentList(
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
       AND i.ilo_id = $2
-      ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
+      ${assessmentsSyllabusCondition2}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
@@ -969,7 +1056,7 @@ async function getILOStudentList(
   
   let assessmentsResult;
   try {
-    assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
+    assessmentsResult = await db.query(assessmentsQuery, assessmentsQueryParams);
     
     console.log(`[ATTAINMENT SERVICE] ✅ Query executed successfully`);
     console.log(`[ATTAINMENT SERVICE] Found ${assessmentsResult.rows.length} assessments for ILO ${iloId} in section_course ${sectionCourseId}`);
@@ -1291,11 +1378,29 @@ async function getILOStudentList(
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
-      ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
-      ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
+      ${assessmentsSyllabusCondition2}
+      ${assessmentsTermCondition.replace('sc.', 'sc.')}
       AND i.is_active = TRUE
     ORDER BY a.assessment_id
   `;
+  
+  // Build parameters for student scores query
+  const studentScoresParams = [sectionCourseId, iloId];
+  let studentScoresParamIndex = 3;
+  let studentScoresSyllabusCondition = '';
+  let studentScoresTermCondition = '';
+  
+  if (syllabusId) {
+    studentScoresParams.push(syllabusId);
+    studentScoresSyllabusCondition = `AND sy.syllabus_id = $${studentScoresParamIndex}`;
+    studentScoresParamIndex++;
+  }
+  
+  if (activeTermId) {
+    studentScoresParams.push(activeTermId);
+    studentScoresTermCondition = `AND sc.term_id = $${studentScoresParamIndex}`;
+    studentScoresParamIndex++;
+  }
   
   // Step 3: Get student assessment scores for connected assessments (with filters applied)
   // Clean starting point - get student scores for assessments from selected class, published, and selected syllabus
@@ -1321,8 +1426,8 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND sy.review_status = 'approved'
         AND sy.approval_status = 'approved'
-        ${syllabusId ? `AND sy.syllabus_id = ${syllabusId}` : ''}
-        ${activeTermId ? `AND sc.term_id = ${activeTermId}` : ''}
+        ${studentScoresSyllabusCondition}
+        ${studentScoresTermCondition}
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND (aiw.ilo_id = $2 OR r.ilo_id = $2)
@@ -1393,7 +1498,7 @@ async function getILOStudentList(
   const [enrolledResult, connectedAssessmentsResult, scoresResult] = await Promise.all([
     db.query(allEnrolledStudentsQuery, [sectionCourseId]),
     db.query(connectedAssessmentsQuery, assessmentFilterParams),
-    db.query(studentScoresQuery, assessmentFilterParams)
+    db.query(studentScoresQuery, studentScoresParams)
   ]);
   
   console.log(`[ATTAINMENT DEBUG] ✅ All parallel queries completed:`);
