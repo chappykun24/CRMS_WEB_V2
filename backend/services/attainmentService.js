@@ -494,7 +494,6 @@ async function getILOStudentList(
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
         AND i.is_active = TRUE
-        ${assessmentFilterConditions}
       GROUP BY a.assessment_id, a.title, a.type, a.total_points, a.weight_percentage, a.due_date, aic.ilo_id, aic.ilo_weight_percentage, i.ilo_id, sy.section_course_id
     )
     SELECT DISTINCT
@@ -532,12 +531,81 @@ async function getILOStudentList(
     LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
     WHERE sy.section_course_id = $1
       AND i.is_active = TRUE
+      AND i.ilo_id = $2
       ${assessmentFilterConditions}
     GROUP BY ast.assessment_id, ast.assessment_title, ast.assessment_type, ast.total_points, ast.weight_percentage, ast.due_date, ast.ilo_weight_percentage, ast.total_students, ast.submissions_count, ast.average_score, ast.total_score
     ORDER BY ast.due_date ASC, ast.assessment_title ASC
   `;
   
   const assessmentsResult = await db.query(assessmentsQuery, assessmentFilterParams);
+  
+  console.log(`[ATTAINMENT SERVICE] Found ${assessmentsResult.rows.length} assessments for ILO ${iloId} in section_course ${sectionCourseId}`);
+  if (assessmentsResult.rows.length === 0) {
+    console.log(`[ATTAINMENT SERVICE] No assessments found. Checking assessment_ilo_connections...`);
+    // Debug query to see if there are any connections at all
+    const debugQuery = `
+      WITH assessment_ilo_connections AS (
+        SELECT DISTINCT
+          a.assessment_id,
+          COALESCE(aiw.ilo_id, r.ilo_id, im.ilo_id) AS ilo_id
+        FROM assessments a
+        LEFT JOIN assessment_ilo_weights aiw ON a.assessment_id = aiw.assessment_id
+        LEFT JOIN (
+          SELECT DISTINCT r.assessment_id, r.ilo_id
+          FROM rubrics r
+          INNER JOIN assessments a2 ON r.assessment_id = a2.assessment_id
+          WHERE a2.section_course_id = $1
+        ) r ON a.assessment_id = r.assessment_id
+        LEFT JOIN (
+          WITH assessment_codes AS (
+            SELECT DISTINCT
+              a3.assessment_id,
+              COALESCE(
+                (SELECT (task->>'code')::text
+                 FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+                 CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+                 WHERE (task->>'title')::text ILIKE '%' || a3.title || '%'
+                    OR (task->>'name')::text ILIKE '%' || a3.title || '%'
+                 LIMIT 1),
+                (a3.content_data->>'code')::text,
+                (a3.content_data->>'abbreviation')::text,
+                CASE 
+                  WHEN a3.title ~* '[A-Z]{2,4}\s*\d+' 
+                  THEN UPPER(SUBSTRING(a3.title FROM '([A-Z]{2,4}\s*\d+)'))
+                  ELSE NULL
+                END,
+                NULL
+              ) AS assessment_code
+            FROM assessments a3
+            INNER JOIN syllabi sy ON a3.syllabus_id = sy.syllabus_id
+            WHERE a3.section_course_id = $1
+          )
+          SELECT DISTINCT
+            ac.assessment_id,
+            COALESCE(ism.ilo_id, isdg.ilo_id, iiga.ilo_id, icdio.ilo_id) AS ilo_id
+          FROM assessment_codes ac
+          LEFT JOIN ilo_so_mappings ism ON ism.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_sdg_mappings isdg ON isdg.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_iga_mappings iiga ON iiga.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          LEFT JOIN ilo_cdio_mappings icdio ON icdio.assessment_tasks @> ARRAY[ac.assessment_code] AND ac.assessment_code IS NOT NULL
+          WHERE ac.assessment_code IS NOT NULL
+            AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
+        ) im ON a.assessment_id = im.assessment_id
+        WHERE a.section_course_id = $1
+          AND (aiw.ilo_id IS NOT NULL OR r.ilo_id IS NOT NULL OR im.ilo_id IS NOT NULL)
+      )
+      SELECT 
+        COUNT(*) as total_connections,
+        COUNT(*) FILTER (WHERE ilo_id = $2) as connections_for_ilo
+      FROM assessment_ilo_connections
+    `;
+    try {
+      const debugResult = await db.query(debugQuery, [sectionCourseId, iloId]);
+      console.log(`[ATTAINMENT SERVICE] Debug: Total connections: ${debugResult.rows[0]?.total_connections}, For ILO ${iloId}: ${debugResult.rows[0]?.connections_for_ilo}`);
+    } catch (debugError) {
+      console.error(`[ATTAINMENT SERVICE] Debug query error:`, debugError);
+    }
+  }
   
   // Format assessments with mappings
   const assessments = assessmentsResult.rows.map(row => {
