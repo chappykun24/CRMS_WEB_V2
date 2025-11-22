@@ -33,11 +33,12 @@ const ILOAttainment = () => {
   const [lowThreshold, setLowThreshold] = useState(75)
   
   // ILO mapping filters
-  const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [] })
+  const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [] })
   const [selectedSO, setSelectedSO] = useState('')
   const [selectedSDG, setSelectedSDG] = useState('')
   const [selectedIGA, setSelectedIGA] = useState('')
   const [selectedCDIO, setSelectedCDIO] = useState('')
+  const [selectedILOCombination, setSelectedILOCombination] = useState('')
 
   // Refs for cleanup
   const abortControllerRef = useRef(null)
@@ -142,20 +143,33 @@ const ILOAttainment = () => {
     return classes.filter(cls => cls.term_id === activeTermId)
   }, [classes, activeTermId])
 
-  // Load filter options when class is selected
+  // Load filter options when class is selected or filters change
   useEffect(() => {
     const loadFilterOptions = async () => {
       if (!selectedClass?.section_course_id) {
-        setFilterOptions({ so: [], sdg: [], iga: [], cdio: [] })
+        setFilterOptions({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [] })
         return
       }
 
       try {
-        const response = await fetch(`/api/assessments/ilo-attainment/filters/${selectedClass.section_course_id}`)
+        const params = new URLSearchParams()
+        if (selectedSO) params.append('so_id', selectedSO)
+        if (selectedSDG) params.append('sdg_id', selectedSDG)
+        if (selectedIGA) params.append('iga_id', selectedIGA)
+        if (selectedCDIO) params.append('cdio_id', selectedCDIO)
+        
+        const queryString = params.toString()
+        const url = `/api/assessments/ilo-attainment/filters/${selectedClass.section_course_id}${queryString ? `?${queryString}` : ''}`
+        
+        const response = await fetch(url)
         if (response.ok) {
           const result = await response.json()
           if (result.success) {
             setFilterOptions(result.data)
+            // Reset ILO combination selection if it's no longer available
+            if (selectedILOCombination && !result.data.ilo_combinations.find(ilo => ilo.ilo_id.toString() === selectedILOCombination)) {
+              setSelectedILOCombination('')
+            }
           }
         }
       } catch (error) {
@@ -164,7 +178,7 @@ const ILOAttainment = () => {
     }
 
     loadFilterOptions()
-  }, [selectedClass?.section_course_id])
+  }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO])
 
   // Load ILO attainment data with async fetching and error handling
   const loadAttainmentData = useCallback(async (sectionCourseId, iloId = null) => {
@@ -193,6 +207,8 @@ const ILOAttainment = () => {
 
       if (iloId) {
         params.append('ilo_id', iloId.toString())
+      } else if (selectedILOCombination) {
+        params.append('ilo_id', selectedILOCombination)
       }
       
       if (selectedSO) {
@@ -227,10 +243,12 @@ const ILOAttainment = () => {
           setSelectedILO(result.data)
           setStudentList(result.data.students || [])
           setShowStudents(false) // Show assessments first
+          setAttainmentData(null) // Clear summary when showing specific ILO
         } else {
           setAttainmentData(result.data)
           setSelectedILO(null)
           setStudentList([])
+          setShowStudents(false)
         }
       } else {
         throw new Error(result.error || 'Failed to load attainment data')
@@ -245,14 +263,20 @@ const ILOAttainment = () => {
     } finally {
       setLoadingAttainment(false)
     }
-  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination])
 
   // Load data when class is selected or filters change
   useEffect(() => {
-    if (selectedClass?.section_course_id && !selectedILO) {
-      loadAttainmentData(selectedClass.section_course_id)
+    if (selectedClass?.section_course_id) {
+      if (selectedILOCombination) {
+        // If a specific ILO combination is selected, load that ILO's data
+        loadAttainmentData(selectedClass.section_course_id, parseInt(selectedILOCombination))
+      } else if (!selectedILO) {
+        // Otherwise load summary if not viewing a specific ILO
+        loadAttainmentData(selectedClass.section_course_id)
+      }
     }
-  }, [selectedClass?.section_course_id, selectedILO, selectedSO, selectedSDG, selectedIGA, selectedCDIO, loadAttainmentData])
+  }, [selectedClass?.section_course_id, selectedILO, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, loadAttainmentData])
 
   // Reload student list when performance filter changes (only if viewing student list)
   useEffect(() => {
@@ -400,12 +424,15 @@ const ILOAttainment = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Filter by ILO Mapping
                 </label>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Student Outcome (SO)</label>
                     <select
                       value={selectedSO}
-                      onChange={(e) => setSelectedSO(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedSO(e.target.value)
+                        setSelectedILOCombination('')
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                     >
                       <option value="">All SOs</option>
@@ -420,7 +447,10 @@ const ILOAttainment = () => {
                     <label className="block text-xs text-gray-600 mb-1">SDG</label>
                     <select
                       value={selectedSDG}
-                      onChange={(e) => setSelectedSDG(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedSDG(e.target.value)
+                        setSelectedILOCombination('')
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                     >
                       <option value="">All SDGs</option>
@@ -435,7 +465,10 @@ const ILOAttainment = () => {
                     <label className="block text-xs text-gray-600 mb-1">IGA</label>
                     <select
                       value={selectedIGA}
-                      onChange={(e) => setSelectedIGA(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedIGA(e.target.value)
+                        setSelectedILOCombination('')
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                     >
                       <option value="">All IGAs</option>
@@ -450,7 +483,10 @@ const ILOAttainment = () => {
                     <label className="block text-xs text-gray-600 mb-1">CDIO</label>
                     <select
                       value={selectedCDIO}
-                      onChange={(e) => setSelectedCDIO(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedCDIO(e.target.value)
+                        setSelectedILOCombination('')
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                     >
                       <option value="">All CDIOs</option>
@@ -462,52 +498,26 @@ const ILOAttainment = () => {
                     </select>
                   </div>
                 </div>
+                
+                {/* ILO Combinations Filter */}
+                {filterOptions.ilo_combinations && filterOptions.ilo_combinations.length > 0 && (
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">ILO Combination</label>
+                    <select
+                      value={selectedILOCombination}
+                      onChange={(e) => setSelectedILOCombination(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    >
+                      <option value="">All ILOs</option>
+                      {filterOptions.ilo_combinations.map((ilo) => (
+                        <option key={ilo.ilo_id} value={ilo.ilo_id}>
+                          {ilo.ilo_code} - {ilo.combination}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
-              
-              {/* Threshold Filters */}
-              {!selectedILO && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pass Threshold (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={passThreshold}
-                      onChange={(e) => setPassThreshold(parseInt(e.target.value) || 75)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      High Threshold (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={highThreshold}
-                      onChange={(e) => setHighThreshold(parseInt(e.target.value) || 80)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Low Threshold (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={lowThreshold}
-                      onChange={(e) => setLowThreshold(parseInt(e.target.value) || 75)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}

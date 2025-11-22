@@ -222,6 +222,7 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
 router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
   try {
     const { sectionCourseId } = req.params;
+    const { so_id, sdg_id, iga_id, cdio_id } = req.query;
     const sectionCourseIdInt = parseInt(sectionCourseId);
 
     if (!sectionCourseIdInt) {
@@ -295,12 +296,91 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
       ORDER BY cdio.cdio_code
     `;
 
-    const [soResult, sdgResult, igaResult, cdioResult] = await Promise.all([
+    // Get ILO combinations based on selected filters
+    let iloCombinationsQuery = `
+      SELECT DISTINCT
+        i.ilo_id,
+        i.code AS ilo_code,
+        i.description AS ilo_description,
+        ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
+        ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
+        ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes,
+        ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
+      LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
+      LEFT JOIN ilo_sdg_mappings isdg ON i.ilo_id = isdg.ilo_id
+      LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
+      LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
+      LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
+      LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
+      LEFT JOIN cdio_skills cdio ON icdio.cdio_id = cdio.cdio_id
+      WHERE sy.section_course_id = $1
+        AND i.is_active = TRUE
+    `;
+
+    const iloParams = [sectionCourseIdInt];
+    let paramIndex = 2;
+
+    if (so_id) {
+      iloCombinationsQuery += ` AND EXISTS (SELECT 1 FROM ilo_so_mappings ism_filter WHERE ism_filter.ilo_id = i.ilo_id AND ism_filter.so_id = $${paramIndex})`;
+      iloParams.push(parseInt(so_id));
+      paramIndex++;
+    }
+    if (sdg_id) {
+      iloCombinationsQuery += ` AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg_filter WHERE isdg_filter.ilo_id = i.ilo_id AND isdg_filter.sdg_id = $${paramIndex})`;
+      iloParams.push(parseInt(sdg_id));
+      paramIndex++;
+    }
+    if (iga_id) {
+      iloCombinationsQuery += ` AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga_filter WHERE iiga_filter.ilo_id = i.ilo_id AND iiga_filter.iga_id = $${paramIndex})`;
+      iloParams.push(parseInt(iga_id));
+      paramIndex++;
+    }
+    if (cdio_id) {
+      iloCombinationsQuery += ` AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio_filter WHERE icdio_filter.ilo_id = i.ilo_id AND icdio_filter.cdio_id = $${paramIndex})`;
+      iloParams.push(parseInt(cdio_id));
+      paramIndex++;
+    }
+
+    iloCombinationsQuery += ` GROUP BY i.ilo_id, i.code, i.description ORDER BY i.code`;
+
+    const [soResult, sdgResult, igaResult, cdioResult, iloCombinationsResult] = await Promise.all([
       db.query(soQuery, [sectionCourseIdInt]),
       db.query(sdgQuery, [sectionCourseIdInt]),
       db.query(igaQuery, [sectionCourseIdInt]),
-      db.query(cdioQuery, [sectionCourseIdInt])
+      db.query(cdioQuery, [sectionCourseIdInt]),
+      db.query(iloCombinationsQuery, iloParams)
     ]);
+
+    // Format ILO combinations with readable combination strings
+    const iloCombinations = iloCombinationsResult.rows.map(row => {
+      const mappings = [];
+      if (row.so_codes && row.so_codes.length > 0) {
+        mappings.push(...row.so_codes.map(code => `SO:${code}`));
+      }
+      if (row.sdg_codes && row.sdg_codes.length > 0) {
+        mappings.push(...row.sdg_codes.map(code => `SDG:${code}`));
+      }
+      if (row.iga_codes && row.iga_codes.length > 0) {
+        mappings.push(...row.iga_codes.map(code => `IGA:${code}`));
+      }
+      if (row.cdio_codes && row.cdio_codes.length > 0) {
+        mappings.push(...row.cdio_codes.map(code => `CDIO:${code}`));
+      }
+      
+      return {
+        ilo_id: row.ilo_id,
+        ilo_code: row.ilo_code,
+        description: row.ilo_description,
+        combination: mappings.length > 0 ? mappings.join(', ') : 'No mappings',
+        so_codes: row.so_codes || [],
+        sdg_codes: row.sdg_codes || [],
+        iga_codes: row.iga_codes || [],
+        cdio_codes: row.cdio_codes || []
+      };
+    });
 
     res.json({
       success: true,
@@ -308,7 +388,8 @@ router.get('/ilo-attainment/filters/:sectionCourseId', async (req, res) => {
         so: soResult.rows,
         sdg: sdgResult.rows,
         iga: igaResult.rows,
-        cdio: cdioResult.rows
+        cdio: cdioResult.rows,
+        ilo_combinations: iloCombinations
       }
     });
   } catch (error) {
