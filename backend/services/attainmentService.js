@@ -361,24 +361,25 @@ async function getILOStudentList(
   // Use separate, simpler queries for accuracy
   
   // Build filter conditions safely for assessments query
+  // When filters are applied, only include assessments that match the selected mappings
   const assessmentFilterParams = [sectionCourseId, iloId];
-  let assessmentFilterConditions = '';
+  let hasFilters = false;
   
   if (soId) {
-    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = i.ilo_id AND ism.so_id = $' + assessmentFilterParams.length + ')';
     assessmentFilterParams.push(soId);
+    hasFilters = true;
   }
   if (sdgId) {
-    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = i.ilo_id AND isdg.sdg_id = $' + assessmentFilterParams.length + ')';
     assessmentFilterParams.push(sdgId);
+    hasFilters = true;
   }
   if (igaId) {
-    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = i.ilo_id AND iiga.iga_id = $' + assessmentFilterParams.length + ')';
     assessmentFilterParams.push(igaId);
+    hasFilters = true;
   }
   if (cdioId) {
-    assessmentFilterConditions += ' AND EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = i.ilo_id AND icdio.cdio_id = $' + assessmentFilterParams.length + ')';
     assessmentFilterParams.push(cdioId);
+    hasFilters = true;
   }
   
   // Step 1: Get assessments with stats (simpler query)
@@ -802,14 +803,35 @@ async function getILOStudentList(
   `;
   
   // Step 2: Get assessments connected to this ILO (with filters applied)
-  // Reuse the same filter params and conditions from above
-  // Step 2: Get assessments connected to this ILO (simpler standalone query)
-  // Since assessments are connected to the syllabus, include ALL assessments from the same syllabus as the ILO
+  // When filters are applied, only include assessments whose codes match the filtered mappings
   const connectedAssessmentsQuery = `
     WITH ilo_syllabus AS (
       SELECT DISTINCT syllabus_id
       FROM ilos
       WHERE ilo_id = $2 AND is_active = TRUE
+    ),
+    assessment_codes_for_filter AS (
+      SELECT DISTINCT
+        a.assessment_id,
+        COALESCE(
+          (SELECT (task->>'code')::text
+           FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+           CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+           WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
+              OR (task->>'name')::text ILIKE '%' || a.title || '%'
+           LIMIT 1),
+          (a.content_data->>'code')::text,
+          (a.content_data->>'abbreviation')::text,
+          CASE 
+            WHEN a.title ~* '[A-Z]{2,4}\s*\d+' 
+            THEN UPPER(REGEXP_REPLACE(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'), '\s+', '', 'g'))
+            ELSE NULL
+          END,
+          NULL
+        ) AS assessment_code
+      FROM assessments a
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      WHERE a.section_course_id = $1
     ),
     assessment_ilo_connections AS (
       SELECT DISTINCT
@@ -876,7 +898,17 @@ async function getILOStudentList(
         AND sy.section_course_id = $1
         AND a.weight_percentage IS NOT NULL
         AND a.weight_percentage > 0
-        -- Show ALL assessments from the same syllabus as the target ILO
+        -- Apply filters: only include assessments that match selected mappings
+        ${hasFilters ? `AND EXISTS (
+          SELECT 1 FROM assessment_codes_for_filter acf
+          WHERE acf.assessment_id = a.assessment_id
+            AND (
+              ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
+              ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+              ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+              ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+            )
+        )` : ''}
     )
     SELECT DISTINCT
       a.assessment_id,
@@ -894,12 +926,34 @@ async function getILOStudentList(
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
       AND i.is_active = TRUE
-      ${assessmentFilterConditions}
     ORDER BY a.assessment_id
   `;
   
-  // Step 3: Get student assessment scores for connected assessments
+  // Step 3: Get student assessment scores for connected assessments (with filters applied)
   const studentScoresQuery = `
+    WITH assessment_codes_for_filter AS (
+      SELECT DISTINCT
+        a.assessment_id,
+        COALESCE(
+          (SELECT (task->>'code')::text
+           FROM jsonb_array_elements(sy.assessment_framework->'components') AS component
+           CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+           WHERE (task->>'title')::text ILIKE '%' || a.title || '%'
+              OR (task->>'name')::text ILIKE '%' || a.title || '%'
+           LIMIT 1),
+          (a.content_data->>'code')::text,
+          (a.content_data->>'abbreviation')::text,
+          CASE 
+            WHEN a.title ~* '[A-Z]{2,4}\s*\d+' 
+            THEN UPPER(REGEXP_REPLACE(SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'), '\s+', '', 'g'))
+            ELSE NULL
+          END,
+          NULL
+        ) AS assessment_code
+      FROM assessments a
+      INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      WHERE a.section_course_id = $1
+    )
     SELECT
       ce.student_id,
       ce.enrollment_id,
@@ -994,14 +1048,24 @@ async function getILOStudentList(
       AND sub.assessment_id = a.assessment_id
       AND (sub.transmuted_score IS NOT NULL OR sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
     )
-    WHERE ce.section_course_id = $1
+      WHERE ce.section_course_id = $1
       AND ce.status = 'enrolled'
       AND aic.ilo_id = $2
       AND a.weight_percentage IS NOT NULL
       AND a.weight_percentage > 0
       AND sy.section_course_id = $1
       AND i.is_active = TRUE
-      ${assessmentFilterConditions}
+      -- Apply same filter conditions to student scores query
+      ${hasFilters ? `AND EXISTS (
+        SELECT 1 FROM assessment_codes_for_filter acf
+        WHERE acf.assessment_id = a.assessment_id
+          AND (
+            ${soId ? `EXISTS (SELECT 1 FROM ilo_so_mappings ism WHERE ism.ilo_id = $2 AND ism.so_id = $${assessmentFilterParams.indexOf(soId) + 1} AND (ism.assessment_tasks IS NULL OR array_length(ism.assessment_tasks, 1) IS NULL OR ism.assessment_tasks @> ARRAY[acf.assessment_code]))` : 'FALSE'}
+            ${sdgId ? `OR EXISTS (SELECT 1 FROM ilo_sdg_mappings isdg WHERE isdg.ilo_id = $2 AND isdg.sdg_id = $${assessmentFilterParams.indexOf(sdgId) + 1} AND (isdg.assessment_tasks IS NULL OR array_length(isdg.assessment_tasks, 1) IS NULL OR isdg.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+            ${igaId ? `OR EXISTS (SELECT 1 FROM ilo_iga_mappings iiga WHERE iiga.ilo_id = $2 AND iiga.iga_id = $${assessmentFilterParams.indexOf(igaId) + 1} AND (iiga.assessment_tasks IS NULL OR array_length(iiga.assessment_tasks, 1) IS NULL OR iiga.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+            ${cdioId ? `OR EXISTS (SELECT 1 FROM ilo_cdio_mappings icdio WHERE icdio.ilo_id = $2 AND icdio.cdio_id = $${assessmentFilterParams.indexOf(cdioId) + 1} AND (icdio.assessment_tasks IS NULL OR array_length(icdio.assessment_tasks, 1) IS NULL OR icdio.assessment_tasks @> ARRAY[acf.assessment_code]))` : ''}
+          )
+      )` : ''}
   `;
   
   // Execute all queries
