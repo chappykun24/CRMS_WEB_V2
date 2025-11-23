@@ -10,7 +10,8 @@ const ILOAttainmentSummaryTable = ({
   assessments = [],
   passThreshold = 75,
   students = [], // Add students data to count actual attainment
-  mappingData = {} // Add mapping data with descriptions: { so: [], sdg: [], iga: [], cdio: [], ilo_so_combinations: [], ilo_sdg_combinations: [], ilo_iga_combinations: [], ilo_cdio_combinations: [] }
+  mappingData = {}, // Add mapping data with descriptions: { so: [], sdg: [], iga: [], cdio: [], ilo_so_combinations: [], ilo_sdg_combinations: [], ilo_iga_combinations: [], ilo_cdio_combinations: [] }
+  selectedPair = null // Selected pair: { type: 'SO'|'SDG'|'IGA'|'CDIO', key: 'ilo_so_key' etc }
 }) => {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -420,277 +421,89 @@ const ILOAttainmentSummaryTable = ({
           </div>
         )}
 
-        {/* Student Outcomes (SO) / SDG / IGA / CDIO Attainment Table */}
+        {/* Selected Pair (SO/SDG/IGA/CDIO) Attainment Table */}
         {(() => {
-          // Collect all mappings from ILOs
-          const allMappings = []
-          
-          iloAttainment.forEach(ilo => {
-            // Get mappings from ilo.mapped_to if available
-            if (ilo.mapped_to && Array.isArray(ilo.mapped_to)) {
-              ilo.mapped_to.forEach(mapping => {
-                allMappings.push({
-                  type: mapping.type,
-                  code: mapping.code,
-                  ilo_code: ilo.ilo_code,
-                  ilo_description: ilo.description,
-                  attainment_percentage: ilo.attainment_percentage,
-                  attained_count: Math.round((ilo.attainment_percentage / 100) * totalStudents),
-                  total_students: totalStudents
-                })
-              })
-            }
-            
-            // Also check mappingData for combinations with descriptions
-            if (mappingData.ilo_so_combinations) {
-              mappingData.ilo_so_combinations.forEach(combo => {
-                if (combo.ilo_id === ilo.ilo_id) {
-                  allMappings.push({
-                    type: 'SO',
-                    code: combo.so_code,
-                    description: combo.so_description,
-                    ilo_code: ilo.ilo_code,
-                    ilo_description: ilo.description,
-                    attainment_percentage: ilo.attainment_percentage,
-                    attained_count: Math.round((ilo.attainment_percentage / 100) * totalStudents),
-                    total_students: totalStudents
-                  })
-                }
-              })
-            }
-            
-            if (mappingData.ilo_sdg_combinations) {
-              mappingData.ilo_sdg_combinations.forEach(combo => {
-                if (combo.ilo_id === ilo.ilo_id) {
-                  allMappings.push({
-                    type: 'SDG',
-                    code: combo.sdg_code,
-                    description: combo.sdg_description,
-                    ilo_code: ilo.ilo_code,
-                    ilo_description: ilo.description,
-                    attainment_percentage: ilo.attainment_percentage,
-                    attained_count: Math.round((ilo.attainment_percentage / 100) * totalStudents),
-                    total_students: totalStudents
-                  })
-                }
-              })
-            }
-            
-            if (mappingData.ilo_iga_combinations) {
-              mappingData.ilo_iga_combinations.forEach(combo => {
-                if (combo.ilo_id === ilo.ilo_id) {
-                  allMappings.push({
-                    type: 'IGA',
-                    code: combo.iga_code,
-                    description: combo.iga_description,
-                    ilo_code: ilo.ilo_code,
-                    ilo_description: ilo.description,
-                    attainment_percentage: ilo.attainment_percentage,
-                    attained_count: Math.round((ilo.attainment_percentage / 100) * totalStudents),
-                    total_students: totalStudents
-                  })
-                }
-              })
-            }
-            
-            if (mappingData.ilo_cdio_combinations) {
-              mappingData.ilo_cdio_combinations.forEach(combo => {
-                if (combo.ilo_id === ilo.ilo_id) {
-                  allMappings.push({
-                    type: 'CDIO',
-                    code: combo.cdio_code,
-                    description: combo.cdio_description,
-                    ilo_code: ilo.ilo_code,
-                    ilo_description: ilo.description,
-                    attainment_percentage: ilo.attainment_percentage,
-                    attained_count: Math.round((ilo.attainment_percentage / 100) * totalStudents),
-                    total_students: totalStudents
-                  })
-                }
-              })
-            }
-          })
-          
-          // Group by type and remove duplicates, also enrich with descriptions from reference data
-          const soMappings = []
-          const sdgMappings = []
-          const igaMappings = []
-          const cdioMappings = []
-          
-          const seen = new Set()
-          allMappings.forEach(mapping => {
-            const key = `${mapping.type}_${mapping.code}`
-            if (!seen.has(key)) {
-              seen.add(key)
-              
-              // Enrich with description from reference data if not already present
-              if (!mapping.description) {
-                if (mapping.type === 'SO' && mappingData.so) {
-                  const soRef = mappingData.so.find(r => r.so_code === mapping.code)
-                  if (soRef) mapping.description = soRef.description || soRef.name
-                } else if (mapping.type === 'SDG' && mappingData.sdg) {
-                  const sdgRef = mappingData.sdg.find(r => r.sdg_code === mapping.code)
-                  if (sdgRef) mapping.description = sdgRef.description || sdgRef.name
-                } else if (mapping.type === 'IGA' && mappingData.iga) {
-                  const igaRef = mappingData.iga.find(r => r.iga_code === mapping.code)
-                  if (igaRef) mapping.description = igaRef.description || igaRef.name
-                } else if (mapping.type === 'CDIO' && mappingData.cdio) {
-                  const cdioRef = mappingData.cdio.find(r => r.cdio_code === mapping.code)
-                  if (cdioRef) mapping.description = cdioRef.description || cdioRef.name
-                }
-              }
-              
-              if (mapping.type === 'SO') soMappings.push(mapping)
-              else if (mapping.type === 'SDG') sdgMappings.push(mapping)
-              else if (mapping.type === 'IGA') igaMappings.push(mapping)
-              else if (mapping.type === 'CDIO') cdioMappings.push(mapping)
-            }
-          })
-          
-          // Render tables for each mapping type
-          const tables = []
-          
-          if (soMappings.length > 0) {
-            tables.push(
-              <div key="so" className="table-container">
-                <h3 className="text-sm font-semibold mb-2">3. Student Outcomes (SO) Attainment</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>SO</th>
-                      <th>Description</th>
-                      <th>Students Attained</th>
-                      <th>% Attained</th>
-                      <th>Attainment Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {soMappings.map((mapping, idx) => {
-                      const isAttained = mapping.attainment_percentage >= passThreshold
-                      return (
-                        <tr key={`so-${idx}`}>
-                          <td>{mapping.code}</td>
-                          <td style={{ textAlign: 'left' }}>{mapping.description || 'N/A'}</td>
-                          <td>{mapping.attained_count}/{mapping.total_students}</td>
-                          <td>{mapping.attainment_percentage.toFixed(2)}%</td>
-                          <td className={isAttained ? 'attained' : 'not-attained'}>
-                            {isAttained ? '✓ Attained' : '✗ Not Attained'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
+          if (!selectedPair || !selectedPair.type || !selectedPair.key) {
+            return null
           }
           
-          if (sdgMappings.length > 0) {
-            tables.push(
-              <div key="sdg" className="table-container">
-                <h3 className="text-sm font-semibold mb-2">4. Sustainable Development Goals (SDG) Attainment</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>SDG</th>
-                      <th>Description</th>
-                      <th>Students Attained</th>
-                      <th>% Attained</th>
-                      <th>Attainment Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sdgMappings.map((mapping, idx) => {
-                      const isAttained = mapping.attainment_percentage >= passThreshold
-                      return (
-                        <tr key={`sdg-${idx}`}>
-                          <td>{mapping.code}</td>
-                          <td style={{ textAlign: 'left' }}>{mapping.description || 'N/A'}</td>
-                          <td>{mapping.attained_count}/{mapping.total_students}</td>
-                          <td>{mapping.attainment_percentage.toFixed(2)}%</td>
-                          <td className={isAttained ? 'attained' : 'not-attained'}>
-                            {isAttained ? '✓ Attained' : '✗ Not Attained'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
+          // Find the selected combination
+          let selectedCombination = null
+          let pairType = selectedPair.type
+          let pairCode = ''
+          let pairDescription = ''
+          let pairLabel = ''
+          
+          if (pairType === 'SO' && mappingData.ilo_so_combinations) {
+            selectedCombination = mappingData.ilo_so_combinations.find(c => c.ilo_so_key === selectedPair.key)
+            if (selectedCombination) {
+              pairCode = selectedCombination.so_code
+              pairDescription = selectedCombination.so_description || ''
+              pairLabel = 'Student Outcomes (SO)'
+            }
+          } else if (pairType === 'SDG' && mappingData.ilo_sdg_combinations) {
+            selectedCombination = mappingData.ilo_sdg_combinations.find(c => c.ilo_sdg_key === selectedPair.key)
+            if (selectedCombination) {
+              pairCode = selectedCombination.sdg_code
+              pairDescription = selectedCombination.sdg_description || ''
+              pairLabel = 'Sustainable Development Goals (SDG)'
+            }
+          } else if (pairType === 'IGA' && mappingData.ilo_iga_combinations) {
+            selectedCombination = mappingData.ilo_iga_combinations.find(c => c.ilo_iga_key === selectedPair.key)
+            if (selectedCombination) {
+              pairCode = selectedCombination.iga_code
+              pairDescription = selectedCombination.iga_description || ''
+              pairLabel = 'Institutional Graduate Attributes (IGA)'
+            }
+          } else if (pairType === 'CDIO' && mappingData.ilo_cdio_combinations) {
+            selectedCombination = mappingData.ilo_cdio_combinations.find(c => c.ilo_cdio_key === selectedPair.key)
+            if (selectedCombination) {
+              pairCode = selectedCombination.cdio_code
+              pairDescription = selectedCombination.cdio_description || ''
+              pairLabel = 'CDIO Skills'
+            }
           }
           
-          if (igaMappings.length > 0) {
-            tables.push(
-              <div key="iga" className="table-container">
-                <h3 className="text-sm font-semibold mb-2">5. Institutional Graduate Attributes (IGA) Attainment</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>IGA</th>
-                      <th>Description</th>
-                      <th>Students Attained</th>
-                      <th>% Attained</th>
-                      <th>Attainment Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {igaMappings.map((mapping, idx) => {
-                      const isAttained = mapping.attainment_percentage >= passThreshold
-                      return (
-                        <tr key={`iga-${idx}`}>
-                          <td>{mapping.code}</td>
-                          <td style={{ textAlign: 'left' }}>{mapping.description || 'N/A'}</td>
-                          <td>{mapping.attained_count}/{mapping.total_students}</td>
-                          <td>{mapping.attainment_percentage.toFixed(2)}%</td>
-                          <td className={isAttained ? 'attained' : 'not-attained'}>
-                            {isAttained ? '✓ Attained' : '✗ Not Attained'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
+          if (!selectedCombination) {
+            return null
           }
           
-          if (cdioMappings.length > 0) {
-            tables.push(
-              <div key="cdio" className="table-container">
-                <h3 className="text-sm font-semibold mb-2">6. CDIO Skills Attainment</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>CDIO</th>
-                      <th>Description</th>
-                      <th>Students Attained</th>
-                      <th>% Attained</th>
-                      <th>Attainment Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cdioMappings.map((mapping, idx) => {
-                      const isAttained = mapping.attainment_percentage >= passThreshold
-                      return (
-                        <tr key={`cdio-${idx}`}>
-                          <td>{mapping.code}</td>
-                          <td style={{ textAlign: 'left' }}>{mapping.description || 'N/A'}</td>
-                          <td>{mapping.attained_count}/{mapping.total_students}</td>
-                          <td>{mapping.attainment_percentage.toFixed(2)}%</td>
-                          <td className={isAttained ? 'attained' : 'not-attained'}>
-                            {isAttained ? '✓ Attained' : '✗ Not Attained'}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
+          // Find the ILO that matches this combination
+          const matchingILO = iloAttainment.find(ilo => ilo.ilo_id === selectedCombination.ilo_id)
+          if (!matchingILO) {
+            return null
           }
           
-          return tables.length > 0 ? <>{tables}</> : null
+          const attainedCount = Math.round((matchingILO.attainment_percentage / 100) * totalStudents)
+          const isAttained = matchingILO.attainment_percentage >= passThreshold
+          
+          return (
+            <div className="table-container">
+              <h3 className="text-sm font-semibold mb-2">3. {pairLabel} Attainment</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>{pairType}</th>
+                    <th>Description</th>
+                    <th>Students Attained</th>
+                    <th>% Attained</th>
+                    <th>Attainment Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{pairCode}</td>
+                    <td style={{ textAlign: 'left' }}>{pairDescription || 'N/A'}</td>
+                    <td>{attainedCount}/{totalStudents}</td>
+                    <td>{matchingILO.attainment_percentage.toFixed(2)}%</td>
+                    <td className={isAttained ? 'attained' : 'not-attained'}>
+                      {isAttained ? '✓ Attained' : '✗ Not Attained'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
         })()}
 
         {/* Interpretation */}

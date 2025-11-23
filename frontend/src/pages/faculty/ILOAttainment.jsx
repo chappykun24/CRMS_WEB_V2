@@ -676,6 +676,13 @@ const ILOAttainment = () => {
                     passThreshold={passThreshold}
                     students={studentList || []}
                     mappingData={filterOptions}
+                    selectedPair={
+                      selectedILOSO ? { type: 'SO', key: selectedILOSO } :
+                      selectedILOSDG ? { type: 'SDG', key: selectedILOSDG } :
+                      selectedILOIGA ? { type: 'IGA', key: selectedILOIGA } :
+                      selectedILOCDIO ? { type: 'CDIO', key: selectedILOCDIO } :
+                      null
+                    }
                   />
                 )}
 
