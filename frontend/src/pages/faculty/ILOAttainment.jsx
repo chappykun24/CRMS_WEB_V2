@@ -483,33 +483,152 @@ const ILOAttainment = () => {
 
         {/* Filters Section with Class Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          {/* Class Selection */}
-          <div className="mb-4">
-            <label className="block text-xs text-gray-600 mb-1">Class</label>
-            <div className="flex items-center space-x-2">
-              <select
-                value={selectedClass?.section_course_id || ''}
-                onChange={(e) => {
-                  const classId = parseInt(e.target.value)
-                  const cls = filteredClasses.find(c => c.section_course_id === classId)
-                  setSelectedClass(cls || null)
-                }}
-                className="flex-1 max-w-md px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                disabled={loading}
-              >
-                <option value="">-- Select a class --</option>
-                {filteredClasses.map((cls) => (
-                  <option key={cls.section_course_id} value={cls.section_course_id}>
-                    {cls.course_title} - {cls.section_code}
-                  </option>
-                ))}
-              </select>
+          <div className="flex gap-6 items-start">
+            {/* Class Selection */}
+            <div className="flex-shrink-0">
+              <label className="block text-xs text-gray-600 mb-1">Class</label>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={selectedClass?.section_course_id || ''}
+                  onChange={(e) => {
+                    const classId = parseInt(e.target.value)
+                    const cls = filteredClasses.find(c => c.section_course_id === classId)
+                    setSelectedClass(cls || null)
+                  }}
+                  className="w-64 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  disabled={loading}
+                >
+                  <option value="">-- Select a class --</option>
+                  {filteredClasses.map((cls) => (
+                    <option key={cls.section_course_id} value={cls.section_course_id}>
+                      {cls.course_title} - {cls.section_code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {filteredClasses.length === 0 && !loading && (
+                <p className="mt-2 text-xs text-gray-500">No classes available for the active term.</p>
+              )}
             </div>
-            {filteredClasses.length === 0 && !loading && (
-              <p className="mt-2 text-xs text-gray-500">No classes available for the active term.</p>
-            )}
-          </div>
 
+            {/* ILO Filters - Horizontal Arrangement */}
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Filters</h3>
+              <div className="grid grid-cols-4 gap-4">
+                {/* ILO-SO Filter */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ILO-SO</label>
+                  <select
+                    value={selectedILOSO}
+                    onChange={(e) => {
+                      setSelectedILOSO(e.target.value)
+                      setSelectedILOSDG('')
+                      setSelectedILOIGA('')
+                      setSelectedILOCDIO('')
+                      setSelectedILOCombination('')
+                      setSelectedSO('')
+                      setSelectedSDG('')
+                      setSelectedIGA('')
+                      setSelectedCDIO('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    disabled={!selectedClass || !filterOptions.ilo_so_combinations || filterOptions.ilo_so_combinations.length === 0}
+                  >
+                    <option value="">All ILO-SO</option>
+                    {filterOptions.ilo_so_combinations?.map((combo) => (
+                      <option key={combo.ilo_so_key} value={combo.ilo_so_key}>
+                        {combo.combination_label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ILO-SDG Filter */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ILO-SDG</label>
+                  <select
+                    value={selectedILOSDG}
+                    onChange={(e) => {
+                      setSelectedILOSDG(e.target.value)
+                      setSelectedILOSO('')
+                      setSelectedILOIGA('')
+                      setSelectedILOCDIO('')
+                      setSelectedILOCombination('')
+                      setSelectedSO('')
+                      setSelectedSDG('')
+                      setSelectedIGA('')
+                      setSelectedCDIO('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    disabled={!selectedClass || !filterOptions.ilo_sdg_combinations || filterOptions.ilo_sdg_combinations.length === 0}
+                  >
+                    <option value="">All ILO-SDG</option>
+                    {filterOptions.ilo_sdg_combinations?.map((combo) => (
+                      <option key={combo.ilo_sdg_key} value={combo.ilo_sdg_key}>
+                        {combo.combination_label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ILO-IGA Filter */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ILO-IGA</label>
+                  <select
+                    value={selectedILOIGA}
+                    onChange={(e) => {
+                      setSelectedILOIGA(e.target.value)
+                      setSelectedILOSO('')
+                      setSelectedILOSDG('')
+                      setSelectedILOCDIO('')
+                      setSelectedILOCombination('')
+                      setSelectedSO('')
+                      setSelectedSDG('')
+                      setSelectedIGA('')
+                      setSelectedCDIO('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    disabled={!selectedClass || !filterOptions.ilo_iga_combinations || filterOptions.ilo_iga_combinations.length === 0}
+                  >
+                    <option value="">All ILO-IGA</option>
+                    {filterOptions.ilo_iga_combinations?.map((combo) => (
+                      <option key={combo.ilo_iga_key} value={combo.ilo_iga_key}>
+                        {combo.combination_label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ILO-CDIO Filter */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">ILO-CDIO</label>
+                  <select
+                    value={selectedILOCDIO}
+                    onChange={(e) => {
+                      setSelectedILOCDIO(e.target.value)
+                      setSelectedILOSO('')
+                      setSelectedILOSDG('')
+                      setSelectedILOIGA('')
+                      setSelectedILOCombination('')
+                      setSelectedSO('')
+                      setSelectedSDG('')
+                      setSelectedIGA('')
+                      setSelectedCDIO('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                    disabled={!selectedClass || !filterOptions.ilo_cdio_combinations || filterOptions.ilo_cdio_combinations.length === 0}
+                  >
+                    <option value="">All ILO-CDIO</option>
+                    {filterOptions.ilo_cdio_combinations?.map((combo) => (
+                      <option key={combo.ilo_cdio_key} value={combo.ilo_cdio_key}>
+                        {combo.combination_label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Loading State with Skeleton */}
@@ -865,127 +984,9 @@ const ILOAttainment = () => {
                 )}
               </div>
 
-              {/* Right Sidebar - Filters and Selected ILO Pair */}
+              {/* Right Sidebar - Selected ILO Pair */}
               <div className="w-80 flex-shrink-0">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 h-fit max-h-[calc(100vh-120px)] overflow-y-auto space-y-4">
-                  {/* ILO Filters - Vertical Arrangement */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Filters</h3>
-                    <div className="space-y-3">
-                      {/* ILO-SO Filter */}
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">ILO-SO</label>
-                        <select
-                          value={selectedILOSO}
-                          onChange={(e) => {
-                            setSelectedILOSO(e.target.value)
-                            setSelectedILOSDG('')
-                            setSelectedILOIGA('')
-                            setSelectedILOCDIO('')
-                            setSelectedILOCombination('')
-                            setSelectedSO('')
-                            setSelectedSDG('')
-                            setSelectedIGA('')
-                            setSelectedCDIO('')
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                          disabled={!selectedClass || !filterOptions.ilo_so_combinations || filterOptions.ilo_so_combinations.length === 0}
-                        >
-                          <option value="">All ILO-SO</option>
-                          {filterOptions.ilo_so_combinations?.map((combo) => (
-                            <option key={combo.ilo_so_key} value={combo.ilo_so_key}>
-                              {combo.combination_label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* ILO-SDG Filter */}
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">ILO-SDG</label>
-                        <select
-                          value={selectedILOSDG}
-                          onChange={(e) => {
-                            setSelectedILOSDG(e.target.value)
-                            setSelectedILOSO('')
-                            setSelectedILOIGA('')
-                            setSelectedILOCDIO('')
-                            setSelectedILOCombination('')
-                            setSelectedSO('')
-                            setSelectedSDG('')
-                            setSelectedIGA('')
-                            setSelectedCDIO('')
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                          disabled={!selectedClass || !filterOptions.ilo_sdg_combinations || filterOptions.ilo_sdg_combinations.length === 0}
-                        >
-                          <option value="">All ILO-SDG</option>
-                          {filterOptions.ilo_sdg_combinations?.map((combo) => (
-                            <option key={combo.ilo_sdg_key} value={combo.ilo_sdg_key}>
-                              {combo.combination_label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* ILO-IGA Filter */}
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">ILO-IGA</label>
-                        <select
-                          value={selectedILOIGA}
-                          onChange={(e) => {
-                            setSelectedILOIGA(e.target.value)
-                            setSelectedILOSO('')
-                            setSelectedILOSDG('')
-                            setSelectedILOCDIO('')
-                            setSelectedILOCombination('')
-                            setSelectedSO('')
-                            setSelectedSDG('')
-                            setSelectedIGA('')
-                            setSelectedCDIO('')
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                          disabled={!selectedClass || !filterOptions.ilo_iga_combinations || filterOptions.ilo_iga_combinations.length === 0}
-                        >
-                          <option value="">All ILO-IGA</option>
-                          {filterOptions.ilo_iga_combinations?.map((combo) => (
-                            <option key={combo.ilo_iga_key} value={combo.ilo_iga_key}>
-                              {combo.combination_label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* ILO-CDIO Filter */}
-                      <div>
-                        <label className="block text-xs text-gray-600 mb-1">ILO-CDIO</label>
-                        <select
-                          value={selectedILOCDIO}
-                          onChange={(e) => {
-                            setSelectedILOCDIO(e.target.value)
-                            setSelectedILOSO('')
-                            setSelectedILOSDG('')
-                            setSelectedILOIGA('')
-                            setSelectedILOCombination('')
-                            setSelectedSO('')
-                            setSelectedSDG('')
-                            setSelectedIGA('')
-                            setSelectedCDIO('')
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                          disabled={!selectedClass || !filterOptions.ilo_cdio_combinations || filterOptions.ilo_cdio_combinations.length === 0}
-                        >
-                          <option value="">All ILO-CDIO</option>
-                          {filterOptions.ilo_cdio_combinations?.map((combo) => (
-                            <option key={combo.ilo_cdio_key} value={combo.ilo_cdio_key}>
-                              {combo.combination_label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Selected ILO Pair */}
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
