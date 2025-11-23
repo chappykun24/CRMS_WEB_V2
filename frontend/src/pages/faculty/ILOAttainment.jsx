@@ -4,6 +4,7 @@ import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUt
 import { TableSkeleton } from '../../components/skeletons'
 import ILOAttainmentSkeleton from '../../components/skeletons/ILOAttainmentSkeleton'
 import ILOInsights from '../../components/ILOInsights'
+import ILOAttainmentSummaryTable from '../../components/ILOAttainmentSummaryTable'
 import {
   AcademicCapIcon,
   ChartBarIcon,
@@ -641,6 +642,39 @@ const ILOAttainment = () => {
             <div className="flex gap-6 items-stretch flex-1 min-h-0 pb-4">
               {/* Main Content Area - Student Results */}
               <div className="flex-1 min-w-0 flex flex-col space-y-6 overflow-y-auto">
+                {/* Summary Table - Show when class is selected and we have summary data */}
+                {selectedClass && attainmentData && !selectedILO && (
+                  <ILOAttainmentSummaryTable
+                    courseCode={selectedClass.course_code}
+                    courseTitle={selectedClass.course_title}
+                    sectionCode={selectedClass.section_code}
+                    totalStudents={attainmentData.summary?.total_students || 0}
+                    iloAttainment={attainmentData.ilo_attainment || []}
+                    assessments={[]}
+                    passThreshold={passThreshold}
+                  />
+                )}
+
+                {/* Summary Table - Also show when viewing a specific ILO */}
+                {selectedClass && selectedILO && (
+                  <ILOAttainmentSummaryTable
+                    courseCode={selectedClass.course_code}
+                    courseTitle={selectedClass.course_title}
+                    sectionCode={selectedClass.section_code}
+                    totalStudents={selectedILO.total_students || 0}
+                    iloAttainment={[{
+                      ilo_id: selectedILO.ilo_id,
+                      ilo_code: selectedILO.ilo_code,
+                      description: selectedILO.description,
+                      attainment_percentage: selectedILO.attained_count && selectedILO.total_students 
+                        ? (selectedILO.attained_count / selectedILO.total_students) * 100 
+                        : 0
+                    }]}
+                    assessments={selectedILO.assessments || []}
+                    passThreshold={passThreshold}
+                  />
+                )}
+
                 {selectedClass && selectedILO ? (
                   <>
                     {/* Percentage Range Filter */}
