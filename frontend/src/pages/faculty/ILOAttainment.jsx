@@ -543,9 +543,6 @@ const ILOAttainment = () => {
             <div className="space-y-4">
               {/* ILO Mapping Filters */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Filter by ILO Mapping
-                </label>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Student Outcome (SO)</label>
