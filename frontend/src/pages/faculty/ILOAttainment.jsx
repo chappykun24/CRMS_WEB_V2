@@ -471,8 +471,8 @@ const ILOAttainment = () => {
   }
 
   return (
-    <div className="h-full bg-gray-50 overflow-y-auto">
-      <div className="w-full px-6 py-4">
+    <div className="h-full bg-gray-50 flex flex-col">
+      <div className="w-full px-6 py-4 flex-shrink-0">
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -632,7 +632,7 @@ const ILOAttainment = () => {
 
         {/* Loading State with Skeleton */}
         {selectedClass && loadingAttainment && !selectedILO && (
-          <div className="space-y-6">
+          <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6 space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
               <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -650,7 +650,7 @@ const ILOAttainment = () => {
 
         {/* Summary View */}
         {selectedClass && !loadingAttainment && !selectedILO && attainmentData && (
-          <div className="space-y-6">
+          <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6 space-y-6">
             {/* ILO Attainment Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -746,11 +746,11 @@ const ILOAttainment = () => {
 
         {/* Student List View */}
         {!loadingAttainment && (
-          <div className="space-y-6">
+          <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6">
             {/* Main Content with Sidebar Layout */}
-            <div className="flex gap-6 items-start">
+            <div className="flex gap-6 items-stretch flex-1 min-h-0 pb-4">
               {/* Main Content Area - Student Results */}
-              <div className="flex-1 min-w-0 space-y-6">
+              <div className="flex-1 min-w-0 flex flex-col space-y-6 overflow-y-auto">
                 {selectedClass && selectedILO ? (
                   <>
                     {/* Percentage Range Filter */}
@@ -974,18 +974,20 @@ const ILOAttainment = () => {
                 )}
                   </>
                 ) : (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                    <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      {!selectedClass ? 'Please select a class to view student performance.' : 'Please select an ILO to view student details.'}
-                    </p>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center flex-1 flex items-center justify-center min-h-[400px]">
+                    <div>
+                      <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">
+                        {!selectedClass ? 'Please select a class to view student performance.' : 'Please select an ILO to view student details.'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Right Sidebar - Assessments */}
-              <div className="w-80 flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 h-fit max-h-[calc(100vh-120px)] overflow-y-auto space-y-4">
+              <div className="w-80 flex-shrink-0 flex flex-col">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full overflow-y-auto space-y-4">
                   {/* Assessments */}
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
