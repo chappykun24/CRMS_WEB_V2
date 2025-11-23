@@ -779,7 +779,7 @@ const ILOAttainment = () => {
                               {iloDescription && (
                                 <div>
                                   <div className="flex items-start gap-2 mb-1">
-                                    <span className="text-xs font-semibold text-gray-700">ILO {iloCode}:</span>
+                                    <span className="text-xs font-semibold text-gray-700">{iloCode}:</span>
                                   </div>
                                   <p className="text-xs text-gray-600 leading-relaxed">{iloDescription}</p>
                                 </div>
@@ -788,7 +788,7 @@ const ILOAttainment = () => {
                               {pairDescription && (
                                 <div>
                                   <div className="flex items-start gap-2 mb-1">
-                                    <span className="text-xs font-semibold text-gray-700">{pairType} {pairCode}:</span>
+                                    <span className="text-xs font-semibold text-gray-700">{pairCode}:</span>
                                   </div>
                                   <p className="text-xs text-gray-600 leading-relaxed">{pairDescription}</p>
                                 </div>
