@@ -18,8 +18,10 @@ import {
   BookOpenIcon,
   ArrowPathIcon,
   ArrowUpTrayIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/solid'
+import { exportSyllabusToExcel } from '../../utils/excelExport'
 
 const Syllabus = () => {
   const { user } = useAuth()
@@ -717,6 +719,27 @@ const Syllabus = () => {
     ])
   }
   
+  const handleExportToExcel = () => {
+    if (!viewingSyllabus) {
+      alert('No syllabus selected for export')
+      return
+    }
+    
+    try {
+      exportSyllabusToExcel(
+        viewingSyllabus,
+        viewingSyllabusILOs,
+        soReferences,
+        igaReferences,
+        cdioReferences,
+        sdgReferences
+      )
+    } catch (error) {
+      console.error('Error exporting syllabus to Excel:', error)
+      alert('Failed to export syllabus to Excel. Please try again.')
+    }
+  }
+
   const handlePublish = async () => {
     if (!viewingSyllabus) return
     
@@ -1633,12 +1656,22 @@ const Syllabus = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">{viewingSyllabus.title}</h2>
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircleIcon className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportToExcel}
+                    className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
+                    title="Export to Excel"
+                  >
+                    <ArrowDownTrayIcon className="h-5 w-5" />
+                    <span>Export</span>
+                  </button>
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
               
               <div className="space-y-4">

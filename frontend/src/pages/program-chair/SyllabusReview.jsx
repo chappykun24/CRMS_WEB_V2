@@ -6,9 +6,11 @@ import {
   XCircleIcon,
   ClockIcon,
   EyeIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/solid'
+import { exportSyllabusToExcel } from '../../utils/excelExport'
 import { API_BASE_URL } from '../../utils/api'
 import programChairCacheService from '../../services/programChairCacheService'
 import { safeSetItem, safeGetItem, minimizeSyllabusData, createCacheGetter, createCacheSetter } from '../../utils/cacheUtils'
@@ -253,6 +255,27 @@ const SyllabusReview = () => {
       loadSyllabusILOs(syllabus.syllabus_id),
       loadReferenceData()
     ])
+  }
+
+  const handleExportToExcel = () => {
+    if (!selectedSyllabus) {
+      alert('No syllabus selected for export')
+      return
+    }
+    
+    try {
+      exportSyllabusToExcel(
+        selectedSyllabus,
+        selectedSyllabusILOs,
+        soReferences,
+        igaReferences,
+        cdioReferences,
+        sdgReferences
+      )
+    } catch (error) {
+      console.error('Error exporting syllabus to Excel:', error)
+      alert('Failed to export syllabus to Excel. Please try again.')
+    }
   }
 
   const getStatusColor = (status) => {
@@ -570,15 +593,25 @@ const SyllabusReview = () => {
                       <p className="text-sm text-gray-600 mt-1">Course Code: {selectedSyllabus.course_code}</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowViewModal(false)
-                      setSelectedSyllabus(null)
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportToExcel}
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
+                      title="Export to Excel"
+                    >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                      <span>Export</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowViewModal(false)
+                        setSelectedSyllabus(null)
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="space-y-4">
