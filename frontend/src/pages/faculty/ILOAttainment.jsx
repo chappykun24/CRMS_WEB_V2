@@ -9,7 +9,8 @@ import {
   ArrowDownTrayIcon,
   UserGroupIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  XMarkIcon
 } from '@heroicons/react/24/solid'
 
 const ILOAttainment = () => {
@@ -28,6 +29,8 @@ const ILOAttainment = () => {
   const [iloCombinations, setIloCombinations] = useState([])
   const [showCombinations, setShowCombinations] = useState(false)
   const [expandedStudents, setExpandedStudents] = useState(new Set())
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [showStudentModal, setShowStudentModal] = useState(false)
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
@@ -433,6 +436,22 @@ const ILOAttainment = () => {
     })
   }
 
+  // Handle student click to show modal
+  const handleStudentClick = (student, e) => {
+    // Don't trigger if clicking the expand button
+    if (e.target.closest('button')) {
+      return
+    }
+    setSelectedStudent(student)
+    setShowStudentModal(true)
+  }
+
+  // Close modal
+  const handleCloseModal = () => {
+    setShowStudentModal(false)
+    setSelectedStudent(null)
+  }
+
   // Export to Excel
   const handleExportExcel = async () => {
     if (!selectedClass?.section_course_id) return
@@ -481,6 +500,20 @@ const ILOAttainment = () => {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             <p className="font-medium">Error</p>
             <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Selected ILO Pair Header */}
+        {selectedClass && selectedILO && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Selected ILO Pair</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-semibold">{selectedILO.ilo_code}:</span> {selectedILO.description}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -873,8 +906,11 @@ const ILOAttainment = () => {
                                 const isExpanded = expandedStudents.has(student.student_id)
                                 return (
                                   <React.Fragment key={student.student_id}>
-                                    <tr className="hover:bg-gray-50 transition-colors">
-                                      <td className="px-4 py-3 whitespace-nowrap">
+                                    <tr 
+                                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                      onClick={(e) => handleStudentClick(student, e)}
+                                    >
+                                      <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                         <button
                                           onClick={() => toggleStudentExpanded(student.student_id)}
                                           className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -1029,9 +1065,8 @@ const ILOAttainment = () => {
 
               {/* Right Sidebar - Selected ILO Pair */}
               {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
-                <div className="w-80 flex-shrink-0">
+                <div className="w-96 flex-shrink-0">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 h-fit max-h-[calc(100vh-120px)] overflow-y-auto">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected ILO Pair</h3>
                     
                     {/* Simplified Assessments Table */}
                     <div className="overflow-x-auto">
@@ -1124,6 +1159,160 @@ const ILOAttainment = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Student Details Modal */}
+        {showStudentModal && selectedStudent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Student Details</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedStudent.full_name} ({selectedStudent.student_number})
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-6">
+                  {/* Student Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <p className="text-sm text-gray-600 mb-1">ILO Score</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {selectedStudent.ilo_score?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <p className="text-sm text-gray-600 mb-1">Overall %</p>
+                      <p className={`text-2xl font-bold ${
+                        (selectedStudent.overall_attainment_rate || 0) >= 80 ? 'text-green-600' :
+                        (selectedStudent.overall_attainment_rate || 0) >= 60 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {(selectedStudent.overall_attainment_rate || 0).toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <p className="text-sm text-gray-600 mb-1">Status</p>
+                      <p className={`text-lg font-semibold ${
+                        selectedStudent.attainment_status === 'attained' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {selectedStudent.attainment_status === 'attained' ? 'Passed' : 'Failed'}
+                      </p>
+                    </div>
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                      <p className="text-sm text-gray-600 mb-1">Performance</p>
+                      <p className={`text-lg font-semibold ${
+                        selectedStudent.performance_level === 'high' ? 'text-green-600' :
+                        selectedStudent.performance_level === 'medium' ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {selectedStudent.performance_level === 'high' ? 'High' :
+                         selectedStudent.performance_level === 'medium' ? 'Medium' : 'Low'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Connected Assessments */}
+                  {selectedStudent.assessment_scores && selectedStudent.assessment_scores.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Assessments</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Assessment
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Score / Max Score
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Percentage
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Transmuted Score
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Weight %
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                ILO Weight %
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {selectedStudent.assessment_scores.map((assessment, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <span className="text-sm font-medium text-gray-900">{assessment.assessment_title}</span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-900">
+                                    {assessment.raw_score?.toFixed(2) || '0.00'} / {assessment.max_score || 0}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`text-sm font-medium ${
+                                    (assessment.score_percentage || 0) >= 80 ? 'text-green-600' :
+                                    (assessment.score_percentage || 0) >= 60 ? 'text-yellow-600' :
+                                    'text-red-600'
+                                  }`}>
+                                    {(assessment.score_percentage || 0).toFixed(2)}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-700">
+                                    {assessment.transmuted_score?.toFixed(2) || '0.00'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-700">
+                                    {assessment.weight_percentage?.toFixed(1) || '0.0'}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-700">
+                                    {assessment.ilo_weight_percentage?.toFixed(1) || '0.0'}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {(!selectedStudent.assessment_scores || selectedStudent.assessment_scores.length === 0) && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No assessment scores available for this student.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end p-6 border-t border-gray-200">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
