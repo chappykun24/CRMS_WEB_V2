@@ -53,7 +53,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Home', icon: HomeIcon, href: '/dean' },
           { name: 'Reports and Analytics', icon: ChartBarIcon, href: '/dean/analytics' },
           { name: 'Classes', icon: BookOpenIcon, href: '/dean/classes' },
-          { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dean/syllabus-approval' }
+          { name: 'Syllabus Approval', icon: DocumentTextIcon, href: '/dean/syllabus-approval' },
+          { name: 'ILO Attainment', icon: AcademicCapIcon, href: '/dean/ilo-attainment' }
         ]
       
       case 'STAFF':
@@ -68,7 +69,8 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           { name: 'Home', icon: HomeIcon, href: '/program-chair' },
           { name: 'Course Management', icon: BookOpenIcon, href: '/program-chair/courses' },
           { name: 'Reports and Analytics', icon: ChartBarIcon, href: '/program-chair/analytics' },
-          { name: 'Syllabus Review', icon: ClipboardDocumentListIcon, href: '/program-chair/syllabus-review' }
+          { name: 'Syllabus Review', icon: ClipboardDocumentListIcon, href: '/program-chair/syllabus-review' },
+          { name: 'ILO Attainment', icon: AcademicCapIcon, href: '/program-chair/ilo-attainment' }
         ]
       
       default:
