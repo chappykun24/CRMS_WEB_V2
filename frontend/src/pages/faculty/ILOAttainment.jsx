@@ -326,12 +326,8 @@ const ILOAttainment = () => {
       const result = await response.json()
       
       if (result.success) {
-        setIloCombinations(result.data)
-        setShowCombinations(true)
-        setAttainmentData(null)
-        setSelectedILO(null)
-        setSelectedILOCombination('') // Clear any selected ILO combination
-        console.log(`✅ [ILO COMBINATIONS] Loaded ${result.data.length} ILO combinations with assessments`)
+        // ILO combinations view removed - no longer needed
+        console.log(`✅ [ILO COMBINATIONS] Loaded ${result.data.length} ILO combinations (view removed)`)
       } else {
         throw new Error(result.error || 'Failed to load ILO combinations')
       }
@@ -375,11 +371,10 @@ const ILOAttainment = () => {
         if (iloIdToLoad) {
           // Load that ILO's detailed data
           loadAttainmentData(selectedClass.section_course_id, iloIdToLoad)
-          setShowCombinations(false)
         }
       } else {
-        // Otherwise load ILO combinations with assessments
-        loadILOCombinations(selectedClass.section_course_id)
+        // Otherwise load summary view
+        loadAttainmentData(selectedClass.section_course_id)
       }
     }
   }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO, loadAttainmentData, loadILOCombinations])
@@ -483,7 +478,7 @@ const ILOAttainment = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <AcademicCapIcon className="h-6 w-6 text-blue-600" />
@@ -503,33 +498,32 @@ const ILOAttainment = () => {
               </button>
             )}
           </div>
-        </div>
-
-        {/* Class Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Class
-          </label>
-          <select
-            value={selectedClass?.section_course_id || ''}
-            onChange={(e) => {
-              const classId = parseInt(e.target.value)
-              const cls = filteredClasses.find(c => c.section_course_id === classId)
-              setSelectedClass(cls || null)
-            }}
-            className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            disabled={loading}
-          >
-            <option value="">-- Select a class --</option>
-            {filteredClasses.map((cls) => (
-              <option key={cls.section_course_id} value={cls.section_course_id}>
-                {cls.course_title} - {cls.section_code}
-              </option>
-            ))}
-          </select>
-          {filteredClasses.length === 0 && !loading && (
-            <p className="mt-2 text-sm text-gray-500">No classes available for the active term.</p>
-          )}
+          {/* Small Class Selector */}
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-medium text-gray-600 whitespace-nowrap">
+              Class:
+            </label>
+            <select
+              value={selectedClass?.section_course_id || ''}
+              onChange={(e) => {
+                const classId = parseInt(e.target.value)
+                const cls = filteredClasses.find(c => c.section_course_id === classId)
+                setSelectedClass(cls || null)
+              }}
+              className="flex-1 max-w-md px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              disabled={loading}
+            >
+              <option value="">-- Select a class --</option>
+              {filteredClasses.map((cls) => (
+                <option key={cls.section_course_id} value={cls.section_course_id}>
+                  {cls.course_title} - {cls.section_code}
+                </option>
+              ))}
+            </select>
+            {filteredClasses.length === 0 && !loading && (
+              <p className="text-xs text-gray-500">No classes available for the active term.</p>
+            )}
+          </div>
         </div>
 
 
@@ -542,7 +536,7 @@ const ILOAttainment = () => {
         )}
 
         {/* Loading State with Skeleton */}
-        {loadingAttainment && !selectedILO && !showCombinations && (
+        {selectedClass && loadingAttainment && !selectedILO && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
               <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
@@ -559,66 +553,8 @@ const ILOAttainment = () => {
           </div>
         )}
 
-        {/* ILO Combinations with Assessments View */}
-        {!loadingAttainment && showCombinations && (
-          <div className="space-y-6">
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">ILO Combinations with Assessments</h2>
-              <p className="text-sm text-gray-600">
-                {iloCombinations.length > 0 
-                  ? `Showing ${iloCombinations.length} ILO combination${iloCombinations.length !== 1 ? 's' : ''} with their assessments`
-                  : 'No ILO combinations found matching the selected filters'}
-              </p>
-            </div>
-
-            {iloCombinations.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-                <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No ILO combinations found for the selected filters.</p>
-                <p className="text-sm text-gray-500 mt-2">Try adjusting your filter selections.</p>
-              </div>
-            ) : (
-              iloCombinations.map((ilo) => (
-                <div key={ilo.ilo_id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {/* ILO Header */}
-                <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{ilo.ilo_code}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{ilo.description}</p>
-                      {ilo.mappings && ilo.mappings.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {ilo.mappings.map((mapping, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
-                            >
-                              {mapping.type}: {mapping.code}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedILOCombination(ilo.ilo_id.toString())
-                        setShowCombinations(false)
-                      }}
-                      className="ml-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      View Details →
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-              ))
-            )}
-          </div>
-        )}
-
         {/* Summary View */}
-        {!loadingAttainment && !selectedILO && !showCombinations && attainmentData && (
+        {selectedClass && !loadingAttainment && !selectedILO && attainmentData && (
           <div className="space-y-6">
             {/* Summary Stats */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
@@ -735,7 +671,7 @@ const ILOAttainment = () => {
         )}
 
         {/* Student List View */}
-        {!loadingAttainment && selectedILO && (
+        {selectedClass && !loadingAttainment && selectedILO && (
           <div className="space-y-6">
             {/* Filters Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
