@@ -731,6 +731,73 @@ const ILOAttainment = () => {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full overflow-y-auto space-y-4">
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
+                      {/* ILO and Pair Information */}
+                      {(() => {
+                        // Find the selected combination based on which filter is active
+                        let selectedCombination = null;
+                        let pairType = '';
+                        let pairCode = '';
+                        let pairDescription = '';
+
+                        if (selectedILOSO) {
+                          selectedCombination = filterOptions.ilo_so_combinations?.find(c => c.ilo_so_key === selectedILOSO);
+                          if (selectedCombination) {
+                            pairType = 'SO';
+                            pairCode = selectedCombination.so_code;
+                            pairDescription = selectedCombination.so_description || '';
+                          }
+                        } else if (selectedILOSDG) {
+                          selectedCombination = filterOptions.ilo_sdg_combinations?.find(c => c.ilo_sdg_key === selectedILOSDG);
+                          if (selectedCombination) {
+                            pairType = 'SDG';
+                            pairCode = selectedCombination.sdg_code;
+                            pairDescription = selectedCombination.sdg_description || '';
+                          }
+                        } else if (selectedILOIGA) {
+                          selectedCombination = filterOptions.ilo_iga_combinations?.find(c => c.ilo_iga_key === selectedILOIGA);
+                          if (selectedCombination) {
+                            pairType = 'IGA';
+                            pairCode = selectedCombination.iga_code;
+                            pairDescription = selectedCombination.iga_description || '';
+                          }
+                        } else if (selectedILOCDIO) {
+                          selectedCombination = filterOptions.ilo_cdio_combinations?.find(c => c.ilo_cdio_key === selectedILOCDIO);
+                          if (selectedCombination) {
+                            pairType = 'CDIO';
+                            pairCode = selectedCombination.cdio_code;
+                            pairDescription = selectedCombination.cdio_description || '';
+                          }
+                        }
+
+                        const iloDescription = selectedILO.description || selectedCombination?.ilo_description || '';
+                        const iloCode = selectedILO.ilo_code || selectedCombination?.ilo_code || '';
+
+                        if (iloDescription || pairDescription) {
+                          return (
+                            <div className="mb-4 pb-4 border-b border-gray-200 space-y-3">
+                              {/* ILO Information */}
+                              {iloDescription && (
+                                <div>
+                                  <div className="flex items-start gap-2 mb-1">
+                                    <span className="text-xs font-semibold text-gray-700">ILO {iloCode}:</span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 leading-relaxed">{iloDescription}</p>
+                                </div>
+                              )}
+                              {/* Pair Information */}
+                              {pairDescription && (
+                                <div>
+                                  <div className="flex items-start gap-2 mb-1">
+                                    <span className="text-xs font-semibold text-gray-700">{pairType} {pairCode}:</span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 leading-relaxed">{pairDescription}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       <div>
                         <div className="overflow-x-auto">
                           <table className="min-w-full divide-y divide-gray-200">
