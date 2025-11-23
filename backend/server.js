@@ -2057,6 +2057,7 @@ console.log('   📍 /api/attendance/students - Get students for class');
 console.log('   📍 /api/attendance/stats - Get attendance statistics');
 console.log('   📍 /api/section-courses - Section courses management');
 console.log('   📍 /api/section-courses/faculty/:id - Get faculty classes');
+console.log('   📍 /api/section-courses/term/:termId - Get all classes for a term');
 console.log('   📍 /api/section-courses/:id/students - Get class students');
 
 // Debug: Test if auth routes are working
@@ -2964,6 +2965,46 @@ app.get('/api/section-courses/faculty/:facultyId', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('❌ [FACULTY CLASSES] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/section-courses/term/:termId - Get all classes for a specific term
+app.get('/api/section-courses/term/:termId', async (req, res) => {
+  try {
+    const { termId } = req.params;
+    console.log(`🔍 [TERM CLASSES] Fetching classes for term ID: ${termId}`);
+    
+    const result = await db.query(`
+      SELECT 
+        sc.section_course_id,
+        sc.section_id,
+        s.section_code,
+        sc.course_id,
+        c.course_code,
+        c.title AS course_title,
+        sc.instructor_id,
+        u.name AS faculty_name,
+        u.profile_pic AS faculty_avatar,
+        st.term_id,
+        st.semester,
+        st.school_year,
+        COALESCE(sc.banner_type, 'color') AS banner_type,
+        COALESCE(sc.banner_color, '#3B82F6') AS banner_color,
+        sc.banner_image AS banner_image
+      FROM section_courses sc
+      INNER JOIN sections s ON sc.section_id = s.section_id
+      INNER JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN users u ON sc.instructor_id = u.user_id
+      INNER JOIN school_terms st ON sc.term_id = st.term_id
+      WHERE sc.term_id = $1
+      ORDER BY s.section_code, c.title
+    `, [termId]);
+    
+    console.log(`✅ [TERM CLASSES] Found ${result.rows.length} classes for term ${termId}`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ [TERM CLASSES] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

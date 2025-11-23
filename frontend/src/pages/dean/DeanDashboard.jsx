@@ -14,6 +14,7 @@ const ScatterPlotChart = lazy(() => import('../../components/charts/ScatterPlotC
 import Analytics from './Analytics'
 import MyClasses from './MyClasses'
 import SyllabusApproval from './SyllabusApproval'
+import ILOAttainment from './ILOAttainment'
 import { prefetchDeanData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { API_BASE_URL } from '../../utils/api'
@@ -467,6 +468,7 @@ const DeanDashboard = ({ user }) => {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/classes" element={<MyClasses />} />
       <Route path="/syllabus-approval" element={<SyllabusApproval />} />
+      <Route path="/ilo-attainment" element={<ILOAttainment />} />
       <Route path="*" element={<Navigate to="/dean" replace />} />
     </Routes>
   )

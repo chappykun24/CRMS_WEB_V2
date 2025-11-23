@@ -15,6 +15,7 @@ import CourseManagement from './CourseManagement'
 import Analytics from './Analytics'
 import SyllabusReview from './SyllabusReview'
 import Syllabus from './Syllabus'
+import ILOAttainment from './ILOAttainment'
 import { prefetchProgramChairData } from '../../services/dataPrefetchService'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { API_BASE_URL } from '../../utils/api'
@@ -536,6 +537,7 @@ const ProgramChairDashboard = ({ user }) => {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/syllabus-review" element={<SyllabusReview />} />
       <Route path="/syllabus" element={<Syllabus />} />
+      <Route path="/ilo-attainment" element={<ILOAttainment />} />
       <Route path="*" element={<Navigate to="/program-chair" replace />} />
     </Routes>
   )
