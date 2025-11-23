@@ -630,25 +630,6 @@ const ILOAttainment = () => {
           </div>
         </div>
 
-        {/* Loading State with Skeleton */}
-        {selectedClass && loadingAttainment && !selectedILO && (
-          <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
-              <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-gray-50 p-4 rounded-lg">
-                    <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-16"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <TableSkeleton rows={8} columns={8} />
-          </div>
-        )}
-
-
         {/* Student List View */}
         {!loadingAttainment && (
           <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6">
