@@ -983,16 +983,13 @@ const ILOAttainment = () => {
                 )}
               </div>
 
-              {/* Right Sidebar - Selected ILO Pair */}
+              {/* Right Sidebar - Assessments */}
               <div className="w-80 flex-shrink-0">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 h-fit max-h-[calc(100vh-120px)] overflow-y-auto space-y-4">
-                  {/* Selected ILO Pair */}
+                  {/* Assessments */}
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected</h3>
-                        <h4 className="text-sm font-medium text-gray-700 mb-4">Assessments</h4>
-                          
                           {/* Simplified Assessments Table */}
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
