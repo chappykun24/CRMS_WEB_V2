@@ -3,10 +3,17 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      jsxRuntime: 'automatic'
+    })
+  ],
   optimizeDeps: {
     include: ['xlsx'],
     exclude: []
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime']
   },
   server: {
     port: 3000,
