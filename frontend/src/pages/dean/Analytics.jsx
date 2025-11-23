@@ -1377,22 +1377,6 @@ const Analytics = () => {
       `}</style>
       <div className="p-4 overflow-y-auto h-full">
 
-        {/* Progress Bar */}
-        {loading && (
-          <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Loading analytics...</span>
-              <span className="text-sm font-semibold text-red-600">{progress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-red-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Error Message */}
         {hasFetched && error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -1401,7 +1385,7 @@ const Analytics = () => {
         )}
 
         {/* Skeleton Loading */}
-        {loading && !hasFetched && (
+        {loading && (
           <div className="flex gap-4">
             {/* Main Content Area - Left Side */}
             <div className="flex-1 space-y-4">
