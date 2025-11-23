@@ -1262,11 +1262,11 @@ const SyllabusApproval = () => {
                                                       <td key={iloIdx} className="px-2 py-1.5 border border-gray-300 text-center text-gray-700">
                                                         {mapping ? (
                                                           <div>
-                                                            <div className="text-xs" title="Weight percentage contribution to this ILO" className="cursor-help">
+                                                            <div className="text-xs cursor-help" title="Weight percentage contribution to this ILO">
                                                               {mapping.weightPct.toFixed(1)}%
                                                             </div>
                                                             {mapping.score > 0 && (
-                                                              <div className="text-xs text-red-600 font-semibold" title="Score contribution to this ILO" className="cursor-help">
+                                                              <div className="text-xs text-red-600 font-semibold cursor-help" title="Score contribution to this ILO">
                                                                 {mapping.score.toFixed(1)}
                                                               </div>
                                     )}
