@@ -9,6 +9,7 @@ export default defineConfig({
     })
   ],
   optimizeDeps: {
+    include: ['recharts'], // Ensure Recharts is optimized and has access to React
     exclude: ['xlsx'] // Exclude xlsx since we're loading it dynamically
   },
   resolve: {
@@ -43,9 +44,10 @@ export default defineConfig({
             if (id.includes('react-router')) {
               return 'router-vendor';
             }
-            // Charting library (recharts can be large)
+            // Don't manually chunk Recharts - let Vite handle it
+            // Recharts needs access to React, so chunking it separately can cause issues
             if (id.includes('recharts')) {
-              return 'charts-vendor';
+              return; // Let Vite handle Recharts chunks automatically
             }
             // UI icon libraries
             if (id.includes('@heroicons') || id.includes('lucide-react')) {
