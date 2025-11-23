@@ -6,7 +6,6 @@ import {
   AcademicCapIcon,
   ChartBarIcon,
   ArrowLeftIcon,
-  ArrowDownTrayIcon,
   UserGroupIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -452,28 +451,6 @@ const ILOAttainment = () => {
     setSelectedStudent(null)
   }
 
-  // Export to Excel
-  const handleExportExcel = async () => {
-    if (!selectedClass?.section_course_id) return
-
-    try {
-      const params = new URLSearchParams({
-        section_course_id: selectedClass.section_course_id.toString(),
-        pass_threshold: passThreshold.toString()
-      })
-
-      if (selectedILO) {
-        params.append('ilo_id', selectedILO.ilo_id.toString())
-        params.append('performance_filter', performanceFilter)
-      }
-
-      window.open(`/api/assessments/ilo-attainment/export?${params.toString()}`, '_blank')
-    } catch (error) {
-      console.error('Error exporting to Excel:', error)
-      alert('Failed to export to Excel')
-    }
-  }
-
   // Loading skeleton for classes
   if (loading && classes.length === 0) {
     return (
@@ -503,20 +480,6 @@ const ILOAttainment = () => {
           </div>
         )}
 
-        {/* Selected ILO Pair Header */}
-        {selectedClass && selectedILO && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Selected ILO Pair</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-semibold">{selectedILO.ilo_code}:</span> {selectedILO.description}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Filters Section with Class Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
           {/* Class Selection */}
@@ -540,15 +503,6 @@ const ILOAttainment = () => {
                   </option>
                 ))}
               </select>
-              {selectedClass && (
-                <button
-                  onClick={handleExportExcel}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-                >
-                  <ArrowDownTrayIcon className="h-5 w-5" />
-                  <span>Export to Excel</span>
-                </button>
-              )}
             </div>
             {filteredClasses.length === 0 && !loading && (
               <p className="mt-2 text-xs text-gray-500">No classes available for the active term.</p>
