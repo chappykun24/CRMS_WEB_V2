@@ -33,9 +33,10 @@ const ILOAttainment = () => {
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
-  const [performanceFilter, setPerformanceFilter] = useState('all')
+  const [performanceFilter, setPerformanceFilter] = useState('all') // Keep for backend compatibility
   const [highThreshold, setHighThreshold] = useState(80)
   const [lowThreshold, setLowThreshold] = useState(75)
+  const [selectedPercentageRange, setSelectedPercentageRange] = useState('all')
   
   // ILO mapping filters
   const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [], ilo_so_combinations: [], ilo_sdg_combinations: [], ilo_iga_combinations: [], ilo_cdio_combinations: [] })
@@ -750,40 +751,23 @@ const ILOAttainment = () => {
               <div className="flex-1 min-w-0 space-y-6">
                 {selectedClass && selectedILO ? (
                   <>
-                    {/* Performance Filter */}
+                    {/* Percentage Range Filter */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
                       <div className="flex items-center space-x-4">
-                        <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
-                        <button
-                          onClick={() => setPerformanceFilter('all')}
-                          className={`px-4 py-2 rounded-lg transition-colors transition ${
-                            performanceFilter === 'all'
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                        <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
+                        <select
+                          value={selectedPercentageRange}
+                          onChange={(e) => setSelectedPercentageRange(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                         >
-                          All
-                        </button>
-                        <button
-                          onClick={() => setPerformanceFilter('high')}
-                          className={`px-4 py-2 rounded-lg transition-colors ${
-                            performanceFilter === 'high'
-                              ? 'bg-green-600 text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          High Performance
-                        </button>
-                        <button
-                          onClick={() => setPerformanceFilter('low')}
-                          className={`px-4 py-2 rounded-lg transition-colors ${
-                            performanceFilter === 'low'
-                              ? 'bg-red-600 text-white shadow-sm'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          Low Performance
-                        </button>
+                          <option value="all">All Ranges</option>
+                          <option value="90-100">90-100%</option>
+                          <option value="80-89">80-89%</option>
+                          <option value="70-79">70-79%</option>
+                          <option value="60-69">60-69%</option>
+                          <option value="50-59">50-59%</option>
+                          <option value="0-49">Below 50%</option>
+                        </select>
                       </div>
                     </div>
 
@@ -847,12 +831,6 @@ const ILOAttainment = () => {
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Overall %
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Attainment Status
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Performance Level
-                                </th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -895,31 +873,10 @@ const ILOAttainment = () => {
                                           {(student.overall_attainment_rate || 0).toFixed(2)}%
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                          student.attainment_status === 'attained'
-                                            ? 'bg-green-100 text-green-800 border border-green-200'
-                                            : 'bg-red-100 text-red-800 border border-red-200'
-                                        }`}>
-                                          {student.attainment_status === 'attained' ? 'Passed' : 'Failed'}
-                                        </span>
-                                      </td>
-                                      <td className="px-4 py-3 whitespace-nowrap">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                          student.performance_level === 'high'
-                                            ? 'bg-green-100 text-green-800 border border-green-200'
-                                            : student.performance_level === 'medium'
-                                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                                            : 'bg-red-100 text-red-800 border border-red-200'
-                                        }`}>
-                                          {student.performance_level === 'high' ? 'High' :
-                                           student.performance_level === 'medium' ? 'Medium' : 'Low'}
-                                        </span>
-                                      </td>
                                     </tr>
                                     {isExpanded && student.assessment_scores && student.assessment_scores.length > 0 && (
                                       <tr className="bg-gray-50">
-                                        <td colSpan="7" className="px-4 py-3">
+                                        <td colSpan="5" className="px-4 py-3">
                                           <div className="bg-white rounded-lg border border-gray-200 p-3">
                                             <h4 className="text-sm font-semibold text-gray-700 mb-3">Individual Assessment Scores</h4>
                                             <div className="overflow-x-auto">
@@ -1062,43 +1019,21 @@ const ILOAttainment = () => {
                       </table>
                     </div>
 
-                    {/* Overall Grade and Percentage */}
+                    {/* Overall Percentage and Total Points */}
                     {selectedILO.assessments && selectedILO.assessments.length > 0 && (() => {
                       const totalPoints = selectedILO.assessments.reduce((sum, a) => sum + (parseFloat(a.total_points) || 0), 0);
                       const avgPercentage = selectedILO.assessments.length > 0
                         ? selectedILO.assessments.reduce((sum, a) => sum + (parseFloat(a.average_percentage) || 0), 0) / selectedILO.assessments.length
                         : 0;
                       
-                      // Calculate overall grade based on average percentage
-                      const getGrade = (percentage) => {
-                        if (percentage >= 97) return 'A+';
-                        if (percentage >= 93) return 'A';
-                        if (percentage >= 90) return 'A-';
-                        if (percentage >= 87) return 'B+';
-                        if (percentage >= 83) return 'B';
-                        if (percentage >= 80) return 'B-';
-                        if (percentage >= 77) return 'C+';
-                        if (percentage >= 73) return 'C';
-                        if (percentage >= 70) return 'C-';
-                        if (percentage >= 67) return 'D+';
-                        if (percentage >= 63) return 'D';
-                        if (percentage >= 60) return 'D-';
-                        return 'F';
-                      };
-
-                      const overallGrade = getGrade(avgPercentage);
-                      const gradeColor = avgPercentage >= 80 ? 'text-green-600' : avgPercentage >= 60 ? 'text-yellow-600' : 'text-red-600';
+                      const percentageColor = avgPercentage >= 80 ? 'text-green-600' : avgPercentage >= 60 ? 'text-yellow-600' : 'text-red-600';
 
                       return (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-700">Overall Grade:</span>
-                              <span className={`text-lg font-bold ${gradeColor}`}>{overallGrade}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700">Overall Percentage:</span>
-                              <span className={`text-lg font-bold ${gradeColor}`}>
+                              <span className={`text-lg font-bold ${percentageColor}`}>
                                 {avgPercentage.toFixed(1)}%
                               </span>
                             </div>
@@ -1141,7 +1076,7 @@ const ILOAttainment = () => {
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="space-y-6">
                   {/* Student Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <p className="text-sm text-gray-600 mb-1">ILO Score</p>
                       <p className="text-2xl font-bold text-blue-600">
@@ -1156,25 +1091,6 @@ const ILOAttainment = () => {
                         'text-red-600'
                       }`}>
                         {(selectedStudent.overall_attainment_rate || 0).toFixed(2)}%
-                      </p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                      <p className="text-sm text-gray-600 mb-1">Status</p>
-                      <p className={`text-lg font-semibold ${
-                        selectedStudent.attainment_status === 'attained' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {selectedStudent.attainment_status === 'attained' ? 'Passed' : 'Failed'}
-                      </p>
-                    </div>
-                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                      <p className="text-sm text-gray-600 mb-1">Performance</p>
-                      <p className={`text-lg font-semibold ${
-                        selectedStudent.performance_level === 'high' ? 'text-green-600' :
-                        selectedStudent.performance_level === 'medium' ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {selectedStudent.performance_level === 'high' ? 'High' :
-                         selectedStudent.performance_level === 'medium' ? 'Medium' : 'Low'}
                       </p>
                     </div>
                   </div>
