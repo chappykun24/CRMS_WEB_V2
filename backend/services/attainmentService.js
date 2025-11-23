@@ -309,21 +309,15 @@ async function getILOAttainmentSummary(
         i.ilo_id,
         i.code AS ilo_code,
         i.description AS ilo_description,
-        -- Calculate average transmuted score for this ILO per student
-        COALESCE(
-          AVG(
-            CASE 
-              WHEN sub.transmuted_score IS NOT NULL
-              THEN sub.transmuted_score
-              WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-              THEN ((sub.adjusted_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-              WHEN sub.total_score IS NOT NULL AND a.total_points > 0 AND a.weight_percentage IS NOT NULL
-              THEN ((sub.total_score / a.total_points) * 62.5 + 37.5) * (a.weight_percentage / 100)
-              ELSE NULL
-            END
-          ),
-          0
-        ) AS ilo_score
+        -- Calculate ILO score as percentage: (Total Score / Total Max Score) * 100
+        -- This matches the formula: % Passed Mark = (Passed Mark / Total Number of Students)
+        -- Where Passed Mark = Number of students who obtain 75%
+        CASE 
+          WHEN SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points ELSE 0 END) > 0
+          THEN (SUM(COALESCE(sub.adjusted_score, sub.total_score, 0)) / 
+                SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points ELSE 0 END)) * 100
+          ELSE 0
+        END AS ilo_score
       FROM course_enrollments ce
       INNER JOIN students s ON ce.student_id = s.student_id
       INNER JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
@@ -438,9 +432,12 @@ async function getILOAttainmentSummary(
         ilo_code,
         ilo_description,
         COUNT(DISTINCT student_id) AS total_students,
+        -- Passed Mark: Number of students who obtain 75% (ilo_score >= 75)
         COUNT(DISTINCT CASE WHEN ilo_score >= $2 THEN student_id END) AS attained_count,
+        -- High performance: students with ilo_score >= highThreshold (default 80)
         COUNT(DISTINCT CASE WHEN ilo_score >= $3 THEN student_id END) AS high_performance_count,
-        COUNT(DISTINCT CASE WHEN ilo_score < $4 AND ilo_score >= $2 THEN student_id END) AS low_performance_count,
+        -- Low performance: students with ilo_score >= 75 but < highThreshold
+        COUNT(DISTINCT CASE WHEN ilo_score < $3 AND ilo_score >= $2 THEN student_id END) AS low_performance_count,
         AVG(ilo_score) AS average_score
       FROM student_ilo_scores
       GROUP BY ilo_id, ilo_code, ilo_description
@@ -470,6 +467,8 @@ async function getILOAttainmentSummary(
       isum.ilo_description,
       isum.total_students,
       isum.attained_count,
+      -- % Passed Mark = (Passed Mark / Total Number of Students) * 100
+      -- Where Passed Mark = Number of students who obtain 75%
       ROUND((isum.attained_count::NUMERIC / NULLIF(isum.total_students, 0) * 100), 2) AS attainment_percentage,
       isum.high_performance_count,
       isum.low_performance_count,

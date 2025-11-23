@@ -285,3 +285,6 @@ scripts/check-assessments.js
 scripts/find-ilo-id.js
 scripts/find-section-course.js
 scripts/ilo-attainment-report.js
+scripts/create-students-19-45.js
+scripts/insert-assessment-scores.js
+scripts/check-ilo-syllabus-status.js
