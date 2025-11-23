@@ -77,6 +77,7 @@ const ILOAttainmentSummaryTable = ({
               width: 100%;
               border-collapse: collapse;
               margin-bottom: 15px;
+              border: 2px solid #000;
             }
             th, td {
               border: 1px solid #000;
@@ -87,9 +88,20 @@ const ILOAttainmentSummaryTable = ({
               background-color: #f0f0f0;
               font-weight: bold;
               text-align: center;
+              border: 1px solid #000;
             }
             td {
               text-align: center;
+              border: 1px solid #000;
+            }
+            tr {
+              border: 1px solid #000;
+            }
+            tbody tr {
+              border-bottom: 1px solid #000;
+            }
+            thead {
+              border-bottom: 2px solid #000;
             }
             .assessment-task {
               text-align: left !important;
@@ -320,23 +332,23 @@ const ILOAttainmentSummaryTable = ({
 
         {/* Course Information */}
         <div className="course-info">
-          <table>
+          <table style={{ border: '2px solid #000', borderCollapse: 'collapse', width: '100%' }}>
             <tbody>
               <tr>
-                <td>Course Code:</td>
-                <td>{courseCode || 'N/A'}</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px', fontWeight: 'bold', width: '150px', backgroundColor: '#f0f0f0' }}>Course Code:</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px' }}>{courseCode || 'N/A'}</td>
               </tr>
               <tr>
-                <td>Course Title:</td>
-                <td>{courseTitle || 'N/A'}</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Course Title:</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px' }}>{courseTitle || 'N/A'}</td>
               </tr>
               <tr>
-                <td>Section:</td>
-                <td>{sectionCode || 'N/A'}</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Section:</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px' }}>{sectionCode || 'N/A'}</td>
               </tr>
               <tr>
-                <td>Total Number of Students:</td>
-                <td>{totalStudents || 0}</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Total Number of Students:</td>
+                <td style={{ border: '1px solid #000', padding: '5px 10px' }}>{totalStudents || 0}</td>
               </tr>
             </tbody>
           </table>
@@ -346,12 +358,12 @@ const ILOAttainmentSummaryTable = ({
         {parentAssessments.length > 0 && iloAttainment.length > 0 && (
           <div className="table-container">
             <h3 className="text-sm font-semibold mb-2">1. Assessment Results Analysis</h3>
-            <table>
+            <table style={{ border: '2px solid #000', borderCollapse: 'collapse', width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Assessment Task</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Assessment Task</th>
                   {iloAttainment.map(ilo => (
-                    <th key={ilo.ilo_id}>{ilo.ilo_code}</th>
+                    <th key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>{ilo.ilo_code}</th>
                   ))}
                 </tr>
               </thead>
@@ -363,16 +375,16 @@ const ILOAttainmentSummaryTable = ({
                   
                   return (
                     <tr key={idx}>
-                      <td className="assessment-task">
+                      <td className="assessment-task" style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>
                         {parent.name} {codesDisplay}
                       </td>
                       {iloAttainment.map(ilo => {
                         const iloData = parent.iloData[ilo.ilo_id]
                         if (!iloData || !iloData.contributes) {
-                          return <td key={ilo.ilo_id}>-</td>
+                          return <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>-</td>
                         }
                         return (
-                          <td key={ilo.ilo_id}>
+                          <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                             {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
                           </td>
                         )
@@ -389,14 +401,14 @@ const ILOAttainmentSummaryTable = ({
         {iloAttainment.length > 0 && (
           <div className="table-container">
             <h3 className="text-sm font-semibold mb-2">2. Intended Learning Outcomes (ILO) Attainment</h3>
-            <table>
+            <table style={{ border: '2px solid #000', borderCollapse: 'collapse', width: '100%' }}>
               <thead>
                 <tr>
-                  <th>ILO</th>
-                  <th>Description</th>
-                  <th>Students Attained</th>
-                  <th>% Attained</th>
-                  <th>Attainment Status</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>ILO</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Description</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Students Attained</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>% Attained</th>
+                  <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Attainment Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -406,11 +418,11 @@ const ILOAttainmentSummaryTable = ({
                   
                   return (
                     <tr key={ilo.ilo_id}>
-                      <td>{ilo.ilo_code}</td>
-                      <td style={{ textAlign: 'left' }}>{ilo.description || 'N/A'}</td>
-                      <td>{attainedCount}/{totalStudents}</td>
-                      <td>{ilo.attainment_percentage.toFixed(2)}%</td>
-                      <td className={isAttained ? 'attained' : 'not-attained'}>
+                      <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{ilo.ilo_code}</td>
+                      <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>{ilo.description || 'N/A'}</td>
+                      <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{attainedCount}/{totalStudents}</td>
+                      <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{ilo.attainment_percentage.toFixed(2)}%</td>
+                      <td className={isAttained ? 'attained' : 'not-attained'} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                         {isAttained ? '✓ Attained' : '✗ Not Attained'}
                       </td>
                     </tr>
@@ -480,23 +492,23 @@ const ILOAttainmentSummaryTable = ({
           return (
             <div className="table-container">
               <h3 className="text-sm font-semibold mb-2">3. {pairLabel} Attainment</h3>
-              <table>
+              <table style={{ border: '2px solid #000', borderCollapse: 'collapse', width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>{pairType}</th>
-                    <th>Description</th>
-                    <th>Students Attained</th>
-                    <th>% Attained</th>
-                    <th>Attainment Status</th>
+                    <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>{pairType}</th>
+                    <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Description</th>
+                    <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Students Attained</th>
+                    <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>% Attained</th>
+                    <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', textAlign: 'center' }}>Attainment Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>{pairCode}</td>
-                    <td style={{ textAlign: 'left' }}>{pairDescription || 'N/A'}</td>
-                    <td>{attainedCount}/{totalStudents}</td>
-                    <td>{matchingILO.attainment_percentage.toFixed(2)}%</td>
-                    <td className={isAttained ? 'attained' : 'not-attained'}>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{pairCode}</td>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'left' }}>{pairDescription || 'N/A'}</td>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{attainedCount}/{totalStudents}</td>
+                    <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{matchingILO.attainment_percentage.toFixed(2)}%</td>
+                    <td className={isAttained ? 'attained' : 'not-attained'} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                       {isAttained ? '✓ Attained' : '✗ Not Attained'}
                     </td>
                   </tr>
