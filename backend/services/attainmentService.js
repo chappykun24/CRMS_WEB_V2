@@ -1424,6 +1424,7 @@ async function getILOStudentList(
     INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
     WHERE a.section_course_id = $1
       AND a.is_published = TRUE
+      AND sy.section_course_id = $1
       AND sy.review_status = 'approved'
       AND sy.approval_status = 'approved'
       ${assessmentCodesSyllabusCondition}
