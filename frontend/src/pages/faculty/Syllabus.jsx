@@ -21,7 +21,22 @@ import {
   XMarkIcon,
   ArrowDownTrayIcon
 } from '@heroicons/react/24/solid'
-import { exportSyllabusToExcel } from '../../utils/excelExport'
+// Lazy import to prevent blocking initial render
+let exportSyllabusToExcel = null
+const loadExcelExport = async () => {
+  if (!exportSyllabusToExcel) {
+    try {
+      const module = await import('../../utils/excelExport')
+      exportSyllabusToExcel = module.exportSyllabusToExcel
+    } catch (error) {
+      console.error('Failed to load Excel export module:', error)
+      exportSyllabusToExcel = () => {
+        alert('Excel export is not available. Please refresh the page.')
+      }
+    }
+  }
+  return exportSyllabusToExcel
+}
 
 const Syllabus = () => {
   const { user } = useAuth()
@@ -725,18 +740,24 @@ const Syllabus = () => {
       return
     }
     
-    // Log data being exported for debugging
-    console.log('Exporting syllabus:', {
-      syllabus: viewingSyllabus,
-      ilosCount: viewingSyllabusILOs?.length || 0,
-      soRefsCount: soReferences?.length || 0,
-      igaRefsCount: igaReferences?.length || 0,
-      cdioRefsCount: cdioReferences?.length || 0,
-      sdgRefsCount: sdgReferences?.length || 0,
-    })
-    
     try {
-      await exportSyllabusToExcel(
+      const exportFn = await loadExcelExport()
+      if (!exportFn) {
+        alert('Excel export is not available. Please refresh the page.')
+        return
+      }
+      
+      // Log data being exported for debugging
+      console.log('Exporting syllabus:', {
+        syllabus: viewingSyllabus,
+        ilosCount: viewingSyllabusILOs?.length || 0,
+        soRefsCount: soReferences?.length || 0,
+        igaRefsCount: igaReferences?.length || 0,
+        cdioRefsCount: cdioReferences?.length || 0,
+        sdgRefsCount: sdgReferences?.length || 0,
+      })
+      
+      await exportFn(
         viewingSyllabus,
         viewingSyllabusILOs || [],
         soReferences || [],

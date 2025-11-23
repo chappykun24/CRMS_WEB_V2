@@ -347,12 +347,17 @@ export const exportSyllabusToExcel = async (
   const filename = `${courseCode}${sectionCode ? '_' + sectionCode : ''}_Syllabus_${new Date().toISOString().split('T')[0]}.xlsx`
 
   try {
+    // Ensure XLSX is available
+    if (!XLSX || !XLSX.utils || !XLSX.writeFile) {
+      throw new Error('XLSX library not loaded properly')
+    }
+    
     // Write file
     XLSX.writeFile(workbook, filename)
     console.log('Excel file exported successfully:', filename)
   } catch (error) {
     console.error('Error writing Excel file:', error)
-    alert('Failed to export Excel file. Please check the console for details.')
+    alert(`Failed to export Excel file: ${error.message}. Please check the console for details.`)
   }
 }
 

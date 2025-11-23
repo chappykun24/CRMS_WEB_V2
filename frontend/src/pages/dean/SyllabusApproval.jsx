@@ -9,7 +9,22 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/solid'
-import { exportSyllabusToExcel } from '../../utils/excelExport'
+// Lazy import to prevent blocking initial render
+let exportSyllabusToExcel = null
+const loadExcelExport = async () => {
+  if (!exportSyllabusToExcel) {
+    try {
+      const module = await import('../../utils/excelExport')
+      exportSyllabusToExcel = module.exportSyllabusToExcel
+    } catch (error) {
+      console.error('Failed to load Excel export module:', error)
+      exportSyllabusToExcel = () => {
+        alert('Excel export is not available. Please refresh the page.')
+      }
+    }
+  }
+  return exportSyllabusToExcel
+}
 
 const SyllabusApproval = () => {
   const { user } = useAuth()
@@ -185,7 +200,13 @@ const SyllabusApproval = () => {
     }
     
     try {
-      await exportSyllabusToExcel(
+      const exportFn = await loadExcelExport()
+      if (!exportFn) {
+        alert('Excel export is not available. Please refresh the page.')
+        return
+      }
+      
+      await exportFn(
         selectedSyllabus,
         selectedSyllabusILOs,
         soReferences,
