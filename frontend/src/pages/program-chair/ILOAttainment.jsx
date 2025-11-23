@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { TableSkeleton } from '../../components/skeletons'
 import ILOAttainmentSkeleton from '../../components/skeletons/ILOAttainmentSkeleton'
+import ILOInsights from '../../components/ILOInsights'
 import {
   UserGroupIcon,
   ChevronDownIcon,
@@ -728,7 +729,16 @@ const ILOAttainment = () => {
                 )}
               </div>
 
-              <div className="w-80 flex-shrink-0 flex flex-col">
+              <div className="w-80 flex-shrink-0 flex flex-col space-y-4">
+                {/* Performance Insights */}
+                {selectedClass && selectedILO && (
+                  <ILOInsights 
+                    iloData={selectedILO} 
+                    assessments={selectedILO.assessments || []}
+                  />
+                )}
+
+                {/* Assessments */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full overflow-y-auto space-y-4">
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
