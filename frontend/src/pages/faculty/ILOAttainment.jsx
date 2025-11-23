@@ -513,7 +513,6 @@ const ILOAttainment = () => {
 
             {/* ILO Filters - Horizontal Arrangement */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Filters</h3>
               <div className="grid grid-cols-4 gap-4">
                 {/* ILO-SO Filter */}
                 <div>
@@ -990,8 +989,9 @@ const ILOAttainment = () => {
                   {/* Selected ILO Pair */}
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
-                      <div className="border-t border-gray-200 pt-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected ILO Pair</h3>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected</h3>
+                        <h4 className="text-sm font-medium text-gray-700 mb-4">Assessments</h4>
                           
                           {/* Simplified Assessments Table */}
                     <div className="overflow-x-auto">
