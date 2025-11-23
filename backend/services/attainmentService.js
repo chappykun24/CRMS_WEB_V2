@@ -1435,6 +1435,45 @@ async function getILOStudentList(
   const assessmentCodesMap = new Map(assessmentCodesResult.rows.map(row => [row.assessment_id, row.assessment_code]));
   
   console.log(`[ATTAINMENT DEBUG] Extracted ${assessmentCodesResult.rows.length} assessment codes`);
+  console.log(`[ATTAINMENT DEBUG] Assessment codes extracted:`, assessmentCodesResult.rows.map(r => ({
+    assessment_id: r.assessment_id,
+    assessment_code: r.assessment_code
+  })));
+  
+  // Debug: Also check the actual assessment_framework JSON structure
+  if (syllabusId) {
+    const debugFrameworkQuery = `
+      SELECT 
+        sy.syllabus_id,
+        sy.assessment_framework,
+        jsonb_typeof(sy.assessment_framework) AS framework_type,
+        CASE 
+          WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+          THEN jsonb_object_keys(sy.assessment_framework)
+          ELSE NULL
+        END AS first_key,
+        CASE 
+          WHEN jsonb_typeof(sy.assessment_framework) = 'object' AND sy.assessment_framework ? 'components'
+          THEN jsonb_array_length(sy.assessment_framework->'components')
+          ELSE NULL
+        END AS components_count
+      FROM syllabi sy
+      WHERE sy.syllabus_id = $1
+    `;
+    try {
+      const frameworkDebugResult = await db.query(debugFrameworkQuery, [syllabusId]);
+      if (frameworkDebugResult.rows.length > 0) {
+        const framework = frameworkDebugResult.rows[0];
+        console.log(`[ATTAINMENT DEBUG] Syllabus assessment_framework structure:`);
+        console.log(`  - Type: ${framework.framework_type}`);
+        console.log(`  - Has components: ${framework.components_count !== null ? 'Yes (' + framework.components_count + ')' : 'No'}`);
+        console.log(`  - First key: ${framework.first_key || 'N/A'}`);
+        console.log(`  - Framework preview:`, JSON.stringify(framework.assessment_framework, null, 2).substring(0, 500));
+      }
+    } catch (frameworkError) {
+      console.error(`[ATTAINMENT DEBUG] Error checking framework structure:`, frameworkError.message);
+    }
+  }
   
   // Filter assessment IDs based on assessment_tasks if needed
   let assessmentIdsToInclude = null;
@@ -1443,9 +1482,16 @@ async function getILOStudentList(
   if (hasFilters && selectedAssessmentTasks && selectedAssessmentTasks.length > 0) {
     assessmentIdsToInclude = new Set();
     const selectedTasksUpper = selectedAssessmentTasks.map(t => t.toUpperCase().trim());
+    console.log(`[ATTAINMENT DEBUG] Looking for assessment_tasks:`, selectedTasksUpper);
     assessmentCodesResult.rows.forEach(row => {
-      if (row.assessment_code && selectedTasksUpper.includes(row.assessment_code.toUpperCase().trim())) {
+      const codeUpper = row.assessment_code ? row.assessment_code.toUpperCase().trim() : null;
+      if (codeUpper && selectedTasksUpper.includes(codeUpper)) {
         assessmentIdsToInclude.add(row.assessment_id);
+        console.log(`[ATTAINMENT DEBUG] ✅ Matched assessment ${row.assessment_id} with code "${row.assessment_code}" (normalized: "${codeUpper}")`);
+      } else if (row.assessment_code) {
+        console.log(`[ATTAINMENT DEBUG] ⚠️ Assessment ${row.assessment_id} has code "${row.assessment_code}" (normalized: "${codeUpper}") but doesn't match any selected tasks`);
+      } else {
+        console.log(`[ATTAINMENT DEBUG] ⚠️ Assessment ${row.assessment_id} has no extracted code`);
       }
     });
     console.log(`[ATTAINMENT DEBUG] Filtered to ${assessmentIdsToInclude.size} assessments matching assessment_tasks`);
