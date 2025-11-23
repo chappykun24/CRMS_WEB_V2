@@ -9,8 +9,7 @@ export default defineConfig({
     })
   ],
   optimizeDeps: {
-    include: ['xlsx'],
-    exclude: []
+    exclude: ['xlsx'] // Exclude xlsx since we're loading it dynamically
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'react/jsx-runtime']
@@ -31,11 +30,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Node modules chunk
+          // Don't manually chunk React - let Vite handle it automatically
+          // This prevents React initialization issues
           if (id.includes('node_modules')) {
-            // React core libraries
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
+            // Exclude React from manual chunking - Vite will handle it
+            if (id.includes('/react/') || id.includes('\\react\\') || 
+                id.includes('/react-dom/') || id.includes('\\react-dom\\') ||
+                id.includes('/react/jsx-runtime') || id.includes('\\react\\jsx-runtime')) {
+              return; // Let Vite handle React chunks automatically
             }
             // React Router
             if (id.includes('react-router')) {
@@ -52,6 +54,10 @@ export default defineConfig({
             // Axios
             if (id.includes('axios')) {
               return 'http-vendor';
+            }
+            // xlsx - keep separate
+            if (id.includes('xlsx')) {
+              return 'xlsx-vendor';
             }
             // Other vendor libraries
             return 'vendor';
