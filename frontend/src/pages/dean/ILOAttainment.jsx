@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { safeGetItem, safeSetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { TableSkeleton } from '../../components/skeletons'
+import ILOAttainmentSkeleton from '../../components/skeletons/ILOAttainmentSkeleton'
 import {
   UserGroupIcon,
   ChevronDownIcon,
@@ -515,7 +516,9 @@ const ILOAttainment = () => {
           </div>
         </div>
 
-        {!loadingAttainment && (
+        {loadingAttainment ? (
+          <ILOAttainmentSkeleton />
+        ) : (
           <div className="flex-1 flex flex-col min-h-0 -mx-6 px-6">
             <div className="flex gap-6 items-stretch flex-1 min-h-0 pb-4">
               <div className="flex-1 min-w-0 flex flex-col space-y-6 overflow-y-auto">
@@ -540,9 +543,7 @@ const ILOAttainment = () => {
                       </div>
                     </div>
 
-                    {loadingAttainment ? (
-                      <TableSkeleton rows={10} columns={5} />
-                    ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
+                    {selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
                       <div className="space-y-4">
                         {selectedILO.students_by_range
                           .filter((rangeGroup) => {
@@ -864,6 +865,7 @@ const ILOAttainment = () => {
               </div>
             </div>
           </div>
+          )}
         )}
 
         {showStudentModal && selectedStudent && (
