@@ -261,6 +261,7 @@ async function getILOAttainmentSummary(
   let syllabusCondition2 = '';
   let syllabusCondition3 = '';
   let syllabusCondition4 = '';
+  let syllabusCondition4_ac = '';
   let syllabusCondition5 = '';
   if (syllabusId) {
     queryParams.push(syllabusId);
@@ -268,6 +269,7 @@ async function getILOAttainmentSummary(
     syllabusCondition2 = `AND sy2.syllabus_id = $${paramIndex}`;
     syllabusCondition3 = `AND sy3.syllabus_id = $${paramIndex}`;
     syllabusCondition4 = `AND sy4.syllabus_id = $${paramIndex}`;
+    syllabusCondition4_ac = `AND sy_ac.syllabus_id = $${paramIndex}`;
     syllabusCondition5 = `AND sy5.syllabus_id = $${paramIndex}`;
     paramIndex++;
   }
@@ -351,14 +353,7 @@ async function getILOAttainmentSummary(
               a4.assessment_id,
               COALESCE(
                 -- Try to get code from syllabus assessment_framework JSON
-                (
-                  SELECT (task->>'code')::text
-                  FROM jsonb_array_elements(sy4.assessment_framework->'components') AS component
-                  CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
-                  WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
-                     OR (task->>'name')::text ILIKE '%' || a4.title || '%'
-                  LIMIT 1
-                ),
+                framework_code.code_from_framework,
                 -- Try to get code from assessment content_data
                 (a4.content_data->>'code')::text,
                 (a4.content_data->>'abbreviation')::text,
@@ -372,6 +367,14 @@ async function getILOAttainmentSummary(
               ) AS assessment_code
             FROM assessments a4
             INNER JOIN syllabi sy4 ON a4.syllabus_id = sy4.syllabus_id
+            LEFT JOIN LATERAL (
+              SELECT (task->>'code')::text AS code_from_framework
+              FROM jsonb_array_elements(sy4.assessment_framework->'components') AS component
+              CROSS JOIN LATERAL jsonb_array_elements(component->'sub_assessments') AS task
+              WHERE (task->>'title')::text ILIKE '%' || a4.title || '%'
+                 OR (task->>'name')::text ILIKE '%' || a4.title || '%'
+              LIMIT 1
+            ) AS framework_code ON true
             WHERE a4.section_course_id = $1
               AND sy4.section_course_id = $1
               AND sy4.review_status = 'approved'
@@ -393,7 +396,7 @@ async function getILOAttainmentSummary(
             AND sy_ac.section_course_id = $1
             AND sy_ac.review_status = 'approved'
             AND sy_ac.approval_status = 'approved'
-            ${syllabusCondition4}
+            ${syllabusCondition4_ac}
             AND (ism.ilo_id IS NOT NULL OR isdg.ilo_id IS NOT NULL OR iiga.ilo_id IS NOT NULL OR icdio.ilo_id IS NOT NULL)
         ) im ON a2.assessment_id = im.assessment_id
         INNER JOIN syllabi sy2 ON a2.syllabus_id = sy2.syllabus_id
