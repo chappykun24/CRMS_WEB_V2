@@ -246,7 +246,13 @@ async function getILOAttainmentSummary(
   console.log(`[ATTAINMENT SUMMARY DEBUG] ==========================================\n`);
 
   // Build parameterized query with dynamic parameters
-  const queryParams = [sectionCourseId, passThreshold, highThreshold, lowThreshold];
+  // Ensure all parameters are properly typed numbers
+  const queryParams = [
+    Number(sectionCourseId), 
+    Number(passThreshold), 
+    Number(highThreshold), 
+    Number(lowThreshold)  // $4 - kept for compatibility, explicitly cast to help PostgreSQL
+  ];
   let paramIndex = 5; // Start after the first 4 parameters
   
   // Build WHERE conditions with parameterized placeholders
@@ -313,10 +319,10 @@ async function getILOAttainmentSummary(
         -- This matches the formula: % Passed Mark = (Passed Mark / Total Number of Students)
         -- Where Passed Mark = Number of students who obtain 75%
         CASE 
-          WHEN SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points ELSE 0 END) > 0
-          THEN (SUM(COALESCE(sub.adjusted_score, sub.total_score, 0)) / 
-                SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points ELSE 0 END)) * 100
-          ELSE 0
+          WHEN SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points::DOUBLE PRECISION ELSE 0::DOUBLE PRECISION END) > 0
+          THEN (SUM(COALESCE(sub.adjusted_score, sub.total_score, 0)::DOUBLE PRECISION) / 
+                NULLIF(SUM(CASE WHEN sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL THEN a.total_points::DOUBLE PRECISION ELSE 0::DOUBLE PRECISION END), 0)) * 100.0
+          ELSE 0.0
         END AS ilo_score
       FROM course_enrollments ce
       INNER JOIN students s ON ce.student_id = s.student_id
@@ -433,11 +439,12 @@ async function getILOAttainmentSummary(
         ilo_description,
         COUNT(DISTINCT student_id) AS total_students,
         -- Passed Mark: Number of students who obtain 75% (ilo_score >= 75)
-        COUNT(DISTINCT CASE WHEN ilo_score >= $2 THEN student_id END) AS attained_count,
+        COUNT(DISTINCT CASE WHEN ilo_score >= $2::DOUBLE PRECISION THEN student_id END) AS attained_count,
         -- High performance: students with ilo_score >= highThreshold (default 80)
-        COUNT(DISTINCT CASE WHEN ilo_score >= $3 THEN student_id END) AS high_performance_count,
-        -- Low performance: students with ilo_score >= 75 but < highThreshold
-        COUNT(DISTINCT CASE WHEN ilo_score < $3 AND ilo_score >= $2 THEN student_id END) AS low_performance_count,
+        COUNT(DISTINCT CASE WHEN ilo_score >= $3::DOUBLE PRECISION THEN student_id END) AS high_performance_count,
+        -- Low performance: students with ilo_score >= passThreshold but < highThreshold
+        -- Note: $4 (lowThreshold) is passed for compatibility but we use $2 and $3 for the calculation
+        COUNT(DISTINCT CASE WHEN ilo_score < $3::DOUBLE PRECISION AND ilo_score >= $2::DOUBLE PRECISION THEN student_id END) AS low_performance_count,
         AVG(ilo_score) AS average_score
       FROM student_ilo_scores
       GROUP BY ilo_id, ilo_code, ilo_description
