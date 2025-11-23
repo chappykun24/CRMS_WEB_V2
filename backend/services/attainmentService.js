@@ -1344,17 +1344,24 @@ async function getILOStudentList(
     assessmentCodesSyllabusCondition = `AND sy.syllabus_id = $${assessmentCodesParamIndex}`;
   }
   
+  // Flexible dynamic assessment code extraction - always generates a code
   const extractAssessmentCodesQuery = `
     SELECT DISTINCT
       a.assessment_id,
+      a.title AS assessment_title,
       COALESCE(
-        -- Try to get code from syllabus assessment_framework JSON
+        -- Method 1: Try to get code from assessment content_data (most reliable)
+        (a.content_data->>'code')::text,
+        (a.content_data->>'abbreviation')::text,
+        -- Method 2: Try to extract from JSON if available
         (
           SELECT (task->>'code')::text
           FROM jsonb_array_elements(
             CASE 
               WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
               THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
+              WHEN jsonb_typeof(sy.assessment_framework) = 'array'
+              THEN sy.assessment_framework
               ELSE '[]'::jsonb
             END
           ) AS component
@@ -1362,63 +1369,47 @@ async function getILOStudentList(
             CASE 
               WHEN jsonb_typeof(component->'sub_assessments') = 'array'
               THEN component->'sub_assessments'
+              WHEN jsonb_typeof(component) = 'object' AND component ? 'code'
+              THEN jsonb_build_array(component)
               ELSE '[]'::jsonb
             END
           ) AS task
           WHERE (
             (task->>'title')::text ILIKE '%' || a.title || '%'
             OR (task->>'name')::text ILIKE '%' || a.title || '%'
-            OR (task->>'code')::text IS NOT NULL
           )
           LIMIT 1
         ),
-        -- Try to get code directly from assessment_framework if it's a flat structure
+        -- Method 3: Extract any existing uppercase letter sequences (e.g., "DDD", "DFG", "WA1")
         (
-          SELECT key::text
-          FROM jsonb_each_text(
-            CASE 
-              WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
-              THEN sy.assessment_framework
-              ELSE '{}'::jsonb
-            END
-          )
-          WHERE key ILIKE '%' || a.title || '%'
+          SELECT UPPER(REGEXP_REPLACE(match[1], '[^A-Z0-9]', '', 'g'))
+          FROM REGEXP_MATCHES(a.title, '([A-Z]{2,}[0-9]*)', 'g') AS match
           LIMIT 1
         ),
-        -- Try to get code from assessment content_data
-        (a.content_data->>'code')::text,
-        (a.content_data->>'abbreviation')::text,
-        -- Extract code dynamically from title using pattern matching
-        (
-          SELECT UPPER(
+        -- Method 4: Get first letters of all words (uppercase, no spaces)
+        UPPER(
+          REGEXP_REPLACE(
             REGEXP_REPLACE(
-              SUBSTRING(a.title FROM '([A-Z]{2,4}\s*\d+)'),
-              '\s+', '', 'g'
-            )
+              a.title,
+              '([A-Z])[a-z]*',
+              '\\1',
+              'g'
+            ),
+            '[^A-Z0-9]',
+            '',
+            'g'
           )
-          WHERE a.title ~* '[A-Z]{2,4}\s*\d+'
         ),
-        -- Extract abbreviation from first letters of words + number
-        (
-          SELECT UPPER(
-            REGEXP_REPLACE(
-              REGEXP_REPLACE(a.title, '^([A-Z])[a-z]*\\s+([A-Z])[a-z]*\\s*(\\d+)', '\\1\\2\\3'),
-              '[^A-Z0-9]', '', 'g'
-            )
-          )
-          WHERE a.title ~* '^[A-Z][a-z]+\\s+[A-Z][a-z]+\\s+\\d+'
-        ),
-        -- Try alternative patterns: single word + number
-        (
-          SELECT UPPER(
-            REGEXP_REPLACE(
-              SUBSTRING(a.title FROM '^([A-Z])[a-z]*\\s+(\\d+)'),
-              '\\s+', '', 'g'
-            )
-          )
-          WHERE a.title ~* '^[A-Z][a-z]+\\s+\\d+'
-        ),
-        NULL
+        -- Method 5: If title starts with uppercase, take first 3-5 characters
+        CASE 
+          WHEN a.title ~ '^[A-Z]' 
+          THEN UPPER(SUBSTRING(REGEXP_REPLACE(a.title, '[^A-Z0-9]', '', 'g'), 1, 5))
+          ELSE NULL
+        END,
+        -- Method 6: Fallback - use first 3 uppercase letters/numbers from anywhere in title
+        UPPER(SUBSTRING(REGEXP_REPLACE(a.title, '[^A-Z0-9]', '', 'g'), 1, 5)),
+        -- Method 7: Last resort - use assessment_id as code
+        'ASS' || a.assessment_id::text
       ) AS assessment_code
     FROM assessments a
     INNER JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
@@ -1437,6 +1428,7 @@ async function getILOStudentList(
   console.log(`[ATTAINMENT DEBUG] Extracted ${assessmentCodesResult.rows.length} assessment codes`);
   console.log(`[ATTAINMENT DEBUG] Assessment codes extracted:`, assessmentCodesResult.rows.map(r => ({
     assessment_id: r.assessment_id,
+    assessment_title: r.assessment_title,
     assessment_code: r.assessment_code
   })));
   
@@ -1448,15 +1440,19 @@ async function getILOStudentList(
         sy.assessment_framework,
         jsonb_typeof(sy.assessment_framework) AS framework_type,
         CASE 
-          WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
-          THEN jsonb_object_keys(sy.assessment_framework)
-          ELSE NULL
-        END AS first_key,
-        CASE 
           WHEN jsonb_typeof(sy.assessment_framework) = 'object' AND sy.assessment_framework ? 'components'
           THEN jsonb_array_length(sy.assessment_framework->'components')
           ELSE NULL
-        END AS components_count
+        END AS components_count,
+        CASE 
+          WHEN jsonb_typeof(sy.assessment_framework) = 'object' AND sy.assessment_framework ? 'components'
+          THEN 'has_components'
+          WHEN jsonb_typeof(sy.assessment_framework) = 'object'
+          THEN 'object_no_components'
+          WHEN jsonb_typeof(sy.assessment_framework) = 'array'
+          THEN 'array'
+          ELSE 'other'
+        END AS structure_type
       FROM syllabi sy
       WHERE sy.syllabus_id = $1
     `;
@@ -1466,9 +1462,12 @@ async function getILOStudentList(
         const framework = frameworkDebugResult.rows[0];
         console.log(`[ATTAINMENT DEBUG] Syllabus assessment_framework structure:`);
         console.log(`  - Type: ${framework.framework_type}`);
+        console.log(`  - Structure: ${framework.structure_type}`);
         console.log(`  - Has components: ${framework.components_count !== null ? 'Yes (' + framework.components_count + ')' : 'No'}`);
-        console.log(`  - First key: ${framework.first_key || 'N/A'}`);
-        console.log(`  - Framework preview:`, JSON.stringify(framework.assessment_framework, null, 2).substring(0, 500));
+        if (framework.assessment_framework) {
+          const frameworkStr = JSON.stringify(framework.assessment_framework, null, 2);
+          console.log(`  - Framework preview (first 1000 chars):`, frameworkStr.substring(0, 1000));
+        }
       }
     } catch (frameworkError) {
       console.error(`[ATTAINMENT DEBUG] Error checking framework structure:`, frameworkError.message);
