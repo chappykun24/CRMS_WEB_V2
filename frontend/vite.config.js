@@ -16,12 +16,35 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false, // Disable sourcemap for production
     minify: 'esbuild', // Use esbuild instead of terser
+    chunkSizeWarningLimit: 1000, // Increase warning limit to 1MB
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          ui: ['@heroicons/react', 'lucide-react']
+        manualChunks: (id) => {
+          // Node modules chunk
+          if (id.includes('node_modules')) {
+            // React core libraries
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            // React Router
+            if (id.includes('react-router')) {
+              return 'router-vendor';
+            }
+            // Charting library (recharts can be large)
+            if (id.includes('recharts')) {
+              return 'charts-vendor';
+            }
+            // UI icon libraries
+            if (id.includes('@heroicons') || id.includes('lucide-react')) {
+              return 'icons-vendor';
+            }
+            // Axios
+            if (id.includes('axios')) {
+              return 'http-vendor';
+            }
+            // Other vendor libraries
+            return 'vendor';
+          }
         }
       }
     }
