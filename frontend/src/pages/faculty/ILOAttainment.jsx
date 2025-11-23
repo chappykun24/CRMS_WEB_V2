@@ -652,6 +652,7 @@ const ILOAttainment = () => {
                     iloAttainment={attainmentData.ilo_attainment || []}
                     assessments={[]}
                     passThreshold={passThreshold}
+                    mappingData={filterOptions}
                   />
                 )}
 
@@ -668,11 +669,13 @@ const ILOAttainment = () => {
                       description: selectedILO.description,
                       attainment_percentage: selectedILO.attained_count && selectedILO.total_students 
                         ? (selectedILO.attained_count / selectedILO.total_students) * 100 
-                        : 0
+                        : 0,
+                      mapped_to: selectedILO.mapped_to || []
                     }]}
                     assessments={selectedILO.assessments || []}
                     passThreshold={passThreshold}
                     students={studentList || []}
+                    mappingData={filterOptions}
                   />
                 )}
 
