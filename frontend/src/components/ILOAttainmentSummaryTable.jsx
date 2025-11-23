@@ -312,7 +312,7 @@ const ILOAttainmentSummaryTable = ({
   const interpretations = generateInterpretation()
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div className="bg-white">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">ILO Attainment Summary</h3>
         <button

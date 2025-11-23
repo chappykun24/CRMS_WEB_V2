@@ -12,7 +12,8 @@ import {
   UserGroupIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/solid'
 
 const ILOAttainment = () => {
@@ -33,6 +34,7 @@ const ILOAttainment = () => {
   const [expandedStudents, setExpandedStudents] = useState(new Set())
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showStudentModal, setShowStudentModal] = useState(false)
+  const [showSummaryModal, setShowSummaryModal] = useState(false)
   
   // Filters
   const [passThreshold, setPassThreshold] = useState(75)
@@ -642,69 +644,35 @@ const ILOAttainment = () => {
             <div className="flex gap-6 items-stretch flex-1 min-h-0 pb-4">
               {/* Main Content Area - Student Results */}
               <div className="flex-1 min-w-0 flex flex-col space-y-6 overflow-y-auto">
-                {/* Summary Table - Show when class is selected and we have summary data */}
-                {selectedClass && attainmentData && !selectedILO && (
-                  <ILOAttainmentSummaryTable
-                    courseCode={selectedClass.course_code}
-                    courseTitle={selectedClass.course_title}
-                    sectionCode={selectedClass.section_code}
-                    totalStudents={attainmentData.summary?.total_students || 0}
-                    iloAttainment={attainmentData.ilo_attainment || []}
-                    assessments={[]}
-                    passThreshold={passThreshold}
-                    mappingData={filterOptions}
-                  />
-                )}
-
-                {/* Summary Table - Also show when viewing a specific ILO */}
-                {selectedClass && selectedILO && (
-                  <ILOAttainmentSummaryTable
-                    courseCode={selectedClass.course_code}
-                    courseTitle={selectedClass.course_title}
-                    sectionCode={selectedClass.section_code}
-                    totalStudents={selectedILO.total_students || 0}
-                    iloAttainment={[{
-                      ilo_id: selectedILO.ilo_id,
-                      ilo_code: selectedILO.ilo_code,
-                      description: selectedILO.description,
-                      attainment_percentage: selectedILO.attained_count && selectedILO.total_students 
-                        ? (selectedILO.attained_count / selectedILO.total_students) * 100 
-                        : 0,
-                      mapped_to: selectedILO.mapped_to || []
-                    }]}
-                    assessments={selectedILO.assessments || []}
-                    passThreshold={passThreshold}
-                    students={studentList || []}
-                    mappingData={filterOptions}
-                    selectedPair={
-                      selectedILOSO ? { type: 'SO', key: selectedILOSO } :
-                      selectedILOSDG ? { type: 'SDG', key: selectedILOSDG } :
-                      selectedILOIGA ? { type: 'IGA', key: selectedILOIGA } :
-                      selectedILOCDIO ? { type: 'CDIO', key: selectedILOCDIO } :
-                      null
-                    }
-                  />
-                )}
 
                 {selectedClass && selectedILO ? (
                   <>
-                    {/* Percentage Range Filter */}
+                    {/* Percentage Range Filter and Summary Button */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                      <div className="flex items-center space-x-4">
-                        <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
-                        <select
-                          value={selectedPercentageRange}
-                          onChange={(e) => setSelectedPercentageRange(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
+                          <select
+                            value={selectedPercentageRange}
+                            onChange={(e) => setSelectedPercentageRange(e.target.value)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                          >
+                            <option value="all">All Ranges</option>
+                            <option value="90-100">90-100%</option>
+                            <option value="80-89">80-89%</option>
+                            <option value="70-79">70-79%</option>
+                            <option value="60-69">60-69%</option>
+                            <option value="50-59">50-59%</option>
+                            <option value="0-49">Below 50%</option>
+                          </select>
+                        </div>
+                        <button
+                          onClick={() => setShowSummaryModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                         >
-                          <option value="all">All Ranges</option>
-                          <option value="90-100">90-100%</option>
-                          <option value="80-89">80-89%</option>
-                          <option value="70-79">70-79%</option>
-                          <option value="60-69">60-69%</option>
-                          <option value="50-59">50-59%</option>
-                          <option value="0-49">Below 50%</option>
-                        </select>
+                          <DocumentTextIcon className="h-5 w-5" />
+                          <span>View Summary</span>
+                        </button>
                       </div>
                     </div>
 
@@ -1075,6 +1043,64 @@ const ILOAttainment = () => {
             </div>
           </div>
           )}
+        )}
+
+        {/* Summary Modal */}
+        {showSummaryModal && selectedClass && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">ILO Attainment Summary</h2>
+                <button
+                  onClick={() => setShowSummaryModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                {selectedILO ? (
+                  <ILOAttainmentSummaryTable
+                    courseCode={selectedClass.course_code}
+                    courseTitle={selectedClass.course_title}
+                    sectionCode={selectedClass.section_code}
+                    totalStudents={selectedILO.total_students || 0}
+                    iloAttainment={[{
+                      ilo_id: selectedILO.ilo_id,
+                      ilo_code: selectedILO.ilo_code,
+                      description: selectedILO.description,
+                      attainment_percentage: selectedILO.attained_count && selectedILO.total_students 
+                        ? (selectedILO.attained_count / selectedILO.total_students) * 100 
+                        : 0,
+                      mapped_to: selectedILO.mapped_to || []
+                    }]}
+                    assessments={selectedILO.assessments || []}
+                    passThreshold={passThreshold}
+                    students={studentList || []}
+                    mappingData={filterOptions}
+                    selectedPair={
+                      selectedILOSO ? { type: 'SO', key: selectedILOSO } :
+                      selectedILOSDG ? { type: 'SDG', key: selectedILOSDG } :
+                      selectedILOIGA ? { type: 'IGA', key: selectedILOIGA } :
+                      selectedILOCDIO ? { type: 'CDIO', key: selectedILOCDIO } :
+                      null
+                    }
+                  />
+                ) : attainmentData ? (
+                  <ILOAttainmentSummaryTable
+                    courseCode={selectedClass.course_code}
+                    courseTitle={selectedClass.course_title}
+                    sectionCode={selectedClass.section_code}
+                    totalStudents={attainmentData.summary?.total_students || 0}
+                    iloAttainment={attainmentData.ilo_attainment || []}
+                    assessments={[]}
+                    passThreshold={passThreshold}
+                    mappingData={filterOptions}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Student Details Modal */}
