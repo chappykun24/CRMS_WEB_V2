@@ -5,26 +5,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   EyeIcon,
-  MagnifyingGlassIcon,
-  ArrowDownTrayIcon
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/solid'
-// Lazy import to prevent blocking initial render
-let exportSyllabusToExcel = null
-const loadExcelExport = async () => {
-  if (!exportSyllabusToExcel) {
-    try {
-      const module = await import('../../utils/excelExport')
-      exportSyllabusToExcel = module.exportSyllabusToExcel
-    } catch (error) {
-      console.error('Failed to load Excel export module:', error)
-      exportSyllabusToExcel = () => {
-        alert('Excel export is not available. Please refresh the page.')
-      }
-    }
-  }
-  return exportSyllabusToExcel
-}
 
 const SyllabusApproval = () => {
   const { user } = useAuth()
@@ -193,32 +176,6 @@ const SyllabusApproval = () => {
     ])
   }
 
-  const handleExportToExcel = async () => {
-    if (!selectedSyllabus) {
-      alert('No syllabus selected for export')
-      return
-    }
-    
-    try {
-      const exportFn = await loadExcelExport()
-      if (!exportFn) {
-        alert('Excel export is not available. Please refresh the page.')
-        return
-      }
-      
-      await exportFn(
-        selectedSyllabus,
-        selectedSyllabusILOs,
-        soReferences,
-        igaReferences,
-        cdioReferences,
-        sdgReferences
-      )
-    } catch (error) {
-      console.error('Error exporting syllabus to Excel:', error)
-      alert('Failed to export syllabus to Excel. Please try again.')
-    }
-  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -530,25 +487,15 @@ const SyllabusApproval = () => {
                       <p className="text-sm text-gray-600 mt-1">Course Code: {selectedSyllabus.course_code}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleExportToExcel}
-                      className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
-                      title="Export to Excel"
-                    >
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                      <span>Export</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowViewModal(false)
-                        setSelectedSyllabus(null)
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <XMarkIcon className="h-6 w-6" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setShowViewModal(false)
+                      setSelectedSyllabus(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
                 </div>
                 
                 <div className="space-y-4">

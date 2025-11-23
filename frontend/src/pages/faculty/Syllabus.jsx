@@ -18,25 +18,8 @@ import {
   BookOpenIcon,
   ArrowPathIcon,
   ArrowUpTrayIcon,
-  XMarkIcon,
-  ArrowDownTrayIcon
+  XMarkIcon
 } from '@heroicons/react/24/solid'
-// Lazy import to prevent blocking initial render
-let exportSyllabusToExcel = null
-const loadExcelExport = async () => {
-  if (!exportSyllabusToExcel) {
-    try {
-      const module = await import('../../utils/excelExport')
-      exportSyllabusToExcel = module.exportSyllabusToExcel
-    } catch (error) {
-      console.error('Failed to load Excel export module:', error)
-      exportSyllabusToExcel = () => {
-        alert('Excel export is not available. Please refresh the page.')
-      }
-    }
-  }
-  return exportSyllabusToExcel
-}
 
 const Syllabus = () => {
   const { user } = useAuth()
@@ -734,43 +717,6 @@ const Syllabus = () => {
     ])
   }
   
-  const handleExportToExcel = async () => {
-    if (!viewingSyllabus) {
-      alert('No syllabus selected for export')
-      return
-    }
-    
-    try {
-      const exportFn = await loadExcelExport()
-      if (!exportFn) {
-        alert('Excel export is not available. Please refresh the page.')
-        return
-      }
-      
-      // Log data being exported for debugging
-      console.log('Exporting syllabus:', {
-        syllabus: viewingSyllabus,
-        ilosCount: viewingSyllabusILOs?.length || 0,
-        soRefsCount: soReferences?.length || 0,
-        igaRefsCount: igaReferences?.length || 0,
-        cdioRefsCount: cdioReferences?.length || 0,
-        sdgRefsCount: sdgReferences?.length || 0,
-      })
-      
-      await exportFn(
-        viewingSyllabus,
-        viewingSyllabusILOs || [],
-        soReferences || [],
-        igaReferences || [],
-        cdioReferences || [],
-        sdgReferences || []
-      )
-    } catch (error) {
-      console.error('Error exporting syllabus to Excel:', error)
-      alert('Failed to export syllabus to Excel. Please try again.')
-    }
-  }
-
   const handlePublish = async () => {
     if (!viewingSyllabus) return
     
@@ -1687,22 +1633,12 @@ const Syllabus = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">{viewingSyllabus.title}</h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleExportToExcel}
-                    className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
-                    title="Export to Excel"
-                  >
-                    <ArrowDownTrayIcon className="h-5 w-5" />
-                    <span>Export</span>
-                  </button>
-                  <button
-                    onClick={() => setShowViewModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <XCircleIcon className="h-6 w-6" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
               </div>
               
               <div className="space-y-4">
