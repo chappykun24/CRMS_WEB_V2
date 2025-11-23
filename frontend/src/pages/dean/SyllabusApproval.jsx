@@ -178,14 +178,14 @@ const SyllabusApproval = () => {
     ])
   }
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!selectedSyllabus) {
       alert('No syllabus selected for export')
       return
     }
     
     try {
-      exportSyllabusToExcel(
+      await exportSyllabusToExcel(
         selectedSyllabus,
         selectedSyllabusILOs,
         soReferences,

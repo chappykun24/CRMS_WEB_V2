@@ -719,20 +719,30 @@ const Syllabus = () => {
     ])
   }
   
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!viewingSyllabus) {
       alert('No syllabus selected for export')
       return
     }
     
+    // Log data being exported for debugging
+    console.log('Exporting syllabus:', {
+      syllabus: viewingSyllabus,
+      ilosCount: viewingSyllabusILOs?.length || 0,
+      soRefsCount: soReferences?.length || 0,
+      igaRefsCount: igaReferences?.length || 0,
+      cdioRefsCount: cdioReferences?.length || 0,
+      sdgRefsCount: sdgReferences?.length || 0,
+    })
+    
     try {
-      exportSyllabusToExcel(
+      await exportSyllabusToExcel(
         viewingSyllabus,
-        viewingSyllabusILOs,
-        soReferences,
-        igaReferences,
-        cdioReferences,
-        sdgReferences
+        viewingSyllabusILOs || [],
+        soReferences || [],
+        igaReferences || [],
+        cdioReferences || [],
+        sdgReferences || []
       )
     } catch (error) {
       console.error('Error exporting syllabus to Excel:', error)
