@@ -661,27 +661,6 @@ const ILOAttainment = () => {
         {/* Summary View */}
         {selectedClass && !loadingAttainment && !selectedILO && attainmentData && (
           <div className="space-y-6">
-            {/* Summary Stats */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                  <p className="text-sm text-gray-600 mb-1">Total ILOs</p>
-                  <p className="text-3xl font-bold text-blue-600">{attainmentData.summary?.total_ilos || 0}</p>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                  <p className="text-sm text-gray-600 mb-1">Total Students</p>
-                  <p className="text-3xl font-bold text-green-600">{attainmentData.summary?.total_students || 0}</p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                  <p className="text-sm text-gray-600 mb-1">Overall Attainment Rate</p>
-                  <p className="text-3xl font-bold text-purple-600">
-                    {attainmentData.summary?.overall_attainment_rate?.toFixed(1) || 0}%
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* ILO Attainment Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -776,54 +755,55 @@ const ILOAttainment = () => {
         )}
 
         {/* Student List View */}
-        {selectedClass && !loadingAttainment && selectedILO && (
+        {!loadingAttainment && (
           <div className="space-y-6">
             {/* Main Content with Sidebar Layout */}
             <div className="flex gap-6 items-start">
               {/* Main Content Area - Student Results */}
               <div className="flex-1 min-w-0 space-y-6">
+                {selectedClass && selectedILO ? (
+                  <>
+                    {/* Performance Filter */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
+                        <button
+                          onClick={() => setPerformanceFilter('all')}
+                          className={`px-4 py-2 rounded-lg transition-colors transition ${
+                            performanceFilter === 'all'
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setPerformanceFilter('high')}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            performanceFilter === 'high'
+                              ? 'bg-green-600 text-white shadow-sm'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          High Performance
+                        </button>
+                        <button
+                          onClick={() => setPerformanceFilter('low')}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            performanceFilter === 'low'
+                              ? 'bg-red-600 text-white shadow-sm'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Low Performance
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Performance Filter */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-gray-700">Filter by Performance:</span>
-                    <button
-                      onClick={() => setPerformanceFilter('all')}
-                      className={`px-4 py-2 rounded-lg transition-colors transition ${
-                        performanceFilter === 'all'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setPerformanceFilter('high')}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        performanceFilter === 'high'
-                          ? 'bg-green-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      High Performance
-                    </button>
-                    <button
-                      onClick={() => setPerformanceFilter('low')}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        performanceFilter === 'low'
-                          ? 'bg-red-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      Low Performance
-                    </button>
-                  </div>
-                </div>
-
-                {/* Students Grouped by Percentage Range */}
-                {loadingAttainment ? (
-                  <TableSkeleton rows={10} columns={5} />
-                ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
+                    {/* Students Grouped by Percentage Range */}
+                    {loadingAttainment ? (
+                      <TableSkeleton rows={10} columns={5} />
+                    ) : selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (
                   <div className="space-y-4">
                 {selectedILO.students_by_range
                   .sort((a, b) => {
@@ -1036,10 +1016,19 @@ const ILOAttainment = () => {
                     <p className="text-gray-500">No students found for the selected filter.</p>
                   </div>
                 )}
+                  </>
+                ) : (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                    <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      {!selectedClass ? 'Please select a class to view student performance.' : 'Please select an ILO to view student details.'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Right Sidebar - Selected ILO Pair */}
-              {selectedILO.assessments && selectedILO.assessments.length > 0 && (
+              {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                 <div className="w-80 flex-shrink-0">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4 h-fit max-h-[calc(100vh-120px)] overflow-y-auto">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected ILO Pair</h3>
