@@ -476,57 +476,6 @@ const ILOAttainment = () => {
   return (
     <div className="h-full bg-gray-50 p-3 overflow-y-auto">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <AcademicCapIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">ILO Attainment Analytics</h1>
-                <p className="text-sm text-gray-500 mt-1">View student performance on ILO-mapped assessments</p>
-              </div>
-            </div>
-            {selectedClass && (
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-              >
-                <ArrowDownTrayIcon className="h-5 w-5" />
-                <span>Export to Excel</span>
-              </button>
-            )}
-          </div>
-          {/* Small Class Selector */}
-          <div className="flex items-center space-x-2">
-            <label className="text-xs font-medium text-gray-600 whitespace-nowrap">
-              Class:
-            </label>
-            <select
-              value={selectedClass?.section_course_id || ''}
-              onChange={(e) => {
-                const classId = parseInt(e.target.value)
-                const cls = filteredClasses.find(c => c.section_course_id === classId)
-                setSelectedClass(cls || null)
-              }}
-              className="flex-1 max-w-md px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              disabled={loading}
-            >
-              <option value="">-- Select a class --</option>
-              {filteredClasses.map((cls) => (
-                <option key={cls.section_course_id} value={cls.section_course_id}>
-                  {cls.course_title} - {cls.section_code}
-                </option>
-              ))}
-            </select>
-            {filteredClasses.length === 0 && !loading && (
-              <p className="text-xs text-gray-500">No classes available for the active term.</p>
-            )}
-          </div>
-        </div>
-
-
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -535,9 +484,46 @@ const ILOAttainment = () => {
           </div>
         )}
 
-        {/* ILO Filters Section - Show when class is selected */}
-        {selectedClass && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+        {/* Filters Section with Class Selection */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+          {/* Class Selection */}
+          <div className="mb-4">
+            <label className="block text-xs text-gray-600 mb-1">Class</label>
+            <div className="flex items-center space-x-2">
+              <select
+                value={selectedClass?.section_course_id || ''}
+                onChange={(e) => {
+                  const classId = parseInt(e.target.value)
+                  const cls = filteredClasses.find(c => c.section_course_id === classId)
+                  setSelectedClass(cls || null)
+                }}
+                className="flex-1 max-w-md px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                disabled={loading}
+              >
+                <option value="">-- Select a class --</option>
+                {filteredClasses.map((cls) => (
+                  <option key={cls.section_course_id} value={cls.section_course_id}>
+                    {cls.course_title} - {cls.section_code}
+                  </option>
+                ))}
+              </select>
+              {selectedClass && (
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                >
+                  <ArrowDownTrayIcon className="h-5 w-5" />
+                  <span>Export to Excel</span>
+                </button>
+              )}
+            </div>
+            {filteredClasses.length === 0 && !loading && (
+              <p className="mt-2 text-xs text-gray-500">No classes available for the active term.</p>
+            )}
+          </div>
+
+          {/* ILO Filters - Show when class is selected */}
+          {selectedClass && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* ILO-SO Filter */}
               <div>
@@ -651,8 +637,8 @@ const ILOAttainment = () => {
                 </select>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Loading State with Skeleton */}
         {selectedClass && loadingAttainment && !selectedILO && (
