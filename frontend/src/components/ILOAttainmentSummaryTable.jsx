@@ -8,7 +8,8 @@ const ILOAttainmentSummaryTable = ({
   totalStudents,
   iloAttainment = [],
   assessments = [],
-  passThreshold = 75
+  passThreshold = 75,
+  students = [] // Add students data to count actual attainment
 }) => {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank')
@@ -141,9 +142,6 @@ const ILOAttainmentSummaryTable = ({
   }
 
   // Extract parent assessment name from title
-  // Examples: "Written Assessment 1" -> "Written Assessment"
-  //           "Midterm Examination 2" -> "Midterm Examination"
-  //           "Laboratory Assessment 3" -> "Laboratory Assessment"
   const extractParentAssessment = (title) => {
     if (!title) return 'Other'
     
@@ -159,7 +157,7 @@ const ILOAttainmentSummaryTable = ({
       parent = parent.replace(pattern, '')
     })
     
-    // If still has numbers, try to extract meaningful parent
+    // Common parent assessment patterns
     const commonParents = [
       'Written Assessment',
       'Midterm Examination',
@@ -182,87 +180,81 @@ const ILOAttainmentSummaryTable = ({
     return parent.trim() || 'Other'
   }
 
-  // Group assessments by parent and calculate attainment
+  // Group assessments by parent and calculate actual student counts
   const groupAssessmentsByParent = () => {
     const parentGroups = {}
     
+    // First, group assessments by parent
     assessments.forEach(assessment => {
       const title = assessment.title || assessment.assessment_title || 'Unknown'
       const parentName = extractParentAssessment(title)
-      const avgPercentage = parseFloat(assessment.average_percentage || 0)
-      const submissionsCount = parseInt(assessment.submissions_count || assessment.total_students || 0)
+      const code = assessment.code || assessment.abbreviation || '-'
       
       if (!parentGroups[parentName]) {
         parentGroups[parentName] = {
           name: parentName,
           subAssessments: [],
-          totalSubmissions: 0,
-          totalStudents: 0,
-          avgPercentage: 0,
-          iloData: {}
+          codes: []
         }
       }
       
       parentGroups[parentName].subAssessments.push({
+        assessment_id: assessment.assessment_id,
         title,
-        code: assessment.code || assessment.abbreviation || '-',
-        avgPercentage,
-        submissionsCount,
+        code,
         assessment
       })
       
-      parentGroups[parentName].totalSubmissions += submissionsCount
-      parentGroups[parentName].totalStudents = Math.max(
-        parentGroups[parentName].totalStudents,
-        totalStudents
-      )
+      if (code !== '-') {
+        parentGroups[parentName].codes.push(code)
+      }
     })
     
-    // Calculate average percentage and student counts for each parent assessment per ILO
+    // For each parent assessment and ILO, count students who passed
     Object.keys(parentGroups).forEach(parentName => {
       const group = parentGroups[parentName]
       
-      // Calculate average percentage across all sub-assessments
-      if (group.subAssessments.length > 0) {
-        const totalAvg = group.subAssessments.reduce((sum, sub) => sum + sub.avgPercentage, 0)
-        group.avgPercentage = totalAvg / group.subAssessments.length
-      }
+      // Initialize ILO data
+      group.iloData = {}
       
-      // For each ILO, calculate how many students attained the passing threshold
       iloAttainment.forEach(ilo => {
-        // Check if any sub-assessment contributes to this ILO
-        const contributingSubs = group.subAssessments.filter(sub => {
+        // Get all sub-assessments for this parent that contribute to this ILO
+        const contributingAssessments = group.subAssessments.filter(sub => {
           const assessment = sub.assessment
+          // Check if assessment is connected to this ILO
           return assessment.ilo_id === ilo.ilo_id || 
-                 (assessment.ilo_ids && assessment.ilo_ids.includes(ilo.ilo_id))
+                 (assessment.ilo_ids && assessment.ilo_ids.includes(ilo.ilo_id)) ||
+                 // If no explicit connection, check if assessment is in the same syllabus (default connection)
+                 true // All assessments in syllabus contribute to all ILOs by default
         })
         
-        if (contributingSubs.length > 0) {
-          // Calculate students who passed: based on average percentage
-          // If average percentage >= passThreshold, count students who passed
-          const avgPct = contributingSubs.reduce((sum, sub) => sum + sub.avgPercentage, 0) / contributingSubs.length
+        if (contributingAssessments.length > 0 && students.length > 0) {
+          // Count students who passed at least one of the contributing assessments
+          // A student passes if they scored >= passThreshold on at least one assessment in this parent group
+          const passedStudents = new Set()
           
-          // Estimate: if average is above threshold, assume proportional students passed
-          // More accurate would require student-level data
-          let attainedCount = 0
-          if (avgPct >= passThreshold) {
-            // Estimate based on average performance
-            // If average is 80% and threshold is 75%, estimate ~80% of students passed
-            const estimatedPassRate = Math.min(100, (avgPct / passThreshold) * 75)
-            attainedCount = Math.round((estimatedPassRate / 100) * totalStudents)
-          } else {
-            // If average is below threshold, estimate lower pass rate
-            const estimatedPassRate = Math.max(0, (avgPct / passThreshold) * 50)
-            attainedCount = Math.round((estimatedPassRate / 100) * totalStudents)
-          }
+          contributingAssessments.forEach(sub => {
+            students.forEach(student => {
+              if (student.assessment_scores) {
+                const assessmentScore = student.assessment_scores.find(
+                  score => score.assessment_id === sub.assessment_id
+                )
+                if (assessmentScore) {
+                  const scorePct = parseFloat(assessmentScore.score_percentage || 0)
+                  if (scorePct >= passThreshold) {
+                    passedStudents.add(student.student_id)
+                  }
+                }
+              }
+            })
+          })
           
-          // Use actual ILO attainment data if available (more accurate)
-          const iloAttainedCount = Math.round((ilo.attainment_percentage / 100) * totalStudents)
+          const finalCount = passedStudents.size
           
           group.iloData[ilo.ilo_id] = {
-            attained: iloAttainedCount,
+            attained: finalCount,
             total: totalStudents,
-            percentage: ilo.attainment_percentage,
+            percentage: totalStudents > 0 ? (finalCount / totalStudents) * 100 : 0,
             contributes: true
           }
         } else {
@@ -362,24 +354,30 @@ const ILOAttainmentSummaryTable = ({
                 </tr>
               </thead>
               <tbody>
-                {parentAssessments.map((parent, idx) => (
-                  <tr key={idx}>
-                    <td className="assessment-task">
-                      {parent.name} ({parent.subAssessments.map(sub => sub.code).filter(Boolean).join(', ') || '-'})
-                    </td>
-                    {iloAttainment.map(ilo => {
-                      const iloData = parent.iloData[ilo.ilo_id]
-                      if (!iloData || !iloData.contributes) {
-                        return <td key={ilo.ilo_id}>-</td>
-                      }
-                      return (
-                        <td key={ilo.ilo_id}>
-                          {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
+                {parentAssessments.map((parent, idx) => {
+                  const codesDisplay = parent.codes.length > 0 
+                    ? `(${parent.codes.join(', ')})` 
+                    : '(-)'
+                  
+                  return (
+                    <tr key={idx}>
+                      <td className="assessment-task">
+                        {parent.name} {codesDisplay}
+                      </td>
+                      {iloAttainment.map(ilo => {
+                        const iloData = parent.iloData[ilo.ilo_id]
+                        if (!iloData || !iloData.contributes) {
+                          return <td key={ilo.ilo_id}>-</td>
+                        }
+                        return (
+                          <td key={ilo.ilo_id}>
+                            {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

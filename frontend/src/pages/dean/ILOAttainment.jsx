@@ -554,6 +554,7 @@ const ILOAttainment = () => {
                     }]}
                     assessments={selectedILO.assessments || []}
                     passThreshold={passThreshold}
+                    students={selectedILO.students || []}
                   />
                 )}
 
