@@ -196,7 +196,9 @@ class StudentService {
       const formData = new FormData();
       formData.append('csv', csvFile);
 
-      const response = await fetch('/api/students/import-csv', {
+      // Use API_BASE_URL for consistency with other services
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/students/import-csv`, {
         method: 'POST',
         body: formData,
       });

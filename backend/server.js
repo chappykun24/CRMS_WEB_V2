@@ -1887,6 +1887,9 @@ app.post('/api/students/register', async (req, res) => {
 // Import students from CSV
 app.post('/api/students/import-csv', uploadCSV.single('csv'), async (req, res) => {
   try {
+    console.log('📥 [CSV IMPORT] Request received');
+    console.log('📥 [CSV IMPORT] File:', req.file ? req.file.originalname : 'No file');
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
