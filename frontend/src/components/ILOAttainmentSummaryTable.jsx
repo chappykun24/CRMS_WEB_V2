@@ -224,27 +224,66 @@ const ILOAttainmentSummaryTable = ({
       }
     })
     
-    // For each parent assessment and ILO, count students who passed
+    // For each parent assessment and sub-assessment, calculate ILO data
     Object.keys(parentGroups).forEach(parentName => {
       const group = parentGroups[parentName]
       
-      // Initialize ILO data
+      // Initialize parent ILO data
       group.iloData = {}
       
+      // Calculate ILO data for each sub-assessment
+      group.subAssessments.forEach(sub => {
+        sub.iloData = {}
+        
+        iloAttainment.forEach(ilo => {
+          // Check if this sub-assessment contributes to this ILO
+          const assessment = sub.assessment
+          const contributes = assessment.ilo_id === ilo.ilo_id || 
+                             (assessment.ilo_ids && assessment.ilo_ids.includes(ilo.ilo_id)) ||
+                             true // All assessments in syllabus contribute to all ILOs by default
+          
+          if (contributes && students.length > 0) {
+            // Count students who passed this specific sub-assessment for this ILO
+            const passedStudents = new Set()
+            
+            students.forEach(student => {
+              if (student.assessment_scores) {
+                const assessmentScore = student.assessment_scores.find(
+                  score => score.assessment_id === sub.assessment_id
+                )
+                if (assessmentScore) {
+                  const scorePct = parseFloat(assessmentScore.score_percentage || 0)
+                  if (scorePct >= passThreshold) {
+                    passedStudents.add(student.student_id)
+                  }
+                }
+              }
+            })
+            
+            const finalCount = passedStudents.size
+            
+            sub.iloData[ilo.ilo_id] = {
+              attained: finalCount,
+              total: totalStudents,
+              percentage: totalStudents > 0 ? (finalCount / totalStudents) * 100 : 0,
+              contributes: true
+            }
+          } else {
+            sub.iloData[ilo.ilo_id] = null
+          }
+        })
+      })
+      
+      // Calculate parent-level ILO data (aggregate of all sub-assessments)
       iloAttainment.forEach(ilo => {
         // Get all sub-assessments for this parent that contribute to this ILO
         const contributingAssessments = group.subAssessments.filter(sub => {
-          const assessment = sub.assessment
-          // Check if assessment is connected to this ILO
-          return assessment.ilo_id === ilo.ilo_id || 
-                 (assessment.ilo_ids && assessment.ilo_ids.includes(ilo.ilo_id)) ||
-                 // If no explicit connection, check if assessment is in the same syllabus (default connection)
-                 true // All assessments in syllabus contribute to all ILOs by default
+          const iloData = sub.iloData[ilo.ilo_id]
+          return iloData && iloData.contributes
         })
         
         if (contributingAssessments.length > 0 && students.length > 0) {
           // Count students who passed at least one of the contributing assessments
-          // A student passes if they scored >= passThreshold on at least one assessment in this parent group
           const passedStudents = new Set()
           
           contributingAssessments.forEach(sub => {
@@ -368,28 +407,46 @@ const ILOAttainmentSummaryTable = ({
                 </tr>
               </thead>
               <tbody>
-                {parentAssessments.map((parent, idx) => {
-                  const codesDisplay = parent.codes.length > 0 
-                    ? `(${parent.codes.join(', ')})` 
-                    : '(-)'
-                  
+                {parentAssessments.map((parent, parentIdx) => {
                   return (
-                    <tr key={idx}>
-                      <td className="assessment-task" style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>
-                        {parent.name} {codesDisplay}
-                      </td>
-                      {iloAttainment.map(ilo => {
-                        const iloData = parent.iloData[ilo.ilo_id]
-                        if (!iloData || !iloData.contributes) {
-                          return <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>-</td>
-                        }
-                        return (
-                          <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
-                            {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
+                    <React.Fragment key={parentIdx}>
+                      {/* Parent Assessment Row */}
+                      <tr>
+                        <td className="assessment-task" style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>
+                          {parent.name}
+                        </td>
+                        {iloAttainment.map(ilo => {
+                          const iloData = parent.iloData[ilo.ilo_id]
+                          if (!iloData || !iloData.contributes) {
+                            return <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>-</td>
+                          }
+                          return (
+                            <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
+                              {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
+                            </td>
+                          )
+                        })}
+                      </tr>
+                      {/* Sub-Assessment Rows */}
+                      {parent.subAssessments.map((sub, subIdx) => (
+                        <tr key={`${parentIdx}-${subIdx}`}>
+                          <td className="assessment-task" style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', paddingLeft: '24px', fontStyle: 'italic' }}>
+                            {sub.title}
                           </td>
-                        )
-                      })}
-                    </tr>
+                          {iloAttainment.map(ilo => {
+                            const iloData = sub.iloData[ilo.ilo_id]
+                            if (!iloData || !iloData.contributes) {
+                              return <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>-</td>
+                            }
+                            return (
+                              <td key={ilo.ilo_id} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
+                                {iloData.attained}/{iloData.total} ({iloData.percentage.toFixed(0)}%)
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   )
                 })}
               </tbody>
