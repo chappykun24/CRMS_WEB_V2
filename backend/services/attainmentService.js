@@ -482,6 +482,106 @@ async function getILOAttainmentSummary(
       LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
       GROUP BY i.ilo_id
     )
+    -- Get parent assessments (components) from assessment_framework and calculate overall scores
+    parent_assessments AS (
+      SELECT DISTINCT
+        i.ilo_id,
+        component->>'name' AS parent_assessment_name,
+        component->>'code' AS parent_assessment_code,
+        component->>'title' AS parent_assessment_title,
+        COALESCE((component->>'weight_percentage')::DOUBLE PRECISION, 0) AS parent_weight_percentage
+      FROM all_syllabus_ilos asi
+      INNER JOIN ilos i ON asi.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      CROSS JOIN LATERAL (
+        SELECT 
+          CASE 
+            WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+            THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
+            WHEN jsonb_typeof(sy.assessment_framework) = 'array'
+            THEN sy.assessment_framework
+            ELSE '[]'::jsonb
+          END AS components
+      ) AS framework
+      CROSS JOIN LATERAL jsonb_array_elements(framework.components) AS component
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        ${syllabusCondition || ''}
+    ),
+    parent_assessment_scores AS (
+      SELECT
+        pa.ilo_id,
+        pa.parent_assessment_name,
+        pa.parent_assessment_code,
+        pa.parent_assessment_title,
+        pa.parent_weight_percentage,
+        -- Calculate overall score for parent assessment: average percentage across all students and all sub-assessments
+        ROUND(AVG(
+          CASE 
+            WHEN sub.adjusted_score IS NOT NULL AND a.total_points > 0
+            THEN (sub.adjusted_score / a.total_points) * 100
+            WHEN sub.total_score IS NOT NULL AND a.total_points > 0
+            THEN (sub.total_score / a.total_points) * 100
+            ELSE NULL
+          END
+        )::NUMERIC, 2) AS parent_overall_score
+      FROM parent_assessments pa
+      INNER JOIN ilos i ON pa.ilo_id = i.ilo_id
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      -- Get sub-assessments for this parent component
+      CROSS JOIN LATERAL (
+        SELECT 
+          CASE 
+            WHEN jsonb_typeof(sy.assessment_framework) = 'object' 
+            THEN COALESCE(sy.assessment_framework->'components', '[]'::jsonb)
+            WHEN jsonb_typeof(sy.assessment_framework) = 'array'
+            THEN sy.assessment_framework
+            ELSE '[]'::jsonb
+          END AS components
+      ) AS framework
+      CROSS JOIN LATERAL jsonb_array_elements(framework.components) AS comp
+      CROSS JOIN LATERAL jsonb_array_elements(
+        CASE 
+          WHEN jsonb_typeof(comp->'sub_assessments') = 'array'
+          THEN comp->'sub_assessments'
+          ELSE '[]'::jsonb
+        END
+      ) AS sub_ass
+      -- Match to actual assessments
+      INNER JOIN assessments a ON a.section_course_id = $1
+        AND (
+          (a.content_data->>'code')::text = (sub_ass->>'code')::text
+          OR (a.content_data->>'abbreviation')::text = (sub_ass->>'code')::text
+          OR a.title ILIKE '%' || COALESCE((sub_ass->>'code')::text, (sub_ass->>'abbreviation')::text, '') || '%'
+        )
+      INNER JOIN course_enrollments ce ON ce.section_course_id = a.section_course_id
+      LEFT JOIN submissions sub ON (
+        ce.enrollment_id = sub.enrollment_id 
+        AND sub.assessment_id = a.assessment_id
+        AND (sub.adjusted_score IS NOT NULL OR sub.total_score IS NOT NULL)
+      )
+      WHERE (comp->>'code')::text = pa.parent_assessment_code
+        OR (comp->>'name')::text = pa.parent_assessment_name
+        AND ce.status = 'enrolled'
+        AND a.is_published = TRUE
+      GROUP BY pa.ilo_id, pa.parent_assessment_name, pa.parent_assessment_code, pa.parent_assessment_title, pa.parent_weight_percentage
+    ),
+    parent_assessments_aggregated AS (
+      SELECT
+        ilo_id,
+        jsonb_agg(
+          jsonb_build_object(
+            'name', parent_assessment_name,
+            'code', parent_assessment_code,
+            'title', parent_assessment_title,
+            'weight_percentage', parent_weight_percentage,
+            'overall_score', parent_overall_score
+          ) ORDER BY parent_assessment_code
+        ) FILTER (WHERE parent_assessment_name IS NOT NULL) AS parent_assessments
+      FROM parent_assessment_scores
+      GROUP BY ilo_id
+    )
     SELECT
       isum.ilo_id,
       isum.ilo_code,
@@ -497,9 +597,11 @@ async function getILOAttainmentSummary(
       COALESCE(im.so_codes, ARRAY[]::TEXT[]) AS mapped_so_codes,
       COALESCE(im.cdio_codes, ARRAY[]::TEXT[]) AS mapped_cdio_codes,
       COALESCE(im.sdg_codes, ARRAY[]::TEXT[]) AS mapped_sdg_codes,
-      COALESCE(im.iga_codes, ARRAY[]::TEXT[]) AS mapped_iga_codes
+      COALESCE(im.iga_codes, ARRAY[]::TEXT[]) AS mapped_iga_codes,
+      COALESCE(paa.parent_assessments, '[]'::jsonb) AS parent_assessments
     FROM ilo_summary isum
     LEFT JOIN ilo_mappings im ON isum.ilo_id = im.ilo_id
+    LEFT JOIN parent_assessments_aggregated paa ON isum.ilo_id = paa.ilo_id
     ORDER BY isum.ilo_code
   `;
   
@@ -549,7 +651,8 @@ async function getILOAttainmentSummary(
       high_performance_count: row.high_performance_count,
       low_performance_count: row.low_performance_count,
       average_score: parseFloat(row.average_score || 0),
-      mapped_to: mappedTo
+      mapped_to: mappedTo,
+      parent_assessments: row.parent_assessments || []
     };
   });
   
