@@ -162,6 +162,22 @@ const upload = multer({
   }
 });
 
+// Configure multer for CSV file uploads
+const uploadCSV = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for CSV files
+  },
+  fileFilter: function (req, file, cb) {
+    // Accept CSV files
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed!'), false);
+    }
+  }
+});
+
 // Add request logging for development
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -1865,6 +1881,182 @@ app.post('/api/students/register', async (req, res) => {
   } catch (error) {
     console.error('❌ [STUDENTS REGISTER] Error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Import students from CSV
+app.post('/api/students/import-csv', uploadCSV.single('csv'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No CSV file provided'
+      });
+    }
+
+    // Parse CSV file
+    const csvContent = req.file.buffer.toString('utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'CSV file must contain at least a header row and one data row'
+      });
+    }
+
+    // Parse header row
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+    
+    // Required columns
+    const requiredColumns = ['student_number', 'first_name', 'last_name', 'email'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    
+    if (missingColumns.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Missing required columns: ${missingColumns.join(', ')}`
+      });
+    }
+
+    // Get column indices
+    const getColumnIndex = (name) => {
+      const index = headers.indexOf(name);
+      if (index === -1 && name !== 'middle_initial' && name !== 'suffix' && name !== 'gender' && name !== 'birth_date') {
+        throw new Error(`Column ${name} not found`);
+      }
+      return index;
+    };
+
+    const studentNumberIdx = getColumnIndex('student_number');
+    const firstNameIdx = getColumnIndex('first_name');
+    const lastNameIdx = getColumnIndex('last_name');
+    const emailIdx = getColumnIndex('email');
+    const middleInitialIdx = headers.indexOf('middle_initial');
+    const suffixIdx = headers.indexOf('suffix');
+    const genderIdx = headers.indexOf('gender');
+    const birthDateIdx = headers.indexOf('birth_date');
+
+    const results = {
+      success: true,
+      successCount: 0,
+      errorCount: 0,
+      errors: []
+    };
+
+    // Process each data row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        // Parse CSV line (handle quoted values and escaped quotes)
+        const values = [];
+        let currentValue = '';
+        let inQuotes = false;
+        
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          const nextChar = j < line.length - 1 ? line[j + 1] : '';
+          
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              // Escaped quote
+              currentValue += '"';
+              j++; // Skip next quote
+            } else {
+              // Toggle quote state
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            values.push(currentValue.trim());
+            currentValue = '';
+          } else {
+            currentValue += char;
+          }
+        }
+        // Add the last value
+        values.push(currentValue.trim());
+
+        // Extract values
+        const studentNumber = values[studentNumberIdx]?.trim();
+        const firstName = values[firstNameIdx]?.trim();
+        const lastName = values[lastNameIdx]?.trim();
+        const email = values[emailIdx]?.trim();
+        const middleInitial = middleInitialIdx >= 0 ? values[middleInitialIdx]?.trim() : '';
+        const suffix = suffixIdx >= 0 ? values[suffixIdx]?.trim() : '';
+        const gender = genderIdx >= 0 ? values[genderIdx]?.trim().toLowerCase() : null;
+        const birthDate = birthDateIdx >= 0 ? values[birthDateIdx]?.trim() : null;
+
+        // Validate required fields
+        if (!studentNumber || !firstName || !lastName || !email) {
+          results.errorCount++;
+          results.errors.push(`Row ${i + 1}: Missing required fields`);
+          continue;
+        }
+
+        // Validate gender if provided
+        if (gender && !['male', 'female', 'other'].includes(gender)) {
+          results.errorCount++;
+          results.errors.push(`Row ${i + 1}: Invalid gender value (must be male, female, or other)`);
+          continue;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          results.errorCount++;
+          results.errors.push(`Row ${i + 1}: Invalid email format`);
+          continue;
+        }
+
+        // Check for duplicates
+        const existingStudent = await pool.query('SELECT 1 FROM students WHERE student_number = $1', [studentNumber]);
+        if (existingStudent.rowCount > 0) {
+          results.errorCount++;
+          results.errors.push(`Row ${i + 1}: Student number ${studentNumber} already exists`);
+          continue;
+        }
+
+        const existingEmail = await pool.query('SELECT 1 FROM students WHERE contact_email = $1', [email]);
+        if (existingEmail.rowCount > 0) {
+          results.errorCount++;
+          results.errors.push(`Row ${i + 1}: Email ${email} already exists`);
+          continue;
+        }
+
+        // Build full name
+        const fullName = [firstName, middleInitial, lastName, suffix].filter(Boolean).join(' ');
+
+        // Insert student
+        await pool.query(
+          `INSERT INTO students (student_number, full_name, gender, birth_date, contact_email, student_photo)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [studentNumber, fullName, gender || null, birthDate || null, email, null]
+        );
+
+        results.successCount++;
+      } catch (error) {
+        results.errorCount++;
+        results.errors.push(`Row ${i + 1}: ${error.message || 'Unknown error'}`);
+      }
+    }
+
+    // Return results
+    if (results.errorCount > 0 && results.successCount === 0) {
+      results.success = false;
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('❌ [STUDENTS CSV IMPORT] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      successCount: 0,
+      errorCount: 0,
+      errors: [error.message]
+    });
   }
 });
 

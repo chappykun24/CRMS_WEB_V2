@@ -189,6 +189,37 @@ class StudentService {
       };
     }
   }
+
+  // Import students from CSV file via backend API
+  async importStudentsFromCSV(csvFile) {
+    try {
+      const formData = new FormData();
+      formData.append('csv', csvFile);
+
+      const response = await fetch('/api/students/import-csv', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'CSV import failed');
+      }
+      
+      return data;
+      
+    } catch (error) {
+      console.error('CSV import error:', error);
+      return {
+        success: false,
+        error: error.message,
+        successCount: 0,
+        errorCount: 0,
+        errors: [error.message]
+      };
+    }
+  }
 }
 
 export default new StudentService();

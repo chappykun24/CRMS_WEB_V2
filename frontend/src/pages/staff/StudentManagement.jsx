@@ -8,7 +8,8 @@ import {
   EyeIcon,
   AcademicCapIcon,
   BuildingOfficeIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowUpTrayIcon
 } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
 import studentService from '../../services/studentService'
@@ -56,6 +57,11 @@ const StudentManagement = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState('')
   const [imagesReady, setImagesReady] = useState(false) // Control when to start loading images
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [csvFile, setCsvFile] = useState(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [importResult, setImportResult] = useState(null)
   
   // Lock page scroll while this page is mounted
   useEffect(() => {
@@ -767,6 +773,47 @@ const StudentManagement = () => {
     }
   }
 
+  const handleCsvImport = async () => {
+    if (!csvFile) {
+      setImportError('Please select a CSV file')
+      return
+    }
+
+    setIsImporting(true)
+    setImportError('')
+    setImportResult(null)
+
+    try {
+      const result = await studentService.importStudentsFromCSV(csvFile)
+      
+      if (result.success) {
+        setImportResult({
+          success: true,
+          successCount: result.successCount || 0,
+          errorCount: result.errorCount || 0,
+          errors: result.errors || []
+        })
+      } else {
+        setImportResult({
+          success: false,
+          successCount: result.successCount || 0,
+          errorCount: result.errorCount || 0,
+          errors: result.errors || [result.error || 'Import failed']
+        })
+      }
+    } catch (error) {
+      setImportError(error.message || 'Failed to import CSV file')
+      setImportResult({
+        success: false,
+        successCount: 0,
+        errorCount: 0,
+        errors: [error.message || 'Failed to import CSV file']
+      })
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   const formatDateTime = (value) => {
     if (!value) return '—'
     try {
@@ -896,13 +943,21 @@ const StudentManagement = () => {
                   </div>
                 </nav>
                 
-                {/* Add Student Button aligned with navigation */}
-                <button
-                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                  disabled
-                >
-                  <PlusIcon className="h-5 w-5 stroke-[3]" />
-                </button>
+                {/* Add Student and Import CSV Buttons aligned with navigation */}
+                <div className="flex items-center gap-2">
+                  <button
+                    className="inline-flex items-center justify-center w-10 h-10 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition-colors"
+                    disabled
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5 stroke-[3]" />
+                  </button>
+                  <button
+                    className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    disabled
+                  >
+                    <PlusIcon className="h-5 w-5 stroke-[3]" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -952,13 +1007,23 @@ const StudentManagement = () => {
                   </div>
                 </nav>
                 
-                {/* Add Student Button aligned with navigation */}
-                <button
-                  onClick={openCreateModal}
-                  className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                >
-                  <PlusIcon className="h-5 w-5 stroke-[3]" />
-                </button>
+                {/* Add Student and Import CSV Buttons aligned with navigation */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowImportModal(true)}
+                    className="inline-flex items-center justify-center w-10 h-10 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition-colors"
+                    title="Import CSV"
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5 stroke-[3]" />
+                  </button>
+                  <button
+                    onClick={openCreateModal}
+                    className="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                    title="Add Student"
+                  >
+                    <PlusIcon className="h-5 w-5 stroke-[3]" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1545,6 +1610,185 @@ const StudentManagement = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Import Students from CSV</h3>
+              <button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setCsvFile(null)
+                  setImportError('')
+                  setImportResult(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {!importResult ? (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select CSV File
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                    <div className="space-y-1 text-center">
+                      <ArrowUpTrayIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="flex text-sm text-gray-600">
+                        <label htmlFor="csv-file" className="relative cursor-pointer bg-white rounded-md font-medium text-red-600 hover:text-red-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-red-500">
+                          <span>Upload a file</span>
+                          <input
+                            id="csv-file"
+                            name="csv-file"
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) => setCsvFile(e.target.files[0])}
+                            className="sr-only"
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">CSV files only</p>
+                    </div>
+                  </div>
+                  {csvFile && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Selected: <span className="font-medium">{csvFile.name}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">CSV Format Requirements:</h4>
+                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Required columns: student_number, first_name, last_name, email</li>
+                    <li>Optional columns: middle_initial, suffix, gender, birth_date</li>
+                    <li>First row should contain column headers</li>
+                    <li>Gender values: male, female, or other</li>
+                    <li>Birth date format: YYYY-MM-DD</li>
+                  </ul>
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-blue-900 mb-1">Example CSV:</p>
+                    <code className="text-xs text-blue-800 bg-blue-100 p-2 rounded block">
+                      student_number,first_name,last_name,email,middle_initial,suffix,gender,birth_date<br/>
+                      20-12345,Juan,Santos,juan.santos@example.com,A,Jr.,male,2000-01-15<br/>
+                      20-12346,Maria,Cruz,maria.cruz@example.com,B,,female,2001-03-20
+                    </code>
+                  </div>
+                </div>
+
+                {importError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                    <p className="text-sm text-red-600">{importError}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setCsvFile(null)
+                      setImportError('')
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCsvImport}
+                    disabled={!csvFile || isImporting}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+                  >
+                    {isImporting && (
+                      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                    )}
+                    {isImporting ? 'Importing...' : 'Import Students'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className={`rounded-md p-4 ${
+                  importResult.success ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      {importResult.success ? (
+                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="ml-3">
+                      <h3 className={`text-sm font-medium ${
+                        importResult.success ? 'text-green-800' : 'text-yellow-800'
+                      }`}>
+                        {importResult.success ? 'Import Completed' : 'Import Completed with Errors'}
+                      </h3>
+                      <div className={`mt-2 text-sm ${
+                        importResult.success ? 'text-green-700' : 'text-yellow-700'
+                      }`}>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Successfully imported: {importResult.successCount || 0} students</li>
+                          {importResult.errorCount > 0 && (
+                            <li>Failed to import: {importResult.errorCount || 0} students</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-4 max-h-60 overflow-y-auto">
+                    <h4 className="text-sm font-medium text-red-900 mb-2">Errors:</h4>
+                    <ul className="text-xs text-red-800 space-y-1">
+                      {importResult.errors.slice(0, 10).map((error, index) => (
+                        <li key={index} className="list-disc list-inside">{error}</li>
+                      ))}
+                      {importResult.errors.length > 10 && (
+                        <li className="text-red-600 font-medium">... and {importResult.errors.length - 10} more errors</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setCsvFile(null)
+                      setImportError('')
+                      setImportResult(null)
+                      loadStudents()
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

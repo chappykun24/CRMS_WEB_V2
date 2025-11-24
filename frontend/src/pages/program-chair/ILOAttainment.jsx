@@ -743,6 +743,41 @@ const ILOAttainment = () => {
               </div>
 
               <div className="w-80 flex-shrink-0 flex flex-col">
+                {/* Quick Statistics - Above ILO Definition */}
+                {selectedClass && selectedILO && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Quick Statistics</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-600 mb-1">Total Students</p>
+                        <p className="text-lg font-bold text-gray-900">{selectedILO.total_students || 0}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-600 mb-1">Attainment Rate</p>
+                        <p className={`text-lg font-bold ${
+                          selectedILO.total_students > 0 && (selectedILO.attained_count / selectedILO.total_students * 100) >= 80 ? 'text-green-600' :
+                          selectedILO.total_students > 0 && (selectedILO.attained_count / selectedILO.total_students * 100) >= 60 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {selectedILO.total_students > 0 ? ((selectedILO.attained_count || 0) / selectedILO.total_students * 100).toFixed(1) : 0}%
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-600 mb-1">High Performers</p>
+                        <p className="text-lg font-bold text-green-600">
+                          {selectedILO.high_performance_students?.length || 0}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs text-gray-600 mb-1">Need Support</p>
+                        <p className="text-lg font-bold text-red-600">
+                          {selectedILO.low_performance_students?.length || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full overflow-y-auto space-y-4">
                   {selectedClass && selectedILO && selectedILO.assessments && selectedILO.assessments.length > 0 && (
                     <>
