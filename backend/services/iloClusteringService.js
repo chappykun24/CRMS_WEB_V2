@@ -52,15 +52,24 @@ function getCachedClusters(sectionCourseId, iloId, filters = {}) {
  */
 function setCachedClusters(sectionCourseId, iloId, filters = {}, data) {
   const key = generateCacheKey(sectionCourseId, iloId, filters);
-  const expiresAt = Date.now() + CACHE_TTL_MS;
+  
+  // Check if this is an error state - use shorter TTL for errors (5 minutes)
+  const isErrorState = data.summary?.error || (Array.isArray(data.clusters) && data.clusters.length === 0 && data.summary?.error);
+  const ttl = isErrorState ? 5 * 60 * 1000 : CACHE_TTL_MS; // 5 minutes for errors, normal TTL for success
+  const expiresAt = Date.now() + ttl;
   
   clusterCache.set(key, {
     data,
     timestamp: Date.now(),
-    expiresAt
+    expiresAt,
+    isError: isErrorState
   });
   
-  console.log(`💾 [ILO CLUSTERING] Cached cluster results for key: ${key} (expires in ${CACHE_TTL_MS / 1000 / 60} minutes)`);
+  if (isErrorState) {
+    console.warn(`⚠️ [ILO CLUSTERING] Cached ERROR state for key: ${key} (expires in 5 minutes) - Error: ${data.summary?.error}`);
+  } else {
+    console.log(`💾 [ILO CLUSTERING] Cached cluster results for key: ${key} (${data.clusters?.length || 0} clusters, expires in ${Math.round(ttl / 1000 / 60)} minutes)`);
+  }
   
   // Clean up expired entries periodically (every 10 minutes)
   if (clusterCache.size > 100) {
@@ -191,6 +200,13 @@ async function getCachedClustersFromDB(sectionCourseId, iloId, filters = {}, max
  * Save clusters to database cache
  */
 async function saveClustersToDB(sectionCourseId, iloId, filters = {}, clusterData) {
+  // Don't save error states to database - they should expire quickly
+  const isErrorState = clusterData.summary?.error || (Array.isArray(clusterData.clusters) && clusterData.clusters.length === 0 && clusterData.summary?.error);
+  if (isErrorState) {
+    console.warn(`⚠️ [ILO CLUSTERING] Skipping DB cache for error state: ${clusterData.summary?.error}`);
+    return; // Don't persist error states to DB
+  }
+  
   try {
     const { soId, sdgId, igaId, cdioId } = filters;
     const cacheKey = generateCacheKey(sectionCourseId, iloId, filters);

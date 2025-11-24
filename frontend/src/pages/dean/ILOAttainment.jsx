@@ -210,10 +210,23 @@ const ILOAttainment = () => {
       const maxAge = 30 * 60 * 1000 // 30 minutes
       
       if (cacheAge < maxAge) {
-        console.log('📦 [ILO CLUSTERING] Using cached cluster data')
-        setAvailableClusters(cached.clusters || [])
-        setLoadingClusters(false)
-        return
+        console.log('📦 [ILO CLUSTERING] Using cached cluster data', {
+          clustersCount: cached.clusters?.length || 0,
+          cacheAge: Math.round(cacheAge / 1000 / 60) + ' minutes'
+        })
+        
+        // Check if cached data has clusters
+        if (cached.clusters && cached.clusters.length > 0) {
+          setAvailableClusters(cached.clusters)
+          setLoadingClusters(false)
+          return
+        } else {
+          // Cache has empty clusters - might be an error state, try refreshing
+          console.warn('⚠️ [ILO CLUSTERING] Cached data has no clusters, refreshing...')
+          // Continue to fetch fresh data
+        }
+      } else {
+        console.log('📦 [ILO CLUSTERING] Cache expired, fetching fresh data')
       }
     }
 
@@ -237,21 +250,44 @@ const ILOAttainment = () => {
 
       const result = await response.json()
       
-      if (result.success && result.data.clusters) {
-        const clusters = result.data.clusters.map((cluster, index) => ({
-          cluster_id: cluster.cluster_id || index,
-          student_count: cluster.student_count || cluster.students?.length || 0,
-          avg_ilo_percentage: cluster.avg_ilo_percentage,
-          students: cluster.students || []
-        }))
-        setAvailableClusters(clusters)
-        
-        // Cache the results
-        safeSetItem(cacheKey, {
-          clusters,
-          timestamp: Date.now()
-        })
+      console.log('[ILO CLUSTERING] Response:', {
+        success: result.success,
+        hasData: !!result.data,
+        clustersCount: result.data?.clusters?.length || 0,
+        hasError: !!result.data?.summary?.error,
+        error: result.data?.summary?.error
+      })
+      
+      if (result.success && result.data) {
+        // Check if there's an error in the summary
+        if (result.data.summary?.error) {
+          console.warn('[ILO CLUSTERING] Clustering error:', result.data.summary.error)
+          console.warn('[ILO CLUSTERING] Error message:', result.data.summary.message)
+          // Still show empty clusters, but log the error
+          setAvailableClusters([])
+          if (result.data.summary.message) {
+            setError(`Clustering unavailable: ${result.data.summary.message}`)
+          }
+        } else if (result.data.clusters && Array.isArray(result.data.clusters)) {
+          const clusters = result.data.clusters.map((cluster, index) => ({
+            cluster_id: cluster.cluster_id || index,
+            student_count: cluster.student_count || cluster.students?.length || 0,
+            avg_ilo_percentage: cluster.avg_ilo_percentage,
+            students: cluster.students || []
+          }))
+          setAvailableClusters(clusters)
+          
+          // Cache the results
+          safeSetItem(cacheKey, {
+            clusters,
+            timestamp: Date.now()
+          })
+        } else {
+          console.warn('[ILO CLUSTERING] No clusters in response')
+          setAvailableClusters([])
+        }
       } else {
+        console.warn('[ILO CLUSTERING] Request failed or invalid response')
         setAvailableClusters([])
       }
     } catch (error) {
