@@ -36,6 +36,12 @@ const ILOAttainment = () => {
   const [lowThreshold, setLowThreshold] = useState(75)
   const [selectedPercentageRange, setSelectedPercentageRange] = useState('all')
   
+  // Clustering mode toggle
+  const [useClustering, setUseClustering] = useState(false)
+  const [selectedCluster, setSelectedCluster] = useState(null)
+  const [availableClusters, setAvailableClusters] = useState([])
+  const [loadingClusters, setLoadingClusters] = useState(false)
+  
   // ILO mapping filters
   const [filterOptions, setFilterOptions] = useState({ so: [], sdg: [], iga: [], cdio: [], ilo_combinations: [], ilo_so_combinations: [], ilo_sdg_combinations: [], ilo_iga_combinations: [], ilo_cdio_combinations: [] })
   const [selectedSO, setSelectedSO] = useState('')
@@ -190,6 +196,73 @@ const ILOAttainment = () => {
     loadFilterOptions()
   }, [selectedClass?.section_course_id, selectedSO, selectedSDG, selectedIGA, selectedCDIO])
 
+  // Load clusters for ILO-based clustering
+  const loadClusters = useCallback(async (sectionCourseId, iloId) => {
+    if (!sectionCourseId || !iloId) return
+
+    // Check cache first
+    const cacheKey = `ilo_clusters_${sectionCourseId}_${iloId}_${selectedSO || 'null'}_${selectedSDG || 'null'}_${selectedIGA || 'null'}_${selectedCDIO || 'null'}`
+    const cached = safeGetItem(cacheKey)
+    
+    if (cached) {
+      // Check if cache is still valid (30 minutes)
+      const cacheAge = Date.now() - (cached.timestamp || 0)
+      const maxAge = 30 * 60 * 1000 // 30 minutes
+      
+      if (cacheAge < maxAge) {
+        console.log('📦 [ILO CLUSTERING] Using cached cluster data')
+        setAvailableClusters(cached.clusters || [])
+        setLoadingClusters(false)
+        return
+      }
+    }
+
+    setLoadingClusters(true)
+    try {
+      const params = new URLSearchParams({
+        section_course_id: sectionCourseId.toString(),
+        ilo_id: iloId.toString()
+      })
+      
+      if (selectedSO) params.append('so_id', selectedSO)
+      if (selectedSDG) params.append('sdg_id', selectedSDG)
+      if (selectedIGA) params.append('iga_id', selectedIGA)
+      if (selectedCDIO) params.append('cdio_id', selectedCDIO)
+
+      const response = await fetch(`/api/assessments/ilo-clustering?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch clusters: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.data.clusters) {
+        const clusters = result.data.clusters.map((cluster, index) => ({
+          cluster_id: cluster.cluster_id || index,
+          student_count: cluster.student_count || cluster.students?.length || 0,
+          avg_ilo_percentage: cluster.avg_ilo_percentage,
+          students: cluster.students || []
+        }))
+        setAvailableClusters(clusters)
+        
+        // Cache the results
+        safeSetItem(cacheKey, {
+          clusters,
+          timestamp: Date.now()
+        })
+      } else {
+        setAvailableClusters([])
+      }
+    } catch (error) {
+      console.error('Error loading clusters:', error)
+      setAvailableClusters([])
+      setError(`Failed to load clusters: ${error.message}`)
+    } finally {
+      setLoadingClusters(false)
+    }
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO])
+
   // Load ILO attainment data
   const loadAttainmentData = useCallback(async (sectionCourseId, iloId = null) => {
     if (!sectionCourseId) return
@@ -228,6 +301,14 @@ const ILOAttainment = () => {
       if (selectedILOIGA) params.append('ilo_iga_key', selectedILOIGA)
       if (selectedILOCDIO) params.append('ilo_cdio_key', selectedILOCDIO)
 
+      // Add clustering parameters
+      if (useClustering) {
+        params.append('use_clustering', 'true')
+        if (selectedCluster !== null) {
+          params.append('cluster_id', selectedCluster.toString())
+        }
+      }
+
       const response = await fetch(`/api/assessments/ilo-attainment?${params.toString()}`, {
         signal: attainmentAbortControllerRef.current.signal,
         headers: {
@@ -265,7 +346,7 @@ const ILOAttainment = () => {
     } finally {
       setLoadingAttainment(false)
     }
-  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO])
+  }, [passThreshold, performanceFilter, highThreshold, lowThreshold, selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOCombination, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO, useClustering, selectedCluster])
 
   // Load data when class is selected or filters change
   useEffect(() => {
@@ -304,7 +385,14 @@ const ILOAttainment = () => {
     if (selectedILO?.ilo_id && selectedClass?.section_course_id && !selectedILOCombination) {
       loadAttainmentData(selectedClass.section_course_id, selectedILO.ilo_id)
     }
-  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO])
+  }, [selectedSO, selectedSDG, selectedIGA, selectedCDIO, selectedILOSO, selectedILOSDG, selectedILOIGA, selectedILOCDIO, useClustering, selectedCluster, selectedPercentageRange])
+
+  // Reload clusters when clustering mode is enabled or ILO changes
+  useEffect(() => {
+    if (useClustering && selectedILO?.ilo_id && selectedClass?.section_course_id) {
+      loadClusters(selectedClass.section_course_id, selectedILO.ilo_id)
+    }
+  }, [useClustering, selectedILO?.ilo_id, selectedClass?.section_course_id, loadClusters])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -529,23 +617,80 @@ const ILOAttainment = () => {
 
                 {selectedClass && selectedILO ? (
                   <>
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                      <div className="flex items-center space-x-4">
-                        <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
-                        <select
-                          value={selectedPercentageRange}
-                          onChange={(e) => setSelectedPercentageRange(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                        >
-                          <option value="all">All Ranges</option>
-                          <option value="90-100">90-100%</option>
-                          <option value="80-89">80-89%</option>
-                          <option value="70-79">70-79%</option>
-                          <option value="60-69">60-69%</option>
-                          <option value="50-59">50-59%</option>
-                          <option value="0-49">Below 50%</option>
-                        </select>
+                    {/* Filter Mode Toggle */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="text-sm font-medium text-gray-700">Filter Mode:</label>
+                        <div className="flex items-center space-x-3">
+                          <span className={`text-sm ${!useClustering ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+                            Range Filter
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newMode = !useClustering
+                              setUseClustering(newMode)
+                              setSelectedCluster(null)
+                              if (newMode) {
+                                loadClusters(selectedClass.section_course_id, selectedILO.ilo_id)
+                              }
+                            }}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              useClustering ? 'bg-blue-600' : 'bg-gray-200'
+                            }`}
+                            role="switch"
+                            aria-checked={useClustering}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                useClustering ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-sm ${useClustering ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+                            Clustering
+                          </span>
+                        </div>
                       </div>
+                      
+                      {!useClustering ? (
+                        <div className="flex items-center space-x-4">
+                          <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
+                          <select
+                            value={selectedPercentageRange}
+                            onChange={(e) => setSelectedPercentageRange(e.target.value)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                          >
+                            <option value="all">All Ranges</option>
+                            <option value="90-100">90-100%</option>
+                            <option value="80-89">80-89%</option>
+                            <option value="70-79">70-79%</option>
+                            <option value="60-69">60-69%</option>
+                            <option value="50-59">50-59%</option>
+                            <option value="0-49">Below 50%</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-4">
+                          <label className="text-sm font-medium text-gray-700">Filter by Cluster:</label>
+                          {loadingClusters ? (
+                            <span className="text-sm text-gray-500">Loading clusters...</span>
+                          ) : (
+                            <select
+                              value={selectedCluster || ''}
+                              onChange={(e) => setSelectedCluster(e.target.value ? parseInt(e.target.value) : null)}
+                              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                            >
+                              <option value="">All Clusters</option>
+                              {availableClusters.map((cluster) => (
+                                <option key={cluster.cluster_id} value={cluster.cluster_id}>
+                                  Cluster {cluster.cluster_id} ({cluster.student_count} students)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (

@@ -1141,6 +1141,10 @@ router.get('/ilo-attainment', async (req, res) => {
     // Use specific ILO ID if combination key was provided
     const finalIloId = specificIloId || iloId;
     
+    // Check if clustering mode is enabled
+    const useClustering = req.query.use_clustering === 'true';
+    const clusterId = req.query.cluster_id ? parseInt(req.query.cluster_id) : null;
+    
     const result = await calculateILOAttainment(
       sectionCourseId,
       passThreshold,
@@ -1152,7 +1156,9 @@ router.get('/ilo-attainment', async (req, res) => {
       sdgId,
       igaId,
       cdioId,
-      syllabusId
+      syllabusId,
+      useClustering,
+      clusterId
     );
 
     // Get debug info for successful response
@@ -1239,6 +1245,54 @@ router.get('/ilo-attainment', async (req, res) => {
       error: error.message || 'Failed to fetch ILO attainment data',
       debug: debugInfo,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// GET /api/assessments/ilo-clustering - Get ILO-based clustering results
+router.get('/ilo-clustering', async (req, res) => {
+  try {
+    const { 
+      section_course_id, 
+      ilo_id,
+      so_id,
+      sdg_id,
+      iga_id,
+      cdio_id
+    } = req.query;
+
+    if (!section_course_id || !ilo_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'section_course_id and ilo_id are required'
+      });
+    }
+
+    const sectionCourseId = parseInt(section_course_id);
+    const iloId = parseInt(ilo_id);
+    const soId = so_id ? parseInt(so_id) : null;
+    const sdgId = sdg_id ? parseInt(sdg_id) : null;
+    const igaId = iga_id ? parseInt(iga_id) : null;
+    const cdioId = cdio_id ? parseInt(cdio_id) : null;
+
+    // Import clustering function (we'll create this)
+    const { getILOClusters } = await import('../services/iloClusteringService.js');
+    
+    const result = await getILOClusters(
+      sectionCourseId,
+      iloId,
+      { soId, sdgId, igaId, cdioId }
+    );
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('[ILO CLUSTERING] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch ILO clustering data'
     });
   }
 });

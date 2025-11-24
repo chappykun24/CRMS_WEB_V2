@@ -22,7 +22,9 @@ export async function calculateILOAttainment(
   sdgId = null,
   igaId = null,
   cdioId = null,
-  syllabusId = null
+  syllabusId = null,
+  useClustering = false,
+  clusterId = null
 ) {
   try {
     // Get active term
@@ -169,7 +171,9 @@ export async function calculateILOAttainment(
         igaId,
         cdioId,
         activeTermId,
-        finalSyllabusId
+        finalSyllabusId,
+        useClustering,
+        clusterId
       );
     } else {
       // Return summary for all ILOs (with optional filters)
@@ -686,7 +690,9 @@ async function getILOStudentList(
   igaId = null,
   cdioId = null,
   activeTermId = null,
-  syllabusId = null
+  syllabusId = null,
+  useClustering = false,
+  clusterId = null
 ) {
   // Build parameterized query parameters
   const simpleILOParams = [iloId, sectionCourseId];
@@ -2188,6 +2194,39 @@ async function getILOStudentList(
     filteredStudents = allStudents.filter(s => s.performance_level === 'high');
   } else if (performanceFilter === 'low') {
     filteredStudents = allStudents.filter(s => s.performance_level === 'low');
+  }
+  
+  // Filter by cluster if clustering mode is enabled
+  // Note: This will call the Python script each time, which may be slow.
+  // Consider caching cluster results for better performance.
+  if (useClustering && clusterId !== null && clusterId !== undefined) {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { getILOClusters } = await import('./iloClusteringService.js');
+      const clusterResult = await getILOClusters(sectionCourseId, iloId, {
+        soId, sdgId, igaId, cdioId
+      });
+      
+      if (clusterResult && clusterResult.clusters) {
+        // Find the selected cluster
+        const selectedCluster = clusterResult.clusters.find(c => c.cluster_id === clusterId);
+        if (selectedCluster && selectedCluster.students && selectedCluster.students.length > 0) {
+          const clusterStudentIds = new Set(selectedCluster.students.map(s => parseInt(s.student_id)));
+          filteredStudents = filteredStudents.filter(s => clusterStudentIds.has(parseInt(s.student_id)));
+          console.log(`[ILO ATTAINMENT] Filtered to ${filteredStudents.length} students in cluster ${clusterId}`);
+        } else {
+          console.warn(`[ILO ATTAINMENT] Cluster ${clusterId} not found or has no students`);
+          filteredStudents = []; // No students match the selected cluster
+        }
+      }
+    } catch (error) {
+      console.error('[ILO ATTAINMENT] Error filtering by cluster:', error);
+      // Continue without cluster filtering if there's an error
+      // Return empty list to indicate clustering failed
+      if (useClustering) {
+        filteredStudents = [];
+      }
+    }
   }
   
   // Group filtered students by percentage range
