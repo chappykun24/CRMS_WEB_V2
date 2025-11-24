@@ -315,9 +315,32 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
   // Step 3: Call Python script (SLOW)
   console.log(`🔄 [ILO CLUSTERING] Cache miss - calling Python script...`);
   
+  // Check if script exists before attempting to run
+  const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
+  const fs = await import('fs/promises');
+  
+  try {
+    await fs.access(scriptPath);
+  } catch (accessError) {
+    console.error(`❌ [ILO CLUSTERING] Python script not found at: ${scriptPath}`);
+    // Return empty clusters instead of failing
+    const emptyResult = {
+      clusters: [],
+      summary: {
+        error: 'Python script not available',
+        message: 'Clustering script not found. Please ensure the script is installed.',
+        optimal_k: null,
+        silhouette_score: null
+      },
+      optimal_k: null,
+      silhouette_score: null
+    };
+    // Cache empty result to avoid repeated attempts
+    setCachedClusters(sectionCourseId, iloId, filters, emptyResult);
+    return emptyResult;
+  }
+  
   return new Promise((resolve, reject) => {
-    // Path to Python script
-    const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
     
     // Build command arguments
     const args = [
@@ -353,12 +376,44 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
       timeoutId = setTimeout(() => {
         if (pythonProcess && !pythonProcess.killed) {
           pythonProcess.kill();
-          reject(new Error('Python script execution timeout (exceeded 5 minutes). The script may be taking too long or hanging.'));
+          console.error('❌ [ILO CLUSTERING] Python script execution timeout');
+          
+          // Return empty clusters instead of rejecting
+          const errorResult = {
+            clusters: [],
+            summary: {
+              error: 'Execution timeout',
+              message: 'Python script execution timeout (exceeded 5 minutes). The script may be taking too long or hanging.',
+              optimal_k: null,
+              silhouette_score: null
+            },
+            optimal_k: null,
+            silhouette_score: null
+          };
+          
+          setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          resolve(errorResult);
         }
       }, 5 * 60 * 1000);
     } catch (spawnError) {
       if (timeoutId) clearTimeout(timeoutId);
-      reject(new Error(`Failed to start Python process: ${spawnError.message}`));
+      console.error(`❌ [ILO CLUSTERING] Failed to start Python process:`, spawnError);
+      
+      // Return empty clusters instead of rejecting
+      const errorResult = {
+        clusters: [],
+        summary: {
+          error: 'Process spawn failed',
+          message: `Failed to start Python process: ${spawnError.message}`,
+          optimal_k: null,
+          silhouette_score: null
+        },
+        optimal_k: null,
+        silhouette_score: null
+      };
+      
+      setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+      resolve(errorResult);
       return;
     }
     
@@ -372,89 +427,180 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
       console.error('[ILO CLUSTERING] Python error:', data.toString());
     });
     
-    pythonProcess.on('close', async (code) => {
-      clearTimeout(timeoutId);
-      if (code !== 0) {
-        const errorMsg = stderr || stdout || 'Unknown error';
-        reject(new Error(`Python script exited with code ${code}: ${errorMsg}`));
-        return;
-      }
+    pythonProcess.on('close', (code) => {
+      if (timeoutId) clearTimeout(timeoutId);
       
-      // Parse the output - the script should output JSON summary
-      try {
-        // Try to read the JSON output file
-        const fs = await import('fs/promises');
-        const outputDir = join(__dirname, '../../temp_clustering_results');
-        
-        // Check if output directory exists
-        try {
-          await fs.access(outputDir);
-        } catch (accessError) {
-          // Directory doesn't exist, create it
-          await fs.mkdir(outputDir, { recursive: true });
+      // Handle async operations
+      (async () => {
+        if (code !== 0) {
+          const errorMsg = (stderr || stdout || 'Unknown error').substring(0, 1000);
+          console.error(`❌ [ILO CLUSTERING] Python script exited with code ${code}:`, errorMsg);
+          
+          // Return empty clusters instead of rejecting
+          const errorResult = {
+            clusters: [],
+            summary: {
+              error: `Python script failed (exit code ${code})`,
+              message: errorMsg,
+              optimal_k: null,
+              silhouette_score: null
+            },
+            optimal_k: null,
+            silhouette_score: null
+          };
+          
+          // Cache error result to avoid repeated failed attempts
+          setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          resolve(errorResult);
+          return;
         }
         
-        const files = await fs.readdir(outputDir);
+        // Parse the output - the script should output JSON summary
+        try {
+          // Try to read the JSON output file
+          const fsModule = await import('fs/promises');
+          const outputDir = join(__dirname, '../../temp_clustering_results');
+        
+          // Check if output directory exists
+          try {
+            await fsModule.access(outputDir);
+          } catch (accessError) {
+            // Directory doesn't exist, create it
+            await fsModule.mkdir(outputDir, { recursive: true });
+          }
+          
+          const files = await fsModule.readdir(outputDir);
         const summaryFile = files.find(f => f.startsWith('ilo_clustering_summary_') && f.endsWith('.json'));
         
-        if (summaryFile) {
-          const summaryPath = join(outputDir, summaryFile);
-          const summaryContent = await fs.readFile(summaryPath, 'utf8');
-          const summary = JSON.parse(summaryContent);
-          
-          // Read CSV results to get cluster assignments
-          const csvFile = files.find(f => f.startsWith('ilo_clustering_results_') && f.endsWith('.csv'));
-          if (csvFile) {
-            const csvPath = join(outputDir, csvFile);
-            const csvContent = await fs.readFile(csvPath, 'utf8');
-            const clusters = parseCSVWithClusters(csvContent);
+          if (summaryFile) {
+            const summaryPath = join(outputDir, summaryFile);
+            const summaryContent = await fsModule.readFile(summaryPath, 'utf8');
+            const summary = JSON.parse(summaryContent);
             
-            const result = {
-              clusters: clusters,
-              summary: summary,
-              optimal_k: summary.optimal_k,
-              silhouette_score: summary.silhouette_score
-            };
+            // Read CSV results to get cluster assignments
+            const csvFile = files.find(f => f.startsWith('ilo_clustering_results_') && f.endsWith('.csv'));
+            if (csvFile) {
+              const csvPath = join(outputDir, csvFile);
+              const csvContent = await fsModule.readFile(csvPath, 'utf8');
+              const clusters = parseCSVWithClusters(csvContent);
             
-            // Cache the results (both in-memory and database)
-            setCachedClusters(sectionCourseId, iloId, filters, result);
-            saveClustersToDB(sectionCourseId, iloId, filters, result).catch(err => {
-              console.error('❌ [ILO CLUSTERING] Failed to save to DB cache:', err);
-            });
-            
-            resolve(result);
+              const result = {
+                clusters: clusters,
+                summary: summary,
+                optimal_k: summary.optimal_k,
+                silhouette_score: summary.silhouette_score
+              };
+              
+              // Cache the results (both in-memory and database)
+              setCachedClusters(sectionCourseId, iloId, filters, result);
+              saveClustersToDB(sectionCourseId, iloId, filters, result).catch(err => {
+                console.error('❌ [ILO CLUSTERING] Failed to save to DB cache:', err);
+              });
+              
+              resolve(result);
+            } else {
+              const result = {
+                clusters: [],
+                summary: summary
+              };
+              
+              // Cache even empty results to avoid repeated calls
+              setCachedClusters(sectionCourseId, iloId, filters, result);
+              
+              resolve(result);
+            }
           } else {
-            const result = {
+            // Fallback: return empty clusters instead of failing
+            console.warn('[ILO CLUSTERING] No output files found. Python stdout:', stdout.substring(0, 500));
+            console.warn('[ILO CLUSTERING] Python stderr:', stderr.substring(0, 500));
+            
+            // Return empty clusters with error info instead of rejecting
+            const errorResult = {
               clusters: [],
-              summary: summary
+              summary: {
+                error: 'No output files generated',
+                message: 'Python script completed but no output files were found. Check Python script configuration and dependencies.',
+                stdout: stdout.substring(0, 1000),
+                stderr: stderr.substring(0, 1000),
+                optimal_k: null,
+                silhouette_score: null
+              },
+              optimal_k: null,
+              silhouette_score: null
             };
             
-            // Cache even empty results to avoid repeated calls
-            setCachedClusters(sectionCourseId, iloId, filters, result);
-            
-            resolve(result);
+            // Cache error result to avoid repeated failed attempts
+            setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+            resolve(errorResult);
           }
-        } else {
-          // Fallback: return error with stdout/stderr for debugging
-          console.error('[ILO CLUSTERING] No output files found. Python stdout:', stdout);
-          console.error('[ILO CLUSTERING] Python stderr:', stderr);
+        } catch (error) {
+          console.error('[ILO CLUSTERING] Error parsing results:', error);
+          // Return empty clusters instead of rejecting
+          const errorResult = {
+            clusters: [],
+            summary: {
+              error: 'Parsing failed',
+              message: `Failed to parse clustering results: ${error.message}`,
+              stdout: stdout.substring(0, 1000),
+              stderr: stderr.substring(0, 1000),
+              optimal_k: null,
+              silhouette_score: null
+            },
+            optimal_k: null,
+            silhouette_score: null
+          };
           
-          reject(new Error(`Python script completed but no output files found. Check if Python script is configured correctly. Output: ${stdout.substring(0, 500)}`));
+          setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          resolve(errorResult);
         }
-      } catch (error) {
-        console.error('[ILO CLUSTERING] Error parsing results:', error);
-        reject(new Error(`Failed to parse clustering results: ${error.message}. Python output: ${stdout.substring(0, 500)}`));
-      }
+      })().catch(err => {
+        console.error('[ILO CLUSTERING] Unexpected error in async handler:', err);
+        // Final fallback - return empty clusters
+        const errorResult = {
+          clusters: [],
+          summary: {
+            error: 'Unexpected error',
+            message: err.message,
+            optimal_k: null,
+            silhouette_score: null
+          },
+          optimal_k: null,
+          silhouette_score: null
+        };
+        setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+        resolve(errorResult);
+      });
     });
     
     pythonProcess.on('error', (error) => {
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       const errorMsg = error.code === 'ENOENT' 
         ? `Python not found. Please ensure Python 3 is installed and accessible. Tried: ${pythonCommand}. Original error: ${error.message}`
         : `Failed to spawn Python process: ${error.message}`;
       console.error(`❌ [ILO CLUSTERING] ${errorMsg}`);
-      reject(new Error(errorMsg));
+      
+      // Return empty clusters instead of rejecting
+      const errorResult = {
+        clusters: [],
+        summary: {
+          error: 'Python process error',
+          message: errorMsg,
+          optimal_k: null,
+          silhouette_score: null
+        },
+        optimal_k: null,
+        silhouette_score: null
+      };
+      
+      // Cache error result to avoid repeated failed attempts
+      setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+      resolve(errorResult);
     });
+    
+    // Handle timeout
+    if (timeoutId) {
+      // Timeout is already set in the try block above
+    }
   });
 }
 
