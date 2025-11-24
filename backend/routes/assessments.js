@@ -1250,6 +1250,7 @@ router.get('/ilo-attainment', async (req, res) => {
 });
 
 // GET /api/assessments/ilo-clustering - Get ILO-based clustering results
+// IMPORTANT: This route MUST be defined before /:id to avoid route conflicts
 router.get('/ilo-clustering', async (req, res) => {
   try {
     const { 
@@ -1275,7 +1276,7 @@ router.get('/ilo-clustering', async (req, res) => {
     const igaId = iga_id ? parseInt(iga_id) : null;
     const cdioId = cdio_id ? parseInt(cdio_id) : null;
 
-    // Import clustering function (we'll create this)
+    // Import clustering function
     const { getILOClusters } = await import('../services/iloClusteringService.js');
     
     const result = await getILOClusters(
@@ -1433,6 +1434,12 @@ router.get('/ilo-attainment/debug/:sectionCourseId', async (req, res) => {
 // GET /api/assessments/:id - Get a specific assessment with details
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
+  
+  // Guard: Skip non-numeric IDs that might match other routes
+  // This prevents routes like "ilo-clustering" from being matched here
+  if (!/^\d+$/.test(id)) {
+    return res.status(404).json({ error: 'Assessment not found' });
+  }
   
   try {
     const query = `
