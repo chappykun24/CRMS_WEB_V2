@@ -247,13 +247,14 @@ async function getILOAttainmentSummary(
 
   // Build parameterized query with dynamic parameters
   // Ensure all parameters are properly typed numbers
+  // Note: lowThreshold is not used in this query, so we don't include it to avoid PostgreSQL type inference issues
   const queryParams = [
     Number(sectionCourseId), 
     Number(passThreshold), 
-    Number(highThreshold), 
-    Number(lowThreshold)  // $4 - kept for compatibility, explicitly cast to help PostgreSQL
+    Number(highThreshold)
+    // lowThreshold removed - not used in query, was causing "could not determine data type of parameter $4" error
   ];
-  let paramIndex = 5; // Start after the first 4 parameters
+  let paramIndex = 4; // Start after the first 3 parameters ($1, $2, $3)
   
   // Build WHERE conditions with parameterized placeholders
   let termCondition = '';
