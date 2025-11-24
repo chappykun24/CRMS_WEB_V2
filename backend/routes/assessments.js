@@ -1253,6 +1253,8 @@ router.get('/ilo-attainment', async (req, res) => {
 // IMPORTANT: This route MUST be defined before /:id to avoid route conflicts
 router.get('/ilo-clustering', async (req, res) => {
   try {
+    console.log('[ILO CLUSTERING] Request received:', req.query);
+    
     const { 
       section_course_id, 
       ilo_id,
@@ -1263,6 +1265,7 @@ router.get('/ilo-clustering', async (req, res) => {
     } = req.query;
 
     if (!section_course_id || !ilo_id) {
+      console.warn('[ILO CLUSTERING] Missing required parameters');
       return res.status(400).json({
         success: false,
         error: 'section_course_id and ilo_id are required'
@@ -1271,32 +1274,124 @@ router.get('/ilo-clustering', async (req, res) => {
 
     const sectionCourseId = parseInt(section_course_id);
     const iloId = parseInt(ilo_id);
+    
+    // Validate parsed integers
+    if (isNaN(sectionCourseId) || isNaN(iloId)) {
+      console.warn('[ILO CLUSTERING] Invalid integer parameters:', { section_course_id, ilo_id });
+      return res.status(400).json({
+        success: false,
+        error: 'section_course_id and ilo_id must be valid integers'
+      });
+    }
+    
     const soId = so_id ? parseInt(so_id) : null;
     const sdgId = sdg_id ? parseInt(sdg_id) : null;
     const igaId = iga_id ? parseInt(iga_id) : null;
     const cdioId = cdio_id ? parseInt(cdio_id) : null;
 
-    // Import clustering function
-    const { getILOClusters } = await import('../services/iloClusteringService.js');
-    
-    const result = await getILOClusters(
+    console.log('[ILO CLUSTERING] Processing request:', {
       sectionCourseId,
       iloId,
-      { soId, sdgId, igaId, cdioId }
-    );
+      filters: { soId, sdgId, igaId, cdioId }
+    });
 
-    res.json({
+    // Import clustering function with error handling
+    let getILOClusters;
+    try {
+      const module = await import('../services/iloClusteringService.js');
+      getILOClusters = module.getILOClusters;
+      
+      if (!getILOClusters || typeof getILOClusters !== 'function') {
+        throw new Error('getILOClusters function not found in module');
+      }
+    } catch (importError) {
+      console.error('[ILO CLUSTERING] Failed to import service:', importError);
+      return res.status(500).json({
+        success: false,
+        error: 'Clustering service unavailable',
+        message: importError.message,
+        details: process.env.NODE_ENV === 'development' ? importError.stack : undefined
+      });
+    }
+    
+    // Call clustering function with timeout and error handling
+    let result;
+    try {
+      // Set a timeout for the clustering operation (2 minutes)
+      const clusteringPromise = getILOClusters(
+        sectionCourseId,
+        iloId,
+        { soId, sdgId, igaId, cdioId }
+      );
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Clustering operation timeout')), 2 * 60 * 1000);
+      });
+      
+      result = await Promise.race([clusteringPromise, timeoutPromise]);
+      
+      // Ensure result has expected structure
+      if (!result || typeof result !== 'object') {
+        console.warn('[ILO CLUSTERING] Invalid result structure, using fallback');
+        result = {
+          clusters: [],
+          summary: {
+            error: 'Invalid result format',
+            optimal_k: null,
+            silhouette_score: null
+          },
+          optimal_k: null,
+          silhouette_score: null
+        };
+      }
+      
+      // Ensure clusters array exists
+      if (!Array.isArray(result.clusters)) {
+        result.clusters = [];
+      }
+      
+      console.log('[ILO CLUSTERING] Success:', {
+        clustersCount: result.clusters?.length || 0,
+        hasError: !!result.summary?.error
+      });
+    } catch (serviceError) {
+      console.error('[ILO CLUSTERING] Service error:', serviceError);
+      console.error('[ILO CLUSTERING] Service error stack:', serviceError.stack);
+      
+      // Return empty clusters instead of error
+      result = {
+        clusters: [],
+        summary: {
+          error: serviceError.message || 'Clustering service error',
+          message: serviceError.message,
+          optimal_k: null,
+          silhouette_score: null
+        },
+        optimal_k: null,
+        silhouette_score: null
+      };
+    }
+
+    // Always return success with data (even if empty)
+    return res.json({
       success: true,
       data: result
     });
   } catch (error) {
-    console.error('[ILO CLUSTERING] Error:', error);
+    // Catch-all error handler
+    console.error('[ILO CLUSTERING] Unexpected error:', error);
     console.error('[ILO CLUSTERING] Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to fetch ILO clustering data',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    
+    // Try to send error response, but don't fail if headers already sent
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch ILO clustering data',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    } else {
+      console.error('[ILO CLUSTERING] Cannot send error response - headers already sent');
+    }
   }
 });
 

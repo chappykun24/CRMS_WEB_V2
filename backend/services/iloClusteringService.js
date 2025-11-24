@@ -285,62 +285,82 @@ async function saveClustersToDB(sectionCourseId, iloId, filters = {}, clusterDat
 /**
  * Get ILO-based clustering results by calling Python script
  * Uses multi-level caching: in-memory -> database -> Python script
+ * This function ALWAYS resolves - it never rejects, returning empty clusters on error
  */
 export async function getILOClusters(sectionCourseId, iloId, filters = {}, options = {}) {
-  const { forceRefresh = false, maxAgeHours = 24 } = options;
-  const { soId, sdgId, igaId, cdioId } = filters;
-  
-  // Step 1: Check in-memory cache (FASTEST)
-  if (!forceRefresh) {
-    const cached = getCachedClusters(sectionCourseId, iloId, filters);
-    if (cached) {
-      return cached;
+  // Wrap everything in try-catch to ensure we never throw
+  try {
+    const { forceRefresh = false, maxAgeHours = 24 } = options;
+    const { soId, sdgId, igaId, cdioId } = filters;
+    
+    // Step 1: Check in-memory cache (FASTEST)
+    if (!forceRefresh) {
+      try {
+        const cached = getCachedClusters(sectionCourseId, iloId, filters);
+        if (cached) {
+          return cached;
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ [ILO CLUSTERING] Error checking memory cache:', cacheError.message);
+      }
+      
+      // Step 2: Check database cache (FAST)
+      // Wrap in try-catch in case table doesn't exist yet
+      try {
+        const dbCached = await getCachedClustersFromDB(sectionCourseId, iloId, filters, maxAgeHours);
+        if (dbCached) {
+          // Store in memory cache for faster access next time
+          try {
+            setCachedClusters(sectionCourseId, iloId, filters, dbCached);
+          } catch (setCacheError) {
+            console.warn('⚠️ [ILO CLUSTERING] Error setting memory cache:', setCacheError.message);
+          }
+          return dbCached;
+        }
+      } catch (dbError) {
+        // If table doesn't exist or there's a DB error, log and continue to Python script
+        console.warn('⚠️ [ILO CLUSTERING] Database cache check failed (table may not exist yet):', dbError.message);
+      }
     }
     
-    // Step 2: Check database cache (FAST)
-    // Wrap in try-catch in case table doesn't exist yet
+    // Step 3: Call Python script (SLOW)
+    console.log(`🔄 [ILO CLUSTERING] Cache miss - calling Python script...`);
+    
+    // Check if script exists before attempting to run
+    const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
+    
     try {
-      const dbCached = await getCachedClustersFromDB(sectionCourseId, iloId, filters, maxAgeHours);
-      if (dbCached) {
-        // Store in memory cache for faster access next time
-        setCachedClusters(sectionCourseId, iloId, filters, dbCached);
-        return dbCached;
-      }
-    } catch (dbError) {
-      // If table doesn't exist or there's a DB error, log and continue to Python script
-      console.warn('⚠️ [ILO CLUSTERING] Database cache check failed (table may not exist yet):', dbError.message);
-    }
-  }
-  
-  // Step 3: Call Python script (SLOW)
-  console.log(`🔄 [ILO CLUSTERING] Cache miss - calling Python script...`);
-  
-  // Check if script exists before attempting to run
-  const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
-  const fs = await import('fs/promises');
-  
-  try {
-    await fs.access(scriptPath);
-  } catch (accessError) {
-    console.error(`❌ [ILO CLUSTERING] Python script not found at: ${scriptPath}`);
-    // Return empty clusters instead of failing
-    const emptyResult = {
-      clusters: [],
-      summary: {
-        error: 'Python script not available',
-        message: 'Clustering script not found. Please ensure the script is installed.',
+      const fs = await import('fs/promises');
+      await fs.access(scriptPath);
+    } catch (accessError) {
+      console.error(`❌ [ILO CLUSTERING] Python script not found at: ${scriptPath}`);
+      // Return empty clusters instead of failing
+      const emptyResult = {
+        clusters: [],
+        summary: {
+          error: 'Python script not available',
+          message: 'Clustering script not found. Please ensure the script is installed.',
+          optimal_k: null,
+          silhouette_score: null
+        },
         optimal_k: null,
         silhouette_score: null
-      },
-      optimal_k: null,
-      silhouette_score: null
-    };
-    // Cache empty result to avoid repeated attempts
-    setCachedClusters(sectionCourseId, iloId, filters, emptyResult);
-    return emptyResult;
-  }
-  
-  return new Promise((resolve, reject) => {
+      };
+      // Cache empty result to avoid repeated attempts (both in-memory and database)
+      try {
+        setCachedClusters(sectionCourseId, iloId, filters, emptyResult);
+        // Also save to database cache to persist across server restarts
+        saveClustersToDB(sectionCourseId, iloId, filters, emptyResult).catch(err => {
+          console.warn('⚠️ [ILO CLUSTERING] Failed to save empty result to DB cache:', err.message);
+        });
+      } catch (setCacheError) {
+        console.warn('⚠️ [ILO CLUSTERING] Error setting cache for empty result:', setCacheError.message);
+      }
+      return emptyResult;
+    }
+    
+    return new Promise((resolve) => {
+      // Promise always resolves, never rejects
     
     // Build command arguments
     const args = [
@@ -392,6 +412,10 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
           };
           
           setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          // Also save to database cache to persist across server restarts
+          saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(err => {
+            console.warn('⚠️ [ILO CLUSTERING] Failed to save timeout error result to DB cache:', err.message);
+          });
           resolve(errorResult);
         }
       }, 5 * 60 * 1000);
@@ -412,7 +436,12 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
         silhouette_score: null
       };
       
+      // Cache error result (both in-memory and database)
       setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+      // Also save to database cache to persist across server restarts
+      saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(err => {
+        console.warn('⚠️ [ILO CLUSTERING] Failed to save spawn error result to DB cache:', err.message);
+      });
       resolve(errorResult);
       return;
     }
@@ -449,8 +478,12 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
             silhouette_score: null
           };
           
-          // Cache error result to avoid repeated failed attempts
+          // Cache error result to avoid repeated failed attempts (both in-memory and database)
           setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          // Also save to database cache to persist across server restarts
+          saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(err => {
+            console.warn('⚠️ [ILO CLUSTERING] Failed to save error result to DB cache:', err.message);
+          });
           resolve(errorResult);
           return;
         }
@@ -504,8 +537,12 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
                 summary: summary
               };
               
-              // Cache even empty results to avoid repeated calls
+              // Cache even empty results to avoid repeated calls (both in-memory and database)
               setCachedClusters(sectionCourseId, iloId, filters, result);
+              // Also save to database cache
+              saveClustersToDB(sectionCourseId, iloId, filters, result).catch(err => {
+                console.warn('⚠️ [ILO CLUSTERING] Failed to save empty result to DB cache:', err.message);
+              });
               
               resolve(result);
             }
@@ -529,8 +566,12 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
               silhouette_score: null
             };
             
-            // Cache error result to avoid repeated failed attempts
+            // Cache error result to avoid repeated failed attempts (both in-memory and database)
             setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+            // Also save to database cache to persist across server restarts
+            saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(err => {
+              console.warn('⚠️ [ILO CLUSTERING] Failed to save error result to DB cache:', err.message);
+            });
             resolve(errorResult);
           }
         } catch (error) {
@@ -551,6 +592,10 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
           };
           
           setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+          // Also save to database cache to persist across server restarts
+          saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(dbErr => {
+            console.warn('⚠️ [ILO CLUSTERING] Failed to save parsing error result to DB cache:', dbErr.message);
+          });
           resolve(errorResult);
         }
       })().catch(err => {
@@ -592,8 +637,12 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
         silhouette_score: null
       };
       
-      // Cache error result to avoid repeated failed attempts
+      // Cache error result to avoid repeated failed attempts (both in-memory and database)
       setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+      // Also save to database cache to persist across server restarts
+      saveClustersToDB(sectionCourseId, iloId, filters, errorResult).catch(err => {
+        console.warn('⚠️ [ILO CLUSTERING] Failed to save process error result to DB cache:', err.message);
+      });
       resolve(errorResult);
     });
     
@@ -602,6 +651,24 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
       // Timeout is already set in the try block above
     }
   });
+  } catch (outerError) {
+    // Final catch-all - should never reach here, but just in case
+    console.error('❌ [ILO CLUSTERING] Unexpected error in getILOClusters:', outerError);
+    console.error('❌ [ILO CLUSTERING] Stack:', outerError.stack);
+    
+    // Return empty clusters as a promise
+    return Promise.resolve({
+      clusters: [],
+      summary: {
+        error: 'Unexpected error',
+        message: outerError.message || 'An unexpected error occurred',
+        optimal_k: null,
+        silhouette_score: null
+      },
+      optimal_k: null,
+      silhouette_score: null
+    });
+  }
 }
 
 /**
