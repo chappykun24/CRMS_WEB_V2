@@ -3,6 +3,9 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import db from '../config/database.js';
 
+// Railway API URL for ILO clustering service
+const ILO_CLUSTERING_API_URL = process.env.ILO_CLUSTERING_API_URL || 'http://localhost:10001';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -299,8 +302,74 @@ async function saveClustersToDB(sectionCourseId, iloId, filters = {}, clusterDat
 }
 
 /**
- * Get ILO-based clustering results by calling Python script
- * Uses multi-level caching: in-memory -> database -> Python script
+ * Call Railway API for ILO clustering
+ */
+async function callRailwayAPI(sectionCourseId, iloId, filters = {}) {
+  const { soId, sdgId, igaId, cdioId } = filters;
+  
+  const requestBody = {
+    section_course_id: sectionCourseId,
+    ilo_id: iloId,
+    min_k: 2,
+    max_k: 6
+  };
+  
+  if (soId) requestBody.so_id = soId;
+  if (sdgId) requestBody.sdg_id = sdgId;
+  if (igaId) requestBody.iga_id = igaId;
+  if (cdioId) requestBody.cdio_id = cdioId;
+  
+  const url = `${ILO_CLUSTERING_API_URL}/api/ilo-clustering`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(300000) // 5 minute timeout
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API returned ${response.status}: ${errorText.substring(0, 500)}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Cache the results
+      setCachedClusters(sectionCourseId, iloId, filters, result);
+      saveClustersToDB(sectionCourseId, iloId, filters, result).catch(err => {
+        console.warn('⚠️ [ILO CLUSTERING] Failed to save to DB cache:', err.message);
+      });
+      return result;
+    } else {
+      // API returned error
+      const errorResult = {
+        clusters: [],
+        summary: {
+          error: result.error || 'API error',
+          message: result.message || 'Clustering API returned an error',
+          optimal_k: null,
+          silhouette_score: null
+        },
+        optimal_k: null,
+        silhouette_score: null
+      };
+      setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+      return errorResult;
+    }
+  } catch (error) {
+    console.error(`❌ [ILO CLUSTERING] Railway API error:`, error.message);
+    throw error; // Re-throw to trigger fallback to local script
+  }
+}
+
+/**
+ * Get ILO-based clustering results by calling Railway API or Python script
+ * Uses multi-level caching: in-memory -> database -> Railway API -> Python script
  * This function ALWAYS resolves - it never rejects, returning empty clusters on error
  */
 export async function getILOClusters(sectionCourseId, iloId, filters = {}, options = {}) {
@@ -339,8 +408,23 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
       }
     }
     
-    // Step 3: Call Python script (SLOW)
-    console.log(`🔄 [ILO CLUSTERING] Cache miss - calling Python script...`);
+    // Step 3: Call Railway API or Python script (SLOW)
+    console.log(`🔄 [ILO CLUSTERING] Cache miss - calling clustering service...`);
+    
+    // Try Railway API first if URL is configured
+    if (ILO_CLUSTERING_API_URL && ILO_CLUSTERING_API_URL !== 'http://localhost:10001') {
+      try {
+        console.log(`🌐 [ILO CLUSTERING] Calling Railway API: ${ILO_CLUSTERING_API_URL}`);
+        const result = await callRailwayAPI(sectionCourseId, iloId, filters);
+        return result;
+      } catch (apiError) {
+        console.warn('⚠️ [ILO CLUSTERING] Railway API call failed, falling back to local script:', apiError.message);
+        // Fall through to local script execution
+      }
+    }
+    
+    // Fallback: Call Python script locally (for local development)
+    console.log(`🔄 [ILO CLUSTERING] Using local Python script...`);
     
     // Check if script exists before attempting to run
     const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
@@ -355,7 +439,7 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
         clusters: [],
         summary: {
           error: 'Python script not available',
-          message: 'Clustering script not found. Please ensure the script is installed.',
+          message: 'Clustering script not found. Please configure ILO_CLUSTERING_API_URL or ensure the script is installed.',
           optimal_k: null,
           silhouette_score: null
         },
@@ -395,7 +479,10 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
     
     // Spawn Python process - try python3 first, fallback to python
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const pipCommand = process.platform === 'win32' ? 'pip' : 'pip3';
     
+    // Check if dependencies are installed by trying to import psycopg2
+    // This is a quick check - if it fails, we'll get a better error message
     let timeoutId;
     let stdout = '';
     let stderr = '';
