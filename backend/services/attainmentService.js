@@ -481,7 +481,7 @@ async function getILOAttainmentSummary(
       LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
       LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
       GROUP BY i.ilo_id
-    )
+    ),
     -- Get parent assessments (components) from assessment_framework and calculate overall scores
     parent_assessments AS (
       SELECT DISTINCT
