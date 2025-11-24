@@ -1,0 +1,13 @@
+{
+  "name": "ilo-clustering-api",
+  "version": "1.0.0",
+  "description": "ILO-based student clustering API service",
+  "scripts": {
+    "start": "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 300",
+    "dev": "python app.py"
+  },
+  "engines": {
+    "python": "3.11"
+  }
+}
+

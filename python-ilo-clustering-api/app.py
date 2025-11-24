@@ -19,12 +19,12 @@ app = Flask(__name__)
 CORS(app)
 
 # Add scripts directory to path so we can import the clustering module
-# Try multiple possible locations for the script
+# Try multiple possible locations for the script (prioritize local scripts directory)
 possible_script_dirs = [
-    Path(__file__).parent.parent / 'scripts',  # If running from python-ilo-clustering-api/
-    Path(__file__).parent / 'scripts',          # If scripts are copied to same directory
-    Path('/app/scripts'),                      # Docker container path
-    Path.cwd() / 'scripts'                     # Current working directory
+    Path(__file__).parent / 'scripts',          # Local scripts directory (preferred)
+    Path(__file__).parent.parent / 'scripts',   # Parent directory scripts (for development)
+    Path('/app/scripts'),                       # Docker container path
+    Path.cwd() / 'scripts'                      # Current working directory
 ]
 
 SCRIPT_DIR = None
@@ -37,6 +37,8 @@ for script_dir in possible_script_dirs:
 
 if not SCRIPT_DIR:
     print(f"[ILO CLUSTERING API] WARNING: Script directory not found. Tried: {[str(d) for d in possible_script_dirs]}")
+    print(f"[ILO CLUSTERING API] Current working directory: {Path.cwd()}")
+    print(f"[ILO CLUSTERING API] App file location: {Path(__file__).parent}")
 
 if SCRIPT_DIR:
     sys.path.insert(0, str(SCRIPT_DIR))
