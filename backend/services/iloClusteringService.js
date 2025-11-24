@@ -272,7 +272,12 @@ async function saveClustersToDB(sectionCourseId, iloId, filters = {}, clusterDat
     
     console.log(`💾 [ILO CLUSTERING] Saved to database cache`);
   } catch (error) {
-    console.error('❌ [ILO CLUSTERING] Error saving to database cache:', error);
+    // Check if it's a "table doesn't exist" error
+    if (error.message && error.message.includes('does not exist')) {
+      console.warn('⚠️ [ILO CLUSTERING] Cache table does not exist yet. Run migration: db/migrations/add_ilo_cluster_cache_table.sql');
+    } else {
+      console.error('❌ [ILO CLUSTERING] Error saving to database cache:', error.message);
+    }
     // Don't throw - caching failure shouldn't break the service
   }
 }
@@ -293,11 +298,17 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
     }
     
     // Step 2: Check database cache (FAST)
-    const dbCached = await getCachedClustersFromDB(sectionCourseId, iloId, filters, maxAgeHours);
-    if (dbCached) {
-      // Store in memory cache for faster access next time
-      setCachedClusters(sectionCourseId, iloId, filters, dbCached);
-      return dbCached;
+    // Wrap in try-catch in case table doesn't exist yet
+    try {
+      const dbCached = await getCachedClustersFromDB(sectionCourseId, iloId, filters, maxAgeHours);
+      if (dbCached) {
+        // Store in memory cache for faster access next time
+        setCachedClusters(sectionCourseId, iloId, filters, dbCached);
+        return dbCached;
+      }
+    } catch (dbError) {
+      // If table doesn't exist or there's a DB error, log and continue to Python script
+      console.warn('⚠️ [ILO CLUSTERING] Database cache check failed (table may not exist yet):', dbError.message);
     }
   }
   
@@ -323,14 +334,33 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
     if (igaId) args.push('--iga_id', igaId.toString());
     if (cdioId) args.push('--cdio_id', cdioId.toString());
     
-    // Spawn Python process
-    const pythonProcess = spawn('python3', args, {
-      cwd: join(__dirname, '../../'),
-      env: { ...process.env }
-    });
+    // Spawn Python process - try python3 first, fallback to python
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     
+    let timeoutId;
     let stdout = '';
     let stderr = '';
+    let pythonProcess;
+    
+    try {
+      pythonProcess = spawn(pythonCommand, args, {
+        cwd: join(__dirname, '../../'),
+        env: { ...process.env },
+        shell: process.platform === 'win32' // Use shell on Windows
+      });
+      
+      // Add timeout to prevent hanging forever (5 minutes) - after process is created
+      timeoutId = setTimeout(() => {
+        if (pythonProcess && !pythonProcess.killed) {
+          pythonProcess.kill();
+          reject(new Error('Python script execution timeout (exceeded 5 minutes). The script may be taking too long or hanging.'));
+        }
+      }, 5 * 60 * 1000);
+    } catch (spawnError) {
+      if (timeoutId) clearTimeout(timeoutId);
+      reject(new Error(`Failed to start Python process: ${spawnError.message}`));
+      return;
+    }
     
     pythonProcess.stdout.on('data', (data) => {
       stdout += data.toString();
@@ -342,9 +372,11 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
       console.error('[ILO CLUSTERING] Python error:', data.toString());
     });
     
-    pythonProcess.on('close', (code) => {
+    pythonProcess.on('close', async (code) => {
+      clearTimeout(timeoutId);
       if (code !== 0) {
-        reject(new Error(`Python script exited with code ${code}: ${stderr}`));
+        const errorMsg = stderr || stdout || 'Unknown error';
+        reject(new Error(`Python script exited with code ${code}: ${errorMsg}`));
         return;
       }
       
@@ -353,6 +385,15 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
         // Try to read the JSON output file
         const fs = await import('fs/promises');
         const outputDir = join(__dirname, '../../temp_clustering_results');
+        
+        // Check if output directory exists
+        try {
+          await fs.access(outputDir);
+        } catch (accessError) {
+          // Directory doesn't exist, create it
+          await fs.mkdir(outputDir, { recursive: true });
+        }
+        
         const files = await fs.readdir(outputDir);
         const summaryFile = files.find(f => f.startsWith('ilo_clustering_summary_') && f.endsWith('.json'));
         
@@ -394,20 +435,25 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
             resolve(result);
           }
         } else {
-          // Fallback: parse stdout if it contains JSON
-          resolve({
-            clusters: [],
-            summary: { error: 'No output file found' },
-            stdout: stdout
-          });
+          // Fallback: return error with stdout/stderr for debugging
+          console.error('[ILO CLUSTERING] No output files found. Python stdout:', stdout);
+          console.error('[ILO CLUSTERING] Python stderr:', stderr);
+          
+          reject(new Error(`Python script completed but no output files found. Check if Python script is configured correctly. Output: ${stdout.substring(0, 500)}`));
         }
       } catch (error) {
-        reject(new Error(`Failed to parse clustering results: ${error.message}`));
+        console.error('[ILO CLUSTERING] Error parsing results:', error);
+        reject(new Error(`Failed to parse clustering results: ${error.message}. Python output: ${stdout.substring(0, 500)}`));
       }
     });
     
     pythonProcess.on('error', (error) => {
-      reject(new Error(`Failed to spawn Python process: ${error.message}`));
+      clearTimeout(timeoutId);
+      const errorMsg = error.code === 'ENOENT' 
+        ? `Python not found. Please ensure Python 3 is installed and accessible. Tried: ${pythonCommand}. Original error: ${error.message}`
+        : `Failed to spawn Python process: ${error.message}`;
+      console.error(`❌ [ILO CLUSTERING] ${errorMsg}`);
+      reject(new Error(errorMsg));
     });
   });
 }

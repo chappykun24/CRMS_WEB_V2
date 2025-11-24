@@ -1291,9 +1291,11 @@ router.get('/ilo-clustering', async (req, res) => {
     });
   } catch (error) {
     console.error('[ILO CLUSTERING] Error:', error);
+    console.error('[ILO CLUSTERING] Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch ILO clustering data'
+      error: error.message || 'Failed to fetch ILO clustering data',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
