@@ -450,14 +450,28 @@ async function getILOAttainmentSummary(
       FROM student_ilo_scores
       GROUP BY ilo_id, ilo_code, ilo_description
     ),
+    -- Get ALL ILOs from approved syllabus (not just those with student scores)
+    all_syllabus_ilos AS (
+      SELECT DISTINCT i.ilo_id
+      FROM ilos i
+      INNER JOIN syllabi sy ON i.syllabus_id = sy.syllabus_id
+      WHERE sy.section_course_id = $1
+        AND sy.review_status = 'approved'
+        AND sy.approval_status = 'approved'
+        AND i.is_active = TRUE
+        ${syllabusCondition || ''}
+    ),
     ilo_mappings AS (
       SELECT
         i.ilo_id,
+        -- Load ALL ILO-SO mappings for ILOs in the approved syllabus
         ARRAY_AGG(DISTINCT so.so_code ORDER BY so.so_code) FILTER (WHERE so.so_code IS NOT NULL) AS so_codes,
         ARRAY_AGG(DISTINCT cdio.cdio_code ORDER BY cdio.cdio_code) FILTER (WHERE cdio.cdio_code IS NOT NULL) AS cdio_codes,
         ARRAY_AGG(DISTINCT sdg.sdg_code ORDER BY sdg.sdg_code) FILTER (WHERE sdg.sdg_code IS NOT NULL) AS sdg_codes,
         ARRAY_AGG(DISTINCT iga.iga_code ORDER BY iga.iga_code) FILTER (WHERE iga.iga_code IS NOT NULL) AS iga_codes
-      FROM ilos i
+      FROM all_syllabus_ilos asi
+      INNER JOIN ilos i ON asi.ilo_id = i.ilo_id
+      -- Load ALL ILO-SO mappings (no filters)
       LEFT JOIN ilo_so_mappings ism ON i.ilo_id = ism.ilo_id
       LEFT JOIN student_outcomes so ON ism.so_id = so.so_id
       LEFT JOIN ilo_cdio_mappings icdio ON i.ilo_id = icdio.ilo_id
@@ -466,7 +480,6 @@ async function getILOAttainmentSummary(
       LEFT JOIN sdg_skills sdg ON isdg.sdg_id = sdg.sdg_id
       LEFT JOIN ilo_iga_mappings iiga ON i.ilo_id = iiga.ilo_id
       LEFT JOIN institutional_graduate_attributes iga ON iiga.iga_id = iga.iga_id
-      WHERE i.ilo_id IN (SELECT DISTINCT ilo_id FROM ilo_summary)
       GROUP BY i.ilo_id
     )
     SELECT
