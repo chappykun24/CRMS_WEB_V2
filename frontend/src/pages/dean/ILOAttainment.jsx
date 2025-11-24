@@ -653,87 +653,34 @@ const ILOAttainment = () => {
 
                 {selectedClass && selectedILO ? (
                   <>
-                    {/* Filter Mode Toggle */}
+                    {/* Filter by Percentage Range */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                       <div className="flex items-center justify-between mb-4">
-                        <label className="text-sm font-medium text-gray-700">Filter Mode:</label>
-                        <div className="flex items-center space-x-3">
-                          <button
-                            onClick={() => setShowSummaryModal(true)}
-                            className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                          >
-                            <DocumentTextIcon className="h-4 w-4 mr-1.5" />
-                            Summary
-                          </button>
-                          <span className={`text-sm ${!useClustering ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                            Range Filter
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newMode = !useClustering
-                              setUseClustering(newMode)
-                              setSelectedCluster(null)
-                              if (newMode) {
-                                loadClusters(selectedClass.section_course_id, selectedILO.ilo_id)
-                              }
-                            }}
-                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                              useClustering ? 'bg-blue-600' : 'bg-gray-200'
-                            }`}
-                            role="switch"
-                            aria-checked={useClustering}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                useClustering ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          <span className={`text-sm ${useClustering ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                            Clustering
-                          </span>
-                        </div>
+                        <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
+                        <button
+                          onClick={() => setShowSummaryModal(true)}
+                          className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                        >
+                          <DocumentTextIcon className="h-4 w-4 mr-1.5" />
+                          Summary
+                        </button>
                       </div>
                       
-                      {!useClustering ? (
-                        <div className="flex items-center space-x-4">
-                          <label className="text-sm font-medium text-gray-700">Filter by Percentage Range:</label>
-                          <select
-                            value={selectedPercentageRange}
-                            onChange={(e) => setSelectedPercentageRange(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                          >
-                            <option value="all">All Ranges</option>
-                            <option value="90-100">90-100%</option>
-                            <option value="80-89">80-89%</option>
-                            <option value="70-79">70-79%</option>
-                            <option value="60-69">60-69%</option>
-                            <option value="50-59">50-59%</option>
-                            <option value="0-49">Below 50%</option>
-                          </select>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-4">
-                          <label className="text-sm font-medium text-gray-700">Filter by Cluster:</label>
-                          {loadingClusters ? (
-                            <span className="text-sm text-gray-500">Loading clusters...</span>
-                          ) : (
-                            <select
-                              value={selectedCluster || ''}
-                              onChange={(e) => setSelectedCluster(e.target.value ? parseInt(e.target.value) : null)}
-                              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
-                            >
-                              <option value="">All Clusters</option>
-                              {availableClusters.map((cluster) => (
-                                <option key={cluster.cluster_id} value={cluster.cluster_id}>
-                                  Cluster {cluster.cluster_id} ({cluster.student_count} students)
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-4">
+                        <select
+                          value={selectedPercentageRange}
+                          onChange={(e) => setSelectedPercentageRange(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                        >
+                          <option value="all">All Ranges</option>
+                          <option value="90-100">90-100%</option>
+                          <option value="80-89">80-89%</option>
+                          <option value="70-79">70-79%</option>
+                          <option value="60-69">60-69%</option>
+                          <option value="50-59">50-59%</option>
+                          <option value="0-49">Below 50%</option>
+                        </select>
+                      </div>
                     </div>
 
                     {selectedILO.students_by_range && selectedILO.students_by_range.length > 0 ? (

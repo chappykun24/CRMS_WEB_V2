@@ -2,6 +2,16 @@
 
 Flask API wrapper for ILO-based student clustering analysis. Deployed on Railway to handle clustering requests from the Node.js backend.
 
+## 📚 Deployment Guides
+
+**Choose your preferred guide:**
+
+1. **🚀 Quick Checklist** → [QUICK_DEPLOY_CHECKLIST.md](./QUICK_DEPLOY_CHECKLIST.md) - 5-minute deployment
+2. **📖 Detailed Guide** → [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md) - Complete step-by-step with troubleshooting
+3. **⚡ Quick Start** → [DEPLOY_NOW.md](./DEPLOY_NOW.md) - Multiple deployment options
+
+**Recommended**: Start with [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md) for detailed instructions.
+
 ## Deployment on Railway
 
 1. Connect this directory to a new Railway service
