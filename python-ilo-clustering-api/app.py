@@ -19,8 +19,27 @@ app = Flask(__name__)
 CORS(app)
 
 # Add scripts directory to path so we can import the clustering module
-SCRIPT_DIR = Path(__file__).parent.parent / 'scripts'
-sys.path.insert(0, str(SCRIPT_DIR))
+# Try multiple possible locations for the script
+possible_script_dirs = [
+    Path(__file__).parent.parent / 'scripts',  # If running from python-ilo-clustering-api/
+    Path(__file__).parent / 'scripts',          # If scripts are copied to same directory
+    Path('/app/scripts'),                      # Docker container path
+    Path.cwd() / 'scripts'                     # Current working directory
+]
+
+SCRIPT_DIR = None
+for script_dir in possible_script_dirs:
+    script_file = script_dir / 'ilo-clustering-analysis.py'
+    if script_file.exists():
+        SCRIPT_DIR = script_dir
+        print(f"[ILO CLUSTERING API] Found script at: {script_file}")
+        break
+
+if not SCRIPT_DIR:
+    print(f"[ILO CLUSTERING API] WARNING: Script directory not found. Tried: {[str(d) for d in possible_script_dirs]}")
+
+if SCRIPT_DIR:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 print("[ILO CLUSTERING API] Starting ILO Clustering API Service...")
 print(f"[ILO CLUSTERING API] Python version: {sys.version}")
@@ -98,12 +117,32 @@ def cluster_ilo():
         if cdio_id: print(f"  CDIO ID: {cdio_id}")
         
         # Build command to run the script
+        if not SCRIPT_DIR:
+            return jsonify({
+                "success": False,
+                "error": "Clustering script directory not found",
+                "message": "The ILO clustering script could not be located. Please ensure the script is available.",
+                "clusters": [],
+                "summary": {
+                    "error": "Script not found",
+                    "optimal_k": None,
+                    "silhouette_score": None
+                }
+            }), 500
+        
         script_path = SCRIPT_DIR / 'ilo-clustering-analysis.py'
         
         if not script_path.exists():
             return jsonify({
+                "success": False,
                 "error": "Clustering script not found",
-                "path": str(script_path)
+                "message": f"Script not found at: {script_path}",
+                "clusters": [],
+                "summary": {
+                    "error": "Script not found",
+                    "optimal_k": None,
+                    "silhouette_score": None
+                }
             }), 500
         
         # Build command arguments

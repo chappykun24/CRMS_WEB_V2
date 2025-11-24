@@ -14,8 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the Flask app
 COPY app.py .
 
-# Copy the clustering script (from parent directory)
-COPY ../scripts/ilo-clustering-analysis.py ./scripts/
+# Create scripts directory and copy the clustering script
+# Note: Railway will need the scripts directory in the same repo or we need to copy it
+RUN mkdir -p scripts
+COPY scripts/ilo-clustering-analysis.py ./scripts/
 
 # Expose port
 EXPOSE 10001

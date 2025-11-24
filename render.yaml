@@ -19,6 +19,9 @@ services:
         sync: false
       - key: CLUSTER_TIMEOUT_MS
         value: 8000
+      - key: ILO_CLUSTERING_API_URL
+        value: https://your-ilo-clustering-api.railway.app
+        sync: false
   - type: web
     name: crms-cluster-api
     env: python3

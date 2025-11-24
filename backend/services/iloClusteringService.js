@@ -410,54 +410,53 @@ export async function getILOClusters(sectionCourseId, iloId, filters = {}, optio
     
     // Step 3: Call Railway API or Python script (SLOW)
     console.log(`🔄 [ILO CLUSTERING] Cache miss - calling clustering service...`);
+    console.log(`🔍 [ILO CLUSTERING] ILO_CLUSTERING_API_URL: ${ILO_CLUSTERING_API_URL || '(not set)'}`);
     
-    // Try Railway API first if URL is configured
-    if (ILO_CLUSTERING_API_URL && ILO_CLUSTERING_API_URL !== 'http://localhost:10001') {
+    // Check if Railway API URL is configured
+    const useRailwayAPI = ILO_CLUSTERING_API_URL && 
+                          ILO_CLUSTERING_API_URL !== 'http://localhost:10001' &&
+                          ILO_CLUSTERING_API_URL.trim() !== '';
+    
+    if (useRailwayAPI) {
       try {
         console.log(`🌐 [ILO CLUSTERING] Calling Railway API: ${ILO_CLUSTERING_API_URL}`);
         const result = await callRailwayAPI(sectionCourseId, iloId, filters);
         return result;
       } catch (apiError) {
-        console.warn('⚠️ [ILO CLUSTERING] Railway API call failed, falling back to local script:', apiError.message);
-        // Fall through to local script execution
-      }
-    }
-    
-    // Fallback: Call Python script locally (for local development)
-    console.log(`🔄 [ILO CLUSTERING] Using local Python script...`);
-    
-    // Check if script exists before attempting to run
-    const scriptPath = join(__dirname, '../../scripts/ilo-clustering-analysis.py');
-    
-    try {
-      const fs = await import('fs/promises');
-      await fs.access(scriptPath);
-    } catch (accessError) {
-      console.error(`❌ [ILO CLUSTERING] Python script not found at: ${scriptPath}`);
-      // Return empty clusters instead of failing
-      const emptyResult = {
-        clusters: [],
-        summary: {
-          error: 'Python script not available',
-          message: 'Clustering script not found. Please configure ILO_CLUSTERING_API_URL or ensure the script is installed.',
+        console.error('❌ [ILO CLUSTERING] Railway API call failed:', apiError.message);
+        // Return error result - don't fall back to local script in production
+        const errorResult = {
+          clusters: [],
+          summary: {
+            error: 'Railway API unavailable',
+            message: `Clustering API call failed: ${apiError.message}. Please check ILO_CLUSTERING_API_URL configuration and ensure the Railway service is running.`,
+            optimal_k: null,
+            silhouette_score: null
+          },
           optimal_k: null,
           silhouette_score: null
-        },
+        };
+        setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+        return errorResult;
+      }
+    }
+    
+    // If Railway API is not configured, return error immediately
+    // Don't try to run local Python script in production (Render doesn't have Python dependencies)
+    console.error('❌ [ILO CLUSTERING] ILO_CLUSTERING_API_URL not configured');
+    const errorResult = {
+      clusters: [],
+      summary: {
+        error: 'Clustering service not configured',
+        message: 'ILO_CLUSTERING_API_URL environment variable is not set. Please deploy the Python ILO Clustering API to Railway and set ILO_CLUSTERING_API_URL to the Railway service URL.',
         optimal_k: null,
         silhouette_score: null
-      };
-      // Cache empty result to avoid repeated attempts (both in-memory and database)
-      try {
-        setCachedClusters(sectionCourseId, iloId, filters, emptyResult);
-        // Also save to database cache to persist across server restarts
-        saveClustersToDB(sectionCourseId, iloId, filters, emptyResult).catch(err => {
-          console.warn('⚠️ [ILO CLUSTERING] Failed to save empty result to DB cache:', err.message);
-        });
-      } catch (setCacheError) {
-        console.warn('⚠️ [ILO CLUSTERING] Error setting cache for empty result:', setCacheError.message);
-      }
-      return emptyResult;
-    }
+      },
+      optimal_k: null,
+      silhouette_score: null
+    };
+    setCachedClusters(sectionCourseId, iloId, filters, errorResult);
+    return errorResult;
     
     return new Promise((resolve) => {
       // Promise always resolves, never rejects
