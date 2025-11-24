@@ -288,3 +288,4 @@ scripts/ilo-attainment-report.js
 scripts/create-students-19-45.js
 scripts/insert-assessment-scores.js
 scripts/check-ilo-syllabus-status.js
+scripts/rename-students-1-45.js
