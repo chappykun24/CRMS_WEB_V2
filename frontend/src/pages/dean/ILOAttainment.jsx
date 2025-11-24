@@ -880,7 +880,6 @@ const ILOAttainment = () => {
               </div>
             </div>
           </div>
-          )}
         )}
 
         {/* Summary Modal */}

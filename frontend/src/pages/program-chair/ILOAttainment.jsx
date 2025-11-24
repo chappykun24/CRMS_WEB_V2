@@ -889,7 +889,6 @@ const ILOAttainment = () => {
               </div>
             </div>
           </div>
-          )}
         )}
 
         {showStudentModal && selectedStudent && (
