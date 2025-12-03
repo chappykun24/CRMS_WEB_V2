@@ -7,15 +7,12 @@ const UserManagement = lazy(() => import('./UserManagement'))
 const FacultyApproval = lazy(() => import('./FacultyApproval'))
 const SchoolConfiguration = lazy(() => import('./SchoolConfiguration'))
 
-// Skeleton loader component for route transitions
+// Lightweight loader while routes/components are being code-split loaded
 const RouteSkeleton = () => (
-  <div className="min-h-screen bg-gray-50 p-6">
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-6">
-        <div className="h-8 bg-gray-200 rounded w-64 animate-pulse mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
-      </div>
-      <TableSkeleton rows={8} columns={6} />
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600"></div>
+      <p className="text-sm text-gray-500">Loading page…</p>
     </div>
   </div>
 )
