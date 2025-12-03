@@ -21,10 +21,8 @@ const TabButton = ({ isActive, onClick, children }) => (
 const UserManagement = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { sidebarExpanded } = useSidebar()
-  const [activeTab, setActiveTab] = useState(() => {
-    const saved = getLocalStorageItem('userMgmtActiveTab')
-    return saved === 'faculty' ? 'faculty' : 'all' // Only allow 'all' or 'faculty'
-  })
+  // Always start on "All Users" when opening User Management to avoid confusing auto-switching
+  const [activeTab, setActiveTab] = useState('all')
   const [isInitialMount, setIsInitialMount] = useState(true)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
