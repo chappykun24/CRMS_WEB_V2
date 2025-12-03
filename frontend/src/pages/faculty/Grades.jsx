@@ -275,6 +275,7 @@ const Grades = () => {
               assessment_id: row.assessment_id,
               title: row.assessment_title,
               type: row.assessment_type,
+              abbreviation: row.assessment_abbreviation,
               total_points: row.total_points,
               weight_percentage: row.weight_percentage,
               due_date: row.due_date
@@ -449,7 +450,7 @@ const Grades = () => {
                               <th className="w-10 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
                                 #
                               </th>
-                              <th className="w-52 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
+                              <th className="w-44 px-2 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
                                 Student
                               </th>
                               {assessments.map((assessment) => {
@@ -491,12 +492,12 @@ const Grades = () => {
                                   <td className="px-3 py-2 text-xs text-gray-500 sticky left-0 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
                                     {index + 1}
                                   </td>
-                                  <td className="px-3 py-2 sticky left-10 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-medium text-gray-900 truncate">
+                                  <td className="px-2 py-1.5 sticky left-10 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
+                                    <div className="min-w-0 flex-1 leading-tight">
+                                      <p className="text-[11px] font-medium text-gray-900 truncate">
                                         {formatName(student.full_name)}
                                       </p>
-                                      <p className="text-[11px] text-gray-500 truncate">
+                                      <p className="text-[10px] text-gray-500 truncate">
                                         {student.student_number || 'N/A'}
                                       </p>
                                     </div>
@@ -518,7 +519,7 @@ const Grades = () => {
                                         {adjustedScore !== null ? (
                                           <div className="flex flex-col items-center">
                                             <span className="font-semibold text-gray-900">
-                                              {Math.round(adjustedScore)}/{assessment.total_points}
+                                              {Math.round(adjustedScore)}
                                             </span>
                                             <span className="text-xs text-gray-500">
                                               {percentage}%
@@ -658,7 +659,7 @@ const Grades = () => {
         <button
           type="button"
           onClick={() => setIsClassesPanelCollapsed(false)}
-          className="hidden lg:flex fixed right-6 bottom-8 items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+          className="hidden lg:flex fixed top-28 right-6 items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800"
           title="Show classes panel"
         >
           <ChevronLeftIcon className="h-4 w-4" />

@@ -21,6 +21,21 @@ router.post('/submit-grades', async (req, res) => {
     // Use transaction to ensure data consistency
     const result = await db.transaction(async (client) => {
       const results = [];
+
+      // Fetch assessment grading configuration (needed for non-zero based computation)
+      const assessmentConfigResult = await client.query(
+        'SELECT total_points, weight_percentage FROM assessments WHERE assessment_id = $1',
+        [assessment_id]
+      );
+
+      if (assessmentConfigResult.rows.length === 0) {
+        throw new Error('Assessment not found for grading computation');
+      }
+
+      const {
+        total_points: assessmentTotalPoints,
+        weight_percentage: assessmentWeightPercentage
+      } = assessmentConfigResult.rows[0];
       
       for (const grade of grades) {
         const { 
@@ -30,9 +45,8 @@ router.post('/submit-grades', async (req, res) => {
           feedback = '', 
           graded_by, 
           submission_status = 'missing',
-          adjusted_score: providedAdjustedScore,
-          actual_score: providedActualScore,
-          transmuted_score: providedTransmutedScore
+          // Allow adjusted_score override but always recompute actual/transmuted using backend formula
+          adjusted_score: providedAdjustedScore
         } = grade;
         
         // Validate submission_status
@@ -51,15 +65,39 @@ router.post('/submit-grades', async (req, res) => {
           : ((finalStatus === 'missing' || numericRawScore === null) 
             ? null 
             : Math.max(0, numericRawScore - (late_penalty || 0)));
-        
-        // Use provided computed scores or set to null for missing submissions
-        const actual_score = (finalStatus === 'missing' || numericRawScore === null) 
-          ? null 
-          : (providedActualScore !== undefined ? parseFloat(providedActualScore) : null);
-        
-        const transmuted_score = (finalStatus === 'missing' || numericRawScore === null) 
-          ? null 
-          : (providedTransmutedScore !== undefined ? parseFloat(providedTransmutedScore) : null);
+
+        // Non-zero based grading computation:
+        // Step 1: Raw/Adjusted → Actual Score (non-zero based, min 37.5)
+        //   Actual Score = (Adjusted Score / Max Score) × 62.5 + 37.5
+        // Step 2: Actual Score → Transmuted Score (weighted)
+        //   Transmuted Score = Actual Score × (Weight Percentage / 100)
+        let actual_score = null;
+        let transmuted_score = null;
+
+        const totalPoints =
+          assessmentTotalPoints !== null && assessmentTotalPoints !== undefined
+            ? parseFloat(assessmentTotalPoints)
+            : null;
+        const weightPercentage =
+          assessmentWeightPercentage !== null && assessmentWeightPercentage !== undefined
+            ? parseFloat(assessmentWeightPercentage)
+            : 0;
+
+        if (
+          finalStatus !== 'missing' &&
+          adjusted_score !== null &&
+          totalPoints !== null &&
+          !Number.isNaN(totalPoints) &&
+          totalPoints > 0
+        ) {
+          const computedActual = (adjusted_score / totalPoints) * 62.5 + 37.5;
+          actual_score = computedActual;
+
+          // If weight is defined, compute transmuted score, otherwise leave as null
+          if (!Number.isNaN(weightPercentage) && weightPercentage > 0) {
+            transmuted_score = (computedActual * weightPercentage) / 100;
+          }
+        }
         
         // Check if submission already exists
         const existingSubmission = await client.query(
@@ -215,6 +253,53 @@ router.put('/grade/:submissionId', async (req, res) => {
     const adjusted_score = (finalStatus === 'missing' || numericRawScore === null) 
       ? null 
       : Math.max(0, numericRawScore - (late_penalty || 0));
+
+    // Fetch assessment config for this submission to apply non-zero based grading formula
+    const assessmentConfigResult = await db.query(
+      `
+        SELECT a.total_points, a.weight_percentage
+        FROM submissions s
+        JOIN assessments a ON s.assessment_id = a.assessment_id
+        WHERE s.submission_id = $1
+      `,
+      [submissionId]
+    );
+
+    if (assessmentConfigResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission or assessment not found for grading computation' });
+    }
+
+    const {
+      total_points: assessmentTotalPoints,
+      weight_percentage: assessmentWeightPercentage
+    } = assessmentConfigResult.rows[0];
+
+    let actual_score = null;
+    let transmuted_score = null;
+
+    const totalPoints =
+      assessmentTotalPoints !== null && assessmentTotalPoints !== undefined
+        ? parseFloat(assessmentTotalPoints)
+        : null;
+    const weightPercentage =
+      assessmentWeightPercentage !== null && assessmentWeightPercentage !== undefined
+        ? parseFloat(assessmentWeightPercentage)
+        : 0;
+
+    if (
+      finalStatus !== 'missing' &&
+      adjusted_score !== null &&
+      totalPoints !== null &&
+      !Number.isNaN(totalPoints) &&
+      totalPoints > 0
+    ) {
+      const computedActual = (adjusted_score / totalPoints) * 62.5 + 37.5;
+      actual_score = computedActual;
+
+      if (!Number.isNaN(weightPercentage) && weightPercentage > 0) {
+        transmuted_score = (computedActual * weightPercentage) / 100;
+      }
+    }
     
     // Explicitly cast null values to proper types for PostgreSQL
     const query = `
@@ -222,19 +307,21 @@ router.put('/grade/:submissionId', async (req, res) => {
         total_score = $1::NUMERIC,
         raw_score = $2::NUMERIC,
         adjusted_score = $3::NUMERIC,
-        late_penalty = $4::NUMERIC,
+        actual_score = $4::NUMERIC,
+        transmuted_score = $5::NUMERIC,
+        late_penalty = $6::NUMERIC,
         graded_at = CURRENT_TIMESTAMP,
-        graded_by = $5,
+        graded_by = $7,
         status = CASE WHEN $3 IS NULL THEN 'pending' ELSE 'graded' END,
-        submission_status = $6,
-        remarks = $7
-      WHERE submission_id = $8
-      RETURNING submission_id, total_score, adjusted_score, raw_score, late_penalty, submission_status
+        submission_status = $8,
+        remarks = $9
+      WHERE submission_id = $10
+      RETURNING submission_id, total_score, adjusted_score, raw_score, late_penalty, submission_status, actual_score, transmuted_score
     `;
     
     const result = await db.query(query, [
-      adjusted_score, numericRawScore, adjusted_score, late_penalty || 0, 
-      graded_by, finalStatus, feedback, submissionId
+      adjusted_score, numericRawScore, adjusted_score, actual_score, transmuted_score,
+      late_penalty || 0, graded_by, finalStatus, feedback, submissionId
     ]);
     
     if (result.rows.length === 0) {
@@ -403,6 +490,7 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         a.assessment_id,
         a.title as assessment_title,
         a.type as assessment_type,
+        a.abbreviation as assessment_abbreviation,
         a.total_points,
         a.weight_percentage,
         a.due_date,
