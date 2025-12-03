@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useRef, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { TableSkeleton } from '../../components/skeletons'
-import { prefetchAdminData } from '../../services/dataPrefetchService'
 
 // Lazy load admin components for code splitting
 const UserManagement = lazy(() => import('./UserManagement'))
@@ -22,22 +21,7 @@ const RouteSkeleton = () => (
 )
 
 const AdminDashboard = ({ user }) => {
-  const prefetchCalledRef = useRef(false)
-
-  // Debounced prefetch - only call once per session
-  useEffect(() => {
-    if (prefetchCalledRef.current) return
-    
-    // Only prefetch after a delay and only once
-    const timer = setTimeout(() => {
-      prefetchAdminData().catch(err => {
-        console.error('Prefetch error (non-blocking):', err)
-      })
-      prefetchCalledRef.current = true
-    }, 2000) // Increased delay to reduce initial load impact
-    
-    return () => clearTimeout(timer)
-  }, [])
+  // Removed admin-wide data prefetch to only load data when specific pages need it
 
   // Route to specific admin pages with lazy loading
   return (
