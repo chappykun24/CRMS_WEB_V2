@@ -3245,7 +3245,7 @@ const MyClasses = () => {
           return { numeric: 5, status: 'FAILED' }
         }
         
-        // Calculate final grade
+        // Calculate final grade (use same non-zero based formula as Grade Management)
         const calculateFinalGrade = () => {
           if (!studentGrades || studentGrades.length === 0) return null
           
@@ -3256,9 +3256,12 @@ const MyClasses = () => {
             const weight = parseFloat(grade.weight_percentage || 0)
             totalWeight += weight
             
-            if (grade.adjusted_score !== null && grade.total_points > 0) {
-              const percentage = (grade.adjusted_score / grade.total_points) * 100
-              totalWeightedScore += (percentage * weight) / 100
+            if (grade.adjusted_score !== null && grade.total_points > 0 && weight > 0) {
+              // Non-zero based conversion:
+              // Actual = (Adjusted / MaxPoints) * 62.5 + 37.5
+              // Contribution = Actual * (Weight% / 100)
+              const actual = (grade.adjusted_score / grade.total_points) * 62.5 + 37.5
+              totalWeightedScore += actual * (weight / 100)
             }
           })
           
@@ -3379,7 +3382,7 @@ const MyClasses = () => {
                   
                   const { groups, ungrouped } = groupAssessmentsByParent(studentGrades)
                   
-                  // Calculate aggregated scores for a group
+                    // Calculate aggregated scores for a group (use same non-zero based formula)
                   const calculateGroupScores = (groupGrades) => {
                     let totalRaw = 0
                     let totalPenalty = 0
@@ -3401,9 +3404,9 @@ const MyClasses = () => {
                       }
                       const weight = parseFloat(grade.weight_percentage || 0)
                       totalWeight += weight
-                      if (grade.adjusted_score !== null && grade.total_points > 0) {
-                        const percentage = (grade.adjusted_score / grade.total_points) * 100
-                        totalWeighted += (percentage * weight) / 100
+                      if (grade.adjusted_score !== null && grade.total_points > 0 && weight > 0) {
+                        const actual = (grade.adjusted_score / grade.total_points) * 62.5 + 37.5
+                        totalWeighted += actual * (weight / 100)
                       }
                     })
                     
