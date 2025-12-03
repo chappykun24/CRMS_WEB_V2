@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
-import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/solid'
+import { MagnifyingGlassIcon, UserGroupIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 import LazyImage from '../../components/LazyImage'
@@ -21,6 +21,7 @@ const Grades = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
   const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
+  const [isClassesPanelCollapsed, setIsClassesPanelCollapsed] = useState(false)
 
   // Fetch active term
   useEffect(() => {
@@ -496,9 +497,9 @@ const Grades = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+            <div className={`grid grid-cols-1 ${isClassesPanelCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-4'} gap-4 flex-1 min-h-0`}>
               {/* Main Content - Students List */}
-              <div className="lg:col-span-3 flex flex-col min-h-0">
+              <div className={`${isClassesPanelCollapsed ? 'lg:col-span-1' : 'lg:col-span-3'} flex flex-col min-h-0`}>
                 {/* Students Grades Table */}
                 {selectedClass ? (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
@@ -521,19 +522,22 @@ const Grades = () => {
                       </div>
                     ) : filteredStudents.length > 0 ? (
                       <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0 relative">
-                        <table className="w-full divide-y divide-gray-200 table-fixed" style={{ minWidth: Math.max(800, 300 + (assessments.length * 140) + 120) }}>
+                        <table
+                          className="w-full divide-y divide-gray-200 table-fixed text-xs"
+                          style={{ minWidth: Math.max(800, 260 + assessments.length * 120 + 110) }}
+                        >
                           <thead className="bg-gray-50 sticky top-0 z-50">
                             <tr>
-                              <th className="w-12 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
+                              <th className="w-10 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
                                 #
                               </th>
-                              <th className="w-48 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-50 border-r border-gray-200">
+                              <th className="w-56 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
                                 Student
                               </th>
                               {assessments.map((assessment) => (
                                 <th 
                                   key={assessment.assessment_id} 
-                                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50"
+                                  className="px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider w-28 bg-gray-50"
                                   title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
                                 >
                                   <div className="flex flex-col">
@@ -544,7 +548,7 @@ const Grades = () => {
                                   </div>
                                 </th>
                               ))}
-                              <th className="w-32 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-50 border-l border-gray-200">
+                              <th className="w-28 px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-50 border-l border-gray-200">
                                 Total Grade
                               </th>
                             </tr>
@@ -559,22 +563,22 @@ const Grades = () => {
                               
                               return (
                                 <tr key={student.enrollment_id} className="hover:bg-gray-50 bg-white">
-                                  <td className="px-4 py-3 text-sm text-gray-500 sticky left-0 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-xs text-gray-500 sticky left-0 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
                                     {index + 1}
                                   </td>
-                                  <td className="px-4 py-3 sticky left-12 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
-                                    <div className="flex items-center space-x-3">
+                                  <td className="px-3 py-2 sticky left-10 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
+                                    <div className="flex items-center space-x-2">
                                       <LazyImage
                                         src={student.student_photo} 
                                         alt={student.full_name}
-                                        size="md"
+                                        size="sm"
                                         shape="circle"
                                         className="border border-gray-200 flex-shrink-0"
                                         delayLoad={!imagesReady}
                                         priority={false}
                                       />
                                       <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                        <p className="text-xs font-medium text-gray-900 truncate">
                                           {formatName(student.full_name)}
                                         </p>
                                         <p className="text-xs text-gray-500 truncate">
@@ -589,18 +593,18 @@ const Grades = () => {
                                     const adjustedScore = score?.adjusted_score ?? null
                                     // Calculate weighted percentage: (score/total) * weight_percentage
                                     const percentage = adjustedScore !== null && assessment.total_points > 0 && assessment.weight_percentage
-                                      ? ((adjustedScore / assessment.total_points) * parseFloat(assessment.weight_percentage || 0)).toFixed(2)
+                                      ? Math.round((adjustedScore / assessment.total_points) * parseFloat(assessment.weight_percentage || 0))
                                       : null
                                     
                                     return (
                                       <td 
                                         key={assessment.assessment_id} 
-                                        className="px-4 py-3 text-center text-sm"
+                                        className="px-3 py-2 text-center text-xs"
                                       >
                                         {adjustedScore !== null ? (
                                           <div className="flex flex-col items-center">
                                             <span className="font-semibold text-gray-900">
-                                              {adjustedScore.toFixed(2)}/{assessment.total_points}
+                                              {Math.round(adjustedScore)}/{assessment.total_points}
                                             </span>
                                             <span className="text-xs text-gray-500">
                                               {percentage}%
@@ -612,14 +616,14 @@ const Grades = () => {
                                       </td>
                                     )
                                   })}
-                                  <td className="px-4 py-3 text-center sticky right-0 bg-white z-40 border-l border-gray-100 hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-center sticky right-0 bg-white z-40 border-l border-gray-100 hover:bg-gray-50">
                                     {loadingGrades ? (
-                                      <div className="h-4 w-12 bg-gray-200 rounded animate-pulse mx-auto"></div>
+                                      <div className="h-3 w-10 bg-gray-200 rounded animate-pulse mx-auto"></div>
                                     ) : studentGrades[student.enrollment_id] ? (
                                       <div className="flex flex-col items-center">
-                                        <span className="text-sm font-semibold text-gray-900">
+                                        <span className="text-xs font-semibold text-gray-900">
                                           {studentGrades[student.enrollment_id].total_grade !== null 
-                                            ? `${parseFloat(studentGrades[student.enrollment_id].total_grade).toFixed(2)}%`
+                                            ? `${Math.round(parseFloat(studentGrades[student.enrollment_id].total_grade))}%`
                                             : 'N/A'}
                                         </span>
                                         <span className="text-xs text-gray-500">
@@ -660,10 +664,19 @@ const Grades = () => {
               </div>
 
               {/* Right Sidebar - Classes */}
+              {!isClassesPanelCollapsed && (
               <div className="lg:col-span-1 flex flex-col min-h-0">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-300 flex flex-col h-full">
-                  <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                  <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
                     <h3 className="text-sm font-medium text-gray-900">Classes</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsClassesPanelCollapsed(true)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                      title="Collapse classes panel"
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className="flex-1 overflow-y-auto min-h-0">
                     {loading ? (
@@ -721,6 +734,7 @@ const Grades = () => {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>
