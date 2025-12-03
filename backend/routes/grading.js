@@ -488,6 +488,8 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         ${photoField},
         a.assessment_id,
         a.title as assessment_title,
+        -- Prefer explicit abbreviation from assessment content_data (JSONB)
+        (a.content_data->>'abbreviation')::text as assessment_abbreviation,
         a.type as assessment_type,
         a.total_points,
         a.weight_percentage,
