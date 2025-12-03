@@ -534,20 +534,27 @@ const Grades = () => {
                               <th className="w-56 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
                                 Student
                               </th>
-                              {assessments.map((assessment) => (
-                                <th 
-                                  key={assessment.assessment_id} 
-                                  className="px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider w-28 bg-gray-50"
-                                  title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="truncate">{assessment.title}</span>
-                                    <span className="text-xs text-gray-400 font-normal">
-                                      {assessment.total_points}pts
-                                    </span>
-                                  </div>
-                                </th>
-                              ))}
+                              {assessments.map((assessment) => {
+                                const code =
+                                  assessment.abbreviation ||
+                                  assessment.code ||
+                                  (assessment.title ? assessment.title.substring(0, 6).toUpperCase() : '-')
+
+                                return (
+                                  <th 
+                                    key={assessment.assessment_id} 
+                                    className="px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider w-28 bg-gray-50 border-l border-gray-200"
+                                    title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="truncate">{code}</span>
+                                      <span className="text-[10px] text-gray-400 font-normal">
+                                        {assessment.total_points}pts
+                                      </span>
+                                    </div>
+                                  </th>
+                                )
+                              })}
                               <th className="w-28 px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-50 border-l border-gray-200">
                                 Total Grade
                               </th>
@@ -599,7 +606,7 @@ const Grades = () => {
                                     return (
                                       <td 
                                         key={assessment.assessment_id} 
-                                        className="px-3 py-2 text-center text-xs"
+                                        className="px-3 py-2 text-center text-xs border-l border-gray-100"
                                       >
                                         {adjustedScore !== null ? (
                                           <div className="flex flex-col items-center">
