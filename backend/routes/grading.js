@@ -490,7 +490,6 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         a.assessment_id,
         a.title as assessment_title,
         a.type as assessment_type,
-        a.abbreviation as assessment_abbreviation,
         a.total_points,
         a.weight_percentage,
         a.due_date,
