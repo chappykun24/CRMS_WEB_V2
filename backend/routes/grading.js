@@ -436,9 +436,23 @@ router.get('/class/:sectionCourseId/student-grades', async (req, res) => {
           a.weight_percentage,
           -- Use adjusted_score for per-assessment score display (already accounts for late penalties)
           COALESCE(sub.adjusted_score, 0) as score,
-          -- Use transmuted_score (converted & weighted) for total grade computation so it stays
-          -- aligned with the non-zero based formula used when saving grades.
-          COALESCE(sub.transmuted_score, 0) as weighted_score
+          -- Use converted (non-zero based) & weighted score for total grade:
+          -- 1) Prefer stored transmuted_score if available (new records)
+          -- 2) Otherwise, recompute on the fly from adjusted_score, total_points, and weight_percentage
+          COALESCE(
+            sub.transmuted_score,
+            CASE 
+              WHEN sub.adjusted_score IS NOT NULL 
+                   AND a.total_points > 0 
+                   AND COALESCE(a.weight_percentage, 0) > 0
+              THEN 
+                (
+                  ((sub.adjusted_score / a.total_points) * 62.5 + 37.5)
+                  * (COALESCE(a.weight_percentage, 0) / 100.0)
+                )
+              ELSE 0
+            END
+          ) as weighted_score
         FROM course_enrollments ce
         JOIN students s ON ce.student_id = s.student_id
         JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
