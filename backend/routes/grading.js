@@ -502,8 +502,12 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
         ${photoField},
         a.assessment_id,
         a.title as assessment_title,
-        -- Prefer explicit abbreviation from assessment content_data (JSONB)
-        (a.content_data->>'abbreviation')::text as assessment_abbreviation,
+        -- Prefer abbreviation/code coming from syllabus grading_policy JSON,
+        -- then fall back to assessment content_data abbreviation.
+        COALESCE(
+          gp.grading_abbreviation,
+          (a.content_data->>'abbreviation')::text
+        ) as assessment_abbreviation,
         a.type as assessment_type,
         a.total_points,
         a.weight_percentage,
@@ -522,6 +526,23 @@ router.get('/class/:sectionCourseId/assessment-scores', async (req, res) => {
       JOIN students s ON ce.student_id = s.student_id
       JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
       LEFT JOIN assessments a ON sc.section_course_id = a.section_course_id
+      LEFT JOIN syllabi sy ON a.syllabus_id = sy.syllabus_id
+      -- Extract abbreviation from syllabi.grading_policy -> sub_assessments JSON
+      LEFT JOIN LATERAL (
+        SELECT 
+          (sub_ass->>'abbreviation')::text AS grading_abbreviation
+        FROM jsonb_each(
+          CASE 
+            WHEN sy.grading_policy IS NULL THEN '{}'::jsonb
+            WHEN jsonb_typeof(sy.grading_policy) = 'object' 
+            THEN COALESCE(sy.grading_policy->'sub_assessments', '{}'::jsonb)
+            ELSE '{}'::jsonb
+          END
+        ) AS gp(key, sub_array)
+        CROSS JOIN LATERAL jsonb_array_elements(sub_array) AS sub_ass
+        WHERE (sub_ass->>'name')::text ILIKE '%' || a.title || '%'
+        LIMIT 1
+      ) gp ON TRUE
       LEFT JOIN submissions sub ON (ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = a.assessment_id)
       WHERE ce.section_course_id = $1 AND ce.status = 'enrolled'
       ORDER BY s.full_name, a.due_date ASC
