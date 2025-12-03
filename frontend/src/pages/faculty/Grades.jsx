@@ -3,8 +3,6 @@ import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { MagnifyingGlassIcon, UserGroupIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
-import LazyImage from '../../components/LazyImage'
-import imageLoaderService from '../../services/imageLoaderService'
 
 const Grades = () => {
   const { user } = useAuth()
@@ -20,7 +18,6 @@ const Grades = () => {
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState('')
-  const [imagesReady, setImagesReady] = useState(false) // Controls when images start loading
   const [isClassesPanelCollapsed, setIsClassesPanelCollapsed] = useState(false)
 
   // Fetch active term
@@ -92,68 +89,6 @@ const Grades = () => {
     return filtered
   }, [classes, activeTermId])
 
-  // Fetch student photos on-demand
-  const fetchStudentPhotos = async (students) => {
-    if (!students || students.length === 0) return
-    
-    try {
-      console.log('📸 [GRADES] Fetching photos for', students.length, 'students')
-      
-      // Fetch photos in batches to avoid overwhelming the server
-      const batchSize = 5
-      for (let i = 0; i < students.length; i += batchSize) {
-        const batch = students.slice(i, i + batchSize)
-        
-        const photoPromises = batch.map(async (student) => {
-          try {
-            const response = await fetch(`/api/students/${student.student_id}/photo`, {
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-              }
-            })
-            
-            if (response.ok) {
-              const data = await response.json()
-              // Update students with photo
-              setStudents(prev => {
-                if (!prev) return prev
-                return prev.map(s => 
-                  s.student_id === student.student_id 
-                    ? { ...s, student_photo: data.photo }
-                    : s
-                )
-              })
-              
-              // Queue image for loading
-              if (data.photo) {
-                imageLoaderService.queueImages([{
-                  src: data.photo,
-                  id: `student_${student.student_id}`
-                }], false)
-              }
-              
-              return { student_id: student.student_id, photo: data.photo }
-            }
-          } catch (error) {
-            console.error(`❌ [GRADES] Error fetching photo for student ${student.student_id}:`, error)
-            return null
-          }
-        })
-        
-        await Promise.all(photoPromises)
-        
-        // Small delay between batches
-        if (i + batchSize < students.length) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
-      }
-      
-      console.log('✅ [GRADES] Photos fetched and updated')
-    } catch (error) {
-      console.error('❌ [GRADES] Error in fetchStudentPhotos:', error)
-    }
-  }
-
   // Validate selected class is from active term
   useEffect(() => {
     if (selectedClass && activeTermId !== null && selectedClass.term_id !== activeTermId) {
@@ -193,19 +128,10 @@ const Grades = () => {
     const cachedGrades = safeGetItem(gradesCacheKey)
     const cachedScores = safeGetItem(scoresCacheKey)
     
-    // Reset images ready state when class changes
-    setImagesReady(false)
-    
     // Show cached data immediately if available
     if (cachedStudents) {
       const studentsList = Array.isArray(cachedStudents) ? cachedStudents : []
       setStudents(studentsList)
-      // Delay image loading - show names and grades first, then load images
-      setTimeout(() => {
-        setImagesReady(true)
-        // Fetch photos on-demand for cached students
-        fetchStudentPhotos(studentsList)
-      }, 300) // Small delay to ensure names/grades render first
     }
     
     if (cachedGrades) {
@@ -282,15 +208,8 @@ const Grades = () => {
         const studentsList = Array.isArray(studentsData) ? studentsData : []
         // Set students first (names and data) - this renders immediately
         setStudents(studentsList)
-        // Cache minimized data for next time (excludes photos)
+        // Cache minimized data for next time
         safeSetItem(studentsCacheKey, studentsList, minimizeStudentData)
-        
-        // Delay image loading - show names and grades first, then load images asynchronously
-        setTimeout(() => {
-          setImagesReady(true) // Enable image loading in UI after essential data is displayed
-          // Fetch photos on-demand
-          fetchStudentPhotos(studentsList)
-        }, 300) // Small delay to ensure names/grades render first
       } else {
         console.error('Failed to load students')
         if (showLoading) setStudents([])
@@ -504,17 +423,16 @@ const Grades = () => {
                 {selectedClass ? (
                   <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 flex flex-col flex-1 min-h-0">
                     {loading || loadingStudents ? (
-                      <div className="p-6">
-                        <div className="space-y-3">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg animate-pulse">
-                              <div className="flex-shrink-0 w-6 text-center">
-                                <div className="h-3 bg-gray-200 rounded w-4 mx-auto"></div>
+                      <div className="p-4">
+                        <div className="space-y-2">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="flex items-center space-x-2 py-2">
+                              <div className="w-8">
+                                <div className="h-3 bg-gray-200 rounded w-5 animate-pulse" />
                               </div>
-                              <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
                               <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-48 mb-2"></div>
-                                <div className="h-3 bg-gray-100 rounded w-32"></div>
+                                <div className="h-3 bg-gray-200 rounded w-40 mb-1 animate-pulse" />
+                                <div className="h-2.5 bg-gray-100 rounded w-32 animate-pulse" />
                               </div>
                             </div>
                           ))}
@@ -531,7 +449,7 @@ const Grades = () => {
                               <th className="w-10 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-50 border-r border-gray-200">
                                 #
                               </th>
-                              <th className="w-56 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
+                              <th className="w-52 px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider sticky left-10 bg-gray-50 z-50 border-r border-gray-200">
                                 Student
                               </th>
                               {assessments.map((assessment) => {
@@ -544,7 +462,7 @@ const Grades = () => {
                                   <th 
                                     key={assessment.assessment_id} 
                                     className="px-3 py-2 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider w-28 bg-gray-50 border-l border-gray-200"
-                                    title={`${assessment.title} (${assessment.total_points} pts, ${assessment.weight_percentage}%)`}
+                                    title={`${code} • ${assessment.total_points} pts • ${assessment.weight_percentage || 0}%`}
                                   >
                                     <div className="flex flex-col">
                                       <span className="truncate">{code}</span>
@@ -574,24 +492,13 @@ const Grades = () => {
                                     {index + 1}
                                   </td>
                                   <td className="px-3 py-2 sticky left-10 bg-white z-40 border-r border-gray-100 hover:bg-gray-50">
-                                    <div className="flex items-center space-x-2">
-                                      <LazyImage
-                                        src={student.student_photo} 
-                                        alt={student.full_name}
-                                        size="sm"
-                                        shape="circle"
-                                        className="border border-gray-200 flex-shrink-0"
-                                        delayLoad={!imagesReady}
-                                        priority={false}
-                                      />
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-medium text-gray-900 truncate">
-                                          {formatName(student.full_name)}
-                                        </p>
-                                        <p className="text-xs text-gray-500 truncate">
-                                          {student.student_number || 'N/A'}
-                                        </p>
-                                      </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium text-gray-900 truncate">
+                                        {formatName(student.full_name)}
+                                      </p>
+                                      <p className="text-[11px] text-gray-500 truncate">
+                                        {student.student_number || 'N/A'}
+                                      </p>
                                     </div>
                                   </td>
                                   {assessments.map((assessment) => {
@@ -746,6 +653,17 @@ const Grades = () => {
           </div>
         </div>
       </div>
+      {/* Restore Classes side panel when collapsed */}
+      {isClassesPanelCollapsed && (
+        <button
+          type="button"
+          onClick={() => setIsClassesPanelCollapsed(false)}
+          className="hidden lg:flex fixed right-6 bottom-8 items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+          title="Show classes panel"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }
