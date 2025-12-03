@@ -779,7 +779,7 @@ const UserManagement = () => {
                     <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse"></div>
                   </div>
 
-                  <TableSkeleton rows={8} columns={6} />
+                  <TableSkeleton rows={8} columns={5} />
                 </div>
 
                 {/* Side actions / User details */}
@@ -964,9 +964,6 @@ const UserManagement = () => {
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Profile
-                              </th>
-                              <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Name
                               </th>
                               <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -993,17 +990,6 @@ const UserManagement = () => {
                                   onClick={() => setSelectedUser(u)}
                                   className={`hover:bg-gray-50 cursor-pointer ${selectedUser?.user_id === u.user_id ? 'bg-red-50' : ''}`}
                                 >
-                                  <td className="px-6 py-3">
-                                    <div className="h-10 w-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center ring-1 ring-gray-300">
-                                      {u.profile_pic ? (
-                                        <img src={u.profile_pic} alt={`${userName} avatar`} className="h-full w-full object-cover" />
-                                      ) : (
-                                        <span className="text-sm font-semibold text-gray-500">
-                                          {userInitial}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
                                   <td className="px-8 py-3">
                                     <div className="text-sm font-medium text-gray-900 break-words">{userName}</div>
                                   </td>
