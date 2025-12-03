@@ -506,10 +506,19 @@ const Grades = () => {
                                     const score = scoreMap.get(assessment.assessment_id)
                                     // Use adjusted_score for calculations and display
                                     const adjustedScore = score?.adjusted_score ?? null
-                                    // Calculate weighted percentage: (score/total) * weight_percentage
-                                    const percentage = adjustedScore !== null && assessment.total_points > 0 && assessment.weight_percentage
-                                      ? Math.round((adjustedScore / assessment.total_points) * parseFloat(assessment.weight_percentage || 0))
-                                      : null
+                                    // Calculate contribution using the same non-zero based grading formula as backend:
+                                    // Step 1: Actual = (Adjusted / MaxPoints) * 62.5 + 37.5
+                                    // Step 2: Contribution (weighted) = Actual * (Weight% / 100)
+                                    let contribution = null
+                                    if (
+                                      adjustedScore !== null &&
+                                      assessment.total_points > 0 &&
+                                      assessment.weight_percentage
+                                    ) {
+                                      const actual = (adjustedScore / assessment.total_points) * 62.5 + 37.5
+                                      contribution =
+                                        actual * (parseFloat(assessment.weight_percentage || 0) / 100)
+                                    }
                                     
                                     return (
                                       <td 
@@ -522,7 +531,7 @@ const Grades = () => {
                                               {Math.round(adjustedScore)}
                                             </span>
                                             <span className="text-xs text-gray-500">
-                                              {percentage}%
+                                              {contribution !== null ? `${contribution.toFixed(2)}%` : '—'}
                                             </span>
                                           </div>
                                         ) : (
