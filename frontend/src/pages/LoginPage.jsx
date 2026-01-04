@@ -21,7 +21,6 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showDemoAccounts, setShowDemoAccounts] = useState(false)
   const [logoLoaded, setLogoLoaded] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [validationErrors, setValidationErrors] = useState({ email: '', password: '' })
@@ -349,90 +348,6 @@ const LoginPage = () => {
                 </div>
               </div>
             </form>
-
-            {/* Demo Accounts Toggle */}
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setShowDemoAccounts(!showDemoAccounts)}
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors underline focus:outline-none focus:ring-0"
-                style={{ outline: 'none' }}
-              >
-                {showDemoAccounts ? 'Hide demo accounts' : 'Show demo accounts'}
-              </button>
-            </div>
-
-            {/* Demo Accounts Section */}
-            {showDemoAccounts && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="text-center mb-3">
-                  <h4 className="text-sm font-medium text-gray-700">Quick Login</h4>
-                  <p className="text-xs text-gray-500">Click to auto-fill</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'admin@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">admin@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Admin)</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'dean@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">dean@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Dean)</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'faculty@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">faculty@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Faculty)</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'jose.torres148@university.edu', password: 'Password123!' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">jose.torres148@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Faculty 2)</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'staff@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">staff@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Staff)</span>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ email: 'programchair@university.edu', password: 'password123' })}
-                    className="w-full bg-white p-2 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-left text-xs focus:outline-none focus:ring-0 focus:border-gray-200 active:outline-none active:ring-0 active:border-gray-200"
-                    style={{ border: '1px solid #e5e7eb', outline: 'none' }}
-                  >
-                    <span className="font-mono text-gray-700">programchair@university.edu</span>
-                    <span className="text-gray-400 ml-2">(Program Chair)</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
