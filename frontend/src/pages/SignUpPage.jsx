@@ -295,48 +295,6 @@ const SignUpPage = () => {
     fetchData();
   }, []);
 
-
-
-  const fillRandomData = () => {
-    // Check if we have the required data
-    if (departments.length === 0 || schoolTerms.filter(term => term.is_active).length === 0) {
-      setError('Cannot fill random data: No departments or active school terms available')
-      return
-    }
-
-    const firstNames = ['Juan', 'Maria', 'Jose', 'Ana', 'Pedro', 'Liza', 'Carlos', 'Grace', 'Ramon', 'Cecilia']
-    const lastNames = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Torres', 'Gonzales', 'Ramos', 'Lopez', 'Aquino']
-    const middleInitials = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-    
-    const randomItem = arr => arr[Math.floor(Math.random() * arr.length)]
-    const randomEmail = (first, last) => `${first.toLowerCase()}.${last.toLowerCase().replace(/\s/g, '')}${Math.floor(Math.random()*1000)}@university.edu`
-    
-    // Get random department from available departments
-    const randomDept = randomItem(departments).department_id
-    
-    // Get random active school term
-    const activeTerms = schoolTerms.filter(term => term.is_active)
-    const randomTerm = randomItem(activeTerms)
-    
-    const firstName = randomItem(firstNames)
-    const lastName = randomItem(lastNames)
-    
-    setFormData({
-      lastName,
-      firstName,
-      middleInitial: randomItem(middleInitials),
-      suffix: '',
-      email: randomEmail(firstName, lastName),
-      password: 'Password123!',
-      confirmPassword: 'Password123!',
-      department: randomDept,
-      schoolTerm: randomTerm.term_id,
-      termStart: formatDateForDisplay(randomTerm.start_date),
-      termEnd: formatDateForDisplay(randomTerm.end_date),
-      profilePic: null
-    })
-  }
-
   const validateForm = () => {
     if (!formData.lastName.trim()) {
       setError('Last name is required')
@@ -490,16 +448,7 @@ const SignUpPage = () => {
 
               {/* Personal Information */}
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
-                  <button
-                    type="button"
-                    onClick={fillRandomData}
-                    className="text-xs text-primary-600 hover:text-primary-700 font-medium px-3 py-1 rounded-md hover:bg-primary-50 transition-colors"
-                  >
-                    Fill Random Data
-                  </button>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <div className="relative">
