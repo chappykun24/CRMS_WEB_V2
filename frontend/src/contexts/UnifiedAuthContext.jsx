@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react'
 import authService from '../services/authService'
+import { useInactivityTimer } from '../hooks/useInactivityTimer'
+import InactivityWarningModal from '../components/InactivityWarningModal'
 
 const UnifiedAuthContext = createContext()
 
@@ -8,7 +10,8 @@ const initialState = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
-  token: null
+  token: null,
+  showInactivityWarning: false
 }
 
 const authReducer = (state, action) => {
@@ -49,6 +52,10 @@ const authReducer = (state, action) => {
       return { ...state, isLoading: action.payload }
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+    case 'SHOW_INACTIVITY_WARNING':
+      return { ...state, showInactivityWarning: true }
+    case 'HIDE_INACTIVITY_WARNING':
+      return { ...state, showInactivityWarning: false }
     default:
       return state
   }
@@ -56,6 +63,7 @@ const authReducer = (state, action) => {
 
 export const UnifiedAuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState)
+  const inactivityTimerRef = useRef(null)
 
   // Check if user is already logged in on app start
   useEffect(() => {
@@ -318,14 +326,40 @@ export const UnifiedAuthProvider = ({ children }) => {
     }
   }
 
-  const logout = () => {
+  const logout = (redirectToLogin = true) => {
     console.log('[UnifiedAuth] LOGOUT')
     // Clear localStorage
     localStorage.removeItem('userData')
     localStorage.removeItem('authToken')
     
+    // Hide inactivity warning if shown
+    dispatch({ type: 'HIDE_INACTIVITY_WARNING' })
+    
     // Update state
     dispatch({ type: 'LOGOUT' })
+    
+    // Redirect to login page if needed
+    if (redirectToLogin && window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+  }
+
+  // Handle inactivity warning
+  const handleInactivityWarning = () => {
+    dispatch({ type: 'SHOW_INACTIVITY_WARNING' })
+  }
+
+  // Handle stay logged in (reset timer)
+  const handleStayLoggedIn = () => {
+    dispatch({ type: 'HIDE_INACTIVITY_WARNING' })
+    if (inactivityTimerRef.current) {
+      inactivityTimerRef.current.resetTimer()
+    }
+  }
+
+  // Handle inactivity logout
+  const handleInactivityLogout = () => {
+    logout(true)
   }
 
   const clearError = () => {
@@ -427,6 +461,18 @@ export const UnifiedAuthProvider = ({ children }) => {
     return state.user?.department_id === departmentId
   }
 
+  // Inactivity timer - only active when user is authenticated
+  const inactivityTimer = useInactivityTimer(
+    handleInactivityLogout,
+    15 * 60 * 1000, // 15 minutes of inactivity
+    60 * 1000, // Show warning 1 minute before logout
+    handleInactivityWarning,
+    state.isAuthenticated // Only active when authenticated
+  )
+
+  // Store timer reference for manual reset
+  inactivityTimerRef.current = inactivityTimer
+
   const value = {
     ...state,
     login,
@@ -439,12 +485,21 @@ export const UnifiedAuthProvider = ({ children }) => {
     changePassword,
     hasRole,
     hasAnyRole,
-    hasDepartment
+    hasDepartment,
+    handleStayLoggedIn
   }
 
   return (
     <UnifiedAuthContext.Provider value={value}>
       {children}
+      {state.isAuthenticated && (
+        <InactivityWarningModal
+          isOpen={state.showInactivityWarning}
+          onStayLoggedIn={handleStayLoggedIn}
+          onLogout={handleInactivityLogout}
+          countdown={60}
+        />
+      )}
     </UnifiedAuthContext.Provider>
   )
 }
