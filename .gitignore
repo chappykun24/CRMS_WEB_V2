@@ -188,6 +188,9 @@ public/
 # Archive folder (old scripts, docs, migrations - not needed in production)
 archive/
 
+# Documentation drafts (correction guides, section drafts, extraction scripts)
+documentation-drafts/
+
 # References folder (exclude from version control)
 references/
 reference/
