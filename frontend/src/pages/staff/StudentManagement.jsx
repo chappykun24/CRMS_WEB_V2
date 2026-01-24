@@ -9,7 +9,8 @@ import {
   AcademicCapIcon,
   BuildingOfficeIcon,
   CalendarIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/solid'
 // Removed SidebarContext import - using local state instead
 import studentService from '../../services/studentService'
@@ -812,6 +813,19 @@ const StudentManagement = () => {
     } finally {
       setIsImporting(false)
     }
+  }
+
+  const handleDownloadCsvTemplate = () => {
+    const header = 'student_number,first_name,last_name,email,middle_initial,suffix,gender,birth_date'
+    const sample = '20-12345,Juan,Santos,juan.santos@example.com,A,Jr.,male,2000-01-15'
+    const csv = [header, sample].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'student_enrollment_template.csv'
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const formatDateTime = (value) => {
@@ -1704,6 +1718,14 @@ const StudentManagement = () => {
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadCsvTemplate}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Download CSV Template
                   </button>
                   <button
                     type="button"
