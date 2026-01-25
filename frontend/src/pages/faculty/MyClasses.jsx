@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react'
 // Removed prefetchFacultyData - data is now fetched per section
 import { setSelectedClass as saveSelectedClass, removeLocalStorageItem } from '../../utils/localStorageManager'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
-import { XMarkIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/solid'
+import { XMarkIcon, TrashIcon, PencilIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 
 import ClassCard from '../../components/ClassCard'
 import { CardGridSkeleton, StudentListSkeleton } from '../../components/skeletons'
@@ -263,6 +263,48 @@ const MyClasses = () => {
     const firstAndMiddle = tokens.slice(0, -1).join(' ')
     
     return `${lastName}, ${firstAndMiddle}`
+  }
+
+  // Export students list to CSV
+  const handleExportStudents = () => {
+    if (!students || students.length === 0) {
+      return
+    }
+
+    // CSV header
+    const header = 'Student Number,Full Name,Student ID'
+    
+    // Convert students to CSV rows
+    const rows = students.map(student => {
+      const studentNumber = student.student_number || ''
+      const fullName = student.full_name || ''
+      const studentId = student.student_id || ''
+      
+      // Escape CSV values (handle commas and quotes)
+      const escapeCSV = (value) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`
+        }
+        return value
+      }
+      
+      return `${escapeCSV(studentNumber)},${escapeCSV(fullName)},${escapeCSV(studentId)}`
+    })
+    
+    // Combine header and rows
+    const csv = [header, ...rows].join('\n')
+    
+    // Create blob and download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    
+    // Generate filename with class info if available
+    const className = selectedClass ? `${selectedClass.course_code}_${selectedClass.section_code}`.replace(/[^a-z0-9]/gi, '_') : 'students'
+    link.download = `${className}_student_list.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   // Fetch student photos on-demand
@@ -2219,6 +2261,19 @@ const MyClasses = () => {
 
             {/* Enrolled Students Section */}
             <div className="flex-1 flex flex-col min-h-0">
+              {/* Export Button */}
+              {students.length > 0 && (
+                <div className="mb-3 flex justify-end">
+                  <button
+                    onClick={handleExportStudents}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+                    title="Export student list to CSV"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Export Students
+                  </button>
+                </div>
+              )}
               {/* Students List - Normal View */}
               <div className="flex-1 overflow-auto min-h-0">
                 {loadingStudents ? (
