@@ -276,16 +276,18 @@ const MyClasses = () => {
     
     // Convert students to CSV rows
     const rows = students.map(student => {
-      const studentNumber = student.student_number || ''
-      const fullName = student.full_name || ''
-      const studentId = student.student_id || ''
+      // Convert all values to strings, handling null/undefined/numbers
+      const studentNumber = String(student.student_number || '')
+      const fullName = String(student.full_name || '')
+      const studentId = String(student.student_id || '')
       
       // Escape CSV values (handle commas and quotes)
       const escapeCSV = (value) => {
-        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-          return `"${value.replace(/"/g, '""')}"`
+        const strValue = String(value || '')
+        if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
+          return `"${strValue.replace(/"/g, '""')}"`
         }
-        return value
+        return strValue
       }
       
       return `${escapeCSV(studentNumber)},${escapeCSV(fullName)},${escapeCSV(studentId)}`
