@@ -271,29 +271,37 @@ const MyClasses = () => {
       return
     }
 
-    // CSV header
+    // Escape CSV values (handle commas and quotes)
+    const escapeCSV = (value) => {
+      const strValue = String(value ?? '')
+      if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
+        return `"${strValue.replace(/"/g, '""')}"`
+      }
+      return strValue
+    }
+
+    // Upper part: Subject, Adviser, Section
+    const subject = escapeCSV(selectedClass?.course_title ?? '')
+    const adviser = escapeCSV(selectedClass?.faculty_name ?? '')
+    const section = escapeCSV(selectedClass?.section_code ?? '')
+    const meta = [
+      `Subject,${subject}`,
+      `Adviser,${adviser}`,
+      `Section,${section}`,
+      ''
+    ]
+
     const header = 'Student Number,Full Name'
-    
+
     // Convert students to CSV rows
     const rows = students.map(student => {
-      // Convert all values to strings, handling null/undefined/numbers
       const studentNumber = String(student.student_number || '')
       const fullName = String(student.full_name || '')
-      
-      // Escape CSV values (handle commas and quotes)
-      const escapeCSV = (value) => {
-        const strValue = String(value || '')
-        if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
-          return `"${strValue.replace(/"/g, '""')}"`
-        }
-        return strValue
-      }
-      
       return `${escapeCSV(studentNumber)},${escapeCSV(fullName)}`
     })
-    
-    // Combine header and rows
-    const csv = [header, ...rows].join('\n')
+
+    // Combine: meta lines, header, data rows
+    const csv = [...meta, header, ...rows].join('\n')
     
     // Create blob and download
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
