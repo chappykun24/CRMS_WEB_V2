@@ -272,14 +272,13 @@ const MyClasses = () => {
     }
 
     // CSV header
-    const header = 'Student Number,Full Name,Student ID'
+    const header = 'Student Number,Full Name'
     
     // Convert students to CSV rows
     const rows = students.map(student => {
       // Convert all values to strings, handling null/undefined/numbers
       const studentNumber = String(student.student_number || '')
       const fullName = String(student.full_name || '')
-      const studentId = String(student.student_id || '')
       
       // Escape CSV values (handle commas and quotes)
       const escapeCSV = (value) => {
@@ -290,7 +289,7 @@ const MyClasses = () => {
         return strValue
       }
       
-      return `${escapeCSV(studentNumber)},${escapeCSV(fullName)},${escapeCSV(studentId)}`
+      return `${escapeCSV(studentNumber)},${escapeCSV(fullName)}`
     })
     
     // Combine header and rows
