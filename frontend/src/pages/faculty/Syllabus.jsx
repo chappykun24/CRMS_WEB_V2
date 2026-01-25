@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/UnifiedAuthContext'
 import { safeSetItem, safeGetItem, minimizeClassData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass, getSelectedClass } from '../../utils/localStorageManager'
 import SyllabusCreationWizard from '../../components/SyllabusCreationWizard'
+import { exportSyllabusToExcel } from '../../utils/excelExport'
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -18,6 +19,7 @@ import {
   BookOpenIcon,
   ArrowPathIcon,
   ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
   XMarkIcon
 } from '@heroicons/react/24/solid'
 
@@ -49,6 +51,7 @@ const Syllabus = () => {
   const [loadingShareableClasses, setLoadingShareableClasses] = useState(false)
   const [sharingSyllabus, setSharingSyllabus] = useState(false)
   const [deletingSyllabus, setDeletingSyllabus] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   
   // Reference data for ILO mappings
   const [soReferences, setSoReferences] = useState([])
@@ -715,6 +718,23 @@ const Syllabus = () => {
       loadSyllabusILOs(syllabusId),
       loadReferenceData()
     ])
+  }
+
+  const handleExportSyllabus = async () => {
+    if (!viewingSyllabus) return
+    setIsExporting(true)
+    try {
+      await exportSyllabusToExcel(
+        viewingSyllabus,
+        viewingSyllabusILOs,
+        soReferences,
+        igaReferences,
+        cdioReferences,
+        sdgReferences
+      )
+    } finally {
+      setIsExporting(false)
+    }
   }
   
   const handlePublish = async () => {
@@ -1633,12 +1653,24 @@ const Syllabus = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">{viewingSyllabus.title}</h2>
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircleIcon className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportSyllabus}
+                    disabled={isExporting}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Export syllabus to Excel"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    {isExporting ? 'Exporting...' : 'Export to Excel'}
+                  </button>
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
               
               <div className="space-y-4">
