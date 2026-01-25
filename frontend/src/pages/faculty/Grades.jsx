@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/UnifiedAuthContext'
-import { MagnifyingGlassIcon, UserGroupIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
+import { MagnifyingGlassIcon, UserGroupIcon, ChevronLeftIcon, ChevronRightIcon, ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 import { safeSetItem, safeGetItem, minimizeClassData, minimizeStudentData } from '../../utils/cacheUtils'
 import { setSelectedClass as saveSelectedClass } from '../../utils/localStorageManager'
 
@@ -362,6 +362,68 @@ const Grades = () => {
     return `${lastName}, ${firstAndMiddle}`
   }
 
+  // Export grades to CSV
+  const handleExportGrades = () => {
+    if (!selectedClass || !students?.length) return
+
+    const escapeCSV = (value) => {
+      const str = String(value ?? '')
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    // Meta: Subject, Adviser, Section
+    const meta = [
+      `Subject,${escapeCSV(selectedClass.course_title ?? '')}`,
+      `Adviser,${escapeCSV(selectedClass.faculty_name ?? '')}`,
+      `Section,${escapeCSV(selectedClass.section_code ?? '')}`,
+      ''
+    ]
+
+    // Assessment column headers (e.g. LA4 (30pts))
+    const abbr = (a) =>
+      a.abbreviation || a.code || (a.title ? a.title.substring(0, 6).toUpperCase() : '-')
+    const assessHeaders = assessments.map(a => escapeCSV(`${abbr(a)} (${a.total_points || 0}pts)`))
+    const header = ['Student Number', 'Full Name', ...assessHeaders, 'Total Grade'].join(',')
+
+    const rows = filteredStudents.map(student => {
+      const studentScores = assessmentScores[student.enrollment_id] || []
+      const scoreMap = new Map(studentScores.map(s => [s.assessment_id, s]))
+      const grades = studentGrades[student.enrollment_id]
+
+      const assessCells = assessments.map(a => {
+        const score = scoreMap.get(a.assessment_id)
+        const v = score?.adjusted_score
+        return v != null ? String(Math.round(Number(v))) : '-'
+      })
+      const total =
+        grades?.total_grade != null
+          ? `${Math.round(parseFloat(grades.total_grade))}%`
+          : '-'
+
+      return [
+        escapeCSV(student.student_number || ''),
+        escapeCSV(student.full_name || ''),
+        ...assessCells,
+        total
+      ].join(',')
+    })
+
+    const csv = [...meta, header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const fname = selectedClass.course_code && selectedClass.section_code
+      ? `${String(selectedClass.course_code).replace(/\W/g, '_')}_${String(selectedClass.section_code).replace(/\W/g, '_')}_grades.csv`
+      : 'grades.csv'
+    link.download = fname
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   // Filter and sort students alphabetically by last name
   const filteredStudents = students
     .filter(student =>
@@ -409,6 +471,16 @@ const Grades = () => {
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleExportGrades}
+                  disabled={!selectedClass || !filteredStudents?.length}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  title="Export grades to CSV"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Export Grades
+                </button>
               </div>
               {error && (
                 <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
